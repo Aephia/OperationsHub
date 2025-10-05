@@ -427,7 +427,7 @@ export class UIManager {
             planets.forEach((planet, index) => {
                 console.log('Planet data:', planet);
                 const planetName = planet.name || `Planet ${index + 1}`;
-                const planetType = planet && planet.type ? String(planet.type) : 'Unknown';
+                const planetType = planet && planet.type !== undefined ? this.getPlanetTypeName(planet.type) : 'Unknown';
                 const resources = planet.resources || [];
 
                 content += `
@@ -655,7 +655,7 @@ export class UIManager {
                     </select>
                 </div>
                 <div>
-                    <strong>Planet Type:</strong> ${planet.type || 'Unknown'} |
+                    <strong>Planet Type:</strong> ${this.getPlanetTypeName(planet.type || 0)} |
                     <strong>Available Resources:</strong> ${planet.resources ? planet.resources.map(r => r.name).join(', ') : 'None'}
                 </div>
             </div>
