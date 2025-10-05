@@ -179,30 +179,9 @@ class ConstructionManager {
         };
     }
 
-    // Get buildings compatible with the planet type - EXACT GaliaViewer
+    // Get buildings compatible with the planet type - Uses shared utility
     getCompatibleBuildings(planet, system, claimStakeTier = 1) {
-        if (typeof window.rawBuildingData === 'undefined') {
-            return [];
-        }
-
-        const buildings = window.rawBuildingData.buildings || [];
-        const planetTypeNum = planet.type;
-        const availableResources = (planet.resources || []).map(r => r.name.toLowerCase());
-
-        return buildings.filter(building => {
-            // Check planet type requirements
-            const requiredTags = building.requiredTags || [];
-            const planetTypeCompatible = this.checkPlanetTypeCompatibility(planetTypeNum, requiredTags);
-
-            // Check claim stake tier compatibility
-            const tierCompatible = building.minimumTier <= claimStakeTier;
-
-            return planetTypeCompatible && tierCompatible;
-        }).sort((a, b) => {
-            // Sort by tier, then by name
-            if (a.tier !== b.tier) return a.tier - b.tier;
-            return a.name.localeCompare(b.name);
-        });
+        return ConstructionUtils.getCompatibleBuildings(planet, system, claimStakeTier);
     }
 
     // Update compatible buildings when claim stake tier changes - EXACT GaliaViewer
@@ -236,28 +215,14 @@ class ConstructionManager {
         this.validateFacilityPlan();
     }
 
-    // Get available slots for claim stake tier - EXACT GaliaViewer
+    // Get available slots for claim stake tier - Uses shared utility
     getClaimStakeSlots(tier) {
-        const slotsByTier = {
-            1: 32,     // Tier 1: 32 slots
-            2: 243,    // Tier 2: 243 slots
-            3: 1024,   // Tier 3: 1024 slots
-            4: 3125,   // Tier 4: 3125 slots
-            5: 7776    // Tier 5: 7776 slots
-        };
-        return slotsByTier[tier] || 32;
+        return ConstructionUtils.getClaimStakeSlots(tier);
     }
 
-    // Get base power output for claim stake tier - EXACT GaliaViewer
+    // Get base power output for claim stake tier - Uses shared utility
     getClaimStakePower(tier) {
-        const powerByTier = {
-            1: 100,    // Tier 1: 100 power
-            2: 200,    // Tier 2: 200 power
-            3: 300,    // Tier 3: 300 power
-            4: 400,    // Tier 4: 400 power
-            5: 500     // Tier 5: 500 power
-        };
-        return powerByTier[tier] || 100;
+        return ConstructionUtils.getClaimStakePower(tier);
     }
 
     // Validate facility plan for power and slot requirements - EXACT GaliaViewer
@@ -302,44 +267,9 @@ class ConstructionManager {
         return validation;
     }
 
-    // Check if planet type is compatible with building requirements - EXACT GaliaViewer
+    // Check if planet type is compatible with building requirements - Uses shared utility
     checkPlanetTypeCompatibility(planetTypeNum, requiredTags) {
-        if (!requiredTags || requiredTags.length === 0) return true;
-
-        // Comprehensive mapping from numeric planet types to descriptive planet tags used by buildings
-        const numericToPlanetTag = {
-            0: 'terrestrial-planet',    // Rocky/Terrestrial
-            1: 'gas-planet',           // Gas Giant (rare buildings)
-            2: 'ice-planet',           // Ice/Frozen worlds
-            3: 'volcanic-planet',      // Volcanic/Lava worlds
-            4: 'oceanic-planet',       // Ocean worlds
-            5: 'desert-planet',        // Desert/Arid worlds
-            6: 'oceanic-planet',       // Ocean (alternate)
-            7: 'terrestrial-planet',   // Forest worlds (Earth-like)
-            8: 'toxic-planet',         // Toxic worlds
-            9: 'barren-planet',        // Barren worlds
-            10: 'terrestrial-planet',  // Tropical worlds (Earth-like)
-            11: 'ice-planet',          // Arctic worlds
-            12: 'terrestrial-planet', // Continental
-            13: 'oceanic-planet',     // Archipelago
-            14: 'desert-planet',      // Savanna
-            15: 'ice-planet',         // Tundra
-            16: 'volcanic-planet',    // Molten
-            17: 'barren-planet',      // Asteroid
-            18: 'dark-planet',        // Dark/Shadow worlds
-            19: 'toxic-planet',       // Polluted
-            20: 'terrestrial-planet'  // Alpine
-            // Types 21+ default to barren-planet for compatibility
-        };
-
-        // Get the descriptive planet tag for this numeric type
-        const planetTag = numericToPlanetTag[planetTypeNum] || 'barren-planet';
-
-        // Check if any required tag matches this planet type
-        return requiredTags.some(tag => {
-            const tagLower = tag.toLowerCase();
-            return tagLower === planetTag.toLowerCase();
-        });
+        return ConstructionUtils.checkPlanetTypeCompatibility(planetTypeNum, requiredTags);
     }
 
     // Generate detailed explanation when no buildings match - EXACT GaliaViewer
@@ -922,32 +852,9 @@ class ConstructionManager {
         return getPlanetTypeName(type);
     }
 
-    // Open Recipe Explorer with selected building
+    // Open Recipe Explorer with selected building - Uses shared utility
     openRecipeExplorer(buildingName, tier) {
-        // Find matching recipe by searching for building name pattern
-        let recipeId = null;
-
-        if (typeof window.rawRecipeData !== 'undefined' && window.rawRecipeData.recipes) {
-            // Search for recipe that matches the building name and tier
-            const buildingPattern = buildingName.toLowerCase().replace(/\s+/g, '-');
-            const recipe = window.rawRecipeData.recipes.find(r =>
-                r.outputId.includes(buildingPattern) && r.outputTier === tier
-            );
-
-            if (recipe) {
-                recipeId = recipe.outputId;
-            } else {
-                // Fallback: construct ID from building name and tier
-                recipeId = buildingPattern + '-t' + tier;
-            }
-        } else {
-            // Fallback if recipe data not available
-            recipeId = buildingName.toLowerCase().replace(/\s+/g, '-') + '-t' + tier;
-        }
-
-        // Open Recipe Explorer in new tab with recipe pre-selected
-        const url = `../RecipeExplorer/index.html?recipe=${encodeURIComponent(recipeId)}`;
-        window.open(url, '_blank');
+        ConstructionUtils.openRecipeExplorer(buildingName, tier);
     }
 }
 

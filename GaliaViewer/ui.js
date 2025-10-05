@@ -685,28 +685,7 @@ export class UIManager {
 
     // Get buildings compatible with the planet type and available resources
     getCompatibleBuildings(planet, system, claimStakeTier = 1) {
-        if (typeof window.rawBuildingData === 'undefined') {
-            return [];
-        }
-
-        const buildings = window.rawBuildingData.buildings || [];
-        const planetTypeNum = planet.type;
-        const availableResources = (planet.resources || []).map(r => r.name.toLowerCase());
-
-        return buildings.filter(building => {
-            // Check planet type requirements
-            const requiredTags = building.requiredTags || [];
-            const planetTypeCompatible = this.checkPlanetTypeCompatibility(planetTypeNum, requiredTags);
-
-            // Check claim stake tier compatibility
-            const tierCompatible = building.minimumTier <= claimStakeTier;
-
-            return planetTypeCompatible && tierCompatible;
-        }).sort((a, b) => {
-            // Sort by tier, then by name
-            if (a.tier !== b.tier) return a.tier - b.tier;
-            return a.name.localeCompare(b.name);
-        });
+        return ConstructionUtils.getCompatibleBuildings(planet, system, claimStakeTier);
     }
 
     // Update compatible buildings when claim stake tier changes
@@ -742,26 +721,12 @@ export class UIManager {
 
     // Get available slots for claim stake tier
     getClaimStakeSlots(tier) {
-        const slotsByTier = {
-            1: 4,      // Tier 1: 4 slots
-            2: 32,     // Tier 2: 32 slots
-            3: 108,    // Tier 3: 108 slots
-            4: 256,    // Tier 4: 256 slots
-            5: 500     // Tier 5: 500 slots
-        };
-        return slotsByTier[tier] || 4;
+        return ConstructionUtils.getClaimStakeSlots(tier);
     }
 
     // Get base power output for claim stake tier
     getClaimStakePower(tier) {
-        const powerByTier = {
-            1: 100,    // Tier 1: 100 power
-            2: 200,    // Tier 2: 200 power
-            3: 300,    // Tier 3: 300 power
-            4: 400,    // Tier 4: 400 power
-            5: 500     // Tier 5: 500 power
-        };
-        return powerByTier[tier] || 100;
+        return ConstructionUtils.getClaimStakePower(tier);
     }
 
     // Validate facility plan for power and slot requirements
@@ -866,7 +831,7 @@ export class UIManager {
 
         buildings.forEach(building => {
             const requiredTags = building.requiredTags || [];
-            const planetTypeCompatible = this.checkPlanetTypeCompatibility(planetTypeNum, requiredTags);
+            const planetTypeCompatible = ConstructionUtils.checkPlanetTypeCompatibility(planetTypeNum, requiredTags);
             const tierCompatible = building.minimumTier <= claimStakeTier;
 
             if (!planetTypeCompatible && !tierCompatible) {
