@@ -267,19 +267,9 @@ export class UIManager {
         });
     }
 
-    // Helper to get planet type name
+    // Helper to get planet type name - uses shared utility
     getPlanetTypeName(planetType) {
-        const typeMap = {
-            0: 'Terrestrial',
-            1: 'Gas Giant',
-            2: 'Ice Planet',
-            3: 'Desert Planet',
-            4: 'Ocean Planet',
-            5: 'Volcanic Planet',
-            6: 'Asteroid',
-            7: 'Moon'
-        };
-        return typeMap[planetType] || `Type ${planetType}`;
+        return window.getPlanetTypeName(planetType);
     }
 
     // Center camera on last clicked star
@@ -866,17 +856,8 @@ export class UIManager {
         const planetTypeNum = planet.type;
         const claimStakeTier = this.currentFacilityPlan ? this.currentFacilityPlan.claimStakeTier : 1;
 
-        // Get planet type name
-        const planetTypes = {
-            1: 'Gas Giant',
-            2: 'Terrestrial',
-            3: 'Ice',
-            4: 'Volcanic',
-            5: 'Desert',
-            6: 'Ocean',
-            7: 'Asteroid'
-        };
-        const planetTypeName = planetTypes[planetTypeNum] || `Type ${planetTypeNum}`;
+        // Get planet type name using shared utility
+        const planetTypeName = window.getPlanetTypeName(planetTypeNum);
 
         // Analyze why buildings don't match
         let planetTypeIncompatible = 0;

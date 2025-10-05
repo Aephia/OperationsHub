@@ -239,13 +239,13 @@ class ConstructionManager {
     // Get available slots for claim stake tier - EXACT GaliaViewer
     getClaimStakeSlots(tier) {
         const slotsByTier = {
-            1: 4,      // Tier 1: 4 slots
-            2: 32,     // Tier 2: 32 slots
-            3: 108,    // Tier 3: 108 slots
-            4: 256,    // Tier 4: 256 slots
-            5: 500     // Tier 5: 500 slots
+            1: 32,     // Tier 1: 32 slots
+            2: 243,    // Tier 2: 243 slots
+            3: 1024,   // Tier 3: 1024 slots
+            4: 3125,   // Tier 4: 3125 slots
+            5: 7776    // Tier 5: 7776 slots
         };
-        return slotsByTier[tier] || 4;
+        return slotsByTier[tier] || 32;
     }
 
     // Get base power output for claim stake tier - EXACT GaliaViewer
@@ -352,17 +352,8 @@ class ConstructionManager {
         const planetTypeNum = planet.type;
         const claimStakeTier = this.currentFacilityPlan ? this.currentFacilityPlan.claimStakeTier : 1;
 
-        // Get planet type name
-        const planetTypes = {
-            1: 'Gas Giant',
-            2: 'Terrestrial',
-            3: 'Ice',
-            4: 'Volcanic',
-            5: 'Desert',
-            6: 'Ocean',
-            7: 'Asteroid'
-        };
-        const planetTypeName = planetTypes[planetTypeNum] || `Type ${planetTypeNum}`;
+        // Get planet type name using shared utility
+        const planetTypeName = getPlanetTypeName(planetTypeNum);
 
         // Analyze why buildings don't match
         let planetTypeIncompatible = 0;
@@ -451,6 +442,10 @@ class ConstructionManager {
                         <button onclick="window.constructionManager.addBuildingToPlan('${building.id}')"
                                 style="background: #2196F3; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; flex: 1;">
                             ➕ Add to Plan
+                        </button>
+                        <button onclick="window.constructionManager.openRecipeExplorer('${building.name}', ${building.tier})"
+                                style="background: #9C27B0; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; flex: 0 0 auto;">
+                            🧪 Recipe
                         </button>
                         <button onclick="window.constructionManager.showBuildingDetails('${building.id}')"
                                 style="background: #FF9800; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; flex: 0 0 auto;">
@@ -570,13 +565,15 @@ class ConstructionManager {
             </div>
 
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px;">
-                <!-- Resource Cost -->
+                <!-- Recipe Ingredients Cost -->
+                ${Object.keys(facilityStats.totalRecipeCost).length > 0 ? `
                 <div style="background: #2a2a3e; padding: 10px; border-radius: 4px;">
-                    <strong>📦 Total Resource Cost:</strong><br>
-                    ${Object.entries(facilityStats.totalCost).map(([resource, amount]) =>
+                    <strong>🧪 Recipe Ingredients:</strong><br>
+                    ${Object.entries(facilityStats.totalRecipeCost).map(([resource, amount]) =>
                         `<div style="font-size: 11px;">• ${resource}: ${amount}</div>`
-                    ).join('') || '<div style="font-size: 11px; color: #666;">No resource cost</div>'}
+                    ).join('')}
                 </div>
+                ` : ''}
 
                 <!-- Crew & Operations -->
                 <div style="background: #2a2a3e; padding: 10px; border-radius: 4px;">
@@ -619,6 +616,7 @@ class ConstructionManager {
         const buildings = this.currentFacilityPlan.buildings;
         const stats = {
             totalCost: {},
+            totalRecipeCost: {},
             totalCrewSlots: 0,
             totalNeededCrew: 0,
             totalPower: 0,
@@ -639,9 +637,24 @@ class ConstructionManager {
                 stats.totalCost[resource] = (stats.totalCost[resource] || 0) + amount;
             });
 
+            // Recipe costs - look up recipe ingredients by matching pattern
+            if (typeof window.rawRecipeData !== 'undefined' && window.rawRecipeData.recipes) {
+                const buildingPattern = building.name.toLowerCase().replace(/\s+/g, '-');
+                const recipe = window.rawRecipeData.recipes.find(r =>
+                    r.outputId.includes(buildingPattern) && r.outputTier === building.tier
+                );
+                if (recipe && recipe.ingredients) {
+                    recipe.ingredients.forEach(ingredient => {
+                        stats.totalRecipeCost[ingredient.name] = (stats.totalRecipeCost[ingredient.name] || 0) + ingredient.quantity;
+                    });
+                }
+            }
+
             // Crew and operations
             stats.totalCrewSlots += building.crewSlots || 0;
-            stats.totalNeededCrew += building.neededCrew || 0;
+            // Crew required is the max of neededCrew and crewSlots for each building
+            const crewRequired = Math.max(building.neededCrew || 0, building.crewSlots || 0);
+            stats.totalNeededCrew += crewRequired;
             stats.totalPower += building.power || 0;
             stats.totalStorage += building.storage || 0;
             stats.totalSlots += building.slots || 0;
@@ -904,19 +917,37 @@ class ConstructionManager {
         document.body.insertAdjacentHTML('beforeend', modalHTML);
     }
 
-    // Get planet type name
+    // Get planet type name - uses shared utility
     getPlanetTypeName(type) {
-        const planetTypes = {
-            0: 'Rocky',
-            1: 'Gas Giant',
-            2: 'Ice',
-            3: 'Volcanic',
-            4: 'Ocean',
-            5: 'Desert',
-            6: 'Forest',
-            7: 'Barren'
-        };
-        return planetTypes[type] || 'Unknown';
+        return getPlanetTypeName(type);
+    }
+
+    // Open Recipe Explorer with selected building
+    openRecipeExplorer(buildingName, tier) {
+        // Find matching recipe by searching for building name pattern
+        let recipeId = null;
+
+        if (typeof window.rawRecipeData !== 'undefined' && window.rawRecipeData.recipes) {
+            // Search for recipe that matches the building name and tier
+            const buildingPattern = buildingName.toLowerCase().replace(/\s+/g, '-');
+            const recipe = window.rawRecipeData.recipes.find(r =>
+                r.outputId.includes(buildingPattern) && r.outputTier === tier
+            );
+
+            if (recipe) {
+                recipeId = recipe.outputId;
+            } else {
+                // Fallback: construct ID from building name and tier
+                recipeId = buildingPattern + '-t' + tier;
+            }
+        } else {
+            // Fallback if recipe data not available
+            recipeId = buildingName.toLowerCase().replace(/\s+/g, '-') + '-t' + tier;
+        }
+
+        // Open Recipe Explorer in new tab with recipe pre-selected
+        const url = `../RecipeExplorer/index.html?recipe=${encodeURIComponent(recipeId)}`;
+        window.open(url, '_blank');
     }
 }
 

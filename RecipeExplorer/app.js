@@ -31,6 +31,9 @@ class RecipeExplorerApp {
         this.setupEventListeners();
         this.setupTabSwitching();
 
+        // Check URL parameters after a brief delay to ensure checkboxes are rendered
+        setTimeout(() => this.checkURLParameters(), 100);
+
         console.log('✅ Recipe Explorer App initialization complete');
     }
 
@@ -359,6 +362,33 @@ class RecipeExplorerApp {
             case 'final': return 'Final';
             case 'fluid': return 'Fluid';
             default: return 'Item';
+        }
+    }
+
+    // Check URL parameters and pre-select recipe if specified
+    checkURLParameters() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const recipeId = urlParams.get('recipe');
+
+        if (recipeId) {
+            console.log('🔗 Recipe ID from URL:', recipeId);
+
+            // Find the checkbox with this ID (or the first one if multiple exist)
+            const checkbox = document.querySelector(`input[value="${recipeId}"]`);
+
+            if (checkbox) {
+                console.log('✅ Found checkbox for recipe:', recipeId);
+                checkbox.checked = true;
+                this.handleRecipeSelectionChange();
+            } else {
+                console.warn('⚠️ Checkbox not found for recipe:', recipeId);
+
+                // Try to find the recipe in allRecipes to see if it exists
+                const recipe = this.allRecipes.find(r => r.id === recipeId);
+                if (recipe) {
+                    console.log('Recipe exists but checkbox not rendered yet:', recipe.name);
+                }
+            }
         }
     }
 }

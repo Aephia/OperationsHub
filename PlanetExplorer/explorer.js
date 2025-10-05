@@ -426,20 +426,8 @@ class PlanetExplorer extends BaseExplorer {
     }
 
     getPlanetTypeName(type) {
-        const planetTypes = {
-            1: 'Rocky',
-            2: 'Desert',
-            3: 'Ice',
-            4: 'Gas Giant',
-            5: 'Volcanic',
-            6: 'Ocean',
-            7: 'Forest',
-            8: 'Toxic',
-            9: 'Barren',
-            10: 'Tropical',
-            11: 'Arctic'
-        };
-        return planetTypes[type] || `Type ${type}`;
+        // Use shared utility from PlanetTypeUtils.js
+        return getPlanetTypeName(type);
     }
 
     // Helper method for testing - filters systems by name
