@@ -44,8 +44,8 @@ export const Config = {
 
     // Controls sensitivity
     controls: {
-        dampingFactor: 0.05,
-        baseZoomSpeed: 8.0,
+        dampingFactor: 0.15,  // Increased for smoother, more responsive movement
+        baseZoomSpeed: 1.5,   // Reduced for slower, more controlled zoom
         rotateSpeedBase: 1.0,
         panSpeedBase: 1.0,
         maxPolarAngle: Math.PI,
