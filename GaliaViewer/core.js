@@ -127,6 +127,16 @@ window.initPlanetMap = async function(){
 
         console.log('✅ 3D Galia Viewer initialized successfully');
 
+        // Enable "Show All Connections" by default (checkbox is checked in HTML)
+        setTimeout(() => {
+            const checkbox = document.getElementById('showAllConnectionsCheckbox');
+            console.log('Attempting to show all connections on load. Checkbox checked:', checkbox?.checked, 'Systems:', GlobalState.systems.length);
+            if (uiManager && checkbox?.checked) {
+                console.log('Triggering show all connections...');
+                uiManager.toggleShowAllConnections(true);
+            }
+        }, 500); // Increased timeout to ensure scene is fully rendered
+
     } catch (error) {
         console.error('❌ Failed to initialize Galia Viewer:', error);
 
