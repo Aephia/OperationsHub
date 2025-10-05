@@ -973,3 +973,97 @@ main {
         padding: 1rem;
     }
 }
+
+/* Regional Resource Styles */
+.analysis-card.regional {
+    background: rgba(138, 43, 226, 0.1);
+    border-color: rgba(138, 43, 226, 0.3);
+}
+
+.analysis-card.regional:hover {
+    border-color: rgba(138, 43, 226, 0.5);
+    box-shadow: 0 8px 25px rgba(138, 43, 226, 0.2);
+}
+
+.regional-badge {
+    background: linear-gradient(135deg, #8a2be2, #9b59b6);
+    color: white;
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.regional-details {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.region-section {
+    margin-top: 0.75rem;
+}
+
+.region-section strong {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.85rem;
+}
+
+.region-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.5rem;
+}
+
+.region-tag {
+    padding: 0.3rem 0.6rem;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+}
+
+.region-tag.present {
+    background: rgba(46, 213, 115, 0.2);
+    color: #2ed573;
+    border: 1px solid rgba(46, 213, 115, 0.4);
+}
+
+.region-tag.present:hover {
+    background: rgba(46, 213, 115, 0.3);
+    transform: scale(1.05);
+}
+
+.region-tag.missing {
+    background: rgba(255, 71, 87, 0.2);
+    color: #ff4757;
+    border: 1px solid rgba(255, 71, 87, 0.4);
+}
+
+.region-tag.missing:hover {
+    background: rgba(255, 71, 87, 0.3);
+    transform: scale(1.05);
+}
+
+.region-location-group {
+    margin-bottom: 0.75rem;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+}
+
+.region-location-group .region-name {
+    display: inline-block;
+    color: #8a2be2;
+    margin-right: 0.5rem;
+    font-size: 0.8rem;
+}
+
+.region-location-group .location-tag-compact {
+    margin: 0.2rem;
+}

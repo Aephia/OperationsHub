@@ -9,12 +9,16 @@ class PlanetResourceAnalytics extends BaseAnalytics {
         const resourceRichness = new Map();
         const systemResourceCounts = new Map();
         const locationData = new Map();
+        const regionResourceMap = new Map(); // Track resources per region
 
         // Analyze all resources
         this.data.forEach(system => {
             if (system.planets) {
                 let systemResourceTotal = 0;
                 const systemUniqueResources = new Set(); // Track unique resources per system
+
+                // Extract region from system name (first 3 characters)
+                const region = system.name.substring(0, 3);
 
                 system.planets.forEach(planet => {
                     if (planet.resources) {
@@ -42,8 +46,15 @@ class PlanetResourceAnalytics extends BaseAnalytics {
                                 system: system.name,
                                 planet: planet.name,
                                 richness: resource.richness,
-                                systemKey: system.key
+                                systemKey: system.key,
+                                region: region
                             });
+
+                            // Track resources per region
+                            if (!regionResourceMap.has(resourceName)) {
+                                regionResourceMap.set(resourceName, new Set());
+                            }
+                            regionResourceMap.get(resourceName).add(region);
                         });
                     }
                 });
@@ -107,6 +118,31 @@ class PlanetResourceAnalytics extends BaseAnalytics {
             .sort((a, b) => b[1].uniqueCount - a[1].uniqueCount)
             .slice(0, 30);
 
+        // Calculate total number of unique regions
+        const allRegions = new Set();
+        this.data.forEach(system => {
+            const region = system.name.substring(0, 3);
+            allRegions.add(region);
+        });
+        const totalRegions = allRegions.size;
+
+        // Find resources NOT present in all regions
+        const regionallyLimitedResources = Array.from(regionResourceMap.entries())
+            .filter(([resourceName, regions]) => regions.size < totalRegions)
+            .map(([resourceName, regions]) => ({
+                name: resourceName,
+                presentInRegions: regions.size,
+                totalRegions: totalRegions,
+                missingFromRegions: totalRegions - regions.size,
+                regions: Array.from(regions).sort(),
+                missingRegions: Array.from(allRegions).filter(r => !regions.has(r)).sort(),
+                totalLocations: resourceCounts.get(resourceName) || 0,
+                averageRichness: resourceRichness.has(resourceName)
+                    ? (resourceRichness.get(resourceName).reduce((a, b) => a + b, 0) / resourceRichness.get(resourceName).length).toFixed(2)
+                    : 0
+            }))
+            .sort((a, b) => a.presentInRegions - b.presentInRegions); // Sort by most regionally limited first
+
         this.resourceAnalytics = {
             scarcestResources,
             highestQualityResources,
@@ -114,7 +150,10 @@ class PlanetResourceAnalytics extends BaseAnalytics {
             totalResources,
             averageRichness: averageRichness.toFixed(2),
             resourceCounts,
-            locationData
+            locationData,
+            regionallyLimitedResources,
+            totalRegions,
+            allRegions: Array.from(allRegions).sort()
         };
     }
 
@@ -125,6 +164,16 @@ class PlanetResourceAnalytics extends BaseAnalytics {
         document.getElementById('scarcestCount').textContent = analytics.scarcestResources.length;
         document.getElementById('averageRichness').textContent = analytics.averageRichness;
         document.getElementById('topSystemsCount').textContent = analytics.topLocations.length;
+
+        // Update regional stats
+        const regionalStatsEl = document.getElementById('regionalResourcesCount');
+        if (regionalStatsEl) {
+            regionalStatsEl.textContent = analytics.regionallyLimitedResources.length;
+        }
+        const totalRegionsEl = document.getElementById('totalRegions');
+        if (totalRegionsEl) {
+            totalRegionsEl.textContent = analytics.totalRegions;
+        }
     }
 
     renderAnalytics() {
@@ -228,6 +277,59 @@ class PlanetResourceAnalytics extends BaseAnalytics {
                 }
             });
         });
+
+        // Render regionally limited resources
+        const regionalContainer = document.getElementById('regionallyLimitedResources');
+        if (regionalContainer && analytics.regionallyLimitedResources) {
+            regionalContainer.innerHTML = analytics.regionallyLimitedResources.map(resource => `
+                <div class="analysis-card regional">
+                    <div class="analysis-header">
+                        <h4>${resource.name}</h4>
+                        <span class="regional-badge">${resource.presentInRegions}/${resource.totalRegions} Regions</span>
+                    </div>
+                    <div class="analysis-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">Present In:</span>
+                            <span class="stat-value">${resource.presentInRegions} / ${resource.totalRegions} regions</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Missing From:</span>
+                            <span class="stat-value">${resource.missingFromRegions} region(s)</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Total Locations:</span>
+                            <span class="stat-value">${resource.totalLocations}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Avg Richness:</span>
+                            <span class="stat-value">${resource.averageRichness}/5</span>
+                        </div>
+                    </div>
+                    <div class="regional-details">
+                        <div class="region-section">
+                            <strong>Found in regions:</strong>
+                            <div class="region-tags">
+                                ${resource.regions.map(r => `<span class="region-tag present">${r}</span>`).join('')}
+                            </div>
+                        </div>
+                        ${resource.missingRegions.length > 0 ? `
+                            <div class="region-section">
+                                <strong>Missing from regions:</strong>
+                                <div class="region-tags">
+                                    ${resource.missingRegions.map(r => `<span class="region-tag missing">${r}</span>`).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                        <div class="region-section">
+                            <div class="locations-header">Locations by region:</div>
+                            <div class="locations-compact">
+                                ${this.getRegionalResourceLocations(resource.name)}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
     }
 
     getResourceLocations(resourceName, limit = 5) {
@@ -259,6 +361,43 @@ class PlanetResourceAnalytics extends BaseAnalytics {
                 ${location.system} (${location.richness})
             </span>`
         ).join('');
+    }
+
+    getRegionalResourceLocations(resourceName) {
+        const locations = this.resourceAnalytics.locationData.get(resourceName) || [];
+
+        // Group locations by region
+        const byRegion = new Map();
+        locations.forEach(location => {
+            const region = location.region;
+            if (!byRegion.has(region)) {
+                byRegion.set(region, []);
+            }
+            byRegion.get(region).push(location);
+        });
+
+        // Sort regions and create grouped display
+        const sortedRegions = Array.from(byRegion.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+
+        return sortedRegions.map(([region, regionLocations]) => {
+            // Sort locations by richness
+            const sorted = regionLocations.sort((a, b) => {
+                if (b.richness !== a.richness) {
+                    return b.richness - a.richness;
+                }
+                return a.system.localeCompare(b.system);
+            });
+
+            const locationTags = sorted.map(loc =>
+                `<span class="location-tag-compact" title="${loc.planet} in ${loc.system} - Richness: ${loc.richness}/5">
+                    ${loc.system} (${loc.richness})
+                </span>`
+            ).join('');
+
+            return `<div class="region-location-group">
+                <strong class="region-name">${region}:</strong> ${locationTags}
+            </div>`;
+        }).join('');
     }
 
     getAnalyticsData() {

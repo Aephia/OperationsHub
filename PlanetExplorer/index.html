@@ -84,9 +84,25 @@
                     <span class="stat-number" id="topSystemsCount">0</span>
                     <span class="stat-label">Resource-Rich Systems</span>
                 </div>
+                <div class="stat-card">
+                    <span class="stat-number" id="regionalResourcesCount">0</span>
+                    <span class="stat-label">Regionally Limited Resources</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-number" id="totalRegions">0</span>
+                    <span class="stat-label">Total Regions</span>
+                </div>
             </div>
 
             <div class="analytics-sections">
+                <div class="analytics-section">
+                    <h3>🗺️ Regionally Limited Resources</h3>
+                    <p class="section-note">Resources that are NOT present in all regions. Region is identified by the first 3 characters of system names. These resources may be valuable for regional trade or strategic importance.</p>
+                    <div id="regionallyLimitedResources" class="resource-analysis-grid">
+                        <!-- Regionally limited resources will be populated here -->
+                    </div>
+                </div>
+
                 <div class="analytics-section">
                     <h3>🔥 Scarcest Resources</h3>
                     <p class="section-note">The rarest resources in the galaxy, found in the fewest locations</p>
