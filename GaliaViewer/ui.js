@@ -94,7 +94,7 @@ export class UIManager {
                                 <div style="background: rgba(255, 255, 255, 0.05); padding: 6px; border-radius: 3px; font-size: 11px;">
                                     <strong style="color: #fff;">${planet.name || `Planet ${index + 1}`}</strong>
                                     <div style="color: #ccc; margin-top: 2px;">
-                                        Type: ${this.getPlanetTypeName(planet.type || 0)}
+                                        Type: ${getPlanetTypeName(planet.type || 0)}
                                         ${planet.resources && planet.resources.length > 0 ?
                                             `<br>Resources: ${planet.resources.slice(0, 3).map(r => r.name).join(', ')}${planet.resources.length > 3 ? '...' : ''}`
                                             : ''}
@@ -164,7 +164,7 @@ export class UIManager {
             content.innerHTML = `
                 <div style="margin-bottom: 8px;">
                     <div style="color: #ccc; font-size: 11px;">
-                        <div><strong>Planet Type:</strong> ${this.getPlanetTypeName(planet.type || 0)}</div>
+                        <div><strong>Planet Type:</strong> ${getPlanetTypeName(planet.type || 0)}</div>
                         <div><strong>System:</strong> ${system.name || system.key}</div>
                         <div><strong>Resources:</strong> ${planet.resources ? planet.resources.length : 0}</div>
                     </div>
@@ -226,7 +226,7 @@ export class UIManager {
                     </button>
                 </div>
                 <div style="font-size: 12px; color: #ccc;">
-                    <div>Type: ${this.getPlanetTypeName(planet.type || 0)}</div>
+                    <div>Type: ${getPlanetTypeName(planet.type || 0)}</div>
                     ${planet.resources ? `<div>Resources: ${planet.resources.map(r => r.name).join(', ')}</div>` : ''}
                 </div>
             </div>
@@ -267,10 +267,6 @@ export class UIManager {
         });
     }
 
-    // Helper to get planet type name - uses shared utility
-    getPlanetTypeName(planetType) {
-        return window.getPlanetTypeName(planetType);
-    }
 
     // Center camera on last clicked star
     centerOnLastClickedStar() {
@@ -427,7 +423,7 @@ export class UIManager {
             planets.forEach((planet, index) => {
                 console.log('Planet data:', planet);
                 const planetName = planet.name || `Planet ${index + 1}`;
-                const planetType = planet && planet.type !== undefined ? this.getPlanetTypeName(planet.type) : 'Unknown';
+                const planetType = planet && planet.type !== undefined ? getPlanetTypeName(planet.type) : 'Unknown';
                 const resources = planet.resources || [];
 
                 content += `
@@ -499,19 +495,6 @@ export class UIManager {
         }
     }
 
-    // Helper function to get planet type name
-    getPlanetTypeName(type) {
-        try {
-            if (!type) return 'Unknown';
-            
-            // Convert the type to string if it's not already
-            const typeStr = String(type);
-            return typeStr.charAt(0).toUpperCase() + typeStr.slice(1).toLowerCase();
-        } catch (error) {
-            console.error('Error processing planet type:', type, error);
-            return 'Unknown';
-        }
-    }
 
     // Helper function to get resource data from Data folder
     getResourceData(resourceName) {
@@ -655,7 +638,7 @@ export class UIManager {
                     </select>
                 </div>
                 <div>
-                    <strong>Planet Type:</strong> ${this.getPlanetTypeName(planet.type || 0)} |
+                    <strong>Planet Type:</strong> ${getPlanetTypeName(planet.type || 0)} |
                     <strong>Available Resources:</strong> ${planet.resources ? planet.resources.map(r => r.name).join(', ') : 'None'}
                 </div>
             </div>
@@ -822,7 +805,7 @@ export class UIManager {
         const claimStakeTier = this.currentFacilityPlan ? this.currentFacilityPlan.claimStakeTier : 1;
 
         // Get planet type name using shared utility
-        const planetTypeName = window.getPlanetTypeName(planetTypeNum);
+        const planetTypeName = getPlanetTypeName(planetTypeNum);
 
         // Analyze why buildings don't match
         let planetTypeIncompatible = 0;
@@ -911,6 +894,10 @@ export class UIManager {
                         <button onclick="window.galiaViewer.uiManager.addBuildingToPlan('${building.id}')"
                                 style="background: #2196F3; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; flex: 1;">
                             ➕ Add to Plan
+                        </button>
+                        <button onclick="ConstructionUtils.openRecipeExplorer('${building.name}', ${building.tier})"
+                                style="background: #9C27B0; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; flex: 0 0 auto;">
+                            🧪 Recipe
                         </button>
                         <button onclick="window.galiaViewer.uiManager.showBuildingDetails('${building.id}')"
                                 style="background: #FF9800; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; flex: 0 0 auto;">
@@ -1030,13 +1017,15 @@ export class UIManager {
             </div>
 
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px;">
-                <!-- Resource Cost -->
+                <!-- Recipe Ingredients Cost -->
+                ${Object.keys(facilityStats.totalRecipeCost || {}).length > 0 ? `
                 <div style="background: #2a2a3e; padding: 10px; border-radius: 4px;">
-                    <strong>📦 Total Resource Cost:</strong><br>
-                    ${Object.entries(facilityStats.totalCost).map(([resource, amount]) =>
+                    <strong>🧪 Recipe Ingredients:</strong><br>
+                    ${Object.entries(facilityStats.totalRecipeCost).map(([resource, amount]) =>
                         `<div style="font-size: 11px;">• ${resource}: ${amount}</div>`
-                    ).join('') || '<div style="font-size: 11px; color: #666;">No resource cost</div>'}
+                    ).join('')}
                 </div>
+                ` : ''}
 
                 <!-- Crew & Operations -->
                 <div style="background: #2a2a3e; padding: 10px; border-radius: 4px;">
@@ -1093,75 +1082,9 @@ export class UIManager {
         if (!this.currentFacilityPlan) return {};
 
         const buildings = this.currentFacilityPlan.buildings;
-        const stats = {
-            totalCost: {},
-            totalCrewSlots: 0,
-            totalNeededCrew: 0,
-            totalPower: 0,
-            totalStorage: 0,
-            totalSlots: 0,
-            comesWithStake: false,
-            removableBuildings: 0,
-            enabledFeatures: [],
-            resourceExtraction: {},
-            resourceConsumption: {}
-        };
 
-        // Calculate totals from all buildings
-        buildings.forEach(building => {
-            // Resource costs
-            const cost = building.constructionCost || {};
-            Object.entries(cost).forEach(([resource, amount]) => {
-                stats.totalCost[resource] = (stats.totalCost[resource] || 0) + amount;
-            });
-
-            // Crew and operations
-            stats.totalCrewSlots += building.crewSlots || 0;
-            stats.totalNeededCrew += building.neededCrew || 0;
-            stats.totalPower += building.power || 0;
-            stats.totalStorage += building.storage || 0;
-            stats.totalSlots += building.slots || 0;
-
-            // Special properties
-            if (building.comesWithStake) {
-                stats.comesWithStake = true;
-            }
-            if (!building.cannotRemove) {
-                stats.removableBuildings++;
-            }
-
-            // Resource extraction rates
-            if (building.resourceExtractionRate) {
-                Object.entries(building.resourceExtractionRate).forEach(([resource, rate]) => {
-                    stats.resourceExtraction[resource] = (stats.resourceExtraction[resource] || 0) + rate;
-                });
-            }
-
-            // Resource consumption rates (negative rates)
-            if (building.resourceRate) {
-                Object.entries(building.resourceRate).forEach(([resource, rate]) => {
-                    if (rate < 0) {
-                        stats.resourceConsumption[resource] = (stats.resourceConsumption[resource] || 0) + Math.abs(rate);
-                    } else {
-                        stats.resourceExtraction[resource] = (stats.resourceExtraction[resource] || 0) + rate;
-                    }
-                });
-            }
-
-            // Enabled features (from addedTags)
-            if (building.addedTags) {
-                building.addedTags.forEach(tag => {
-                    if (tag.startsWith('enables-') && !stats.enabledFeatures.includes(tag)) {
-                        // Convert enables-processing-hub to "Processing Hub"
-                        const featureName = tag.replace('enables-', '').replace(/-/g, ' ')
-                            .replace(/\b\w/g, l => l.toUpperCase());
-                        stats.enabledFeatures.push(featureName);
-                    }
-                });
-            }
-        });
-
-        return stats;
+        // Use shared utility for comprehensive stats including recipe costs
+        return ConstructionUtils.calculateFacilityStats(buildings);
     }
 
     // Remove building from plan

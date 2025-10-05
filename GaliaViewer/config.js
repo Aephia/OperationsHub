@@ -5,8 +5,9 @@ export const Config = {
         targetFPS: 30,
         frameInterval: 1000 / 30, // Calculated from targetFPS
         pixelRatioMax: 2,
-        starfieldUpdateInterval: 5, // Update every Nth frame
-        particleUpdateInterval: 3,  // Update every Nth frame
+        starfieldUpdateInterval: 10, // Update every Nth frame (increased for better performance)
+        particleUpdateInterval: 5,   // Update every Nth frame (increased for better performance)
+        planetUpdateInterval: 2,     // Update planet orbits every Nth frame
     },
 
     // Camera settings
@@ -79,13 +80,14 @@ export const Config = {
 
     // Starfield settings
     starfield: {
-        count: 800,
+        count: 500, // Reduced from 800 for better performance
         minRadius: 800,
         maxRadius: 400,
         sizeBase: 0.5,
         sizeVariation: 2,
         whiteStarProbability: 0.7,
         blueStarProbability: 0.85,
+        animationStride: 20, // Animate only every 20th star
     },
 
     // Star colors (faction-based)

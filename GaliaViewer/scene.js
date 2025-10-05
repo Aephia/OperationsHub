@@ -17,7 +17,7 @@ export class SceneManager {
 
         // Performance optimization variables
         this.lastFrameTime = 0;
-        this.targetFPS = 30; // Limit to 30 FPS for better performance
+        this.targetFPS = 30; // Reduced to 30 FPS for better CPU usage
         this.frameInterval = 1000 / this.targetFPS;
 
         // Object pooling for performance
@@ -29,8 +29,9 @@ export class SceneManager {
 
         // Animation frame counters for optimization
         this.frameCount = 0;
-        this.STARFIELD_UPDATE_INTERVAL = 5; // Update every 5th frame
-        this.PARTICLE_UPDATE_INTERVAL = 3;   // Update every 3rd frame
+        this.STARFIELD_UPDATE_INTERVAL = 10; // Update every 10th frame (reduced frequency)
+        this.PARTICLE_UPDATE_INTERVAL = 5;   // Update every 5th frame (reduced frequency)
+        this.PLANET_UPDATE_INTERVAL = 2;     // Update planet orbits every 2nd frame
 
         // InstancedMesh setup
         this.starInstancedMesh = null;
@@ -87,7 +88,7 @@ export class SceneManager {
     setupControls() {
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
-        this.controls.dampingFactor = 0.05;
+        this.controls.dampingFactor = 0.15;  // Increased for smoother, more responsive movement
         this.controls.maxDistance = Infinity; // Remove max distance limit completely
         this.controls.minDistance = 0.01;     // Allow very close zoom
         this.controls.maxPolarAngle = Math.PI;
@@ -97,7 +98,7 @@ export class SceneManager {
             RIGHT: THREE.MOUSE.PAN
         };
         this.controls.enableZoom = true;
-        this.controls.zoomSpeed = 8.0;  // Much higher base zoom speed
+        this.controls.zoomSpeed = 1.5;  // Reduced for slower, more controlled zoom
         this.controls.enablePan = true;
         this.controls.panSpeed = 1.0;
         this.controls.screenSpacePanning = true;
@@ -201,7 +202,7 @@ export class SceneManager {
 
     createStarfield() {
         const starGeometry = new THREE.BufferGeometry();
-        const starCount = 800; // Reduced from 2000 for better performance
+        const starCount = 500; // Further reduced from 800 for better performance
         const starPositions = new Float32Array(starCount * 3);
         const starColors = new Float32Array(starCount * 3);
         const starSizes = new Float32Array(starCount);
@@ -394,17 +395,25 @@ export class SceneManager {
     }
 
     createPlanetObject(planet, index, parentSystem, systemPosition) {
+        // Check if this is an asteroid belt (types 3, 11, 19)
+        const isAsteroidBelt = planet.type === 3 || planet.type === 11 || planet.type === 19;
+
         // Calculate orbit parameters
         const orbitRadius = 0.3 + index * 0.12;
         const angle = (index / 8) * Math.PI * 2;
 
-        // Calculate world position for this planet
+        // Calculate world position for this planet/asteroid belt
         this.tempVector.set(
             Math.cos(angle) * orbitRadius,
             (Math.random() - 0.5) * 0.2,
             Math.sin(angle) * orbitRadius
         );
         this.tempVector.add(systemPosition);
+
+        // Create asteroid belt or planet
+        if (isAsteroidBelt) {
+            return this.createAsteroidBelt(planet, index, parentSystem, systemPosition, orbitRadius, angle);
+        }
 
         // Create planet using InstancedMesh
         const planetColor = this.getPlanetColor(planet);
@@ -445,16 +454,88 @@ export class SceneManager {
         return { group, mesh: planetMesh };
     }
 
+    createAsteroidBelt(planet, index, parentSystem, systemPosition, orbitRadius, angle) {
+        // Create a group to hold asteroid particles
+        const beltGroup = new THREE.Group();
+
+        // Asteroid belt parameters - reduced for performance
+        const asteroidCount = 40; // Number of asteroids in the belt (reduced from 80)
+        const beltThickness = 0.08; // Thickness of the belt
+        const asteroidSize = 0.02; // Size of individual asteroids
+
+        // Create geometry for asteroids (small cubes/spheres)
+        const asteroidGeometry = new THREE.IcosahedronGeometry(asteroidSize, 0);
+        const asteroidMaterial = new THREE.MeshBasicMaterial({
+            color: 0x888888,
+            transparent: true,
+            opacity: 0.7
+        });
+
+        // Distribute asteroids in a ring
+        for (let i = 0; i < asteroidCount; i++) {
+            const asteroidAngle = (i / asteroidCount) * Math.PI * 2;
+            const radiusVariation = orbitRadius + (Math.random() - 0.5) * 0.15;
+            const heightVariation = (Math.random() - 0.5) * beltThickness;
+
+            const asteroid = new THREE.Mesh(asteroidGeometry, asteroidMaterial);
+            asteroid.position.set(
+                Math.cos(asteroidAngle) * radiusVariation,
+                heightVariation,
+                Math.sin(asteroidAngle) * radiusVariation
+            );
+
+            // Random rotation for variation
+            asteroid.rotation.set(
+                Math.random() * Math.PI,
+                Math.random() * Math.PI,
+                Math.random() * Math.PI
+            );
+
+            beltGroup.add(asteroid);
+        }
+
+        // Position the belt group relative to the system
+        beltGroup.position.copy(systemPosition);
+
+        // Add to scene
+        this.scene.add(beltGroup);
+
+        // Create virtual mesh object for compatibility with existing code
+        const beltMesh = {
+            userData: {
+                planet: planet,
+                type: 'asteroid-belt',
+                orbitRadius,
+                orbitSpeed: 0.001, // Slower rotation for belt
+                rotationSpeed: 0.0005,
+                parentSystem: parentSystem,
+                beltGroup: beltGroup
+            },
+            position: {
+                x: Math.cos(angle) * orbitRadius,
+                y: 0,
+                z: Math.sin(angle) * orbitRadius
+            },
+            getWorldPosition: (target) => {
+                return target.set(
+                    systemPosition.x + Math.cos(angle) * orbitRadius,
+                    systemPosition.y,
+                    systemPosition.z + Math.sin(angle) * orbitRadius
+                );
+            }
+        };
+
+        return { group: beltGroup, mesh: beltMesh };
+    }
+
 
     getPlanetColor(planet) {
         if (!planet || !planet.type) {
-            console.log('Planet missing type:', planet);
             return 0x888888;
         }
 
         // Normalize the type to string and lowercase
         const type = String(planet.type).toLowerCase().trim();
-        console.log('Normalized planet type:', type);
 
         const typeColors = {
             // Rocky/Terrestrial types - browns and greys
@@ -504,27 +585,23 @@ export class SceneManager {
 
         // Try exact match first
         if (typeColors[type]) {
-            console.log('Exact type match found:', type, '-> color:', typeColors[type].toString(16));
             return typeColors[type];
         }
 
         // Try numeric match
         if (!isNaN(type) && typeColors[type]) {
-            console.log('Numeric type match found:', type, '-> color:', typeColors[type].toString(16));
             return typeColors[type];
         }
 
         // Try partial match
-        const partialMatch = Object.entries(typeColors).find(([key]) => 
+        const partialMatch = Object.entries(typeColors).find(([key]) =>
             type.includes(key) || key.includes(type)
         );
-        
+
         if (partialMatch) {
-            console.log('Partial type match found:', type, '->', partialMatch[0], '-> color:', partialMatch[1].toString(16));
             return partialMatch[1];
         }
 
-        console.log('No match found for type:', type, 'using default gray');
         return typeColors.unknown;
     }
 
@@ -660,8 +737,8 @@ export class SceneManager {
         // Animate starfield less frequently for performance
         if (this.starfield && (this.frameCount % this.STARFIELD_UPDATE_INTERVAL === 0)) {
             const sizes = this.starfield.geometry.attributes.size.array;
-            // Only animate every 10th star for performance
-            for (let i = 0; i < sizes.length; i += 10) {
+            // Only animate every 20th star for better performance
+            for (let i = 0; i < sizes.length; i += 20) {
                 sizes[i] = 0.3 + Math.sin(t * 0.5 + i * 0.05) * 0.2;
             }
             this.starfield.geometry.attributes.size.needsUpdate = true;
@@ -709,44 +786,39 @@ export class SceneManager {
             });
         }
 
-        // Animate planets orbiting their stars, rotating, and star pulsing (optimized)
-        this.systemContainers.forEach((sysObj, systemIndex) => {
-            // Animate planet orbits and rotation using InstancedMesh
-            sysObj.planetMeshes.forEach(planetObj => {
-                const planetMesh = planetObj.mesh;
-                const userData = planetMesh.userData;
+        // Animate planets orbiting their stars only every PLANET_UPDATE_INTERVAL frames
+        if (this.frameCount % this.PLANET_UPDATE_INTERVAL === 0) {
+            this.systemContainers.forEach((sysObj, systemIndex) => {
+                // Animate planet orbits and rotation using InstancedMesh
+                sysObj.planetMeshes.forEach(planetObj => {
+                    const planetMesh = planetObj.mesh;
+                    const userData = planetMesh.userData;
 
-                if (userData.instanceIndex !== undefined && userData.instanceIndex < this.maxPlanets) {
-                    // Update orbit position using object pooling
-                    const orbitAngle = t * userData.orbitSpeed;
-                    this.tempVector.set(
-                        Math.cos(orbitAngle) * userData.orbitRadius,
-                        userData.y || 0,
-                        Math.sin(orbitAngle) * userData.orbitRadius
-                    );
-                    this.tempVector.add(sysObj.containerGroup.position);
+                    if (userData.instanceIndex !== undefined && userData.instanceIndex < this.maxPlanets) {
+                        // Update orbit position using object pooling
+                        const orbitAngle = t * userData.orbitSpeed;
+                        this.tempVector.set(
+                            Math.cos(orbitAngle) * userData.orbitRadius,
+                            userData.y || 0,
+                            Math.sin(orbitAngle) * userData.orbitRadius
+                        );
+                        this.tempVector.add(sysObj.containerGroup.position);
 
-                    // Update planet position in InstancedMesh
-                    this.tempMatrix.identity();
-                    this.tempMatrix.setPosition(this.tempVector.x, this.tempVector.y, this.tempVector.z);
-                    this.planetInstancedMesh.setMatrixAt(userData.instanceIndex, this.tempMatrix);
+                        // Update planet position in InstancedMesh
+                        this.tempMatrix.identity();
+                        this.tempMatrix.setPosition(this.tempVector.x, this.tempVector.y, this.tempVector.z);
+                        this.planetInstancedMesh.setMatrixAt(userData.instanceIndex, this.tempMatrix);
 
-                    // Update virtual mesh position for raycasting
-                    planetMesh.position.x = Math.cos(orbitAngle) * userData.orbitRadius;
-                    planetMesh.position.z = Math.sin(orbitAngle) * userData.orbitRadius;
-                }
+                        // Update virtual mesh position for raycasting
+                        planetMesh.position.x = Math.cos(orbitAngle) * userData.orbitRadius;
+                        planetMesh.position.z = Math.sin(orbitAngle) * userData.orbitRadius;
+                    }
+                });
             });
+        }
 
-            // Animate star pulsing (less frequent updates)
-            if (this.frameCount % this.STARFIELD_UPDATE_INTERVAL === 0) {
-                const starMesh = sysObj.starMesh;
-                if (starMesh && starMesh.material) {
-                    const baseIntensity = 0.3;
-                    const pulseIntensity = Math.sin(t * 2 + sysObj.containerGroup.position.x) * 0.1;
-                    starMesh.material.emissiveIntensity = baseIntensity + pulseIntensity;
-                }
-            }
-        });
+        // Disable star pulsing animation to save CPU
+        // (Remove or comment out star pulsing for maximum performance)
 
         // Update InstancedMesh matrices
         if (this.planetInstancedMesh) {
