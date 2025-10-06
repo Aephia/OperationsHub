@@ -889,6 +889,158 @@ main {
     color: #ff9500;
 }
 
+
+/* Planet Recommendations Styles */
+.planet-recommendations {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 16px;
+    padding: 2rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 3rem;
+}
+
+.planet-recommendations h3 {
+    color: #ff9500;
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.tier-recommendations-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.tier-recommendation {
+    background: rgba(255, 255, 255, 0.05);
+    border-left: 4px solid;
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.tier-recommendation:hover {
+    transform: translateX(5px);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.tier-recommendation-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.tier-header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.tier-icon {
+    font-size: 1.8rem;
+}
+
+.tier-recommendation h4 {
+    font-size: 1.3rem;
+    margin: 0;
+}
+
+.tier-stats {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.planet-count {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.4rem 0.8rem;
+    border-radius: 12px;
+}
+
+.tier-info-text {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.95rem;
+    margin-bottom: 1rem;
+}
+
+.warning-text {
+    background: rgba(255, 107, 107, 0.15);
+    border: 1px solid rgba(255, 107, 107, 0.4);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    color: #ff6b6b;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    font-size: 0.95rem;
+}
+
+.resource-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.resource-tag {
+    display: inline-block;
+    padding: 0.4rem 0.8rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    border: 1px solid;
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 500;
+}
+
+.planet-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 0.75rem;
+}
+
+.planet-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.planet-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 149, 0, 0.4);
+    transform: translateY(-2px);
+}
+
+.planet-name {
+    color: #ff9500;
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+}
+
+.planet-resources {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+}
+
+.tier-count {
+    font-weight: 600;
+}
+
+.total-count {
+    color: rgba(255, 255, 255, 0.6);
+}
+
 /* Responsive Design */
 @media (max-width: 1200px) {
     .explorer-layout {
@@ -948,4 +1100,571 @@ main {
     .overview-stats {
         grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     }
+}
+/* Planet Recommendations Styles */
+.planet-recommendations {
+    margin-bottom: 2rem;
+}
+
+.planet-recommendations h3 {
+    font-size: 1.8rem;
+    margin-bottom: 0.5rem;
+    color: #ff9500;
+}
+
+.planet-recommendations .section-note {
+    margin-bottom: 1.5rem;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 1rem;
+}
+
+.tier-recommendations-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.tier-recommendation {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 1.5rem;
+    border-left: 4px solid;
+    transition: all 0.3s ease;
+}
+
+.tier-recommendation:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateX(5px);
+}
+
+.tier-recommendation-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.tier-header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.tier-icon {
+    font-size: 1.8rem;
+}
+
+.tier-recommendation h4 {
+    font-size: 1.3rem;
+    margin: 0;
+}
+
+.tier-stats {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.planet-count {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.tier-info-text {
+    margin: 0.75rem 0;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.95rem;
+}
+
+.warning-text {
+    background: rgba(255, 69, 0, 0.15);
+    border-left: 3px solid #ff4500;
+    padding: 0.75rem 1rem;
+    margin: 1rem 0;
+    border-radius: 6px;
+    color: #ff6347;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.resource-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 1rem 0;
+}
+
+.resource-tag {
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    border: 1px solid;
+    background-color: rgba(255, 255, 255, 0.05);
+    transition: all 0.2s ease;
+}
+
+.resource-tag:hover {
+    transform: scale(1.05);
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.planet-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.planet-card {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.planet-card:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 149, 0, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.planet-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    color: #ffffff;
+}
+
+.planet-resources {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.8rem;
+}
+
+.tier-count {
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.total-count {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .planet-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    }
+
+    .tier-recommendation-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+
+    .resource-tags {
+        gap: 0.4rem;
+    }
+
+    .resource-tag {
+        font-size: 0.75rem;
+        padding: 0.3rem 0.6rem;
+    }
+}
+
+/* Label Explanation Styles */
+.label-explanation {
+    background: rgba(255, 149, 0, 0.08);
+    border: 1px solid rgba(255, 149, 0, 0.3);
+    border-radius: 8px;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.label-explanation h4 {
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+    color: #ff9500;
+}
+
+.explanation-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+}
+
+.explanation-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 0.75rem;
+    border-radius: 6px;
+}
+
+.example-label {
+    font-size: 0.9rem;
+    white-space: nowrap;
+    font-family: 'Courier New', monospace;
+}
+
+.explanation-text {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+@media (max-width: 768px) {
+    .explanation-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .explanation-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+}
+
+/* Regional Planets Section */
+.regional-planets-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+
+.region-group {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    padding: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.region-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.region-header h5 {
+    font-size: 1.1rem;
+    color: #ff9500;
+    margin: 0;
+}
+
+.region-count {
+    background: rgba(255, 149, 0, 0.2);
+    padding: 0.3rem 0.7rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    color: #ff9500;
+    font-weight: 600;
+}
+
+.planet-card.clickable {
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.planet-card.clickable:hover {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+    border-color: rgba(255, 149, 0, 0.6);
+}
+
+.planet-card.clickable:active {
+    transform: translateY(-1px) scale(1.01);
+}
+
+/* Planet Modal Styles */
+.planet-modal-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.planet-overview h3,
+.resource-breakdown h3,
+.resource-list-section h3 {
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+    color: #ff9500;
+    border-bottom: 2px solid rgba(255, 149, 0, 0.3);
+    padding-bottom: 0.5rem;
+}
+
+.planet-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.75rem;
+}
+
+.info-item {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 0.75rem;
+    border-radius: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.info-label {
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.85rem;
+}
+
+.info-value {
+    font-weight: 700;
+    color: #ffffff;
+    font-size: 0.9rem;
+}
+
+.tier-resource-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem;
+}
+
+.tier-resource-item {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 0.75rem;
+    border-radius: 6px;
+}
+
+.tier-resource-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.tier-badge-large {
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: #ffffff;
+}
+
+.tier-resource-count {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.resource-list-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 0.5rem;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 0.5rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+}
+
+.resource-list-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 0.6rem;
+    border-radius: 4px;
+    transition: background 0.2s ease;
+}
+
+.resource-list-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.resource-tier-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #ffffff;
+    flex-shrink: 0;
+}
+
+.resource-name {
+    flex-grow: 1;
+    font-size: 0.85rem;
+    color: #ffffff;
+}
+
+.resource-richness {
+    font-size: 0.85rem;
+    color: #ffbb00;
+    flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+    .region-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    .planet-info-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .tier-resource-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .resource-list-grid {
+        grid-template-columns: 1fr;
+        max-height: 300px;
+    }
+}
+.tier-region-overview {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.tier-region-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 0.9rem;
+}
+
+.tier-region-summary .summary-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+}
+
+.tier-region-summary .summary-label {
+    display: block;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.tier-region-summary .summary-value {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.tier-region-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.tier-region-details {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 0.75rem 1rem;
+}
+
+.tier-region-details summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.tier-region-details summary::-webkit-details-marker {
+    display: none;
+}
+
+.tier-region-details[open] {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.tier-region-details[open] summary {
+    color: #ffffff;
+}
+
+.tier-region-name {
+    font-size: 0.95rem;
+}
+
+.tier-region-meta {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.planet-chip-grid {
+    margin-top: 0.75rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+}
+
+.planet-chip {
+    border-radius: 999px;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.06);
+    color: #ffffff;
+    cursor: pointer;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.planet-chip:hover {
+    border-color: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.12);
+}
+.tier-faction-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.tier-faction-block {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.04);
+    padding: 1rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.tier-faction-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.tier-faction-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.tier-faction-meta {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.tier-faction-regions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
 }

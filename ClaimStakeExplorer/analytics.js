@@ -22,7 +22,6 @@ class BuildingAnalytics {
             const response = await fetch('../JSON/resource_tier_analysis.json');
             if (!response.ok) throw new Error('Failed to load resource tier data');
             this.resourceTierData = await response.json();
-            console.log('✅ Resource tier data loaded');
         } catch (error) {
             console.error('Error loading resource tier data:', error);
             this.resourceTierData = null;
@@ -223,10 +222,7 @@ class BuildingAnalytics {
     async renderPlanetRecommendations() {
         await this.loadResourceTierData();
 
-        if (!this.resourceTierData) {
-            console.warn('Resource tier data not available');
-            return;
-        }
+        if (!this.resourceTierData) return;
 
         const tierPlanetIndex = await this.buildTierPlanetIndex();
         const tierSummaries = tierPlanetIndex || {};

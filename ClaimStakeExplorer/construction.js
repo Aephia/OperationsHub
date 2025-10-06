@@ -125,22 +125,6 @@ class ConstructionManager {
                     <h2 style="margin: 0; color: #4CAF50;">🏗️ Build Facility - ${planetName}</h2>
                 </div>
 
-                <!-- Facility Plan Summary at Top -->
-                <div id="facilityPlan" style="margin-bottom: 20px; padding: 15px; background: #2a2a3e; border-radius: 6px; display: none;">
-                    <h3 style="color: #2196F3; margin-bottom: 10px;">🏭 Current Facility Plan</h3>
-                    <div id="selectedBuildings"></div>
-                    <div style="margin-top: 15px; text-align: center;">
-                        <button onclick="window.constructionManager.clearFacilityPlan()"
-                                style="background: #ff4444; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-right: 10px;">
-                            Clear Plan
-                        </button>
-                        <button onclick="window.constructionManager.constructFacility()"
-                                style="background: #4CAF50; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
-                            🚀 Construct Facility
-                        </button>
-                    </div>
-                </div>
-
                 <!-- Claim Stake Selection -->
                 <div style="margin-bottom: 15px; padding: 10px; background: #2a2a3e; border-radius: 6px;">
                     <div style="margin-bottom: 10px;">
@@ -160,24 +144,51 @@ class ConstructionManager {
                     </div>
                 </div>
 
-                <div style="margin-bottom: 15px;">
-                    <h3 style="color: #FF9800; margin-bottom: 10px;">Compatible Buildings <span id="buildingCount">(${compatibleBuildings.length})</span></h3>
+                <!-- Two-column layout -->
+                <div style="display: flex; gap: 20px;">
+                    <!-- Left Panel: Building List (30%) -->
+                    <div style="flex: 0 0 30%; display: flex; flex-direction: column;">
+                        <h3 style="color: #FF9800; margin-bottom: 10px;">Compatible Buildings <span id="buildingCount">(${compatibleBuildings.length})</span></h3>
 
-                    <!-- Search Bar -->
-                    <div style="margin-bottom: 15px;">
-                        <input
-                            type="text"
-                            id="buildingSearchInput"
-                            placeholder="🔍 Search buildings by name, tier, or type..."
-                            style="width: 100%; padding: 10px 15px; background: #2a2a3e; border: 2px solid #444; border-radius: 6px; color: #fff; font-size: 14px; transition: border-color 0.3s;"
-                            oninput="window.constructionManager.filterBuildings(this.value)"
-                            onfocus="this.style.borderColor='#4CAF50'"
-                            onblur="this.style.borderColor='#444'"
-                        />
+                        <!-- Search Bar -->
+                        <div style="margin-bottom: 15px;">
+                            <input
+                                type="text"
+                                id="buildingSearchInput"
+                                placeholder="🔍 Search buildings..."
+                                style="width: 100%; padding: 10px 15px; background: #2a2a3e; border: 2px solid #444; border-radius: 6px; color: #fff; font-size: 14px; transition: border-color 0.3s;"
+                                oninput="window.constructionManager.filterBuildings(this.value)"
+                                onfocus="this.style.borderColor='#4CAF50'"
+                                onblur="this.style.borderColor='#444'"
+                            />
+                        </div>
+
+                        <div id="buildingsList" style="display: flex; flex-direction: column; gap: 10px; max-height: 800px; overflow-y: auto; padding-right: 10px;">
+                            ${this.renderBuildingOptions(compatibleBuildings, system, planet)}
+                        </div>
                     </div>
 
-                    <div id="buildingsList" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
-                        ${this.renderBuildingOptions(compatibleBuildings, system, planet)}
+                    <!-- Right Panel: Facility Plan Summary (70%) -->
+                    <div style="flex: 0 0 70%; display: flex; flex-direction: column;">
+                        <div id="facilityPlan" style="padding: 15px; background: #2a2a3e; border-radius: 6px; max-height: 800px; overflow-y: auto;">
+                            <h3 style="color: #2196F3; margin-bottom: 10px;">🏭 Facility Plan Summary</h3>
+                            <div id="selectedBuildings">
+                                <div style="text-align: center; padding: 60px 20px; color: #666;">
+                                    <div style="font-size: 48px; margin-bottom: 15px;">👈</div>
+                                    <div style="font-size: 16px;">Select buildings to start planning</div>
+                                </div>
+                            </div>
+                            <div id="facilityPlanActions" style="margin-top: 15px; text-align: center; display: none;">
+                                <button onclick="window.constructionManager.clearFacilityPlan()"
+                                        style="background: #ff4444; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-right: 10px;">
+                                    Clear Plan
+                                </button>
+                                <button onclick="window.constructionManager.constructFacility()"
+                                        style="background: #4CAF50; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+                                    🚀 Construct Facility
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -270,7 +281,7 @@ class ConstructionManager {
         if (buildingsList) {
             if (buildings.length === 0) {
                 buildingsList.innerHTML = `
-                    <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #666;">
+                    <div style="text-align: center; padding: 40px; color: #666;">
                         <h4 style="color: #FF9800; margin-bottom: 10px;">🔍 No buildings match your search</h4>
                         <p>Try different keywords or clear the search</p>
                     </div>
@@ -515,11 +526,19 @@ class ConstructionManager {
     updateFacilityPlanDisplay() {
         const facilityPlan = document.getElementById('facilityPlan');
         const selectedBuildings = document.getElementById('selectedBuildings');
+        const facilityPlanActions = document.getElementById('facilityPlanActions');
 
         if (!facilityPlan || !selectedBuildings || !this.currentFacilityPlan) return;
 
         if (this.currentFacilityPlan.buildings.length === 0) {
-            facilityPlan.style.display = 'none';
+            // Show placeholder message
+            selectedBuildings.innerHTML = `
+                <div style="text-align: center; padding: 60px 20px; color: #666;">
+                    <div style="font-size: 48px; margin-bottom: 15px;">👈</div>
+                    <div style="font-size: 16px;">Select buildings to start planning</div>
+                </div>
+            `;
+            if (facilityPlanActions) facilityPlanActions.style.display = 'none';
             // Destroy analytics if it exists
             if (this.facilityAnalytics) {
                 this.facilityAnalytics.destroy();
@@ -528,7 +547,8 @@ class ConstructionManager {
             return;
         }
 
-        facilityPlan.style.display = 'block';
+        // Show action buttons when buildings are added
+        if (facilityPlanActions) facilityPlanActions.style.display = 'block';
 
         const facilityStats = this.calculateFacilityStats();
         const validation = this.validateFacilityPlan();
