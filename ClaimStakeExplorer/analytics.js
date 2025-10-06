@@ -1,6 +1,9 @@
 class BuildingAnalytics {
     constructor(data) {
         this.data = data;
+        this.resourceTierData = null;
+        this.allPlanetsData = null;
+        this.tierPlanetIndex = null;
         this.generateAnalytics();
     }
 
@@ -10,6 +13,631 @@ class BuildingAnalytics {
         this.resourceAnalysis = this.analyzeResources();
         this.costAnalysis = this.analyzeCosts();
         this.propertyAnalysis = this.analyzeProperties();
+    }
+
+    async loadResourceTierData() {
+        if (this.resourceTierData) return;
+
+        try {
+            const response = await fetch('../JSON/resource_tier_analysis.json');
+            if (!response.ok) throw new Error('Failed to load resource tier data');
+            this.resourceTierData = await response.json();
+            console.log('✅ Resource tier data loaded');
+        } catch (error) {
+            console.error('Error loading resource tier data:', error);
+            this.resourceTierData = null;
+        }
+    }
+    async loadAllPlanetsData() {
+        if (this.allPlanetsData) {
+            return this.allPlanetsData;
+        }
+
+        const response = await fetch('../JSON/planets.json');
+        if (!response.ok) {
+            throw new Error('Failed to load planet data');
+        }
+
+        const data = await response.json();
+        this.allPlanetsData = data.mapData || [];
+        return this.allPlanetsData;
+    }
+
+
+    extractRegionCode(planetName) {
+        if (!planetName) {
+            return 'Other';
+        }
+
+        const match = planetName.match(/^(\d{3}|CSS)/);
+        return match ? match[1] : 'Other';
+    }
+
+    extractFactionCode(planetName, systemName = '') {
+        const sources = [planetName, systemName].filter(Boolean);
+
+        for (const source of sources) {
+            const factionMatch = source.match(/-(\w{3})-/i);
+            if (factionMatch && factionMatch[1]) {
+                return factionMatch[1].toUpperCase();
+            }
+
+            const prefixMatch = source.match(/^(\w{3})/i);
+            if (prefixMatch && prefixMatch[1]) {
+                return prefixMatch[1].toUpperCase();
+            }
+        }
+
+        return 'UNK';
+    }
+
+    async buildTierPlanetIndex() {
+        if (this.tierPlanetIndex) {
+            return this.tierPlanetIndex;
+        }
+
+        await this.loadResourceTierData();
+        const typeLookup = (this.resourceTierData && this.resourceTierData.type_to_tier_mapping) || {};
+        const systems = await this.loadAllPlanetsData();
+
+        const tiers = {};
+
+        systems.forEach(system => {
+            (system.planets || []).forEach(planet => {
+                if (!planet.resources || planet.resources.length === 0) {
+                    return;
+                }
+
+                const tierCounts = {};
+                let highestTier = 0;
+
+                planet.resources.forEach(resource => {
+                    const tierInfo = typeLookup[resource.type];
+                    if (!tierInfo || !tierInfo.tier) {
+                        return;
+                    }
+
+                    const tier = tierInfo.tier;
+                    tierCounts[tier] = (tierCounts[tier] || 0) + 1;
+                    highestTier = Math.max(highestTier, tier);
+                });
+
+                if (!highestTier) {
+                    return;
+                }
+
+                const tierKey = `tier_${highestTier}`;
+                if (!tiers[tierKey]) {
+                    tiers[tierKey] = {
+                        totalPlanets: 0,
+                        totalTierResources: 0,
+                        totalRegions: 0,
+                        factions: new Map()
+                    };
+                }
+
+                const tierBucket = tiers[tierKey];
+                tierBucket.totalPlanets += 1;
+
+                const factionCode = this.extractFactionCode(planet.name, system.name);
+                if (!tierBucket.factions.has(factionCode)) {
+                    tierBucket.factions.set(factionCode, {
+                        code: factionCode,
+                        planetCount: 0,
+                        totalTierResources: 0,
+                        regions: new Map()
+                    });
+                }
+
+                const factionBucket = tierBucket.factions.get(factionCode);
+                factionBucket.planetCount += 1;
+
+                const regionCode = this.extractRegionCode(planet.name);
+                if (!factionBucket.regions.has(regionCode)) {
+                    factionBucket.regions.set(regionCode, {
+                        code: regionCode,
+                        planetCount: 0,
+                        totalTierResources: 0,
+                        planets: []
+                    });
+                }
+
+                const targetTierCount = tierCounts[highestTier] || 0;
+                const planetSummary = {
+                    planet: planet.name,
+                    system: system.name,
+                    tier_counts: tierCounts,
+                    total_resources: planet.resources.length,
+                    highestTier: highestTier,
+                    highestTierCount: targetTierCount
+                };
+
+                const regionBucket = factionBucket.regions.get(regionCode);
+                regionBucket.planets.push(planetSummary);
+                regionBucket.planetCount += 1;
+                regionBucket.totalTierResources += targetTierCount;
+
+                factionBucket.totalTierResources += targetTierCount;
+                tierBucket.totalTierResources += targetTierCount;
+            });
+        });
+
+        Object.keys(tiers).forEach(key => {
+            const bucket = tiers[key];
+            let totalRegions = 0;
+
+            bucket.factions = Array.from(bucket.factions.values()).map(faction => {
+                faction.regions = Array.from(faction.regions.values()).map(region => {
+                    region.planets.sort((a, b) => {
+                        const countDiff = (b.highestTierCount || 0) - (a.highestTierCount || 0);
+                        if (countDiff !== 0) {
+                            return countDiff;
+                        }
+
+                        const totalDiff = (b.total_resources || 0) - (a.total_resources || 0);
+                        if (totalDiff !== 0) {
+                            return totalDiff;
+                        }
+
+                        return a.planet.localeCompare(b.planet);
+                    });
+
+                    region.avgTierResources = region.planetCount
+                        ? region.totalTierResources / region.planetCount
+                        : 0;
+
+                    return region;
+                }).sort((a, b) => {
+                    const planetDiff = b.planetCount - a.planetCount;
+                    if (planetDiff !== 0) {
+                        return planetDiff;
+                    }
+                    return a.code.localeCompare(b.code);
+                });
+
+                totalRegions += faction.regions.length;
+                faction.avgTierResources = faction.planetCount
+                    ? faction.totalTierResources / faction.planetCount
+                    : 0;
+
+                return faction;
+            }).sort((a, b) => {
+                const planetDiff = b.planetCount - a.planetCount;
+                if (planetDiff !== 0) {
+                    return planetDiff;
+                }
+                return a.code.localeCompare(b.code);
+            });
+
+            bucket.totalRegions = totalRegions;
+            bucket.avgTierResources = bucket.totalPlanets
+                ? bucket.totalTierResources / bucket.totalPlanets
+                : 0;
+        });
+
+        this.tierPlanetIndex = tiers;
+        return this.tierPlanetIndex;
+    }
+
+
+    async renderPlanetRecommendations() {
+        await this.loadResourceTierData();
+
+        if (!this.resourceTierData) {
+            console.warn('Resource tier data not available');
+            return;
+        }
+
+        const tierPlanetIndex = await this.buildTierPlanetIndex();
+        const tierSummaries = tierPlanetIndex || {};
+        const tierDataByHighest = this.resourceTierData.planets_by_highest_tier || {};
+        const tierFiveData = tierDataByHighest.tier_5 || {};
+        const tierFiveTotal = tierFiveData.total_planets || 0;
+        const container = document.getElementById('analyticsContent');
+
+        const recommendationsSection = document.createElement('div');
+        recommendationsSection.className = 'planet-recommendations analytics-section';
+        recommendationsSection.innerHTML = `
+            <h3>ClaimStake Tier Recommendations</h3>
+            <p class="section-note">Match your claim stake tier with planet resources to maximize efficiency.</p>
+
+            <div class="label-explanation">
+                <h4>How to Read Planet Cards:</h4>
+                <div class="explanation-grid">
+                    <div class="explanation-item">
+                        <span class="example-label" style="color: #9b59b6; font-weight: 700;">7 T5</span>
+                        <span class="explanation-text">= Number of Tier 5 resources on this planet</span>
+                    </div>
+                    <div class="explanation-item">
+                        <span class="example-label" style="color: rgba(255,255,255,0.6);">78 total</span>
+                        <span class="explanation-text">= Total resources across all tiers (T1-T5)</span>
+                    </div>
+                    <div class="explanation-item">
+                        <span class="example-label" style="background: rgba(255,255,255,0.1); padding: 0.3rem 0.6rem; border-radius: 4px;">${tierFiveTotal} planets</span>
+                        <span class="explanation-text">= Planets where this is the highest available tier</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tier-recommendations-grid">
+                ${this.renderTierRecommendation(5, 'Legendary', '#9b59b6', 'T5', tierSummaries['tier_5'])}
+                ${this.renderTierRecommendation(4, 'Epic', '#3498db', 'T4', tierSummaries['tier_4'])}
+                ${this.renderTierRecommendation(3, 'Rare', '#2ecc71', 'T3', tierSummaries['tier_3'])}
+                ${this.renderTierRecommendation(2, 'Uncommon', '#95a5a6', 'T2', tierSummaries['tier_2'])}
+                ${this.renderTierRecommendation(1, 'Common', '#7f8c8d', 'T1', tierSummaries['tier_1'])}
+            </div>
+        `;
+
+        container.appendChild(recommendationsSection);
+        this.attachPlanetCardHandlers(recommendationsSection);
+    }
+
+
+    renderTierRecommendation(tier, tierName, color, icon, tierSummary) {
+        const highestTierData = (this.resourceTierData.planets_by_highest_tier && this.resourceTierData.planets_by_highest_tier[`tier_${tier}`]) || null;
+
+        if (!highestTierData && !tierSummary) {
+            return `
+                <div class="tier-recommendation" style="border-left-color: ${color}">
+                    <div class="tier-recommendation-header">
+                        <span class="tier-icon">${icon}</span>
+                        <h4>T${tier} - ${tierName}</h4>
+                    </div>
+                    <p class="tier-info-text">No data available</p>
+                </div>
+            `;
+        }
+
+        const topPlanets = highestTierData && highestTierData.top_20_planets ? highestTierData.top_20_planets.slice(0, 10) : [];
+        const tierSummaryData = this.resourceTierData.tier_summary ? this.resourceTierData.tier_summary[`tier_${tier}`] : null;
+
+        let resourcePreview = '';
+        if ((tier === 5 || tier === 4) && tierSummaryData && tierSummaryData.resources) {
+            const previewResources = tierSummaryData.resources;
+            resourcePreview = `
+                <div class="resource-tags">
+                    ${previewResources.map(resource =>
+                        `<span class="resource-tag" style="background-color: ${color}20; border-color: ${color}60;">${resource.name}</span>`
+                    ).join('')}
+                </div>
+            `;
+        }
+
+        const totalPlanets = highestTierData ? highestTierData.total_planets : (tierSummary ? tierSummary.totalPlanets : 0);
+        const warning = tier === 5 ? `
+            <div class="warning-text">
+                Do not waste T5 claim stakes on planets without Tier 5 resources.
+            </div>
+        ` : '';
+
+        const regionMarkup = tierSummary
+            ? this.renderFullTierRegions(tierSummary, tier, color)
+            : this.renderRegionalPlanets(topPlanets, tier, color);
+
+        return `
+            <div class="tier-recommendation" style="border-left-color: ${color}">
+                <div class="tier-recommendation-header">
+                    <div class="tier-header-left">
+                        <span class="tier-icon">${icon}</span>
+                        <h4 style="color: ${color}">T${tier} - ${tierName}</h4>
+                    </div>
+                    <div class="tier-stats">
+                        <span class="planet-count">${totalPlanets} planets</span>
+                    </div>
+                </div>
+
+                <p class="tier-info-text">
+                    Can extract T${tier} resources${tier < 5 ? ' and lower tiers' : ' only'}.
+                </p>
+
+                ${warning}
+                ${resourcePreview}
+
+                <div class="regional-planets-section">
+                    ${regionMarkup}
+                </div>
+            </div>
+        `;
+    }
+
+
+    renderFullTierRegions(tierSummary, tier, color) {
+        if (!tierSummary || !tierSummary.factions || tierSummary.factions.length === 0) {
+            return '<p class="tier-info-text">No planets found for this tier.</p>';
+        }
+
+        const totalFactions = tierSummary.factions.length;
+        const totalRegions = tierSummary.totalRegions || tierSummary.factions.reduce((sum, faction) => sum + faction.regions.length, 0);
+        const summaryAverage = typeof tierSummary.avgTierResources === 'number' ? tierSummary.avgTierResources : 0;
+        const summarySection = `
+            <div class="tier-region-summary">
+                <div class="summary-card">
+                    <span class="summary-label">Factions</span>
+                    <span class="summary-value">${totalFactions}</span>
+                </div>
+                <div class="summary-card">
+                    <span class="summary-label">Regions</span>
+                    <span class="summary-value">${totalRegions}</span>
+                </div>
+                <div class="summary-card">
+                    <span class="summary-label">Planets</span>
+                    <span class="summary-value">${tierSummary.totalPlanets}</span>
+                </div>
+                <div class="summary-card">
+                    <span class="summary-label">Avg T${tier} Resources</span>
+                    <span class="summary-value">${summaryAverage.toFixed(1)}</span>
+                </div>
+            </div>
+        `;
+
+        const factionsMarkup = tierSummary.factions.map(faction => {
+            const factionAverage = typeof faction.avgTierResources === 'number' ? faction.avgTierResources : 0;
+            const regionsMarkup = faction.regions.map(region => {
+                const regionAverage = typeof region.avgTierResources === 'number' ? region.avgTierResources : 0;
+                return `
+            <details class="tier-region-details">
+                <summary>
+                    <span class="tier-region-name">Region ${region.code}</span>
+                    <span class="tier-region-meta">${region.planetCount} planets | avg ${regionAverage.toFixed(1)} T${tier}</span>
+                </summary>
+                <div class="planet-chip-grid">
+                    ${region.planets.map(planet => {
+                        const safePlanet = {
+                            planet: planet.planet,
+                            system: planet.system,
+                            tier_counts: planet.tier_counts,
+                            total_resources: planet.total_resources
+                        };
+                        const encodedPlanet = encodeURIComponent(JSON.stringify(safePlanet));
+                        const tierCount = (planet.tier_counts && (planet.tier_counts[tier] || planet.tier_counts[String(tier)])) || planet.highestTierCount || 0;
+                        return `
+                            <button type="button" class="planet-chip clickable" data-planet="${encodedPlanet}" data-tier="${tier}" data-color="${color}" style="border-color: ${color}80; background-color: ${color}20; color: #fff;">
+                                ${planet.planet} (${tierCount} x T${tier})
+                            </button>
+                        `;
+                    }).join('')}
+                </div>
+            </details>
+            `;
+            }).join('');
+
+            return `
+            <section class="tier-faction-block">
+                <div class="tier-faction-header">
+                    <span class="tier-faction-name">Faction ${faction.code}</span>
+                    <span class="tier-faction-meta">${faction.planetCount} planets | avg ${factionAverage.toFixed(1)} T${tier}</span>
+                </div>
+                <div class="tier-faction-regions">
+                    ${regionsMarkup}
+                </div>
+            </section>
+            `;
+        }).join('');
+
+        return `
+            <div class="tier-region-overview">
+                ${summarySection}
+                <div class="tier-faction-list">
+                    ${factionsMarkup}
+                </div>
+            </div>
+        `;
+    }
+
+    renderRegionalPlanets(planets, tier, color) {
+        const regions = this.groupPlanetsByRegion(planets);
+
+        return Array.from(regions.entries())
+            .sort((a, b) => b[1].length - a[1].length)
+            .map(([region, regionPlanets]) => `
+                <div class="region-group">
+                    <div class="region-header">
+                        <h5>Region ${region}</h5>
+                        <span class="region-count">${regionPlanets.length} planets</span>
+                    </div>
+                    <div class="planet-grid">
+                        ${regionPlanets.map(planet => {
+                            const encodedPlanet = encodeURIComponent(JSON.stringify(planet));
+                            return `
+                                <div class="planet-card clickable" data-planet="${encodedPlanet}" data-tier="${tier}" data-color="${color}">
+                                    <div class="planet-name">${planet.planet}</div>
+                                    <div class="planet-resources">
+                                        <span class="tier-count" style="color: ${color}">
+                                            ${planet.tier_counts[tier] || 0} T${tier}
+                                        </span>
+                                        <span class="total-count">
+                                            ${planet.total_resources} total
+                                        </span>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `).join('');
+    }
+
+
+    attachPlanetCardHandlers(section) {
+        if (!section) return;
+
+        section.addEventListener('click', (event) => {
+            const target = event.target.closest('[data-planet]');
+            if (!target) return;
+
+            const encoded = target.getAttribute('data-planet');
+            if (!encoded) return;
+
+            let planetData;
+            try {
+                planetData = JSON.parse(decodeURIComponent(encoded));
+            } catch (error) {
+                console.error('Error parsing planet data for modal:', error);
+                return;
+            }
+
+            let tierValue = parseInt(target.getAttribute('data-tier'), 10);
+            if (isNaN(tierValue)) {
+                tierValue = 5;
+            }
+
+            const color = target.getAttribute('data-color') || '#9b59b6';
+
+            this.showPlanetModal(planetData, tierValue, color);
+        });
+    }
+
+
+    groupPlanetsByRegion(planets) {
+        const regions = new Map();
+
+        planets.forEach(planet => {
+            // Extract region from planet name (first 3 digits)
+            const match = planet.planet.match(/^(\d{3}|CSS)/);
+            const region = match ? match[1] : 'Other';
+
+            if (!regions.has(region)) {
+                regions.set(region, []);
+            }
+            regions.get(region).push(planet);
+        });
+
+        return regions;
+    }
+
+    async showPlanetModal(planetData) {
+        // Load full planet data from planets.json
+        let fullPlanetData = null;
+
+        try {
+            // Load planet data if not already loaded
+            if (!this.allPlanetsData) {
+                const response = await fetch('../JSON/planets.json');
+                const data = await response.json();
+                this.allPlanetsData = data.mapData;
+            }
+
+            // Find the system and planet
+            for (const system of this.allPlanetsData) {
+                if (system.name === planetData.system) {
+                    const planet = system.planets.find(p => p.name === planetData.planet);
+                    if (planet) {
+                        fullPlanetData = { ...planet, system: system };
+                        break;
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error loading planet data:', error);
+        }
+
+        const modal = document.getElementById('buildingModal');
+        const modalContent = document.getElementById('modalContent');
+        const modalTitle = document.getElementById('modalTitle');
+
+        modalTitle.textContent = planetData.planet;
+
+        // Get resource type to tier mapping
+        const resourceTypeToTier = this.resourceTierData?.type_to_tier_mapping || {};
+
+        modalContent.innerHTML = `
+            <div class="planet-modal-content">
+                <div class="planet-overview">
+                    <h3>Planet Overview</h3>
+                    <div class="planet-info-grid">
+                        <div class="info-item">
+                            <span class="info-label">System:</span>
+                            <span class="info-value">${planetData.system}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Total Resources:</span>
+                            <span class="info-value">${planetData.total_resources}</span>
+                        </div>
+                        ${fullPlanetData ? `
+                            <div class="info-item">
+                                <span class="info-label">Planet Type:</span>
+                                <span class="info-value">${this.getPlanetTypeName(fullPlanetData.type)}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Orbit:</span>
+                                <span class="info-value">${fullPlanetData.orbit?.toFixed(2) || 'Unknown'}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Scale:</span>
+                                <span class="info-value">${fullPlanetData.scale || 'Unknown'}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Angle:</span>
+                                <span class="info-value">${fullPlanetData.angle || 'Unknown'}°</span>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+
+                <div class="resource-breakdown">
+                    <h3>Resources by Tier</h3>
+                    <div class="tier-resource-grid">
+                        ${Object.entries(planetData.tier_counts).sort((a, b) => b[0] - a[0]).map(([t, count]) => {
+                            const tierColor = this.getTierColor(parseInt(t));
+                            return `
+                                <div class="tier-resource-item" style="border-left: 3px solid ${tierColor};">
+                                    <div class="tier-resource-header">
+                                        <span class="tier-badge-large" style="background: ${tierColor};">T${t}</span>
+                                        <span class="tier-resource-count">${count} resources</span>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+
+                ${fullPlanetData && fullPlanetData.resources ? `
+                    <div class="resource-list-section">
+                        <h3>All Resources (${fullPlanetData.resources.length})</h3>
+                        <div class="resource-list-grid">
+                            ${fullPlanetData.resources.map(resource => {
+                                const tierInfo = resourceTypeToTier[resource.type];
+                                const resourceTier = tierInfo?.tier || '?';
+                                const resourceName = tierInfo?.name || resource.name;
+                                const tierColor = this.getTierColor(resourceTier);
+                                const richnessStars = '★'.repeat(resource.richness) + '☆'.repeat(5 - resource.richness);
+
+                                return `
+                                    <div class="resource-list-item">
+                                        <span class="resource-tier-badge" style="background: ${tierColor};">T${resourceTier}</span>
+                                        <span class="resource-name">${resourceName}</span>
+                                        <span class="resource-richness" title="Richness: ${resource.richness}/5">${richnessStars}</span>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+
+        modal.style.display = 'block';
+    }
+
+    getTierColor(tier) {
+        const colors = {
+            5: '#9b59b6',
+            4: '#3498db',
+            3: '#2ecc71',
+            2: '#95a5a6',
+            1: '#7f8c8d'
+        };
+        return colors[tier] || '#7f8c8d';
+    }
+
+    getPlanetTypeName(type) {
+        // Basic planet type mapping
+        const types = {
+            1: 'Terrestrial', 2: 'Desert', 3: 'Ice', 4: 'Ocean', 5: 'Volcanic',
+            6: 'Gas Giant', 7: 'Rocky', 8: 'Toxic', 9: 'Barren', 10: 'Forest',
+            11: 'Tundra', 12: 'Jungle', 13: 'Swamp', 14: 'Lava', 15: 'Crystalline'
+        };
+        return types[type] || `Type ${type}`;
     }
 
     analyzeTiers() {
@@ -198,8 +826,9 @@ class BuildingAnalytics {
         };
     }
 
-    renderAnalytics() {
+    async renderAnalytics() {
         this.updateAnalyticsStats();
+        await this.renderPlanetRecommendations();
         this.renderTierAnalysis();
         this.renderTypeAnalysis();
         this.renderResourceAnalysis();
@@ -451,3 +1080,7 @@ class BuildingAnalytics {
         return icons[buildingType] || '🏢';
     }
 }
+
+
+
+

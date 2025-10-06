@@ -270,10 +270,7 @@ export class UIManager {
 
     // Center camera on last clicked star
     centerOnLastClickedStar() {
-        if (!GlobalState.lastClickedSystemData) {
-            console.log('No system has been clicked yet');
-            return;
-        }
+        if (!GlobalState.lastClickedSystemData) return;
 
         const sysObj = GlobalState.lastClickedSystemData.sysObj;
         this.tempVector.copy(sysObj.containerGroup.position);
@@ -313,8 +310,6 @@ export class UIManager {
 
             if (progress < 1) {
                 requestAnimationFrame(animateCamera);
-            } else {
-                console.log('Camera transition complete');
             }
         };
 
@@ -323,7 +318,6 @@ export class UIManager {
 
     // Toggle showing all connections
     toggleShowAllConnections(enabled) {
-        console.log('Toggle show all connections:', enabled);
         GlobalState.showAllConnectionsMode = enabled;
 
         if (enabled) {
@@ -335,10 +329,7 @@ export class UIManager {
 
     // Handle center button click (now with checkbox behavior)
     handleCenterButtonClick() {
-        if (!GlobalState.lastClickedSystemData) {
-            console.log('No star has been clicked yet');
-            return;
-        }
+        if (!GlobalState.lastClickedSystemData) return;
 
         // Toggle connection display for the last clicked system
         GlobalState.centerButtonConnectionsVisible = !GlobalState.centerButtonConnectionsVisible;
@@ -364,8 +355,6 @@ export class UIManager {
 
         } else {
             // Hide connections but keep centered
-            console.log('Hiding connections, staying centered on:', GlobalState.lastClickedSystemData.system.name);
-
             // Update button appearance
             button.style.background = '#4CAF50';
             buttonIndicator.style.display = 'none';
@@ -391,10 +380,6 @@ export class UIManager {
 
     // Show system information - UPDATED VERSION
     showSystemInformation(system) {
-        console.log('🚀 NEW VERSION LOADED: showSystemInformation called for:', system.name);
-        console.log('🚀 BUILD FACILITY UPDATE v3.0 - CACHE BUST TEST');
-        console.log('🚀 System planets:', system.planets);
-
         const infoWidget = document.getElementById('systemInfoWidget');
         if (!infoWidget) return;
 
@@ -421,7 +406,6 @@ export class UIManager {
             content += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">';
 
             planets.forEach((planet, index) => {
-                console.log('Planet data:', planet);
                 const planetName = planet.name || `Planet ${index + 1}`;
                 const planetType = planet && planet.type !== undefined ? getPlanetTypeName(planet.type) : 'Unknown';
                 const resources = planet.resources || [];
@@ -433,7 +417,6 @@ export class UIManager {
                 `;
 
                 if (resources.length > 0) {
-                    console.log('🔧 DEBUG: Rendering resources for planet:', planetName, 'Total resources:', resources.length);
                     content += '<div style="font-size: 11px; color: #aaa;">Resources:</div>';
                     content += '<div style="font-size: 11px; margin-top: 4px;">';
                     resources.forEach(resource => {
@@ -442,13 +425,11 @@ export class UIManager {
                         content += `<div style="margin: 2px 0;">• ${resource.name} (${richness})</div>`;
                     });
                     content += '</div>';
-                    console.log('🔧 DEBUG: NO TRUNCATION APPLIED - Showing all', resources.length, 'resources');
                 } else {
                     content += '<div style="font-size: 11px; color: #666;">No resources</div>';
                 }
 
                 // Add building construction button
-                console.log('🔧 DEBUG: Adding Build Facility button for planet:', planetName);
                 content += `
                     <div style="margin-top: 8px;">
                         <button onclick="window.galiaViewer.uiManager.openBuildingInterface('${system.name}', ${index})"
@@ -571,6 +552,11 @@ export class UIManager {
         // Get compatible buildings for this planet
         const compatibleBuildings = this.getCompatibleBuildings(planet, system);
 
+        // Store for filtering
+        this.currentCompatibleBuildings = compatibleBuildings;
+        this.currentSystem = system;
+        this.currentPlanet = planet;
+
         const modal = document.createElement('div');
         modal.id = 'buildingModal';
         modal.style.cssText = `
@@ -608,22 +594,6 @@ export class UIManager {
                 </button>
             </div>
 
-            <!-- Facility Plan Summary at Top -->
-            <div id="facilityPlan" style="margin-bottom: 20px; padding: 15px; background: #2a2a3e; border-radius: 6px; display: none;">
-                <h3 style="color: #2196F3; margin-bottom: 10px;">🏭 Current Facility Plan</h3>
-                <div id="selectedBuildings"></div>
-                <div style="margin-top: 15px; text-align: center;">
-                    <button onclick="window.galiaViewer.uiManager.clearFacilityPlan()"
-                            style="background: #ff4444; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-right: 10px;">
-                        Clear Plan
-                    </button>
-                    <button onclick="window.galiaViewer.uiManager.constructFacility()"
-                            style="background: #4CAF50; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
-                        🚀 Construct Facility
-                    </button>
-                </div>
-            </div>
-
             <!-- Claim Stake Selection -->
             <div style="margin-bottom: 15px; padding: 10px; background: #2a2a3e; border-radius: 6px;">
                 <div style="margin-bottom: 10px;">
@@ -643,10 +613,51 @@ export class UIManager {
                 </div>
             </div>
 
-            <div style="margin-bottom: 15px;">
-                <h3 style="color: #FF9800; margin-bottom: 10px;">Compatible Buildings <span id="buildingCount">(${compatibleBuildings.length})</span></h3>
-                <div id="buildingsList" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
-                    ${this.renderBuildingOptions(compatibleBuildings, system, planet)}
+            <!-- Two-column layout -->
+            <div style="display: flex; gap: 20px;">
+                <!-- Left Panel: Building List (30%) -->
+                <div style="flex: 0 0 30%; display: flex; flex-direction: column;">
+                    <h3 style="color: #FF9800; margin-bottom: 10px;">Compatible Buildings <span id="buildingCount">(${compatibleBuildings.length})</span></h3>
+
+                    <!-- Search Bar -->
+                    <div style="margin-bottom: 15px;">
+                        <input
+                            type="text"
+                            id="buildingSearchInput"
+                            placeholder="🔍 Search buildings..."
+                            style="width: 100%; padding: 10px 15px; background: #2a2a3e; border: 2px solid #444; border-radius: 6px; color: #fff; font-size: 14px; transition: border-color 0.3s;"
+                            oninput="window.galiaViewer.uiManager.filterBuildings(this.value)"
+                            onfocus="this.style.borderColor='#4CAF50'"
+                            onblur="this.style.borderColor='#444'"
+                        />
+                    </div>
+
+                    <div id="buildingsList" style="display: flex; flex-direction: column; gap: 10px; max-height: 800px; overflow-y: auto; padding-right: 10px;">
+                        ${this.renderBuildingOptions(compatibleBuildings, system, planet)}
+                    </div>
+                </div>
+
+                <!-- Right Panel: Facility Plan Summary (70%) -->
+                <div style="flex: 0 0 70%; display: flex; flex-direction: column;">
+                    <div id="facilityPlan" style="padding: 15px; background: #2a2a3e; border-radius: 6px; max-height: 800px; overflow-y: auto;">
+                        <h3 style="color: #2196F3; margin-bottom: 10px;">🏭 Facility Plan Summary</h3>
+                        <div id="selectedBuildings">
+                            <div style="text-align: center; padding: 60px 20px; color: #666;">
+                                <div style="font-size: 48px; margin-bottom: 15px;">👈</div>
+                                <div style="font-size: 16px;">Select buildings to start planning</div>
+                            </div>
+                        </div>
+                        <div id="facilityPlanActions" style="margin-top: 15px; text-align: center; display: none;">
+                            <button onclick="window.galiaViewer.uiManager.clearFacilityPlan()"
+                                    style="background: #ff4444; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-right: 10px;">
+                                Clear Plan
+                            </button>
+                            <button onclick="window.galiaViewer.uiManager.constructFacility()"
+                                    style="background: #4CAF50; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+                                🚀 Construct Facility
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
@@ -698,8 +709,75 @@ export class UIManager {
             buildingCount.textContent = `(${compatibleBuildings.length})`;
         }
 
+        // Update stored buildings for search
+        this.currentCompatibleBuildings = compatibleBuildings;
+
         // Re-validate current facility plan
         this.validateFacilityPlan();
+    }
+
+    // Filter buildings based on search input
+    filterBuildings(searchTerm) {
+        if (!this.currentCompatibleBuildings) return;
+
+        const searchLower = searchTerm.toLowerCase().trim();
+
+        // If search is empty, show all buildings
+        if (!searchLower) {
+            this.displayFilteredBuildings(this.currentCompatibleBuildings);
+            return;
+        }
+
+        // Filter buildings by name, tier, or type
+        const filtered = this.currentCompatibleBuildings.filter(building => {
+            const nameMatch = building.name.toLowerCase().includes(searchLower);
+            const tierMatch = building.tier && building.tier.toString().includes(searchLower);
+            const typeMatch = this.getBuildingType(building).toLowerCase().includes(searchLower);
+            const descMatch = building.description && building.description.toLowerCase().includes(searchLower);
+
+            return nameMatch || tierMatch || typeMatch || descMatch;
+        });
+
+        this.displayFilteredBuildings(filtered);
+    }
+
+    // Display filtered buildings
+    displayFilteredBuildings(buildings) {
+        const buildingsList = document.getElementById('buildingsList');
+        const buildingCount = document.getElementById('buildingCount');
+
+        if (buildingsList) {
+            if (buildings.length === 0) {
+                buildingsList.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #666;">
+                        <h4 style="color: #FF9800; margin-bottom: 10px;">🔍 No buildings match your search</h4>
+                        <p>Try different keywords or clear the search</p>
+                    </div>
+                `;
+            } else {
+                buildingsList.innerHTML = this.renderBuildingOptions(
+                    buildings,
+                    this.currentSystem,
+                    this.currentPlanet
+                );
+            }
+        }
+
+        if (buildingCount) {
+            buildingCount.textContent = `(${buildings.length}${buildings.length !== this.currentCompatibleBuildings.length ? ' / ' + this.currentCompatibleBuildings.length : ''})`;
+        }
+    }
+
+    // Helper: Get building type for search
+    getBuildingType(building) {
+        if (building.addedTags?.includes('central-hub')) return 'Hub';
+        if (building.addedTags?.includes('processing-hub')) return 'Processing';
+        if (building.addedTags?.includes('storage-hub')) return 'Storage';
+        if (building.addedTags?.includes('extraction-hub')) return 'Extraction';
+        if (building.addedTags?.includes('farm-hub')) return 'Farm';
+        if (building.resourceExtractionRate) return 'Extractor';
+        if (building.power && building.power > 0) return 'Power';
+        return 'Other';
     }
 
     // Get available slots for claim stake tier
@@ -916,11 +994,19 @@ export class UIManager {
     updateFacilityPlanDisplay() {
         const facilityPlan = document.getElementById('facilityPlan');
         const selectedBuildings = document.getElementById('selectedBuildings');
+        const facilityPlanActions = document.getElementById('facilityPlanActions');
 
         if (!facilityPlan || !selectedBuildings || !this.currentFacilityPlan) return;
 
         if (this.currentFacilityPlan.buildings.length === 0) {
-            facilityPlan.style.display = 'none';
+            // Show placeholder message
+            selectedBuildings.innerHTML = `
+                <div style="text-align: center; padding: 60px 20px; color: #666;">
+                    <div style="font-size: 48px; margin-bottom: 15px;">👈</div>
+                    <div style="font-size: 16px;">Select buildings to start planning</div>
+                </div>
+            `;
+            if (facilityPlanActions) facilityPlanActions.style.display = 'none';
             // Destroy analytics if it exists
             if (this.facilityAnalytics) {
                 this.facilityAnalytics.destroy();
@@ -929,7 +1015,8 @@ export class UIManager {
             return;
         }
 
-        facilityPlan.style.display = 'block';
+        // Show action buttons when buildings are added
+        if (facilityPlanActions) facilityPlanActions.style.display = 'block';
 
         const facilityStats = this.calculateFacilityStats();
         const validation = this.validateFacilityPlan();

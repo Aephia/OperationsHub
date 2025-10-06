@@ -25,7 +25,6 @@ export class EventHandlers {
         };
         this.velocity = new THREE.Vector3(0, 0, 0); // Current velocity
         this.baseSpeed = 0.08; // Very slow constant speed
-        this.deceleration = 0.85; // Faster deceleration when keys are released
 
         // Object pooling for performance
         this.tempVector = new THREE.Vector3();

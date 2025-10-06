@@ -52,8 +52,8 @@ export class AudioManager {
 
     playBackgroundMusic() {
         if (this.backgroundMusic && this.masterVolume > 0) {
-            this.backgroundMusic.play().catch(error => {
-                console.log('Background music play failed:', error);
+            this.backgroundMusic.play().catch(() => {
+                // Autoplay prevented by browser policy
             });
         }
     }
@@ -69,8 +69,8 @@ export class AudioManager {
         if (this.clickSound && this.masterVolume > 0) {
             // Reset the sound to beginning and play
             this.clickSound.currentTime = 0;
-            this.clickSound.play().catch(error => {
-                console.log('Click sound play failed:', error);
+            this.clickSound.play().catch(() => {
+                // Autoplay prevented by browser policy
             });
         }
     }
