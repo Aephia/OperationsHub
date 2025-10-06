@@ -754,44 +754,9 @@ export class UIManager {
         return validation;
     }
 
-    // Check if planet type is compatible with building requirements
+    // Check if planet type is compatible with building requirements - Delegates to shared utility
     checkPlanetTypeCompatibility(planetTypeNum, requiredTags) {
-        if (!requiredTags || requiredTags.length === 0) return true;
-
-        // Comprehensive mapping from numeric planet types to descriptive planet tags used by buildings
-        const numericToPlanetTag = {
-            0: 'terrestrial-planet',    // Rocky/Terrestrial
-            1: 'gas-planet',           // Gas Giant (rare buildings)
-            2: 'ice-planet',           // Ice/Frozen worlds
-            3: 'volcanic-planet',      // Volcanic/Lava worlds
-            4: 'oceanic-planet',       // Ocean worlds
-            5: 'desert-planet',        // Desert/Arid worlds
-            6: 'oceanic-planet',       // Ocean (alternate)
-            7: 'terrestrial-planet',   // Forest worlds (Earth-like)
-            8: 'toxic-planet',         // Toxic worlds
-            9: 'barren-planet',        // Barren worlds
-            10: 'terrestrial-planet',  // Tropical worlds (Earth-like)
-            11: 'ice-planet',          // Arctic worlds
-            12: 'terrestrial-planet', // Continental
-            13: 'oceanic-planet',     // Archipelago
-            14: 'desert-planet',      // Savanna
-            15: 'ice-planet',         // Tundra
-            16: 'volcanic-planet',    // Molten
-            17: 'barren-planet',      // Asteroid
-            18: 'dark-planet',        // Dark/Shadow worlds
-            19: 'toxic-planet',       // Polluted
-            20: 'terrestrial-planet'  // Alpine
-            // Types 21+ default to barren-planet for compatibility
-        };
-
-        // Get the descriptive planet tag for this numeric type
-        const planetTag = numericToPlanetTag[planetTypeNum] || 'barren-planet';
-
-        // Check if any required tag matches this planet type
-        return requiredTags.some(tag => {
-            const tagLower = tag.toLowerCase();
-            return tagLower === planetTag.toLowerCase();
-        });
+        return ConstructionUtils.checkPlanetTypeCompatibility(planetTypeNum, requiredTags);
     }
 
     // Generate detailed explanation when no buildings match
@@ -956,6 +921,11 @@ export class UIManager {
 
         if (this.currentFacilityPlan.buildings.length === 0) {
             facilityPlan.style.display = 'none';
+            // Destroy analytics if it exists
+            if (this.facilityAnalytics) {
+                this.facilityAnalytics.destroy();
+                this.facilityAnalytics = null;
+            }
             return;
         }
 
@@ -1061,6 +1031,29 @@ export class UIManager {
                 ` : ''}
             </div>
         `;
+
+        // Create analytics dashboard container (innerHTML above destroyed any previous one)
+        const analyticsContainer = document.createElement('div');
+        analyticsContainer.id = 'facilityAnalyticsDashboard';
+        selectedBuildings.appendChild(analyticsContainer);
+
+        // Render analytics dashboard if FacilityAnalytics is available
+        if (typeof FacilityAnalytics !== 'undefined') {
+            try {
+                // Destroy old analytics instance if it exists
+                if (this.facilityAnalytics) {
+                    this.facilityAnalytics.destroy();
+                }
+                // Create new instance and render
+                this.facilityAnalytics = new FacilityAnalytics('facilityAnalyticsDashboard');
+                this.facilityAnalytics.renderFacilityAnalytics(this.currentFacilityPlan, facilityStats, validation);
+                console.log('✅ Analytics dashboard rendered');
+            } catch (error) {
+                console.error('❌ Error rendering analytics:', error);
+            }
+        } else {
+            console.warn('⚠️ FacilityAnalytics class not available');
+        }
     }
 
     // Calculate total construction cost

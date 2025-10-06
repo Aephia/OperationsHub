@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ClaimStake Explorer</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="../Utils/FacilityAnalytics.css">
+    <!-- Chart.js for data visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 </head>
 <body>
     <header>
@@ -225,6 +228,7 @@
     <script src="../Utils/BaseExplorer.js?v=20250925-2142" onload="console.log('✅ BaseExplorer.js loaded')" onerror="console.error('❌ Failed to load BaseExplorer.js')"></script>
     <script src="../Utils/BaseApp.js?v=20250925-2142" onload="console.log('✅ BaseApp.js loaded')" onerror="console.error('❌ Failed to load BaseApp.js')"></script>
     <script src="../Utils/DataLoader.js?v=20250925-2142" onload="console.log('✅ DataLoader.js loaded, DataLoader available:', typeof DataLoader !== 'undefined')" onerror="console.error('❌ Failed to load DataLoader.js')"></script>
+    <script src="../Utils/FacilityAnalytics.js" onload="console.log('✅ FacilityAnalytics.js loaded')" onerror="console.error('❌ Failed to load FacilityAnalytics.js')"></script>
     <script src="../Data/buildings-data.js?v=20250925-2142" onload="console.log('✅ buildings-data.js loaded, rawBuildingData available:', typeof rawBuildingData !== 'undefined')" onerror="console.error('❌ Failed to load buildings-data.js')"></script>
     <script src="../Data/planet-data.js?v=20250925-2142" onload="console.log('u2705 planet-data.js loaded')" onerror="console.error('❌ Failed to load planet-data.js')"></script>
     <script src="../Data/recipes-data.js?v=20250925-2142" onload="console.log('✅ recipes-data.js loaded')" onerror="console.error('❌ Failed to load recipes-data.js')"></script>

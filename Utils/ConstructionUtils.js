@@ -30,39 +30,63 @@ class ConstructionUtils {
     static checkPlanetTypeCompatibility(planetTypeNum, requiredTags) {
         if (!requiredTags || requiredTags.length === 0) return true;
 
-        // Comprehensive mapping from numeric planet types to descriptive planet tags used by buildings
-        const numericToPlanetTag = {
-            0: 'terrestrial-planet',    // Rocky/Terrestrial
-            1: 'gas-planet',           // Gas Giant (rare buildings)
-            2: 'ice-planet',           // Ice/Frozen worlds
-            3: 'volcanic-planet',      // Volcanic/Lava worlds
-            4: 'oceanic-planet',       // Ocean worlds
-            5: 'desert-planet',        // Desert/Arid worlds
-            6: 'oceanic-planet',       // Ocean (alternate)
-            7: 'terrestrial-planet',   // Forest worlds (Earth-like)
-            8: 'toxic-planet',         // Toxic worlds
-            9: 'barren-planet',        // Barren worlds
-            10: 'terrestrial-planet',  // Tropical worlds (Earth-like)
-            11: 'ice-planet',          // Arctic worlds
-            12: 'terrestrial-planet', // Continental
-            13: 'oceanic-planet',     // Archipelago
-            14: 'desert-planet',      // Savanna
-            15: 'ice-planet',         // Tundra
-            16: 'volcanic-planet',    // Molten
-            17: 'barren-planet',      // Asteroid
-            18: 'dark-planet',        // Dark/Shadow worlds
-            19: 'toxic-planet',       // Polluted
-            20: 'terrestrial-planet'  // Alpine
-            // Types 21+ default to barren-planet for compatibility
+        // Comprehensive mapping from numeric planet types to descriptive planet tags and factions
+        // Format: { category: 'category-tag', faction: 'faction-tag' }
+        const numericToPlanetInfo = {
+            // ONI planets (0-7)
+            0: { category: 'terrestrial-planet', faction: 'oni' },
+            1: { category: 'volcanic-planet', faction: 'oni' },
+            2: { category: 'barren-planet', faction: 'oni' },
+            3: { category: 'asteroid-belt', faction: 'oni' },
+            4: { category: 'gas-giant-planet', faction: 'oni' },
+            5: { category: 'ice-giant-planet', faction: 'oni' },
+            6: { category: 'dark-planet', faction: 'oni' },
+            7: { category: 'oceanic-planet', faction: 'oni' },
+
+            // MUD planets (8-15)
+            8: { category: 'terrestrial-planet', faction: 'mud' },
+            9: { category: 'volcanic-planet', faction: 'mud' },
+            10: { category: 'barren-planet', faction: 'mud' },
+            11: { category: 'asteroid-belt', faction: 'mud' },
+            12: { category: 'gas-giant-planet', faction: 'mud' },
+            13: { category: 'ice-giant-planet', faction: 'mud' },
+            14: { category: 'dark-planet', faction: 'mud' },
+            15: { category: 'oceanic-planet', faction: 'mud' },
+
+            // USTUR planets (16-23)
+            16: { category: 'terrestrial-planet', faction: 'ustur' },
+            17: { category: 'volcanic-planet', faction: 'ustur' },
+            18: { category: 'barren-planet', faction: 'ustur' },
+            19: { category: 'asteroid-belt', faction: 'ustur' },
+            20: { category: 'gas-giant-planet', faction: 'ustur' },
+            21: { category: 'ice-giant-planet', faction: 'ustur' },
+            22: { category: 'dark-planet', faction: 'ustur' },
+            23: { category: 'oceanic-planet', faction: 'ustur' }
         };
 
-        // Get the descriptive planet tag for this numeric type
-        const planetTag = numericToPlanetTag[planetTypeNum] || 'barren-planet';
+        // Get the planet info for this numeric type
+        const planetInfo = numericToPlanetInfo[planetTypeNum] || { category: 'barren-planet', faction: 'unknown' };
 
-        // Check if any required tag matches this planet type
-        return requiredTags.some(tag => {
+        // List of all possible planet-related tags (categories and factions)
+        const allPlanetTags = [
+            'terrestrial-planet', 'volcanic-planet', 'barren-planet', 'asteroid-belt',
+            'gas-giant-planet', 'ice-giant-planet', 'dark-planet', 'oceanic-planet',
+            'oni', 'mud', 'ustur'
+        ];
+
+        // Filter required tags to only planet-related ones
+        const planetRelatedTags = requiredTags.filter(tag =>
+            allPlanetTags.includes(tag.toLowerCase())
+        );
+
+        // If there are no planet-related tags, the building works on any planet
+        if (planetRelatedTags.length === 0) return true;
+
+        // Check if ALL planet-related tags match this planet type
+        // Buildings can require both planet category (e.g., "dark-planet") AND faction (e.g., "mud")
+        return planetRelatedTags.every(tag => {
             const tagLower = tag.toLowerCase();
-            return tagLower === planetTag.toLowerCase();
+            return tagLower === planetInfo.category.toLowerCase() || tagLower === planetInfo.faction.toLowerCase();
         });
     }
 

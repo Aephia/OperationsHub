@@ -114,6 +114,11 @@ class ConstructionManager {
         const container = document.getElementById('buildingInterface');
         const compatibleBuildings = this.getCompatibleBuildings(planet, system);
 
+        // Store for filtering
+        this.currentCompatibleBuildings = compatibleBuildings;
+        this.currentSystem = system;
+        this.currentPlanet = planet;
+
         const modalHTML = `
             <div style="background: #1a1a2e; color: white; padding: 20px; border-radius: 10px; border: 2px solid #444;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #444; padding-bottom: 10px;">
@@ -157,6 +162,20 @@ class ConstructionManager {
 
                 <div style="margin-bottom: 15px;">
                     <h3 style="color: #FF9800; margin-bottom: 10px;">Compatible Buildings <span id="buildingCount">(${compatibleBuildings.length})</span></h3>
+
+                    <!-- Search Bar -->
+                    <div style="margin-bottom: 15px;">
+                        <input
+                            type="text"
+                            id="buildingSearchInput"
+                            placeholder="🔍 Search buildings by name, tier, or type..."
+                            style="width: 100%; padding: 10px 15px; background: #2a2a3e; border: 2px solid #444; border-radius: 6px; color: #fff; font-size: 14px; transition: border-color 0.3s;"
+                            oninput="window.constructionManager.filterBuildings(this.value)"
+                            onfocus="this.style.borderColor='#4CAF50'"
+                            onblur="this.style.borderColor='#444'"
+                        />
+                    </div>
+
                     <div id="buildingsList" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
                         ${this.renderBuildingOptions(compatibleBuildings, system, planet)}
                     </div>
@@ -211,8 +230,75 @@ class ConstructionManager {
             buildingCount.textContent = `(${compatibleBuildings.length})`;
         }
 
+        // Update stored buildings for search
+        this.currentCompatibleBuildings = compatibleBuildings;
+
         // Re-validate current facility plan
         this.validateFacilityPlan();
+    }
+
+    // Filter buildings based on search input
+    filterBuildings(searchTerm) {
+        if (!this.currentCompatibleBuildings) return;
+
+        const searchLower = searchTerm.toLowerCase().trim();
+
+        // If search is empty, show all buildings
+        if (!searchLower) {
+            this.displayFilteredBuildings(this.currentCompatibleBuildings);
+            return;
+        }
+
+        // Filter buildings by name, tier, or type
+        const filtered = this.currentCompatibleBuildings.filter(building => {
+            const nameMatch = building.name.toLowerCase().includes(searchLower);
+            const tierMatch = building.tier && building.tier.toString().includes(searchLower);
+            const typeMatch = this.getBuildingType(building).toLowerCase().includes(searchLower);
+            const descMatch = building.description && building.description.toLowerCase().includes(searchLower);
+
+            return nameMatch || tierMatch || typeMatch || descMatch;
+        });
+
+        this.displayFilteredBuildings(filtered);
+    }
+
+    // Display filtered buildings
+    displayFilteredBuildings(buildings) {
+        const buildingsList = document.getElementById('buildingsList');
+        const buildingCount = document.getElementById('buildingCount');
+
+        if (buildingsList) {
+            if (buildings.length === 0) {
+                buildingsList.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #666;">
+                        <h4 style="color: #FF9800; margin-bottom: 10px;">🔍 No buildings match your search</h4>
+                        <p>Try different keywords or clear the search</p>
+                    </div>
+                `;
+            } else {
+                buildingsList.innerHTML = this.renderBuildingOptions(
+                    buildings,
+                    this.currentSystem,
+                    this.currentPlanet
+                );
+            }
+        }
+
+        if (buildingCount) {
+            buildingCount.textContent = `(${buildings.length}${buildings.length !== this.currentCompatibleBuildings.length ? ' / ' + this.currentCompatibleBuildings.length : ''})`;
+        }
+    }
+
+    // Helper: Get building type for search
+    getBuildingType(building) {
+        if (building.addedTags?.includes('central-hub')) return 'Hub';
+        if (building.addedTags?.includes('processing-hub')) return 'Processing';
+        if (building.addedTags?.includes('storage-hub')) return 'Storage';
+        if (building.addedTags?.includes('extraction-hub')) return 'Extraction';
+        if (building.addedTags?.includes('farm-hub')) return 'Farm';
+        if (building.resourceExtractionRate) return 'Extractor';
+        if (building.power && building.power > 0) return 'Power';
+        return 'Other';
     }
 
     // Get available slots for claim stake tier - Uses shared utility
@@ -425,7 +511,7 @@ class ConstructionManager {
         this.updateFacilityPlanDisplay();
     }
 
-    // Update facility plan display - EXACT GaliaViewer comprehensive version
+    // Update facility plan display - Enhanced with Analytics Dashboard
     updateFacilityPlanDisplay() {
         const facilityPlan = document.getElementById('facilityPlan');
         const selectedBuildings = document.getElementById('selectedBuildings');
@@ -434,6 +520,11 @@ class ConstructionManager {
 
         if (this.currentFacilityPlan.buildings.length === 0) {
             facilityPlan.style.display = 'none';
+            // Destroy analytics if it exists
+            if (this.facilityAnalytics) {
+                this.facilityAnalytics.destroy();
+                this.facilityAnalytics = null;
+            }
             return;
         }
 
@@ -537,6 +628,29 @@ class ConstructionManager {
                 ` : ''}
             </div>
         `;
+
+        // Create analytics dashboard container (innerHTML above destroyed any previous one)
+        const analyticsContainer = document.createElement('div');
+        analyticsContainer.id = 'facilityAnalyticsDashboard';
+        selectedBuildings.appendChild(analyticsContainer);
+
+        // Render analytics dashboard if FacilityAnalytics is available
+        if (typeof FacilityAnalytics !== 'undefined') {
+            try {
+                // Destroy old analytics instance if it exists
+                if (this.facilityAnalytics) {
+                    this.facilityAnalytics.destroy();
+                }
+                // Create new instance and render
+                this.facilityAnalytics = new FacilityAnalytics('facilityAnalyticsDashboard');
+                this.facilityAnalytics.renderFacilityAnalytics(this.currentFacilityPlan, facilityStats, validation);
+                console.log('✅ Analytics dashboard rendered');
+            } catch (error) {
+                console.error('❌ Error rendering analytics:', error);
+            }
+        } else {
+            console.warn('⚠️ FacilityAnalytics class not available');
+        }
     }
 
     // Calculate comprehensive facility statistics - EXACT GaliaViewer

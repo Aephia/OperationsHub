@@ -31,10 +31,10 @@ class RecipeExplorerApp {
         this.setupEventListeners();
         this.setupTabSwitching();
 
-        // Check URL parameters after a brief delay to ensure checkboxes are rendered
-        setTimeout(() => this.checkURLParameters(), 100);
-
         console.log('✅ Recipe Explorer App initialization complete');
+
+        // Check URL parameters after checkboxes are fully rendered
+        setTimeout(() => this.checkURLParameters(), 200);
     }
 
     async loadData() {
@@ -185,7 +185,8 @@ class RecipeExplorerApp {
                 const checkbox = document.createElement('input');
                 checkbox.type = 'checkbox';
                 checkbox.id = `recipe-${recipe.id}`;
-                checkbox.value = recipe.name;
+                checkbox.value = recipe.id;  // Use ID for matching URL params
+                checkbox.setAttribute('data-name', recipe.name);  // Store name as data attribute
                 checkbox.addEventListener('change', () => this.handleRecipeSelection());
 
                 const label = document.createElement('label');
@@ -322,26 +323,36 @@ class RecipeExplorerApp {
         }
 
         // Update header
-        const recipeNames = Array.from(this.selectedRecipes);
-        if (recipeNames.length === 1) {
-            titleElement.textContent = `${this.getRecipeIcon(recipeNames[0])} ${recipeNames[0]}`;
-            const recipe = this.findRecipeByName(recipeNames[0]);
-            descriptionElement.textContent = recipe ? recipe.description : '';
+        const recipeIds = Array.from(this.selectedRecipes);
+        if (recipeIds.length === 1) {
+            const recipe = this.findRecipeById(recipeIds[0]);
+            if (recipe) {
+                titleElement.textContent = `${this.getTypeIcon(recipe.type)} ${recipe.name}`;
+                descriptionElement.textContent = recipe.description || '';
+            }
         } else {
-            titleElement.textContent = `${recipeNames.length} Recipes Selected`;
+            titleElement.textContent = `${recipeIds.length} Recipes Selected`;
             descriptionElement.textContent = `Viewing dependency trees for multiple recipes`;
         }
 
-        // Render the tree(s)
+        // Render the tree(s) - convert IDs to names for the tree renderer
+        const recipeNames = recipeIds.map(id => {
+            const recipe = this.findRecipeById(id);
+            return recipe ? recipe.name : id;
+        });
         this.treeRenderer.renderMultipleRecipes(recipeNames);
+    }
+
+    findRecipeById(recipeId) {
+        return this.allRecipes.find(recipe => recipe.id === recipeId);
     }
 
     findRecipeByName(recipeName) {
         return this.allRecipes.find(recipe => recipe.name === recipeName);
     }
 
-    getRecipeIcon(recipeName) {
-        const recipe = this.findRecipeByName(recipeName);
+    getRecipeIcon(recipeId) {
+        const recipe = this.findRecipeById(recipeId);
         return recipe ? this.getTypeIcon(recipe.type) : '📦';
     }
 
@@ -366,28 +377,51 @@ class RecipeExplorerApp {
     }
 
     // Check URL parameters and pre-select recipe if specified
-    checkURLParameters() {
+    checkURLParameters(retryCount = 0) {
         const urlParams = new URLSearchParams(window.location.search);
         const recipeId = urlParams.get('recipe');
 
-        if (recipeId) {
-            console.log('🔗 Recipe ID from URL:', recipeId);
+        if (!recipeId) return;
 
-            // Find the checkbox with this ID (or the first one if multiple exist)
-            const checkbox = document.querySelector(`input[value="${recipeId}"]`);
+        console.log('🔗 Recipe ID from URL:', recipeId);
 
-            if (checkbox) {
-                console.log('✅ Found checkbox for recipe:', recipeId);
-                checkbox.checked = true;
-                this.handleRecipeSelectionChange();
-            } else {
-                console.warn('⚠️ Checkbox not found for recipe:', recipeId);
+        // Find the checkbox with this ID
+        const checkbox = document.querySelector(`input[value="${recipeId}"]`);
 
-                // Try to find the recipe in allRecipes to see if it exists
-                const recipe = this.allRecipes.find(r => r.id === recipeId);
-                if (recipe) {
-                    console.log('Recipe exists but checkbox not rendered yet:', recipe.name);
+        if (checkbox) {
+            console.log('✅ Found checkbox for recipe:', recipeId);
+            checkbox.checked = true;
+
+            // Expand the category if it's collapsed
+            const categoryRecipes = checkbox.closest('.category-recipes');
+            if (categoryRecipes && categoryRecipes.classList.contains('collapsed')) {
+                const categoryHeader = categoryRecipes.previousElementSibling;
+                if (categoryHeader) {
+                    categoryHeader.click(); // Expand the category
                 }
+            }
+
+            this.handleRecipeSelection();
+        } else {
+            // Try to find the recipe in allRecipes to see if it exists
+            const recipe = this.allRecipes.find(r => r.id === recipeId);
+
+            if (recipe) {
+                console.warn(`⚠️ Checkbox not found for recipe: ${recipeId} (attempt ${retryCount + 1}/3)`);
+                console.log('Recipe exists:', recipe.name, 'Category:', recipe.category, 'Type:', recipe.type);
+
+                // Retry up to 3 times with increasing delays
+                if (retryCount < 3) {
+                    setTimeout(() => this.checkURLParameters(retryCount + 1), 300);
+                } else {
+                    // Checkbox not found after retries - manually add recipe to selection
+                    console.warn('⚠️ Checkbox not found after retries. Manually selecting recipe:', recipe.name);
+                    this.selectedRecipes.add(recipeId);
+                    this.updateTreeDisplay();
+                }
+            } else {
+                console.error('❌ Recipe not found in data:', recipeId);
+                console.log('Available recipe IDs:', this.allRecipes.slice(0, 10).map(r => r.id));
             }
         }
     }

@@ -18,7 +18,7 @@ class EnhancedTreeRenderer {
         this.isDragging = false;
         this.dragStart = { x: 0, y: 0 };
         this.lastPan = { x: 20, y: 20 };
-        this.buildRecipeCache();
+        // Don't build cache in constructor - app.js will call it with recipes
         this.setupContainer();
     }
 
@@ -28,7 +28,7 @@ class EnhancedTreeRenderer {
 
         if (!recipesToCache) {
             if (!window.recipeData || !window.recipeData.categories) {
-                console.warn('⚠️ Recipe data not available yet, deferring cache build');
+                // Silently return - cache will be built when recipes are provided
                 return;
             }
 
@@ -45,9 +45,12 @@ class EnhancedTreeRenderer {
             });
         }
 
-        recipesToCache.forEach((recipe, index) => {
-            this.recipeCache.set(recipe.name, recipe);
-        });
+        if (recipesToCache && recipesToCache.length > 0) {
+            recipesToCache.forEach((recipe, index) => {
+                this.recipeCache.set(recipe.name, recipe);
+            });
+            console.log(`✅ Built recipe cache with ${this.recipeCache.size} recipes`);
+        }
     }
 
     setupContainer() {
