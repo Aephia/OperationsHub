@@ -97,7 +97,7 @@ class ClaimStakeApp {
         }
     }
 
-    switchTab(tabName) {
+    async switchTab(tabName) {
         const navTabs = document.querySelectorAll('.nav-tab');
         const targetTabButton = document.querySelector(`[data-tab="${tabName}"]`);
         const targetTabContent = document.getElementById(`${tabName}Tab`);
@@ -120,7 +120,7 @@ class ClaimStakeApp {
             // Render appropriate content for the tab
             if (tabName === 'analytics' && this.buildingAnalytics) {
                 document.getElementById('analyticsContent').innerHTML = '';
-                this.buildingAnalytics.renderAnalytics();
+                await this.buildingAnalytics.renderAnalytics();
             } else if (tabName === 'explorer' && this.buildingExplorer) {
                 this.buildingExplorer.renderBuildings();
                 this.buildingExplorer.updateStats();
