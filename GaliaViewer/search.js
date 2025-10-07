@@ -257,7 +257,7 @@ export class SearchManager {
 
         // Find planet mesh
         const planets = container.children.filter(child =>
-            child.userData && child.userData.isPlanet
+            child.userData && child.userData.type === 'planet'
         );
 
         if (planetIndex < 0 || planetIndex >= planets.length) {
