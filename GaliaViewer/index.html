@@ -190,6 +190,14 @@
     <div class="header">
         <h1>🚀 Galia Viewer - 3D Star Map</h1>
         <div class="controls">
+            <!-- Search Box -->
+            <div style="position: relative; margin-right: 15px;">
+                <input type="text" id="searchBox" placeholder="🔍 Search stars or planets..."
+                       style="padding: 8px 12px; border-radius: 4px; border: 1px solid rgba(255, 255, 255, 0.3); background: rgba(0, 0, 0, 0.5); color: white; font-size: 14px; width: 250px; outline: none;">
+                <div id="searchResults" style="position: absolute; top: 100%; left: 0; right: 0; background: rgba(0, 0, 0, 0.95); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 4px; margin-top: 4px; max-height: 400px; overflow-y: auto; display: none; z-index: 2000; backdrop-filter: blur(10px); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);">
+                    <!-- Search results will be populated here -->
+                </div>
+            </div>
             <button id="resetViewBtn">Reset View</button>
             <button id="backToHubBtn" class="back-btn">
                 ← Back to Hub
@@ -383,12 +391,25 @@
     <script type="module" src="events.js"></script>
     <script type="module" src="ui.js"></script>
     <script type="module" src="audio.js"></script>
+    <script type="module" src="search.js"></script>
     <!-- WebGL effects disabled - causing rendering issues -->
     <!-- <script type="module" src="webgl-integration.js"></script> -->
     <!-- <script type="module" src="webgl-effects.js"></script> -->
 
     <!-- Load Core Last -->
     <script type="module" src="core.js"></script>
+
+    <!-- Initialize Search -->
+    <script type="module">
+        import { SearchManager } from './search.js';
+        window.addEventListener('load', () => {
+            // Wait for galiaViewer to be initialized
+            setTimeout(() => {
+                window.galiaSearchManager = new SearchManager();
+                console.log('✅ Search functionality initialized');
+            }, 1000);
+        });
+    </script>
 
     <script>
         // Initialize 3D map and hide loading indicator once everything is loaded
