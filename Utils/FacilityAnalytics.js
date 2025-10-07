@@ -5,11 +5,16 @@ class FacilityAnalytics {
     constructor(containerId) {
         this.container = document.getElementById(containerId);
         this.charts = {};
+        this.currentFacilityStats = null; // Store for re-rendering
+        this.showBalancedResources = false; // Toggle state
     }
 
     // Main method to render all analytics for a facility plan
     renderFacilityAnalytics(facilityPlan, facilityStats, validation) {
         if (!this.container) return;
+
+        // Store stats for toggle functionality
+        this.currentFacilityStats = facilityStats;
 
         const html = `
             <div class="facility-analytics-dashboard">
@@ -63,7 +68,13 @@ class FacilityAnalytics {
 
                     <!-- Resource Production Efficiency -->
                     <div class="analytics-card analytics-card-wide">
-                        <h4>🔄 Resource Production & Consumption</h4>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <h4 style="margin: 0;">🔄 Resource Production & Consumption</h4>
+                            <label style="font-size: 12px; color: #ccc; cursor: pointer;">
+                                <input type="checkbox" id="showBalancedResources" style="margin-right: 5px;" />
+                                Show Balanced Resources (net = 0)
+                            </label>
+                        </div>
                         <canvas id="resourceEfficiencyChart"></canvas>
                         <div id="efficiencyStats" class="chart-stats"></div>
                     </div>
@@ -94,7 +105,19 @@ class FacilityAnalytics {
         // Render all charts after DOM update
         setTimeout(() => {
             this.renderAllCharts(facilityPlan, facilityStats, validation);
+            this.setupEventListeners();
         }, 100);
+    }
+
+    // Setup event listeners for interactive elements
+    setupEventListeners() {
+        const balancedToggle = document.getElementById('showBalancedResources');
+        if (balancedToggle) {
+            balancedToggle.addEventListener('change', (e) => {
+                this.showBalancedResources = e.target.checked;
+                this.renderResourceEfficiencyChart(this.currentFacilityStats);
+            });
+        }
     }
 
     // Render header stats cards
@@ -494,27 +517,50 @@ class FacilityAnalytics {
         const consumption = facilityStats.resourceConsumption || {};
 
         const allResources = new Set([...Object.keys(production), ...Object.keys(consumption)]);
-        const netFlow = {};
 
+        // Build resource data with production and consumption
+        const resourceData = [];
         allResources.forEach(resource => {
-            netFlow[resource] = (production[resource] || 0) - (consumption[resource] || 0);
+            const prod = production[resource] || 0;
+            const cons = consumption[resource] || 0;
+            const netFlow = prod - cons;
+
+            // Filter based on toggle
+            if (!this.showBalancedResources && Math.abs(netFlow) < 0.001) {
+                return; // Skip balanced resources if toggle is off
+            }
+
+            resourceData.push({
+                name: resource,
+                production: prod,
+                consumption: -cons, // Make negative for display
+                netFlow: netFlow
+            });
         });
 
-        const sortedResources = Object.entries(netFlow).sort((a, b) => b[1] - a[1]);
+        // Sort by net flow (highest production to highest consumption)
+        resourceData.sort((a, b) => b.netFlow - a.netFlow);
+
+        const labels = resourceData.map(r => r.name);
 
         const data = {
-            labels: sortedResources.map(([name]) => name),
-            datasets: [{
-                label: 'Net Flow (Units/Hour)',
-                data: sortedResources.map(([, value]) => value),
-                backgroundColor: sortedResources.map(([, value]) =>
-                    value >= 0 ? 'rgba(76, 175, 80, 0.7)' : 'rgba(244, 67, 54, 0.7)'
-                ),
-                borderColor: sortedResources.map(([, value]) =>
-                    value >= 0 ? 'rgba(76, 175, 80, 1)' : 'rgba(244, 67, 54, 1)'
-                ),
-                borderWidth: 2
-            }]
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Production',
+                    data: resourceData.map(r => r.production),
+                    backgroundColor: 'rgba(76, 175, 80, 0.7)',
+                    borderColor: 'rgba(76, 175, 80, 1)',
+                    borderWidth: 2
+                },
+                {
+                    label: 'Consumption',
+                    data: resourceData.map(r => r.consumption),
+                    backgroundColor: 'rgba(244, 67, 54, 0.7)',
+                    borderColor: 'rgba(244, 67, 54, 1)',
+                    borderWidth: 2
+                }
+            ]
         };
 
         if (this.charts.resourceEfficiency) this.charts.resourceEfficiency.destroy();
@@ -527,8 +573,13 @@ class FacilityAnalytics {
                 maintainAspectRatio: true,
                 scales: {
                     x: {
-                        title: { display: true, text: 'Net Flow (Units/Hour)', color: '#ccc' },
-                        ticks: { color: '#ccc' },
+                        title: { display: true, text: 'Units/Hour', color: '#ccc' },
+                        ticks: {
+                            color: '#ccc',
+                            callback: function(value) {
+                                return value.toFixed(2);
+                            }
+                        },
                         grid: { color: 'rgba(255, 255, 255, 0.1)' }
                     },
                     y: {
@@ -537,10 +588,63 @@ class FacilityAnalytics {
                     }
                 },
                 plugins: {
-                    legend: { display: false }
+                    legend: {
+                        display: true,
+                        labels: { color: '#ccc' }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.dataset.label || '';
+                                const value = Math.abs(context.parsed.x);
+                                return `${label}: ${value.toFixed(3)}/hour`;
+                            }
+                        }
+                    }
                 }
             }
         });
+
+        // Update efficiency stats summary
+        this.updateEfficiencyStats(production, consumption);
+    }
+
+    // Update efficiency stats summary below the chart
+    updateEfficiencyStats(production, consumption) {
+        const statsDiv = document.getElementById('efficiencyStats');
+        if (!statsDiv) return;
+
+        // Calculate totals
+        const totalProduction = Object.values(production).reduce((sum, val) => sum + val, 0);
+        const totalConsumption = Object.values(consumption).reduce((sum, val) => sum + val, 0);
+        const netBalance = totalProduction - totalConsumption;
+
+        // Find most produced and consumed resources
+        const prodEntries = Object.entries(production).sort((a, b) => b[1] - a[1]);
+        const consEntries = Object.entries(consumption).sort((a, b) => b[1] - a[1]);
+
+        const topProduced = prodEntries.length > 0 ? prodEntries[0] : null;
+        const topConsumed = consEntries.length > 0 ? consEntries[0] : null;
+
+        statsDiv.innerHTML = `
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 10px;">
+                <div style="background: rgba(76, 175, 80, 0.2); padding: 8px; border-radius: 4px; border-left: 3px solid rgba(76, 175, 80, 1);">
+                    <div style="font-size: 11px; color: #aaa;">Total Production</div>
+                    <div style="font-size: 16px; color: #4CAF50; font-weight: bold;">${totalProduction.toFixed(3)} /hour</div>
+                    ${topProduced ? `<div style="font-size: 10px; color: #ccc; margin-top: 4px;">Top: ${topProduced[0]} (${topProduced[1].toFixed(3)})</div>` : ''}
+                </div>
+                <div style="background: rgba(244, 67, 54, 0.2); padding: 8px; border-radius: 4px; border-left: 3px solid rgba(244, 67, 54, 1);">
+                    <div style="font-size: 11px; color: #aaa;">Total Consumption</div>
+                    <div style="font-size: 16px; color: #f44336; font-weight: bold;">${totalConsumption.toFixed(3)} /hour</div>
+                    ${topConsumed ? `<div style="font-size: 10px; color: #ccc; margin-top: 4px;">Top: ${topConsumed[0]} (${topConsumed[1].toFixed(3)})</div>` : ''}
+                </div>
+                <div style="background: rgba(33, 150, 243, 0.2); padding: 8px; border-radius: 4px; border-left: 3px solid rgba(33, 150, 243, 1);">
+                    <div style="font-size: 11px; color: #aaa;">Net Balance</div>
+                    <div style="font-size: 16px; color: ${netBalance >= 0 ? '#4CAF50' : '#f44336'}; font-weight: bold;">${netBalance >= 0 ? '+' : ''}${netBalance.toFixed(3)} /hour</div>
+                    <div style="font-size: 10px; color: #ccc; margin-top: 4px;">${Object.keys(production).length} produced, ${Object.keys(consumption).length} consumed</div>
+                </div>
+            </div>
+        `;
     }
 
     // Tier Distribution Chart

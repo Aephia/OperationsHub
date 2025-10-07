@@ -71,6 +71,8 @@ class ConstructionUtils {
         const allPlanetTags = [
             'terrestrial-planet', 'volcanic-planet', 'barren-planet', 'asteroid-belt',
             'gas-giant-planet', 'ice-giant-planet', 'dark-planet', 'oceanic-planet',
+            'system-terrestrial-planet', 'system-volcanic-planet', 'system-barren-planet', 'system-asteroid-belt-planet',
+            'system-gas-giant-planet', 'system-ice-giant-planet', 'system-dark-planet', 'system-oceanic-planet',
             'oni', 'mud', 'ustur'
         ];
 
@@ -86,7 +88,23 @@ class ConstructionUtils {
         // Buildings can require both planet category (e.g., "dark-planet") AND faction (e.g., "mud")
         return planetRelatedTags.every(tag => {
             const tagLower = tag.toLowerCase();
-            return tagLower === planetInfo.category.toLowerCase() || tagLower === planetInfo.faction.toLowerCase();
+
+            // Handle "system-" prefix tags (e.g., "system-asteroid-belt-planet")
+            // These need special handling to normalize to the category format
+            let normalizedTag = tagLower;
+            if (normalizedTag.startsWith('system-')) {
+                // Remove "system-" prefix first
+                normalizedTag = normalizedTag.substring(7);
+                // For "system-" tags, also remove "-planet" suffix to match asteroid-belt format
+                if (normalizedTag.endsWith('-planet')) {
+                    normalizedTag = normalizedTag.substring(0, normalizedTag.length - 7);
+                }
+            }
+
+            // Now check if it matches category or faction
+            // Direct match with normalized tag OR faction match with original tag
+            return normalizedTag === planetInfo.category.toLowerCase() ||
+                   tagLower === planetInfo.faction.toLowerCase();
         });
     }
 

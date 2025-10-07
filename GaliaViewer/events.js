@@ -353,6 +353,14 @@ export class EventHandlers {
     }
 
     onKeyDown(event) {
+        // Don't handle keys if user is typing in an input field or textarea
+        const activeElement = document.activeElement;
+        const isTyping = activeElement && (
+            activeElement.tagName === 'INPUT' ||
+            activeElement.tagName === 'TEXTAREA' ||
+            activeElement.isContentEditable
+        );
+
         const key = event.key.toLowerCase();
 
         if (key === 'escape') {
@@ -361,18 +369,26 @@ export class EventHandlers {
             return;
         }
 
-        // Handle WASD movement keys
-        if (['w', 'a', 's', 'd'].includes(key)) {
+        // Handle WASD movement keys only if not typing
+        if (['w', 'a', 's', 'd'].includes(key) && !isTyping) {
             this.keyStates[key] = true;
             event.preventDefault(); // Prevent default browser behavior
         }
     }
 
     onKeyUp(event) {
+        // Don't handle keys if user is typing in an input field or textarea
+        const activeElement = document.activeElement;
+        const isTyping = activeElement && (
+            activeElement.tagName === 'INPUT' ||
+            activeElement.tagName === 'TEXTAREA' ||
+            activeElement.isContentEditable
+        );
+
         const key = event.key.toLowerCase();
 
-        // Handle WASD movement keys
-        if (['w', 'a', 's', 'd'].includes(key)) {
+        // Handle WASD movement keys only if not typing
+        if (['w', 'a', 's', 'd'].includes(key) && !isTyping) {
             this.keyStates[key] = false;
         }
     }

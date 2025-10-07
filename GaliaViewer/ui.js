@@ -675,6 +675,39 @@ export class UIManager {
             availableSlots: this.getClaimStakeSlots(1),
             totalPowerOutput: 0
         };
+
+        // Auto-add buildings that come with the stake for this planet type and tier
+        this.autoAddStakeBuildings(planet, 1);
+        this.updateFacilityPlanDisplay();
+    }
+
+    // Auto-add buildings that come with the claim stake
+    autoAddStakeBuildings(planet, claimStakeTier) {
+        if (!window.rawBuildingData || !window.rawBuildingData.buildings) return;
+
+        const buildings = window.rawBuildingData.buildings;
+        const planetType = planet.type;
+
+        // Find buildings that come with stake and are compatible with this planet/tier
+        const stakeBuildings = buildings.filter(building => {
+            if (!building.comesWithStake) return false;
+            if (building.tier !== claimStakeTier) return false;
+
+            // Only include standard stake buildings, not cultivation stake buildings
+            const requiredTags = building.requiredTags || [];
+            if (requiredTags.includes('cultivation-stake-only')) return false;
+
+            // Check planet type compatibility
+            return ConstructionUtils.checkPlanetTypeCompatibility(planetType, requiredTags);
+        });
+
+        // Add these buildings to the facility plan
+        stakeBuildings.forEach(building => {
+            // Don't add duplicates
+            if (!this.currentFacilityPlan.buildings.find(b => b.id === building.id)) {
+                this.currentFacilityPlan.buildings.push(building);
+            }
+        });
     }
 
     // Get buildings compatible with the planet type and available resources
@@ -689,6 +722,20 @@ export class UIManager {
         const claimStakeTier = parseInt(document.getElementById('claimStakeTier').value) || 1;
         this.currentFacilityPlan.claimStakeTier = claimStakeTier;
         this.currentFacilityPlan.availableSlots = this.getClaimStakeSlots(claimStakeTier);
+
+        // Remove manually added buildings but keep track of them
+        const manuallyAddedBuildings = this.currentFacilityPlan.buildings.filter(b => !b.comesWithStake);
+
+        // Reset buildings and re-add stake buildings for new tier
+        this.currentFacilityPlan.buildings = [];
+        this.autoAddStakeBuildings(this.currentFacilityPlan.planet, claimStakeTier);
+
+        // Re-add manually added buildings that are still compatible
+        manuallyAddedBuildings.forEach(building => {
+            if (building.minimumTier <= claimStakeTier) {
+                this.currentFacilityPlan.buildings.push(building);
+            }
+        });
 
         const compatibleBuildings = this.getCompatibleBuildings(
             this.currentFacilityPlan.planet,
@@ -712,7 +759,8 @@ export class UIManager {
         // Update stored buildings for search
         this.currentCompatibleBuildings = compatibleBuildings;
 
-        // Re-validate current facility plan
+        // Update display and re-validate
+        this.updateFacilityPlanDisplay();
         this.validateFacilityPlan();
     }
 
@@ -1054,11 +1102,13 @@ export class UIManager {
 
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px; margin-bottom: 15px;">
                 ${this.currentFacilityPlan.buildings.map((building, index) => `
-                    <div style="background: #444; padding: 10px; border-radius: 4px; font-size: 11px; position: relative;">
+                    <div style="background: #444; padding: 10px; border-radius: 4px; font-size: 11px; position: relative; ${building.comesWithStake ? 'border: 2px solid #FF9800;' : ''}">
+                        ${!building.comesWithStake ? `
                         <button onclick="window.galiaViewer.uiManager.removeBuildingFromPlan(${index})"
                                 style="background: #f44; color: white; border: none; padding: 2px 6px; border-radius: 2px; cursor: pointer; font-size: 10px; position: absolute; top: 5px; right: 5px;">
                             ✕
                         </button>
+                        ` : ''}
                         <div style="margin-right: 25px;">
                             <strong style="color: #4CAF50;">${building.name}</strong><br>
                             <div style="color: #ccc; margin: 4px 0;">Tier ${building.tier} • ${building.constructionTime || 0} min</div>
@@ -1067,7 +1117,7 @@ export class UIManager {
                                 <span>⚡ ${building.power || 0}</span>
                                 <span>📦 ${(building.storage || 0).toLocaleString()}</span>
                             </div>
-                            ${building.comesWithStake ? '<div style="color: #FF9800; font-size: 10px; margin-top: 4px;">📍 Includes Stake</div>' : ''}
+                            ${building.comesWithStake ? '<div style="color: #FF9800; font-size: 10px; margin-top: 4px;">📍 Included with Stake (Cannot Remove)</div>' : ''}
                         </div>
                     </div>
                 `).join('')}
@@ -1171,6 +1221,14 @@ export class UIManager {
     removeBuildingFromPlan(index) {
         if (!this.currentFacilityPlan || index < 0 || index >= this.currentFacilityPlan.buildings.length) return;
 
+        const building = this.currentFacilityPlan.buildings[index];
+
+        // Prevent removal of buildings that come with the stake
+        if (building.comesWithStake) {
+            alert('❌ Cannot remove this building - it is included with your claim stake and cannot be removed.');
+            return;
+        }
+
         this.currentFacilityPlan.buildings.splice(index, 1);
         this.updateFacilityPlanDisplay();
     }
@@ -1179,7 +1237,8 @@ export class UIManager {
     clearFacilityPlan() {
         if (!this.currentFacilityPlan) return;
 
-        this.currentFacilityPlan.buildings = [];
+        // Only remove manually added buildings, keep the ones that come with stake
+        this.currentFacilityPlan.buildings = this.currentFacilityPlan.buildings.filter(b => b.comesWithStake);
         this.updateFacilityPlanDisplay();
     }
 

@@ -653,8 +653,15 @@ export class SceneManager {
     }
 
     handleKeyDown(event) {
-        // Don't handle keys if user is typing in an input field
-        if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+        // Don't handle keys if user is typing in an input field or textarea
+        const activeElement = document.activeElement;
+        const isTyping = activeElement && (
+            activeElement.tagName === 'INPUT' ||
+            activeElement.tagName === 'TEXTAREA' ||
+            activeElement.isContentEditable
+        );
+
+        if (isTyping) {
             return;
         }
 
