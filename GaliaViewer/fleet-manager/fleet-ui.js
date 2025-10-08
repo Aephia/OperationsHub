@@ -1,4 +1,4 @@
-// Fleet UI Manager - Handle user interface for fleet management
+﻿// Fleet UI Manager - Handle user interface for fleet management
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.module.js';
 import { GlobalState } from '../state.js';
 
@@ -38,10 +38,10 @@ export class FleetUIManager {
         panel.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #00ff00; padding-bottom: 10px;">
                 <h3 style="margin: 0; color: #00ff00; font-size: 14px;">🚀 Fleet Viewer</h3>
-                <button id="toggleFleetPanel" style="background: transparent; border: none; color: #00ff00; font-size: 18px; cursor: pointer; padding: 0 5px;">−</button>
+                <button id="toggleFleetPanel" style="background: transparent; border: none; color: #00ff00; font-size: 18px; cursor: pointer; padding: 0 5px;">+</button>
             </div>
 
-            <div id="fleetPanelContent">
+            <div id="fleetPanelContent" style="display: none;">
                 <!-- Wallet Input Section -->
                 <div style="margin-bottom: 15px;">
                     <label style="display: block; margin-bottom: 5px; color: #ccc; font-size: 11px;">Solana Wallet Address:</label>
@@ -149,7 +149,7 @@ export class FleetUIManager {
 
         if (content.style.display === 'none') {
             content.style.display = 'block';
-            toggleBtn.textContent = '−';
+            toggleBtn.textContent = '-';
         } else {
             content.style.display = 'none';
             toggleBtn.textContent = '+';
@@ -400,3 +400,6 @@ export class FleetUIManager {
         }
     }
 }
+
+
+

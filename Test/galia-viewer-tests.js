@@ -167,8 +167,7 @@ async function runGlobalStateTests() {
 
             static findSystem(systemName) {
                 return this.systems.find(sys => {
-                    const sysName = sys.name || sys.key || sys.id;
-                    return sysName === systemName;
+                    return sys.name === systemName || sys.key === systemName || sys.id === systemName;
                 });
             }
         }

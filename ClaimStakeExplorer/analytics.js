@@ -266,6 +266,7 @@ class BuildingAnalytics {
 
         container.appendChild(recommendationsSection);
         this.attachPlanetCardHandlers(recommendationsSection);
+        this.attachRegionButtonHandlers(recommendationsSection);
     }
 
 
@@ -337,90 +338,79 @@ class BuildingAnalytics {
     }
 
 
-    renderFullTierRegions(tierSummary, tier, color) {
-        if (!tierSummary || !tierSummary.factions || tierSummary.factions.length === 0) {
-            return '<p class="tier-info-text">No planets found for this tier.</p>';
-        }
+renderFullTierRegions(tierSummary, tier, color) {
+    if (!tierSummary || !tierSummary.factions || tierSummary.factions.length === 0) {
+        return '<p class=\"tier-info-text\">No planets found for this tier.</p>';
+    }
 
-        const totalFactions = tierSummary.factions.length;
-        const totalRegions = tierSummary.totalRegions || tierSummary.factions.reduce((sum, faction) => sum + faction.regions.length, 0);
-        const summaryAverage = typeof tierSummary.avgTierResources === 'number' ? tierSummary.avgTierResources : 0;
-        const summarySection = `
-            <div class="tier-region-summary">
-                <div class="summary-card">
-                    <span class="summary-label">Factions</span>
-                    <span class="summary-value">${totalFactions}</span>
-                </div>
-                <div class="summary-card">
-                    <span class="summary-label">Regions</span>
-                    <span class="summary-value">${totalRegions}</span>
-                </div>
-                <div class="summary-card">
-                    <span class="summary-label">Planets</span>
-                    <span class="summary-value">${tierSummary.totalPlanets}</span>
-                </div>
-                <div class="summary-card">
-                    <span class="summary-label">Avg T${tier} Resources</span>
-                    <span class="summary-value">${summaryAverage.toFixed(1)}</span>
-                </div>
+    const totalFactions = tierSummary.factions.length;
+    const totalRegions = tierSummary.totalRegions || tierSummary.factions.reduce((sum, faction) => sum + faction.regions.length, 0);
+    const summaryAverage = typeof tierSummary.avgTierResources === 'number' ? tierSummary.avgTierResources : 0;
+
+    const summarySection = `
+        <div class="tier-region-summary">
+            <div class="summary-card">
+                <span class="summary-label">Factions</span>
+                <span class="summary-value">${totalFactions}</span>
             </div>
-        `;
+            <div class="summary-card">
+                <span class="summary-label">Regions</span>
+                <span class="summary-value">${totalRegions}</span>
+            </div>
+            <div class="summary-card">
+                <span class="summary-label">Planets</span>
+                <span class="summary-value">${tierSummary.totalPlanets}</span>
+            </div>
+            <div class="summary-card">
+                <span class="summary-label">Avg T${tier} Resources</span>
+                <span class="summary-value">${summaryAverage.toFixed(1)}</span>
+            </div>
+        </div>
+    `;
 
-        const factionsMarkup = tierSummary.factions.map(faction => {
-            const factionAverage = typeof faction.avgTierResources === 'number' ? faction.avgTierResources : 0;
-            const regionsMarkup = faction.regions.map(region => {
-                const regionAverage = typeof region.avgTierResources === 'number' ? region.avgTierResources : 0;
-                return `
-            <details class="tier-region-details">
-                <summary>
-                    <span class="tier-region-name">Region ${region.code}</span>
-                    <span class="tier-region-meta">${region.planetCount} planets | avg ${regionAverage.toFixed(1)} T${tier}</span>
-                </summary>
-                <div class="planet-chip-grid">
-                    ${region.planets.map(planet => {
-                        const safePlanet = {
-                            planet: planet.planet,
-                            system: planet.system,
-                            tier_counts: planet.tier_counts,
-                            total_resources: planet.total_resources
-                        };
-                        const encodedPlanet = encodeURIComponent(JSON.stringify(safePlanet));
-                        const tierCount = (planet.tier_counts && (planet.tier_counts[tier] || planet.tier_counts[String(tier)])) || planet.highestTierCount || 0;
-                        return `
-                            <button type="button" class="planet-chip clickable" data-planet="${encodedPlanet}" data-tier="${tier}" data-color="${color}" style="border-color: ${color}80; background-color: ${color}20; color: #fff;">
-                                ${planet.planet} (${tierCount} x T${tier})
-                            </button>
-                        `;
-                    }).join('')}
-                </div>
-            </details>
-            `;
-            }).join('');
+    const factionsMarkup = tierSummary.factions.map(faction => {
+        const factionAverage = typeof faction.avgTierResources === 'number' ? faction.avgTierResources : 0;
+        const regionsMarkup = faction.regions.map(region => {
+            const regionAverage = typeof region.avgTierResources === 'number' ? region.avgTierResources : 0;
+            const payload = encodeURIComponent(JSON.stringify({
+                faction: faction.code,
+                region: region.code,
+                planetCount: region.planetCount,
+                avgTierResources: regionAverage,
+                planets: region.planets || []
+            }));
 
             return `
-            <section class="tier-faction-block">
-                <div class="tier-faction-header">
-                    <span class="tier-faction-name">Faction ${faction.code}</span>
-                    <span class="tier-faction-meta">${faction.planetCount} planets | avg ${factionAverage.toFixed(1)} T${tier}</span>
-                </div>
-                <div class="tier-faction-regions">
-                    ${regionsMarkup}
-                </div>
-            </section>
+                <button type="button" class="region-chip" data-region="${payload}" data-tier="${tier}" data-color="${color}" title="${region.planetCount} planets · avg ${regionAverage.toFixed(1)} T${tier}" style="border-color: ${color}55; background: ${color}15;">
+                    ${region.code}<span class="region-chip-meta">${region.planetCount}</span>
+                </button>
             `;
         }).join('');
 
         return `
-            <div class="tier-region-overview">
-                ${summarySection}
-                <div class="tier-faction-list">
-                    ${factionsMarkup}
-                </div>
+        <section class="tier-faction-block">
+            <div class="tier-faction-header">
+                <span class="tier-faction-name">Faction ${faction.code}</span>
+                <span class="tier-faction-meta">${faction.planetCount} planets · avg ${factionAverage.toFixed(1)} T${tier}</span>
             </div>
+            <div class="tier-faction-regions">
+                ${regionsMarkup || '<span class="tier-info-text">No regions recorded</span>'}
+            </div>
+        </section>
         `;
-    }
+    }).join('');
 
-    renderRegionalPlanets(planets, tier, color) {
+    return `
+        <div class="tier-region-overview">
+            ${summarySection}
+            <div class="tier-faction-list">
+                ${factionsMarkup}
+            </div>
+        </div>
+    `;
+}
+
+renderRegionalPlanets(planets, tier, color) {
         const regions = this.groupPlanetsByRegion(planets);
 
         return Array.from(regions.entries())
@@ -453,6 +443,92 @@ class BuildingAnalytics {
             `).join('');
     }
 
+
+attachRegionButtonHandlers(section) {
+    if (!section || section.dataset.regionHandlersAttached === 'true') {
+        return;
+    }
+
+    section.dataset.regionHandlersAttached = 'true';
+
+    section.addEventListener('click', (event) => {
+        const chip = event.target.closest('.region-chip');
+        if (!chip) return;
+
+        const encoded = chip.getAttribute('data-region');
+        if (!encoded) return;
+
+        try {
+            const payload = JSON.parse(decodeURIComponent(encoded));
+            const tierValue = parseInt(chip.getAttribute('data-tier'), 10) || 0;
+            const color = chip.getAttribute('data-color') || '#9b59b6';
+            this.showRegionModal(payload, tierValue, color);
+        } catch (error) {
+            console.error('Error parsing region payload:', error);
+        }
+    });
+}
+
+showRegionModal(regionData, tier, color) {
+    if (!regionData) return;
+
+    let overlay = document.getElementById('regionModalOverlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'regionModalOverlay';
+        overlay.className = 'region-modal-overlay';
+        overlay.innerHTML = `
+            <div class="region-modal">
+                <div class="region-modal-header">
+                    <h3 class="region-modal-title"></h3>
+                    <button type="button" class="region-modal-close" aria-label="Close">×</button>
+                </div>
+                <div class="region-modal-body"></div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+        overlay.addEventListener('click', (event) => {
+            if (event.target === overlay) {
+                overlay.style.display = 'none';
+            }
+        });
+
+        overlay.querySelector('.region-modal-close').addEventListener('click', () => {
+            overlay.style.display = 'none';
+        });
+    }
+
+    const titleEl = overlay.querySelector('.region-modal-title');
+    const bodyEl = overlay.querySelector('.region-modal-body');
+
+    const factionLabel = regionData.faction ? `Faction ${regionData.faction}` : 'Faction';
+    titleEl.textContent = `${factionLabel} · Region ${regionData.region}`;
+
+    const planets = Array.isArray(regionData.planets) ? regionData.planets : [];
+    if (planets.length === 0) {
+        bodyEl.innerHTML = '<p class="tier-info-text">No planets recorded for this region.</p>';
+    } else {
+        bodyEl.innerHTML = planets.map(planet => {
+            const safePlanet = {
+                planet: planet.planet,
+                system: planet.system,
+                tier_counts: planet.tier_counts,
+                total_resources: planet.total_resources
+            };
+            const encodedPlanet = encodeURIComponent(JSON.stringify(safePlanet));
+            const tierCount = (planet.tier_counts && (planet.tier_counts[tier] || planet.tier_counts[String(tier)])) || planet.highestTierCount || 0;
+            return `
+                <button type="button" class="planet-chip clickable" data-planet="${encodedPlanet}" data-tier="${tier}" data-color="${color}">
+                    ${planet.planet} (${tierCount} x T${tier})
+                </button>
+            `;
+        }).join('');
+    }
+
+    overlay.style.display = 'flex';
+    this.attachPlanetCardHandlers(bodyEl);
+}
 
     attachPlanetCardHandlers(section) {
         if (!section) return;

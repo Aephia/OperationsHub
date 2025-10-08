@@ -1,0 +1,322 @@
+{
+  "habs": [
+    {
+      "id": "hab-t1",
+      "name": "Hab T1",
+      "tier": 1,
+      "slots": 32,
+      "description": "Tier 1 habitat module",
+      "constructionTime": 1800,
+      "storage": 1000,
+      "constructionCost": {
+        "habitat-module": 1,
+        "environmental-control": 1
+      }
+    },
+    {
+      "id": "hab-t2",
+      "name": "Hab T2",
+      "tier": 2,
+      "slots": 243,
+      "description": "Tier 2 habitat module",
+      "constructionTime": 3600,
+      "storage": 2000,
+      "constructionCost": {
+        "hab-t1": 1,
+        "habitat-module": 1,
+        "environmental-control": 1,
+        "safety-interlock": 1
+      }
+    },
+    {
+      "id": "hab-t3",
+      "name": "Hab T3",
+      "tier": 3,
+      "slots": 1024,
+      "description": "Tier 3 habitat module",
+      "constructionTime": 7200,
+      "storage": 4000,
+      "constructionCost": {
+        "hab-t2": 1,
+        "habitat-module": 1,
+        "environmental-control": 1,
+        "safety-interlock": 1,
+        "life-support-coordination": 1,
+        "drywater": 1
+      }
+    },
+    {
+      "id": "hab-t4",
+      "name": "Hab T4",
+      "tier": 4,
+      "slots": 4096,
+      "description": "Tier 4 habitat module",
+      "constructionTime": 14400,
+      "storage": 8000,
+      "constructionCost": {
+        "hab-t3": 1,
+        "habitat-module": 1,
+        "environmental-control": 1,
+        "safety-interlock": 1,
+        "life-support-coordination": 1,
+        "structural-reinforcement-grid": 1,
+        "drywater": 1
+      }
+    },
+    {
+      "id": "hab-t5",
+      "name": "Hab T5",
+      "tier": 5,
+      "slots": 16384,
+      "description": "Tier 5 habitat module",
+      "constructionTime": 28800,
+      "storage": 16000,
+      "constructionCost": {
+        "hab-t4": 1,
+        "habitat-module": 1,
+        "environmental-control": 1,
+        "safety-interlock": 1,
+        "life-support-coordination": 1,
+        "structural-reinforcement-grid": 1,
+        "drywater": 1
+      }
+    },
+    {
+      "id": "hab-landing-pad-xxs",
+      "name": "Hab Landing Pad XXS",
+      "tier": 1,
+      "slots": 5,
+      "description": "Landing pad for ships",
+      "constructionTime": 900,
+      "constructionCost": {
+        "structural-foundation": 1,
+        "docking-clamp": 1
+      }
+    },
+    {
+      "id": "hab-landing-pad-xs",
+      "name": "Hab Landing Pad XS",
+      "tier": 1,
+      "slots": 10,
+      "description": "Landing pad for ships",
+      "constructionTime": 1800,
+      "constructionCost": {
+        "hab-landing-pad-xxs": 1,
+        "structural-foundation": 1,
+        "docking-clamp": 1,
+        "safety-interlock": 1
+      }
+    },
+    {
+      "id": "hab-landing-pad-s",
+      "name": "Hab Landing Pad S",
+      "tier": 1,
+      "slots": 20,
+      "description": "Landing pad for ships",
+      "constructionTime": 3600,
+      "constructionCost": {
+        "hab-landing-pad-xs": 1,
+        "structural-foundation": 1,
+        "docking-clamp": 1,
+        "safety-interlock": 1,
+        "fuel-storage-tank": 1
+      }
+    },
+    {
+      "id": "hab-landing-pad-m",
+      "name": "Hab Landing Pad M",
+      "tier": 1,
+      "slots": 40,
+      "description": "Landing pad for ships",
+      "constructionTime": 7200,
+      "constructionCost": {
+        "hab-landing-pad-s": 1,
+        "structural-foundation": 1,
+        "docking-clamp": 1,
+        "safety-interlock": 1,
+        "fuel-storage-tank": 1,
+        "structural-reinforcement-grid": 1
+      }
+    },
+    {
+      "id": "hab-interior-paint",
+      "name": "Hab Interior Paint",
+      "tier": 1,
+      "slots": 2,
+      "description": "Decorative habitat enhancement",
+      "constructionTime": 300,
+      "constructionCost": {
+        "material-processor": 1,
+        "environmental-control": 1
+      }
+    },
+    {
+      "id": "hab-exterior-paint",
+      "name": "Hab Exterior Paint",
+      "tier": 1,
+      "slots": 2,
+      "description": "Decorative habitat enhancement",
+      "constructionTime": 300,
+      "constructionCost": {
+        "material-processor": 1,
+        "protective-layer": 1
+      }
+    },
+    {
+      "id": "hab-pet-house",
+      "name": "Hab Pet House",
+      "tier": 1,
+      "slots": 2,
+      "description": "Decorative habitat enhancement",
+      "constructionTime": 300,
+      "constructionCost": {
+        "habitat-module": 1,
+        "environmental-control": 1
+      }
+    }
+  ],
+  "craftingStations": [
+    {
+      "id": "hab-crafting-station-xxs",
+      "name": "Hab Crafting Station XXS",
+      "size": "XXS",
+      "speedBonus": 1,
+      "slots": 8,
+      "jobSlots": 1,
+      "constructionTime": 900,
+      "constructionCost": {
+        "material-processor": 1,
+        "industrial-control-matrix": 1
+      }
+    },
+    {
+      "id": "hab-crafting-station-xs",
+      "name": "Hab Crafting Station XS",
+      "size": "XS",
+      "speedBonus": 1.25,
+      "slots": 64,
+      "jobSlots": 2,
+      "constructionTime": 1800,
+      "constructionCost": {
+        "hab-crafting-station-xxs": 1,
+        "material-processor": 1,
+        "industrial-control-matrix": 1,
+        "safety-interlock": 1
+      }
+    },
+    {
+      "id": "hab-crafting-station-s",
+      "name": "Hab Crafting Station S",
+      "size": "S",
+      "speedBonus": 1.5,
+      "slots": 216,
+      "jobSlots": 3,
+      "constructionTime": 3600,
+      "constructionCost": {
+        "hab-crafting-station-xs": 1,
+        "material-processor": 1,
+        "industrial-control-matrix": 1,
+        "safety-interlock": 1,
+        "structural-foundation": 1
+      }
+    },
+    {
+      "id": "hab-crafting-station-m",
+      "name": "Hab Crafting Station M",
+      "size": "M",
+      "speedBonus": 2,
+      "slots": 512,
+      "jobSlots": 5,
+      "constructionTime": 7200,
+      "constructionCost": {
+        "hab-crafting-station-s": 1,
+        "material-processor": 1,
+        "industrial-control-matrix": 1,
+        "safety-interlock": 1,
+        "structural-foundation": 1,
+        "structural-reinforcement-grid": 1
+      }
+    }
+  ],
+  "cargoStorage": [
+    {
+      "id": "hab-cargo-storage-t1",
+      "name": "Hab Cargo Storage T1",
+      "tier": 1,
+      "slots": 4,
+      "storageBonus": 500,
+      "jobSlotBonus": 0,
+      "constructionTime": 1800,
+      "constructionCost": {
+        "cargo-container": 1,
+        "structural-foundation": 1
+      }
+    },
+    {
+      "id": "hab-cargo-storage-t2",
+      "name": "Hab Cargo Storage T2",
+      "tier": 2,
+      "slots": 32,
+      "storageBonus": 1500,
+      "jobSlotBonus": 1,
+      "constructionTime": 3600,
+      "constructionCost": {
+        "hab-cargo-storage-t1": 1,
+        "cargo-container": 1,
+        "structural-foundation": 1,
+        "safety-interlock": 1
+      }
+    },
+    {
+      "id": "hab-cargo-storage-t3",
+      "name": "Hab Cargo Storage T3",
+      "tier": 3,
+      "slots": 108,
+      "storageBonus": 3000,
+      "jobSlotBonus": 1,
+      "constructionTime": 7200,
+      "constructionCost": {
+        "hab-cargo-storage-t2": 1,
+        "cargo-container": 1,
+        "structural-foundation": 1,
+        "safety-interlock": 1,
+        "storage-coordination-system": 1
+      }
+    },
+    {
+      "id": "hab-cargo-storage-t4",
+      "name": "Hab Cargo Storage T4",
+      "tier": 4,
+      "slots": 256,
+      "storageBonus": 6000,
+      "jobSlotBonus": 2,
+      "constructionTime": 14400,
+      "constructionCost": {
+        "hab-cargo-storage-t3": 1,
+        "cargo-container": 1,
+        "structural-foundation": 1,
+        "safety-interlock": 1,
+        "storage-coordination-system": 1,
+        "structural-reinforcement-grid": 1
+      }
+    },
+    {
+      "id": "hab-cargo-storage-t5",
+      "name": "Hab Cargo Storage T5",
+      "tier": 5,
+      "slots": 500,
+      "storageBonus": 12000,
+      "jobSlotBonus": 3,
+      "constructionTime": 28800,
+      "constructionCost": {
+        "hab-cargo-storage-t4": 1,
+        "cargo-container": 1,
+        "structural-foundation": 1,
+        "safety-interlock": 1,
+        "storage-coordination-system": 1,
+        "structural-reinforcement-grid": 1,
+        "architectural-framework": 1
+      }
+    }
+  ]
+}

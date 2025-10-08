@@ -1668,3 +1668,207 @@ main {
     flex-direction: column;
     gap: 0.6rem;
 }
+.region-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: 999px;
+    border: 1px solid rgba(155, 89, 182, 0.45);
+    background: rgba(155, 89, 182, 0.12);
+    color: #ffffff;
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.region-chip:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.6);
+    box-shadow: 0 6px 18px rgba(155, 89, 182, 0.25);
+}
+
+.region-chip-meta {
+    font-size: 0.7rem;
+    opacity: 0.75;
+    margin-left: 0.35rem;
+}
+
+.region-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(8, 10, 18, 0.75);
+    backdrop-filter: blur(6px);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 1200;
+    animation: fadeIn 0.2s ease;
+}
+
+.region-modal {
+    width: min(480px, 90vw);
+    max-height: 80vh;
+    background: rgba(22, 24, 34, 0.95);
+    border: 1px solid rgba(155, 89, 182, 0.35);
+    border-radius: 16px;
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.45);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.region-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.2rem 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.region-modal-title {
+    font-size: 1.1rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.region-modal-close {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    font-size: 1.2rem;
+    line-height: 1;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.region-modal-close:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.region-modal-body {
+    padding: 1.2rem 1.6rem 1.6rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    overflow-y: auto;
+}
+
+.region-modal-body .planet-chip {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    font-size: 0.85rem;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+.region-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: 999px;
+    border: 1px solid rgba(155, 89, 182, 0.45);
+    background: rgba(155, 89, 182, 0.12);
+    color: #ffffff;
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.region-chip:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.6);
+    box-shadow: 0 6px 18px rgba(155, 89, 182, 0.25);
+}
+
+.region-chip-meta {
+    font-size: 0.7rem;
+    opacity: 0.75;
+    margin-left: 0.35rem;
+}
+
+.region-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 12, 20, 0.75);
+    backdrop-filter: blur(6px);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+}
+
+.region-modal {
+    width: min(520px, 92vw);
+    max-height: 80vh;
+    background: rgba(18, 20, 32, 0.95);
+    border: 1px solid rgba(155, 89, 182, 0.35);
+    border-radius: 16px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.region-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.1rem 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.region-modal-title {
+    font-size: 1.05rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.region-modal-close {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    font-size: 1.2rem;
+    line-height: 1;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.region-modal-close:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.region-modal-body {
+    padding: 1.2rem 1.6rem 1.6rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    overflow-y: auto;
+}
+
+.region-modal-body .planet-chip {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    font-size: 0.85rem;
+}
+
+@media (max-width: 520px) {
+    .region-modal {
+        width: 94vw;
+    }
+}

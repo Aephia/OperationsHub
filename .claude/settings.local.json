@@ -14,7 +14,14 @@
       "Bash(git reset:*)",
       "Bash(git commit:*)",
       "Bash(start:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(git checkout:*)",
+      "Bash(iconv:*)",
+      "Bash(git rm:*)",
+      "Bash(rm:*)",
+      "Bash(mv:*)",
+      "Bash(cat:*)",
+      "Bash(git fetch:*)"
     ],
     "deny": [],
     "ask": []

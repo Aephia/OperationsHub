@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hub Explorer</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>🏠 Hub Explorer</h1>
+
+        <nav class="navigation-tabs">
+            <button class="nav-tab active" data-tab="habs">🏗️ Hubs</button>
+            <button class="nav-tab" data-tab="crafting">⚙️ Crafting</button>
+            <button class="nav-tab" data-tab="storage">📦 Storage</button>
+            <button class="nav-tab" data-tab="planner">📋 Planner</button>
+        </nav>
+
+        <nav class="breadcrumb">
+            <a href="../index.html">Home</a> > Hub Explorer
+        </nav>
+    </header>
+
+    <main>
+        <!-- Hubs Tab Content -->
+        <div id="habsTab" class="tab-content active">
+            <div class="section-header">
+                <h2>Habitat Modules & Upgrades</h2>
+                <p>Explore habitat tiers and their upgrade paths</p>
+            </div>
+            <div id="habs-list" class="building-grid"></div>
+
+            <div class="section-header" style="margin-top: 2rem;">
+                <h2>Landing Pads</h2>
+            </div>
+            <div id="landing-pads-list" class="building-grid"></div>
+
+            <div class="section-header" style="margin-top: 2rem;">
+                <h2>Decorative Enhancements</h2>
+            </div>
+            <div id="decorative-list" class="building-grid"></div>
+        </div>
+
+        <!-- Crafting Stations Tab -->
+        <div id="craftingTab" class="tab-content">
+            <div class="section-header">
+                <h2>Crafting Station Comparison</h2>
+                <p>Compare efficiency and capacity across station sizes</p>
+            </div>
+            <div id="crafting-comparison" class="comparison-grid"></div>
+        </div>
+
+        <!-- Cargo Storage Tab -->
+        <div id="storageTab" class="tab-content">
+            <div class="section-header">
+                <h2>Cargo Storage Calculator</h2>
+                <p>Calculate storage capacity and efficiency</p>
+            </div>
+            <div id="storage-calculator" class="building-grid"></div>
+        </div>
+
+        <!-- Build Planner Tab -->
+        <div id="plannerTab" class="tab-content">
+            <div class="section-header">
+                <h2>Build Plan</h2>
+                <p>Add buildings to create your custom hab plan</p>
+            </div>
+
+            <div class="planner-layout">
+                <div class="plan-summary">
+                    <h3>Current Plan Summary</h3>
+                    <div id="plan-stats" class="stats-grid">
+                        <div class="stat-card">
+                            <label>Total Slots Used</label>
+                            <span id="total-slots">0</span>
+                        </div>
+                        <div class="stat-card">
+                            <label>Total Storage</label>
+                            <span id="total-storage">0</span>
+                        </div>
+                        <div class="stat-card">
+                            <label>Total Job Slots</label>
+                            <span id="total-jobs">0</span>
+                        </div>
+                        <div class="stat-card">
+                            <label>Construction Time</label>
+                            <span id="total-time">0h 0m</span>
+                        </div>
+                    </div>
+
+                    <h3>Resource Requirements</h3>
+                    <div id="plan-resources" class="resource-list"></div>
+
+                    <div class="plan-actions">
+                        <button id="clear-plan-btn" class="btn btn-secondary">Clear Plan</button>
+                        <button id="export-plan-btn" class="btn btn-primary">Export Plan</button>
+                    </div>
+                </div>
+
+                <div class="plan-buildings">
+                    <h3>Buildings in Plan</h3>
+                    <div id="plan-list" class="plan-items"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Building Detail Modal -->
+    <div id="building-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="modal-title"></h2>
+            <div id="modal-body"></div>
+            <div class="modal-actions">
+                <button id="add-to-plan-btn" class="btn btn-primary">Add to Plan</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js" type="module"></script>
+</body>
+</html>

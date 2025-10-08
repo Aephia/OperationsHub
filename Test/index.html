@@ -254,6 +254,42 @@
                 🏗️ Enhanced Base Class Tests
             </button>
 
+            <div class="section-title">New Feature Tests</div>
+
+            <button class="test-button individual" onclick="runHubExplorerTests()">
+                🏠 Hub Explorer Tests
+            </button>
+
+            <button class="test-button individual" onclick="runClaimStakeConstructionTests()">
+                🏗️ ClaimStake Construction Tests
+            </button>
+
+            <button class="test-button individual" onclick="runClaimStakeAnalyticsTests()">
+                📊 ClaimStake Analytics Tests
+            </button>
+
+            <button class="test-button individual" onclick="runGaliaFleetTests()">
+                🚢 GaliaViewer Fleet Tests
+            </button>
+
+            <button class="test-button individual" onclick="runGaliaSearchTests()">
+                🔍 GaliaViewer Search Tests
+            </button>
+
+            <div class="section-title">Explorer Analytics Tests</div>
+
+            <button class="test-button individual" onclick="runPlanetAnalyticsTests()">
+                🪐 Planet Analytics Tests
+            </button>
+
+            <button class="test-button individual" onclick="runRecipeAnalyticsTests()">
+                🔧 Recipe Analytics Tests
+            </button>
+
+            <button class="test-button individual" onclick="runResourcesAnalyticsTests()">
+                💎 Resources Analytics Tests
+            </button>
+
             <button class="test-button danger" onclick="clearConsole()">
                 🗑️ Clear Console
             </button>
@@ -315,6 +351,12 @@
 
     <!-- Load Galia Viewer tests (depends on test.js) -->
     <script src="galia-viewer-tests.js"></script>
+
+    <!-- Load new test files -->
+    <script src="hub-explorer-tests.js"></script>
+    <script src="claimstake-enhanced-tests.js"></script>
+    <script src="galiaviewer-enhanced-tests.js"></script>
+    <script src="explorer-analytics-tests.js"></script>
 
     <!-- Load unified test manager -->
     <script src="unified-test-manager.js"></script>
@@ -471,6 +513,41 @@
 
         async function runEnhancedBaseClassTests() {
             await runTestWithStatus('runEnhancedBaseClassTests', 'Enhanced Base Class Tests');
+        }
+
+        // New feature test functions
+        async function runHubExplorerTests() {
+            await runTestWithStatus('runSpecificTest', 'Hub Explorer Tests');
+            if (window.hubExplorerTests) await window.hubExplorerTests.run();
+        }
+
+        async function runClaimStakeConstructionTests() {
+            if (window.claimStakeConstructionTests) await window.claimStakeConstructionTests.run();
+        }
+
+        async function runClaimStakeAnalyticsTests() {
+            if (window.claimStakeAnalyticsTests) await window.claimStakeAnalyticsTests.run();
+        }
+
+        async function runGaliaFleetTests() {
+            if (window.galiaFleetTests) await window.galiaFleetTests.run();
+        }
+
+        async function runGaliaSearchTests() {
+            if (window.galiaSearchTests) await window.galiaSearchTests.run();
+        }
+
+        // Explorer analytics test functions
+        async function runPlanetAnalyticsTests() {
+            if (window.planetAnalyticsTests) await window.planetAnalyticsTests.run();
+        }
+
+        async function runRecipeAnalyticsTests() {
+            if (window.recipeAnalyticsTests) await window.recipeAnalyticsTests.run();
+        }
+
+        async function runResourcesAnalyticsTests() {
+            if (window.resourcesAnalyticsTests) await window.resourcesAnalyticsTests.run();
         }
 
         // Legacy support functions

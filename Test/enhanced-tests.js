@@ -188,14 +188,11 @@ const enhancedDOMUtilsTests = new TestRunner('Enhanced DOMUtils Tests');
 
 enhancedDOMUtilsTests.test('DOMUtils should create elements correctly', () => {
     if (typeof DOMUtils !== 'undefined') {
-        const testDiv = DOMUtils.createElement('div', {
-            className: 'test-class',
-            id: 'test-id'
-        });
+        const testDiv = DOMUtils.createElement('div', 'test-class', 'Test Content');
 
         assertEquals(testDiv.tagName.toLowerCase(), 'div', 'Should create div element');
         assertEquals(testDiv.className, 'test-class', 'Should set class name');
-        assertEquals(testDiv.id, 'test-id', 'Should set id');
+        assertEquals(testDiv.innerHTML, 'Test Content', 'Should set content');
     } else {
         console.log('⚠️ Skipping DOMUtils createElement test - class not available');
     }
@@ -213,12 +210,15 @@ enhancedDOMUtilsTests.test('DOMUtils should format numbers correctly', () => {
 
 enhancedDOMUtilsTests.test('DOMUtils should create checkboxes correctly', () => {
     if (typeof DOMUtils !== 'undefined' && DOMUtils.createCheckbox) {
-        const checkbox = DOMUtils.createCheckbox('test-id', 'test-name', 'Test Label');
+        const result = DOMUtils.createCheckbox('test-id', 'test-value', 'Test Label');
 
-        assertExists(checkbox, 'Should create checkbox element');
-        assertEquals(checkbox.type, 'checkbox', 'Should be checkbox type');
-        assertEquals(checkbox.id, 'test-id', 'Should set correct id');
-        assertEquals(checkbox.name, 'test-name', 'Should set correct name');
+        assertExists(result, 'Should return result object');
+        assertExists(result.checkbox, 'Should have checkbox element');
+        assertExists(result.container, 'Should have container element');
+        assertExists(result.label, 'Should have label element');
+        assertEquals(result.checkbox.type, 'checkbox', 'Should be checkbox type');
+        assertEquals(result.checkbox.id, 'test-id', 'Should set correct id');
+        assertEquals(result.checkbox.value, 'test-value', 'Should set correct value');
     } else {
         console.log('⚠️ Skipping DOMUtils createCheckbox test - method not available');
     }
@@ -574,8 +574,18 @@ async function runEnhancedTests() {
     console.log('✅ Enhanced Test Suite Complete!');
 }
 
-// Make test functions available globally
+// Make test functions and suites available globally
 if (typeof window !== 'undefined') {
+    // Export test suite objects for Unified Test Manager
+    window.enhancedResourcesTests = enhancedResourcesTests;
+    window.enhancedDataLoaderTests = enhancedDataLoaderTests;
+    window.enhancedDOMUtilsTests = enhancedDOMUtilsTests;
+    window.enhancedBaseClassTests = enhancedBaseClassTests;
+    window.enhancedGaliaViewerTests = enhancedGaliaViewerTests;
+    window.enhancedErrorHandlingTests = enhancedErrorHandlingTests;
+    window.enhancedPerformanceTests = enhancedPerformanceTests;
+
+    // Export runner functions
     window.runEnhancedTests = runEnhancedTests;
     window.runEnhancedResourcesTests = () => enhancedResourcesTests.run();
     window.runEnhancedDataLoaderTests = () => enhancedDataLoaderTests.run();

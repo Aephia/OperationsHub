@@ -1686,6 +1686,18 @@ if (typeof window !== 'undefined') {
     window.UnifiedTestRunner = UnifiedTestRunner;
     console.log('✅ Global testRunner and UnifiedTestRunner set');
 
+    // Export test suite objects for Unified Test Manager
+    window.recipeTests = recipeTests;
+    window.claimStakeTests = claimStakeTests;
+    window.planetTests = planetTests;
+    window.dataLoaderTests = dataLoaderTests;
+    window.resourcesTests = resourcesTests;
+    window.uiTests = uiTests;
+    window.performanceTests = performanceTests;
+    window.errorHandlingTests = errorHandlingTests;
+    window.integrationTests = integrationTests;
+    window.baseClassTests = baseClassTests;
+
     window.runAllTests = () => testRunner.runAllTests();
     window.runDataLoaderTests = () => dataLoaderTests.run();
     console.log('✅ Core test functions set');

@@ -165,18 +165,18 @@ export class SearchManager {
         if (searchResults) searchResults.style.display = 'none';
         if (searchBox) searchBox.value = '';
 
-        console.log('Selected:', result.type, result.name, 'Index:', result.systemIndex);
+        console.log('Selected:', result.type, result.name);
 
         // Center on the selected object
         if (result.type === 'star') {
-            this.centerOnStar(result.system, result.systemIndex);
+            this.centerOnStar(result.system);
         } else if (result.type === 'planet') {
-            this.centerOnPlanet(result.planet, result.system, result.systemIndex, result.planetIndex);
+            this.centerOnPlanet(result.planet, result.system, result.planetIndex);
         }
     }
 
     // Center camera on a star system
-    centerOnStar(system, systemIndex) {
+    centerOnStar(system) {
         if (!window.galiaViewer || !window.galiaViewer.sceneManager) {
             console.error('❌ GaliaViewer not initialized');
             return;
@@ -190,47 +190,64 @@ export class SearchManager {
             return;
         }
 
-        if (systemIndex < 0 || systemIndex >= systemContainers.length) {
-            console.error('❌ Invalid system index:', systemIndex, 'Total systems:', systemContainers.length);
+        // Find container by system name/key instead of relying on index
+        const systemId = system.name || system.key || system.id;
+        const container = systemContainers.find(sc => {
+            const sys = sc.starMesh.userData.system;
+            return sys.name === systemId || sys.key === systemId || sys.id === systemId;
+        });
+
+        if (!container) {
+            console.error('❌ Could not find system container for:', systemId);
             return;
         }
 
-        const container = systemContainers[systemIndex];
-        if (!container || !container.position) {
-            console.error('❌ Invalid container at index:', systemIndex);
-            return;
-        }
-
-        const position = container.position.clone();
+        const position = container.containerGroup.position.clone();
 
         console.log('✅ Centering on star:', system.name, 'at position:', position);
 
-        // Animate camera to position
-        sceneManager.animateCameraToPosition(
-            position.x,
-            position.y,
-            position.z + 50,
-            position.x,
-            position.y,
-            position.z
+        // Calculate camera position
+        const cameraDistance = 50;
+        const cameraPos = new THREE.Vector3(
+            position.x + cameraDistance * 0.7,
+            position.y + cameraDistance * 0.5,
+            position.z + cameraDistance * 0.7
         );
 
-        // Show system info
+        // Animate camera to position using UI manager's smooth transition
         if (window.galiaViewer.uiManager) {
-            window.galiaViewer.uiManager.showClickStatus('star', { system: system });
+            window.galiaViewer.uiManager.smoothCameraTransition(cameraPos, position, 1000);
         }
 
-        // Show connections for this system
+        // Store as last clicked for centering purposes
+        GlobalState.lastClickedSystemData = {
+            sysObj: container,
+            system: container.system
+        };
+
+        // Show center button
+        if (window.galiaViewer.uiManager) {
+            window.galiaViewer.uiManager.showCenterButton();
+        }
+
+        // Show detailed popup for star
+        if (window.galiaViewer.uiManager) {
+            window.galiaViewer.uiManager.showObjectDetails('star', { system: system });
+        }
+
+        // Show labels for the system
         if (window.galiaViewer.eventHandlers) {
-            GlobalState.lastClickedSystem = container;
-            GlobalState.lastClickedSystemData = system;
-            window.galiaViewer.eventHandlers.restoreAllSystems();
-            window.galiaViewer.connectionManager.showSystemConnections(container, system);
+            window.galiaViewer.eventHandlers.showLabelsForSystem(container);
+        }
+
+        // Show connected systems
+        if (window.galiaViewer.connectionManager) {
+            window.galiaViewer.connectionManager.showConnectedSystems(container);
         }
     }
 
     // Center camera on a planet
-    centerOnPlanet(planet, system, systemIndex, planetIndex) {
+    centerOnPlanet(planet, system, planetIndex) {
         if (!window.galiaViewer || !window.galiaViewer.sceneManager) {
             console.error('❌ GaliaViewer not initialized');
             return;
@@ -244,54 +261,75 @@ export class SearchManager {
             return;
         }
 
-        if (systemIndex < 0 || systemIndex >= systemContainers.length) {
-            console.error('❌ Invalid system index:', systemIndex, 'Total systems:', systemContainers.length);
+        // Find container by system name/key instead of relying on index
+        const systemId = system.name || system.key || system.id;
+        const container = systemContainers.find(sc => {
+            const sys = sc.starMesh.userData.system;
+            return sys.name === systemId || sys.key === systemId || sys.id === systemId;
+        });
+
+        if (!container) {
+            console.error('❌ Could not find system container for:', systemId);
             return;
         }
 
-        const container = systemContainers[systemIndex];
-        if (!container || !container.children) {
-            console.error('❌ Invalid container or children at index:', systemIndex);
+        // Get planet meshes from the container object
+        const planetMeshes = container.planetMeshes || [];
+
+        if (!planetMeshes || planetMeshes.length === 0) {
+            console.error('❌ No planets in system:', systemId);
             return;
         }
 
-        // Find planet mesh
-        const planets = container.children.filter(child =>
-            child.userData && child.userData.type === 'planet'
-        );
-
-        if (planetIndex < 0 || planetIndex >= planets.length) {
-            console.error('❌ Invalid planet index:', planetIndex, 'Total planets:', planets.length);
+        if (planetIndex < 0 || planetIndex >= planetMeshes.length) {
+            console.error('❌ Invalid planet index:', planetIndex, 'Total planets:', planetMeshes.length);
             return;
         }
 
-        const planetMesh = planets[planetIndex];
+        const planetObj = planetMeshes[planetIndex];
+        const planetMesh = planetObj.mesh || planetObj;
         const worldPosition = new THREE.Vector3();
         planetMesh.getWorldPosition(worldPosition);
 
         console.log('✅ Centering on planet:', planet.name, 'at position:', worldPosition);
 
-        // Animate camera to planet position
-        sceneManager.animateCameraToPosition(
-            worldPosition.x,
-            worldPosition.y,
-            worldPosition.z + 20,
-            worldPosition.x,
-            worldPosition.y,
-            worldPosition.z
+        // Calculate camera position
+        const cameraDistance = 20;
+        const cameraPos = new THREE.Vector3(
+            worldPosition.x + cameraDistance * 0.7,
+            worldPosition.y + cameraDistance * 0.5,
+            worldPosition.z + cameraDistance * 0.7
         );
 
-        // Show planet info
+        // Animate camera to planet position using UI manager's smooth transition
         if (window.galiaViewer.uiManager) {
-            window.galiaViewer.uiManager.showClickStatus('planet', { planet: planet, parentSystem: system });
+            window.galiaViewer.uiManager.smoothCameraTransition(cameraPos, worldPosition, 1000);
         }
 
-        // Show parent system connections
+        // Store as last clicked for centering purposes
+        GlobalState.lastClickedSystemData = {
+            sysObj: container,
+            system: container.system
+        };
+
+        // Show center button
+        if (window.galiaViewer.uiManager) {
+            window.galiaViewer.uiManager.showCenterButton();
+        }
+
+        // Show detailed popup for planet
+        if (window.galiaViewer.uiManager) {
+            window.galiaViewer.uiManager.showObjectDetails('planet', { planet: planet, parentSystem: system });
+        }
+
+        // Show labels for only the clicked planet (hide others)
         if (window.galiaViewer.eventHandlers) {
-            GlobalState.lastClickedSystem = container;
-            GlobalState.lastClickedSystemData = system;
-            window.galiaViewer.eventHandlers.restoreAllSystems();
-            window.galiaViewer.connectionManager.showSystemConnections(container, system);
+            window.galiaViewer.eventHandlers.showLabelsForSystem(container, planet);
+        }
+
+        // Show connected systems
+        if (window.galiaViewer.connectionManager) {
+            window.galiaViewer.connectionManager.showConnectedSystems(container);
         }
     }
 }

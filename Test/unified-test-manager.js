@@ -16,25 +16,39 @@ class UnifiedTestManager {
     }
 
     waitForTestSuites() {
-        // Check if test suites are available every 100ms
+        let lastSize = 0;
+        let stableCount = 0;
+
+        // Check if test suites are available every 200ms
         const checkInterval = setInterval(() => {
             this.registerAvailableTestSuites();
 
-            // If we have test suites registered, stop checking
-            if (this.testSuites.size > 0) {
+            // If size hasn't changed, increment stable counter
+            if (this.testSuites.size === lastSize) {
+                stableCount++;
+            } else {
+                stableCount = 0;
+                lastSize = this.testSuites.size;
+            }
+
+            // If size is stable for 3 checks (600ms), we're done
+            if (this.testSuites.size > 0 && stableCount >= 3) {
                 clearInterval(checkInterval);
                 console.log(`✅ Found ${this.testSuites.size} test suites`);
                 this.logAvailableTests();
             }
-        }, 100);
+        }, 200);
 
-        // Stop checking after 5 seconds
+        // Stop checking after 10 seconds
         setTimeout(() => {
             clearInterval(checkInterval);
             if (this.testSuites.size === 0) {
-                console.log('⚠️ No test suites found after 5 seconds');
+                console.log('⚠️ No test suites found after 10 seconds');
+            } else {
+                console.log(`✅ Loaded ${this.testSuites.size} test suites`);
+                this.logAvailableTests();
             }
-        }, 5000);
+        }, 10000);
     }
 
     registerAvailableTestSuites() {
@@ -61,6 +75,22 @@ class UnifiedTestManager {
 
         // Galia Viewer test suites from galia-viewer-tests.js
         this.registerGaliaViewerTests();
+
+        // Hub Explorer test suites from hub-explorer-tests.js
+        this.registerIfExists('hubExplorerTests', 'Hub Explorer Tests');
+
+        // ClaimStake Enhanced test suites from claimstake-enhanced-tests.js
+        this.registerIfExists('claimStakeConstructionTests', 'ClaimStake Construction Tests');
+        this.registerIfExists('claimStakeAnalyticsTests', 'ClaimStake Analytics Tests');
+
+        // GaliaViewer Enhanced test suites from galiaviewer-enhanced-tests.js
+        this.registerIfExists('galiaFleetTests', 'GaliaViewer Fleet Tests');
+        this.registerIfExists('galiaSearchTests', 'GaliaViewer Search Tests');
+
+        // Explorer Analytics test suites from explorer-analytics-tests.js
+        this.registerIfExists('planetAnalyticsTests', 'Planet Explorer Analytics Tests');
+        this.registerIfExists('recipeAnalyticsTests', 'Recipe Explorer Analytics Tests');
+        this.registerIfExists('resourcesAnalyticsTests', 'Resources Explorer Analytics Tests');
     }
 
     registerIfExists(variableName, displayName) {
@@ -85,12 +115,14 @@ class UnifiedTestManager {
     }
 
     getCategoryFromName(name) {
+        if (name.includes('hub') || name.includes('Hub')) return 'hub';
         if (name.includes('enhanced')) return 'enhanced';
         if (name.includes('galia') || name.includes('Galia')) return 'galia';
         if (name.includes('performance') || name.includes('Performance')) return 'performance';
         if (name.includes('error') || name.includes('Error')) return 'error';
         if (name.includes('integration') || name.includes('Integration')) return 'integration';
         if (name.includes('ui') || name.includes('UI')) return 'ui';
+        if (name.includes('construction') || name.includes('analytics')) return 'claimstake';
         return 'core';
     }
 
