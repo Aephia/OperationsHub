@@ -21,7 +21,10 @@
       "Bash(rm:*)",
       "Bash(mv:*)",
       "Bash(cat:*)",
-      "Bash(git fetch:*)"
+      "Bash(git fetch:*)",
+      "Bash(curl -s \"https://ses.staratlas.com/Ship%20Config%20Lite/index.html\")",
+      "Bash(curl -s \"https://ses.staratlas.com/Ship%20Config%20Lite/js/component-management.js\")",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

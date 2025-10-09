@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ship Explorer</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>🚀 Ship Explorer</h1>
+
+        <nav class="navigation-tabs">
+            <button class="nav-tab active" data-tab="explorer">🌍 Explorer</button>
+            <button class="nav-tab" data-tab="analytics">📊 Analytics</button>
+        </nav>
+
+        <nav class="breadcrumb">
+            <a href="../index.html">Home</a> > Ship Explorer
+        </nav>
+    </header>
+
+    <main>
+        <!-- Explorer Tab Content -->
+        <div id="explorerTab" class="tab-content active">
+            <div class="stats">
+                <div class="stat-card">
+                    <span class="stat-number" id="totalShips">0</span>
+                    <span class="stat-label">Total Ships</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-number" id="selectedShips">0</span>
+                    <span class="stat-label">Selected</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-number" id="uniqueManufacturers">0</span>
+                    <span class="stat-label">Manufacturers</span>
+                </div>
+            </div>
+
+            <div class="explorer-layout">
+                <div class="ships-sidebar">
+                    <h3>🚀 Ships</h3>
+                    <div class="search-container">
+                        <input type="text" id="searchInput" placeholder="Search ships...">
+                    </div>
+                    <div class="checkbox-container" id="shipCheckboxes">
+                        <!-- Ship checkboxes will be populated here -->
+                    </div>
+                </div>
+
+                <div class="comparison-main">
+                    <div class="comparison-table-wrapper" id="comparisonTableWrapper">
+                        <!-- Comparison table will be generated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analytics Tab Content -->
+        <div id="analyticsTab" class="tab-content">
+            <div class="analytics-header">
+                <h2>📊 Ship Analytics</h2>
+                <p>Analyze ship specifications across all classes and manufacturers</p>
+            </div>
+
+            <div class="analytics-sections" id="analyticsContent">
+                <!-- Analytics will be populated here -->
+            </div>
+        </div>
+    </main>
+
+    <script src="../Utils/DataLoader.js"></script>
+    <script src="config-calculator.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

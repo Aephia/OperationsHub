@@ -19,6 +19,9 @@ class DataLoader {
                     return await this.loadPlanetData(basePath);
                 case 'resources':
                     return await this.loadResourcesData();
+                case 'ship':
+                case 'ships':
+                    return await this.loadShipData(basePath);
                 default:
                     throw new Error(`Unknown explorer type: ${explorerType}`);
             }
@@ -154,6 +157,36 @@ class DataLoader {
     }
 
     /**
+     * Load Ship data
+     */
+    static async loadShipData(basePath) {
+        // Prefer global variable if available
+        if (typeof window.rawShipData !== 'undefined' && window.rawShipData?.ships) {
+            console.log('�o. Using ship data from global variable');
+            return this.processShipData(window.rawShipData);
+        }
+
+        // Attempt to fetch aggregated JSON file
+        try {
+            const response = await fetch(`${basePath}ships-data.json`);
+            if (response.ok) {
+                const data = await response.json();
+                console.log('�o. Loaded ship data from JSON file');
+                return this.processShipData(data);
+            }
+        } catch (error) {
+            console.warn('�s��,? Could not load ships-data.json, checking fallback sources');
+        }
+
+        // Fallback to global variable defined without window attachment
+        if (typeof rawShipData !== 'undefined') {
+            return this.processShipData(rawShipData);
+        }
+
+        throw new Error('No ship data source found');
+    }
+
+    /**
      * Process recipe data into the expected format
      */
     static processRecipeData(rawData) {
@@ -278,6 +311,201 @@ class DataLoader {
     }
 
     /**
+     * Process ship data into explorer-friendly format
+     */
+    static processShipData(rawData) {
+        if (!rawData || !Array.isArray(rawData.ships)) {
+            return {
+                ships: [],
+                metadata: rawData?.metadata || {},
+                shipCount: 0,
+                lastUpdated: rawData?.lastUpdated || null,
+                shipIndex: {},
+                statRanges: {},
+                distributions: {},
+                componentUsage: { categories: {}, slots: {} },
+                configStats: { totalConfigurations: 0, averageComponentsPerConfig: 0, averageSlotFillRate: 0 }
+            };
+        }
+
+        const shipIndex = {};
+        const manufacturerCounts = {};
+        const specCounts = {};
+        const sizeTierCounts = {};
+        const classCounts = {};
+        const statRanges = {};
+        const componentCategoryUsage = {};
+        const componentSlotUsage = {};
+
+        let totalConfigurations = 0;
+        let totalFilledSlots = 0;
+        let totalSlots = 0;
+
+        const rangePaths = [
+            { key: 'cargoCapacity', path: ['stats', 'capacities', 'cargoCapacity'] },
+            { key: 'fuelCapacity', path: ['stats', 'capacities', 'fuelCapacity'] },
+            { key: 'ammoCapacity', path: ['stats', 'capacities', 'ammoCapacity'] },
+            { key: 'warpSpeed', path: ['stats', 'travel', 'warpSpeed'] },
+            { key: 'subwarpSpeed', path: ['stats', 'travel', 'subwarpSpeed'] },
+            { key: 'maxWarpDistance', path: ['stats', 'travel', 'maxWarpDistance'] },
+            { key: 'warpFuelConsumption', path: ['stats', 'travel', 'warpFuelConsumption'] },
+            { key: 'subwarpFuelConsumption', path: ['stats', 'travel', 'subwarpFuelConsumption'] },
+            { key: 'planetExitFuel', path: ['stats', 'travel', 'planetExitFuel'] },
+            { key: 'warpLaneSpeed', path: ['stats', 'travel', 'warpLaneSpeed'] },
+            { key: 'warpLaneFee', path: ['stats', 'travel', 'warpLaneFee'] },
+            { key: 'damage', path: ['stats', 'combat', 'damage'] },
+            { key: 'damageRange', path: ['stats', 'combat', 'damageRange'] },
+            { key: 'hitPoints', path: ['stats', 'combat', 'hitPoints'] },
+            { key: 'shieldPoints', path: ['stats', 'combat', 'shieldPoints'] },
+            { key: 'shieldRechargeRate', path: ['stats', 'combat', 'shieldRechargeRate'] },
+            { key: 'missilePower', path: ['stats', 'combat', 'missilePower'] },
+            { key: 'stealthPower', path: ['stats', 'combat', 'stealthPower'] },
+            { key: 'scanPower', path: ['stats', 'scanning', 'scanPower'] },
+            { key: 'scanCoolDown', path: ['stats', 'scanning', 'scanCoolDown'] },
+            { key: 'repairCost', path: ['stats', 'repair', 'repairCost'] },
+            { key: 'repairRate', path: ['stats', 'repair', 'repairRate'] },
+            { key: 'repairAbility', path: ['stats', 'repair', 'repairAbility'] },
+            { key: 'repairEfficiency', path: ['stats', 'repair', 'repairEfficiency'] }
+        ];
+
+        const updateRange = (key, value) => {
+            if (typeof value !== 'number' || Number.isNaN(value)) {
+                return;
+            }
+            if (!statRanges[key]) {
+                statRanges[key] = { min: value, max: value };
+            } else {
+                statRanges[key].min = Math.min(statRanges[key].min, value);
+                statRanges[key].max = Math.max(statRanges[key].max, value);
+            }
+        };
+
+        rawData.ships.forEach((ship) => {
+            if (!ship) {
+                return;
+            }
+
+            if (ship.id) {
+                shipIndex[ship.id] = ship;
+            }
+
+            if (ship.manufacturer) {
+                manufacturerCounts[ship.manufacturer] = (manufacturerCounts[ship.manufacturer] || 0) + 1;
+            }
+
+            if (ship.spec) {
+                specCounts[ship.spec] = (specCounts[ship.spec] || 0) + 1;
+            }
+
+            if (ship.sizeTier) {
+                sizeTierCounts[ship.sizeTier] = (sizeTierCounts[ship.sizeTier] || 0) + 1;
+            }
+
+            if (ship.class !== null && ship.class !== undefined) {
+                classCounts[ship.class] = (classCounts[ship.class] || 0) + 1;
+            }
+
+            rangePaths.forEach(({ key, path }) => {
+                let value = ship;
+
+                for (const segment of path) {
+                    if (value && Object.prototype.hasOwnProperty.call(value, segment)) {
+                        value = value[segment];
+                    } else {
+                        value = undefined;
+                        break;
+                    }
+                }
+
+                if (typeof value === 'number' && !Number.isNaN(value)) {
+                    updateRange(key, value);
+                }
+            });
+
+            const configurations = Array.isArray(ship.configurations) ? ship.configurations : [];
+            totalConfigurations += configurations.length;
+
+            configurations.forEach((config) => {
+                const summary = config?.summary || {};
+                if (summary.totalFilled) {
+                    totalFilledSlots += summary.totalFilled;
+                }
+                if (summary.totalSlots) {
+                    totalSlots += summary.totalSlots;
+                }
+
+                if (summary.byCategory) {
+                    Object.entries(summary.byCategory).forEach(([category, data]) => {
+                        if (!componentCategoryUsage[category]) {
+                            componentCategoryUsage[category] = { filled: 0, slots: 0 };
+                        }
+                        componentCategoryUsage[category].filled += data?.filled || 0;
+                        componentCategoryUsage[category].slots += data?.slots || 0;
+                    });
+                }
+
+                const components = config?.components || {};
+                Object.entries(components).forEach(([category, slots]) => {
+                    Object.entries(slots || {}).forEach(([slotName, detail]) => {
+                        const usageKey = `${category}::${slotName}`;
+                        if (!componentSlotUsage[usageKey]) {
+                            componentSlotUsage[usageKey] = { filled: 0, slots: 0 };
+                        }
+                        componentSlotUsage[usageKey].filled += detail?.items?.length || 0;
+                        componentSlotUsage[usageKey].slots += detail?.totalSlots || 0;
+                    });
+                });
+            });
+        });
+
+        const componentUsage = {
+            categories: componentCategoryUsage,
+            slots: componentSlotUsage
+        };
+
+        const configStats = {
+            totalConfigurations,
+            averageComponentsPerConfig: totalConfigurations > 0
+                ? Number((totalFilledSlots / totalConfigurations).toFixed(2))
+                : 0,
+            averageSlotFillRate: totalSlots > 0
+                ? Number(((totalFilledSlots / totalSlots) * 100).toFixed(2))
+                : 0
+        };
+
+        const metadata = rawData.metadata || {};
+        if (metadata.manufacturers) {
+            metadata.manufacturers = metadata.manufacturers.slice().sort((a, b) => a.localeCompare(b));
+        }
+        if (metadata.specs) {
+            metadata.specs = metadata.specs.slice().sort((a, b) => a.localeCompare(b));
+        }
+        if (metadata.sizeTiers) {
+            metadata.sizeTiers = metadata.sizeTiers.slice();
+        }
+        if (metadata.classes) {
+            metadata.classes = metadata.classes.slice().sort((a, b) => a - b);
+        }
+
+        return {
+            ships: rawData.ships,
+            metadata,
+            shipCount: rawData.shipCount || rawData.ships.length,
+            lastUpdated: rawData.lastUpdated || null,
+            shipIndex,
+            statRanges,
+            distributions: {
+                manufacturers: manufacturerCounts,
+                specs: specCounts,
+                sizeTiers: sizeTierCounts,
+                classes: classCounts
+            },
+            componentUsage,
+            configStats
+        };
+    }
+
+    /**
      * Get recipe type classification
      */
     static getRecipeType(outputType) {
@@ -338,6 +566,19 @@ class DataLoader {
                 return { mapData: [], totalSystems: 0 };
             case 'resources':
                 return { resources: [] };
+            case 'ship':
+            case 'ships':
+                return {
+                    ships: [],
+                    metadata: {},
+                    shipCount: 0,
+                    lastUpdated: null,
+                    shipIndex: {},
+                    statRanges: {},
+                    distributions: {},
+                    componentUsage: { categories: {}, slots: {} },
+                    configStats: { totalConfigurations: 0, averageComponentsPerConfig: 0, averageSlotFillRate: 0 }
+                };
             default:
                 return {};
         }
