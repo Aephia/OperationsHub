@@ -19,6 +19,10 @@ class ShipExplorer {
         this.classScalingFormulas = {};
         this.tierScalingFormulas = {};
         this.modifiedStatsCache = new Map();
+        this.recipeCostCache = new Map();
+        this.configResourceSummary = null;
+        this.configResourceTotalsCache = new Map();
+        this.analyticsRefreshTimer = null;
 
         this.statDefinitions = this.getStatDefinitions();
         this.statPathMap = {};
@@ -29,6 +33,14 @@ class ShipExplorer {
 
         this.configCalculator = new ShipConfigCalculator({ multiplierStackingMode: 'linear' });
         this.activeDetailOverlay = null;
+        this.activeResourceOverlay = null;
+
+        // Initialize new management modules
+        this.attributeManager = null;
+        this.attributesPanel = null;
+        this.componentManager = null;
+        this.customShipManager = null;
+        this.recipeLookup = null;
 
         this.init();
     }
@@ -56,6 +68,9 @@ class ShipExplorer {
                     this.shipMap.set(ship.id, ship);
                 }
             });
+            this.configResourceSummary = null;
+            this.configResourceTotalsCache.clear();
+            this.recipeCostCache.clear();
             console.log(`[ShipExplorer] Loaded ${this.ships.length} ships`);
         } catch (error) {
             console.error('[ShipExplorer] Error loading ship dataset:', error);
@@ -69,20 +84,31 @@ class ShipExplorer {
 
         try {
             console.log('[ShipExplorer] Loading component metadata...');
-            const response = await fetch('../ship_configurations-combatv5.json');
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
+
+            // Load both JSON files in parallel
+            const [componentsResponse, formulasResponse] = await Promise.all([
+                fetch('../JSON/ship-components.json'),
+                fetch('../JSON/ship-formulas.json')
+            ]);
+
+            if (!componentsResponse.ok || !formulasResponse.ok) {
+                throw new Error(`HTTP error - Components: ${componentsResponse.status}, Formulas: ${formulasResponse.status}`);
             }
 
-            const data = await response.json();
+            const [componentsData, formulasData] = await Promise.all([
+                componentsResponse.json(),
+                formulasResponse.json()
+            ]);
 
-            if (data.components?.rewardTree) {
-                this.buildComponentLookup(data.components.rewardTree);
+            // Build component lookup from components file
+            if (componentsData.components?.rewardTree) {
+                this.buildComponentLookup(componentsData.components.rewardTree);
             }
 
-            this.componentAttributes = data.componentAttributes || {};
-            this.classScalingFormulas = data.classScalingFormulas || {};
-            this.tierScalingFormulas = data.tierScalingFormulas || {};
+            // Get formulas from formulas file
+            this.componentAttributes = formulasData.componentAttributes || {};
+            this.classScalingFormulas = formulasData.classScalingFormulas || {};
+            this.tierScalingFormulas = formulasData.tierScalingFormulas || {};
 
             this.configCalculator.setData({
                 componentsById: this.componentsById,
@@ -93,13 +119,63 @@ class ShipExplorer {
                 statKeys: this.statKeys
             });
 
+            this.recipeCostCache.clear();
+            this.configResourceSummary = null;
+            this.configResourceTotalsCache.clear();
+
             this.componentDataLoaded = true;
-            console.log('[ShipExplorer] Component data loaded');
+            console.log('[ShipExplorer] Component data loaded from split files');
+
+            // Initialize management modules after component data is loaded
+            this.initializeManagementModules();
 
             this.modifiedStatsCache.clear();
             this.renderComparison();
+            if (this.currentTab === 'analytics') {
+                this.renderAnalytics();
+            }
         } catch (error) {
             console.error('[ShipExplorer] Failed to load component metadata:', error);
+        }
+    }
+
+    initializeManagementModules() {
+        if (typeof AttributeManager !== 'undefined') {
+            this.attributeManager = new AttributeManager(this);
+            console.log('[ShipExplorer] AttributeManager initialized');
+        }
+
+        if (typeof AttributesPanel !== 'undefined') {
+            this.attributesPanel = new AttributesPanel(this);
+            console.log('[ShipExplorer] AttributesPanel initialized');
+        }
+
+        if (typeof ComponentManager !== 'undefined') {
+            this.componentManager = new ComponentManager(this);
+            console.log('[ShipExplorer] ComponentManager initialized');
+        }
+
+        if (typeof CustomShipManager !== 'undefined') {
+            this.customShipManager = new CustomShipManager(this);
+            console.log('[ShipExplorer] CustomShipManager initialized');
+        }
+
+        if (typeof RecipeLookup !== 'undefined') {
+            this.recipeLookup = new RecipeLookup();
+            const recipePromise = this.recipeLookup.loadRecipes();
+            if (recipePromise && typeof recipePromise.then === 'function') {
+                recipePromise.then(() => {
+                    this.recipeCostCache.clear();
+                    this.configResourceSummary = null;
+                    this.configResourceTotalsCache.clear();
+                    if (this.currentTab === 'analytics') {
+                        this.renderAnalytics();
+                    }
+                }).catch(error => {
+                    console.error('[ShipExplorer] Recipe data failed to load:', error);
+                });
+            }
+            console.log('[ShipExplorer] RecipeLookup initialized');
         }
     }
 
@@ -227,7 +303,8 @@ class ShipExplorer {
     getShipDisplayName(ship) {
         const manufacturer = ship?.manufacturer || 'Unknown';
         const name = ship?.name || 'Ship';
-        return `${manufacturer} ${name}`;
+        const sizeTier = ship?.sizeTier || '';
+        return sizeTier ? `${manufacturer} ${name} (${sizeTier})` : `${manufacturer} ${name}`;
     }
 
     toggleShip(index) {
@@ -350,7 +427,7 @@ class ShipExplorer {
                 html += `<td class="stat-value">${this.formatStatValue(entry.baseValue)}</td>`;
                 entry.cells.forEach(cell => {
                     if (cell.type === 'empty') {
-                        html += '<td class="stat-value stat-empty">ó</td>';
+                        html += '<td class="stat-value stat-empty">ÔøΩ</td>';
                         return;
                     }
 
@@ -424,6 +501,7 @@ class ShipExplorer {
         </select>`;
     }
 
+
     getBaseStatValue(ship, statKey) {
         const path = this.statPathMap[statKey];
         if (!path) return null;
@@ -476,7 +554,7 @@ class ShipExplorer {
     }
 
     formatStatValue(value) {
-        if (value === null || value === undefined || Number.isNaN(value)) return 'ó';
+        if (value === null || value === undefined || Number.isNaN(value)) return 'ÔøΩ';
         if (typeof value !== 'number') return value;
 
         if (value === 0) return '0';
@@ -504,10 +582,10 @@ class ShipExplorer {
         if (!container) return;
 
         const totalShips = this.ships.length;
-        const averageConfigs = this.shipData?.configStats?.averageComponentsPerConfig ?? 'ó';
-        const avgFilled = this.shipData?.configStats?.averageSlotFillRate ?? 'ó';
+        const averageConfigs = this.shipData?.configStats?.averageComponentsPerConfig ?? 'ÔøΩ';
+        const avgFilled = this.shipData?.configStats?.averageSlotFillRate ?? 'ÔøΩ';
 
-        container.innerHTML = `
+        const overviewSection = `
             <div class="analytics-section">
                 <h3>Ship Dataset Overview</h3>
                 <p>Total ships indexed: <strong>${totalShips}</strong></p>
@@ -515,6 +593,384 @@ class ShipExplorer {
                 <p>Average slot fill rate: <strong>${avgFilled}%</strong></p>
             </div>
         `;
+
+        const resourcesSection = this.buildConfigResourceAnalyticsSection();
+
+        container.innerHTML = `
+            ${overviewSection}
+            ${resourcesSection}
+        `;
+    }
+
+    buildConfigResourceAnalyticsSection() {
+        if (!this.componentDataLoaded) {
+            return `
+                <div class="analytics-section">
+                    <h3>Configuration Resource Totals</h3>
+                    <p>Component metadata is still loading. Please check back in a moment.</p>
+                </div>
+            `;
+        }
+
+        if (!this.recipeLookup || !this.recipeLookup.recipesLoaded) {
+            if (!this.analyticsRefreshTimer) {
+                this.analyticsRefreshTimer = setTimeout(() => {
+                    this.analyticsRefreshTimer = null;
+                    this.renderAnalytics();
+                }, 500);
+            }
+            return `
+                <div class="analytics-section">
+                    <h3>Configuration Resource Totals</h3>
+                    <p>Recipe data is loading. Totals will appear as soon as the recipes are available.</p>
+                </div>
+            `;
+        }
+
+        if (this.analyticsRefreshTimer) {
+            clearTimeout(this.analyticsRefreshTimer);
+            this.analyticsRefreshTimer = null;
+        }
+
+        if (!this.configResourceSummary) {
+            this.configResourceSummary = this.calculateConfigResourceSummary();
+        }
+
+        const summary = this.configResourceSummary;
+        if (!summary || summary.rows.length === 0) {
+            return `
+                <div class="analytics-section">
+                    <h3>Configuration Resource Totals</h3>
+                    <p>No configuration resource data available.</p>
+                </div>
+            `;
+        }
+
+        const rowsHtml = summary.rows.map(row => {
+            const cachedTotals = this.configResourceTotalsCache.get(row.configName);
+            const totalCell = cachedTotals
+                ? cachedTotals.totalQuantity.toLocaleString(undefined, { maximumFractionDigits: 2 })
+                : '<span class="analytics-hint">Click to calculate</span>';
+            const buttonLabel = cachedTotals ? 'View Again' : 'View Raw Inputs';
+
+            return `
+                <tr>
+                    <td>${this.escapeHtml(row.configName)}</td>
+                    <td>${row.configCount.toLocaleString()}</td>
+                    <td>${row.componentCount.toLocaleString()}</td>
+                    <td>${totalCell}</td>
+                    <td>
+                        <button
+                            type="button"
+                            class="view-resource-btn"
+                            onclick="window.shipExplorer.showConfigResourceBreakdown('${this.escapeAttribute(row.configName)}')"
+                        >
+                            ${buttonLabel}
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        const noteHtml = `
+            <div class="analytics-note">
+                ‚ÑπÔ∏è Totals are calculated on-demand. Click a configuration to compute the complete raw input breakdown.
+            </div>
+        `;
+
+        return `
+            <div class="analytics-section">
+                <h3>Configuration Resource Totals</h3>
+                <p>Spot-check resource requirements per configuration without incurring up-front processing costs.</p>
+                <div class="analytics-table-wrapper">
+                    <table class="analytics-table">
+                        <thead>
+                            <tr>
+                                <th>Configuration</th>
+                                <th>Configs Counted</th>
+                                <th>Components</th>
+                                <th>Total Raw Inputs</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rowsHtml}
+                        </tbody>
+                    </table>
+                </div>
+                ${noteHtml}
+            </div>
+        `;
+    }
+
+    collectComponentIds(config) {
+        const ids = [];
+        if (!config || !config.components) {
+            return ids;
+        }
+
+        Object.values(config.components).forEach(category => {
+            if (!category || typeof category !== 'object') {
+                return;
+            }
+            Object.values(category).forEach(slot => {
+                if (!slot || !Array.isArray(slot.items)) {
+                    return;
+                }
+                slot.items.forEach(itemId => {
+                    if (itemId !== null && itemId !== undefined) {
+                        ids.push(itemId);
+                    }
+                });
+            });
+        });
+
+        return ids;
+    }
+
+    getResourceCostForComponent(componentId) {
+        if (componentId === null || componentId === undefined) {
+            return null;
+        }
+
+        const cacheKey = componentId.toString();
+        if (this.recipeCostCache.has(cacheKey)) {
+            return this.recipeCostCache.get(cacheKey);
+        }
+
+        if (!this.recipeLookup || !this.recipeLookup.recipesLoaded) {
+            return null;
+        }
+
+        const component = this.componentsById[cacheKey];
+        if (!component) {
+            this.recipeCostCache.set(cacheKey, null);
+            return null;
+        }
+
+        const componentType = component.componentType || component.properties?.['Ship Component'] || component.name;
+        const componentClass = component.className || component.properties?.Class;
+        const componentTier = component.tierName || component.properties?.Tier;
+
+        const recipes = this.recipeLookup.findComponentRecipes(componentType, componentClass, componentTier);
+        if (!recipes || recipes.length === 0) {
+            this.recipeCostCache.set(cacheKey, null);
+            return null;
+        }
+
+        const recipeCost = this.recipeLookup.calculateRecipeCost(recipes[0]);
+        if (!recipeCost || !recipeCost.totalResources) {
+            this.recipeCostCache.set(cacheKey, null);
+            return null;
+        }
+
+        const normalizedResources = {};
+        Object.entries(recipeCost.totalResources).forEach(([resource, amount]) => {
+            if (typeof amount === 'number' && !Number.isNaN(amount)) {
+                normalizedResources[resource] = (normalizedResources[resource] || 0) + amount;
+            }
+        });
+
+        const cacheEntry = {
+            resources: normalizedResources,
+            time: recipeCost.totalTime || 0
+        };
+
+        this.recipeCostCache.set(cacheKey, cacheEntry);
+        return cacheEntry;
+    }
+
+    calculateConfigResourceSummary() {
+        const totals = new Map();
+
+        this.ships.forEach(ship => {
+            const configurations = Array.isArray(ship?.configurations) ? ship.configurations : [];
+            configurations.forEach(config => {
+                const entry = totals.get(config.name) || {
+                    configCount: 0,
+                    componentCount: 0
+                };
+
+                entry.configCount += 1;
+
+                const componentIds = this.collectComponentIds(config);
+                entry.componentCount += componentIds.length;
+
+                totals.set(config.name, entry);
+            });
+        });
+
+        const rows = Array.from(totals.entries()).map(([configName, data]) => {
+            return {
+                configName,
+                configCount: data.configCount,
+                componentCount: data.componentCount
+            };
+        }).sort((a, b) => {
+            if (b.configCount !== a.configCount) return b.configCount - a.configCount;
+            if (b.componentCount !== a.componentCount) return b.componentCount - a.componentCount;
+            return a.configName.localeCompare(b.configName);
+        });
+
+        return { rows };
+    }
+
+    getConfigResourceTotals(configName) {
+        if (!configName) return null;
+        if (!this.componentDataLoaded || !this.recipeLookup || !this.recipeLookup.recipesLoaded) {
+            return null;
+        }
+
+        if (this.configResourceTotalsCache.has(configName)) {
+            return this.configResourceTotalsCache.get(configName);
+        }
+
+        let configCount = 0;
+        let componentCount = 0;
+        let evaluatedComponents = 0;
+        let missingRecipes = 0;
+        const resourceMap = new Map();
+
+        this.ships.forEach(ship => {
+            const configurations = Array.isArray(ship?.configurations) ? ship.configurations : [];
+            configurations.forEach(config => {
+                if (config.name !== configName) {
+                    return;
+                }
+
+                configCount += 1;
+                const componentIds = this.collectComponentIds(config);
+                componentCount += componentIds.length;
+
+                componentIds.forEach(componentId => {
+                    evaluatedComponents += 1;
+                    const cost = this.getResourceCostForComponent(componentId);
+                    if (!cost) {
+                        missingRecipes += 1;
+                        return;
+                    }
+
+                    Object.entries(cost.resources).forEach(([resource, amount]) => {
+                        resourceMap.set(resource, (resourceMap.get(resource) || 0) + amount);
+                    });
+                });
+            });
+        });
+
+        const resources = Array.from(resourceMap.entries())
+            .sort((a, b) => b[1] - a[1])
+            .map(([resource, amount]) => ({ resource, amount }));
+        const totalQuantity = resources.reduce((sum, entry) => sum + entry.amount, 0);
+
+        const result = {
+            configName,
+            configCount,
+            componentCount,
+            totalQuantity,
+            resources,
+            missingRecipes,
+            evaluatedComponents
+        };
+
+        this.configResourceTotalsCache.set(configName, result);
+        return result;
+    }
+
+    showConfigResourceBreakdown(configName) {
+        if (!configName) return;
+
+        if (!this.componentDataLoaded) {
+            alert('Component metadata has not finished loading yet. Please try again shortly.');
+            return;
+        }
+
+        if (!this.recipeLookup || !this.recipeLookup.recipesLoaded) {
+            alert('Recipe data is still loading. Please try again once recipes are available.');
+            return;
+        }
+
+        const totals = this.getConfigResourceTotals(configName);
+        if (!totals) {
+            alert('Unable to calculate resource totals for this configuration.');
+            return;
+        }
+
+        // Refresh the analytics table so the cached total appears
+        this.renderAnalytics();
+
+        if (this.activeResourceOverlay) {
+            this.activeResourceOverlay.remove();
+            this.activeResourceOverlay = null;
+        }
+
+        const overlay = document.createElement('div');
+        overlay.className = 'stat-details-overlay';
+
+        const modal = document.createElement('div');
+        modal.className = 'stat-details-modal resource-breakdown-modal';
+
+        const resourceRows = totals.resources.length > 0
+            ? totals.resources.map(entry => `
+                <tr>
+                    <td>${this.escapeHtml(entry.resource)}</td>
+                    <td>${entry.amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
+                </tr>
+            `).join('')
+            : '<tr><td colspan="2">No raw resource inputs found for this configuration.</td></tr>';
+
+        const noteMessage = totals.missingRecipes > 0
+            ? `‚ö†Ô∏è ${totals.missingRecipes.toLocaleString()} component slots were missing recipe data and are excluded.`
+            : '‚úÖ All component recipes were resolved for this calculation.';
+
+        modal.innerHTML = `
+            <div class="stat-details-header">
+                <h2>Raw Inputs: ${this.escapeHtml(configName)}</h2>
+                <button type="button" class="close-button" aria-label="Close">&times;</button>
+            </div>
+            <div class="stat-details-body">
+                <div class="resource-breakdown-summary">
+                    <div><span class="metric-label">Configurations:</span> ${totals.configCount.toLocaleString()}</div>
+                    <div><span class="metric-label">Components Evaluated:</span> ${totals.componentCount.toLocaleString()}</div>
+                    <div><span class="metric-label">Total Raw Inputs:</span> ${totals.totalQuantity.toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
+                </div>
+                <div class="resource-breakdown-note">${this.escapeHtml(noteMessage)}</div>
+                <div class="resource-breakdown-table-wrapper">
+                    <table class="resource-breakdown-table">
+                        <thead>
+                            <tr>
+                                <th>Resource</th>
+                                <th>Total Quantity</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${resourceRows}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+        this.activeResourceOverlay = overlay;
+
+        const closeOverlay = () => {
+            if (this.activeResourceOverlay) {
+                this.activeResourceOverlay.remove();
+                this.activeResourceOverlay = null;
+            }
+        };
+
+        overlay.addEventListener('click', (event) => {
+            if (event.target === overlay) {
+                closeOverlay();
+            }
+        });
+
+        const closeButton = modal.querySelector('.close-button');
+        if (closeButton) {
+            closeButton.addEventListener('click', closeOverlay);
+        }
     }
 
     invalidateCacheForShip(shipId) {
@@ -564,6 +1020,7 @@ class ShipExplorer {
         }).sort((a, b) => b.impactScore - a.impactScore);
 
         const rawEffects = detail?.rawEffects || [];
+        console.log('[showStatDetails] rawEffects:', rawEffects);
         const statLabel = this.getStatLabel(statKey);
         const shipLabel = this.getShipDisplayName(ship);
 
@@ -615,8 +1072,8 @@ class ShipExplorer {
                                         <td>${this.escapeHtml(entry.componentName || entry.groupName || 'Component')}</td>
                                         <td>${this.escapeHtml(entry.category || entry.componentType || '')}</td>
                                         <td>${entry.count}</td>
-                                        <td>${entry.additiveTotal ? this.formatSignedValue(entry.additiveTotal) : 'ó'}</td>
-                                        <td>${entry.multiplierBonus ? this.formatPercentage(entry.multiplierBonus) : 'ó'}</td>
+                                        <td>${entry.additiveTotal ? this.formatSignedValue(entry.additiveTotal) : 'ÔøΩ'}</td>
+                                        <td>${entry.multiplierBonus ? this.formatPercentage(entry.multiplierBonus) : 'ÔøΩ'}</td>
                                     </tr>
                                 `).join('')}
                             </tbody>
@@ -628,12 +1085,23 @@ class ShipExplorer {
                         <h3>Installed Components</h3>
                         <ul class="stat-detail-list">
                             ${rawEffects.map(effect => `
-                                <li>
-                                    <span class="component-name">${this.escapeHtml(effect.componentName || effect.groupName || 'Component')}</span>
-                                    <span class="component-meta">
-                                        ${this.escapeHtml(effect.category || '')}${effect.componentType ? ` &middot; ${this.escapeHtml(effect.componentType)}` : ''}
-                                        ${effect.className || effect.tierName ? ` &middot; ${[effect.className, effect.tierName].filter(Boolean).join(' ')}` : ''}
-                                    </span>
+                                <li class="component-item">
+                                    <div>
+                                        <span class="component-name">${this.escapeHtml(effect.componentName || effect.groupName || 'Component')}</span>
+                                        <span class="component-meta">
+                                            ${this.escapeHtml(effect.category || '')}${effect.componentType ? ` &middot; ${this.escapeHtml(effect.componentType)}` : ''}
+                                            ${effect.className || effect.tierName ? ` &middot; ${[effect.className, effect.tierName].filter(Boolean).join(' ')}` : ''}
+                                        </span>
+                                    </div>
+                                    ${effect.componentType && effect.className ? `
+                                        <button class="view-recipe-btn"
+                                                data-component-type="${this.escapeAttribute(effect.componentType)}"
+                                                data-component-class="${this.escapeAttribute(effect.className)}"
+                                                data-component-tier="${this.escapeAttribute(effect.tierName || '')}"
+                                                title="View crafting recipes">
+                                            üìã Recipe
+                                        </button>
+                                    ` : ''}
                                 </li>
                             `).join('')}
                         </ul>
@@ -654,6 +1122,17 @@ class ShipExplorer {
         });
         modal.querySelector('.close-button').addEventListener('click', close);
         modal.addEventListener('click', event => event.stopPropagation());
+
+        // Add event listeners for recipe buttons
+        modal.querySelectorAll('.view-recipe-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const componentType = btn.dataset.componentType;
+                const componentClass = btn.dataset.componentClass;
+                const componentTier = btn.dataset.componentTier;
+                this.showRecipeCosts(componentType, componentClass, componentTier);
+            });
+        });
     }
 
     hideStatDetails() {
@@ -663,19 +1142,129 @@ class ShipExplorer {
         this.activeDetailOverlay = null;
     }
 
+    async showRecipeCosts(componentType, componentClass, componentTier) {
+        if (!this.recipeLookup) {
+            alert('Recipe lookup not initialized.');
+            return;
+        }
+
+        // Wait for recipes to load if not loaded yet
+        if (!this.recipeLookup.recipesLoaded) {
+            console.log('[showRecipeCosts] Waiting for recipes to load...');
+            await this.recipeLookup.loadRecipes();
+
+            // Retry a few times if still not loaded
+            let retries = 0;
+            while (!this.recipeLookup.recipesLoaded && retries < 5) {
+                await new Promise(resolve => setTimeout(resolve, 500));
+                retries++;
+            }
+
+            if (!this.recipeLookup.recipesLoaded) {
+                alert('Recipe data failed to load. Please refresh the page.');
+                return;
+            }
+        }
+
+        // Find the specific tier recipe
+        const recipes = this.recipeLookup.findComponentRecipes(componentType, componentClass, componentTier);
+
+        if (recipes.length === 0) {
+            console.error('‚ùå No recipes found for:', componentType, componentClass, componentTier);
+            console.log('Available recipes:', this.recipeLookup.recipes.slice(0, 10).map(r => r.outputName));
+            alert(`No recipes found for ${componentType} ${componentClass} ${componentTier}`);
+            return;
+        }
+
+        const recipe = recipes[0];
+        const allTierRecipes = [{ tier: componentTier, recipes: [recipe] }];
+
+        const overlay = document.createElement('div');
+        overlay.className = 'stat-details-overlay';
+
+        const modal = document.createElement('div');
+        modal.className = 'stat-details-modal recipe-modal';
+
+        modal.innerHTML = `
+            <div class="stat-details-header">
+                <h2>Recipe Costs: ${this.escapeHtml(componentType)} ${this.escapeHtml(componentClass)}</h2>
+                <button type="button" class="close-button">&times;</button>
+            </div>
+            <div class="stat-details-body">
+                ${allTierRecipes.map(tierData => {
+                    const tier = tierData.tier;
+                    const recipe = tierData.recipes[0]; // Get first recipe for this tier
+                    const costs = this.recipeLookup.calculateRecipeCost(recipe);
+
+                    return `
+                        <div class="recipe-tier-section">
+                            <h3>${tier}</h3>
+                            <div class="recipe-summary">
+                                <p><strong>Construction Time:</strong> ${this.recipeLookup.formatTime(recipe.constructionTime)}</p>
+                                <p><strong>Production Steps:</strong> ${recipe.productionSteps || 0}</p>
+                            </div>
+                            <div class="recipe-ingredients">
+                                <h4>Direct Ingredients (${recipe.ingredients?.length || 0})</h4>
+                                <ul>
+                                    ${(recipe.ingredients || []).map(ing => `
+                                        <li>${this.escapeHtml(ing.name)}: ${ing.quantity}</li>
+                                    `).join('')}
+                                </ul>
+                            </div>
+                            ${costs && Object.keys(costs.totalResources).length > 0 ? `
+                                <div class="recipe-total-resources">
+                                    <h4>Total Resources Required (${Object.keys(costs.totalResources).length})</h4>
+                                    <ul>
+                                        ${Object.entries(costs.totalResources)
+                                            .sort((a, b) => b[1] - a[1])
+                                            .map(([resource, amount]) => `
+                                                <li>${this.escapeHtml(resource)}: ${Math.ceil(amount)}</li>
+                                            `).join('')}
+                                    </ul>
+                                    <p><strong>Total Time (including sub-recipes):</strong> ${this.recipeLookup.formatTime(costs.totalTime)}</p>
+                                </div>
+                            ` : ''}
+                            <div class="recipe-actions">
+                                <a href="${this.recipeLookup.getRecipeExplorerUrl(recipe.outputName)}"
+                                   target="_blank"
+                                   class="recipe-explorer-link">
+                                    View in Recipe Explorer ‚Üí
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
+
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+
+        const close = () => {
+            if (overlay.parentNode) {
+                overlay.parentNode.removeChild(overlay);
+            }
+        };
+
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) close();
+        });
+        modal.querySelector('.close-button').addEventListener('click', close);
+    }
+
     formatPercentage(value) {
-        if (value === null || value === undefined || Number.isNaN(value)) return 'ó';
+        if (value === null || value === undefined || Number.isNaN(value)) return 'ÔøΩ';
         return `${(value * 100).toFixed(1)}%`;
     }
 
     formatSignedValue(value) {
-        if (value === null || value === undefined || Number.isNaN(value)) return 'ó';
+        if (value === null || value === undefined || Number.isNaN(value)) return 'ÔøΩ';
         const sign = value >= 0 ? '+' : '-';
         return `${sign}${this.formatStatValue(Math.abs(value))}`;
     }
 
     formatSignedPercent(value) {
-        if (value === null || value === undefined || Number.isNaN(value)) return 'ó';
+        if (value === null || value === undefined || Number.isNaN(value)) return 'ÔøΩ';
         const sign = value >= 0 ? '+' : '-';
         return `${sign}${Math.abs(value).toFixed(1)}%`;
     }

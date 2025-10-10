@@ -351,6 +351,59 @@ class RecipeExplorerApp {
         return this.allRecipes.find(recipe => recipe.name === recipeName);
     }
 
+    resolveRecipeFromParam(recipeParam) {
+        if (!recipeParam) {
+            return null;
+        }
+
+        // Direct ID match
+        let recipe = this.findRecipeById(recipeParam);
+        if (recipe) {
+            return recipe;
+        }
+
+        const lowerParam = recipeParam.toLowerCase();
+
+        // Case-insensitive ID match
+        recipe = this.allRecipes.find(r => r.id.toLowerCase() === lowerParam);
+        if (recipe) {
+            return recipe;
+        }
+
+        // Slug-style normalization (matches names or IDs that omit prefixes)
+        const normalizedParam = lowerParam
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '');
+
+        // Match by normalized ID (handles prefixes like ship-component-)
+        recipe = this.allRecipes.find(r => {
+            const normalizedId = r.id.toLowerCase();
+            return normalizedId === normalizedParam
+                || normalizedId.endsWith(`-${normalizedParam}`)
+                || normalizedId.includes(normalizedParam);
+        });
+        if (recipe) {
+            return recipe;
+        }
+
+        // Match by exact name
+        recipe = this.allRecipes.find(r => r.name.toLowerCase() === lowerParam);
+        if (recipe) {
+            return recipe;
+        }
+
+        // Match by normalized name slug
+        recipe = this.allRecipes.find(r => {
+            const normalizedName = r.name
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '');
+            return normalizedName === normalizedParam;
+        });
+
+        return recipe || null;
+    }
+
     getRecipeIcon(recipeId) {
         const recipe = this.findRecipeById(recipeId);
         return recipe ? this.getTypeIcon(recipe.type) : '📦';
@@ -379,52 +432,64 @@ class RecipeExplorerApp {
     // Check URL parameters and pre-select recipe if specified
     checkURLParameters(retryCount = 0) {
         const urlParams = new URLSearchParams(window.location.search);
+        const maxRetries = 5;
         const recipeId = urlParams.get('recipe');
 
         if (!recipeId) return;
 
-        console.log('🔗 Recipe ID from URL:', recipeId);
+        console.log('\U0001f517 Recipe ID from URL:', recipeId);
 
-        // Find the checkbox with this ID
-        const checkbox = document.querySelector(`input[value="${recipeId}"]`);
+        const availableCheckboxes = document.querySelectorAll('#recipeCheckboxes input[type="checkbox"]');
+        if (availableCheckboxes.length === 0) {
+            if (retryCount < maxRetries) {
+                console.warn(`\u26a0\ufe0f Recipe checkboxes not rendered yet. Retrying (${retryCount + 1}/${maxRetries})...`);
+                setTimeout(() => this.checkURLParameters(retryCount + 1), 200 * (retryCount + 1));
+            } else {
+                console.error('\u274c Unable to apply recipe selection: checkboxes not available after retries.');
+            }
+            return;
+        }
+
+        const recipeMatch = this.resolveRecipeFromParam(recipeId);
+        if (!recipeMatch) {
+            console.error('\u274c Recipe not found in data:', recipeId);
+            console.log('Available recipe IDs:', this.allRecipes.slice(0, 10).map(r => r.id));
+            return;
+        }
+
+        const normalizedId = recipeMatch.id;
+        if (normalizedId !== recipeId) {
+            console.log(`\u2705 Normalized recipe parameter to: ${normalizedId}`);
+        }
+
+        const checkbox = document.querySelector(`input[value="${normalizedId}"]`);
 
         if (checkbox) {
-            console.log('✅ Found checkbox for recipe:', recipeId);
+            console.log('\u2705 Found checkbox for recipe:', normalizedId);
             checkbox.checked = true;
 
-            // Expand the category if it's collapsed
             const categoryRecipes = checkbox.closest('.category-recipes');
             if (categoryRecipes && categoryRecipes.classList.contains('collapsed')) {
                 const categoryHeader = categoryRecipes.previousElementSibling;
                 if (categoryHeader) {
-                    categoryHeader.click(); // Expand the category
+                    categoryHeader.click();
                 }
             }
 
             this.handleRecipeSelection();
         } else {
-            // Try to find the recipe in allRecipes to see if it exists
-            const recipe = this.allRecipes.find(r => r.id === recipeId);
+            console.warn(`\u26a0\ufe0f Checkbox not found for recipe: ${normalizedId} (attempt ${retryCount + 1}/${maxRetries})`);
 
-            if (recipe) {
-                console.warn(`⚠️ Checkbox not found for recipe: ${recipeId} (attempt ${retryCount + 1}/3)`);
-                console.log('Recipe exists:', recipe.name, 'Category:', recipe.category, 'Type:', recipe.type);
-
-                // Retry up to 3 times with increasing delays
-                if (retryCount < 3) {
-                    setTimeout(() => this.checkURLParameters(retryCount + 1), 300);
-                } else {
-                    // Checkbox not found after retries - manually add recipe to selection
-                    console.warn('⚠️ Checkbox not found after retries. Manually selecting recipe:', recipe.name);
-                    this.selectedRecipes.add(recipeId);
-                    this.updateTreeDisplay();
-                }
+            if (retryCount < maxRetries) {
+                setTimeout(() => this.checkURLParameters(retryCount + 1), 200 * (retryCount + 1));
             } else {
-                console.error('❌ Recipe not found in data:', recipeId);
-                console.log('Available recipe IDs:', this.allRecipes.slice(0, 10).map(r => r.id));
+                console.warn(`\u26a0\ufe0f Checkbox not found after retries. Manually selecting recipe: ${recipeMatch.name}`);
+                this.selectedRecipes.add(normalizedId);
+                this.updateTreeDisplay();
             }
         }
     }
+
 }
 
 // Initialize the application when the DOM is loaded

@@ -252,7 +252,9 @@ class ShipConfigCalculator {
                 componentName: info.name,
                 category: effectiveCategory,
                 groupName,
-                componentType: info.componentType || componentType || groupName
+                componentType: info.componentType || componentType || groupName,
+                className,
+                tierName
             });
         });
     }

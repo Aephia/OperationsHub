@@ -266,12 +266,18 @@ main {
 .config-select {
     width: 100%;
     padding: 0.5rem;
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(30, 30, 50, 0.95);
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 6px;
     color: white;
     font-size: 0.85rem;
     cursor: pointer;
+}
+
+.config-select option {
+    background: #1a1a2e;
+    color: white;
+    padding: 0.5rem;
 }
 
 .config-select:focus {
@@ -555,6 +561,224 @@ main {
     color: #4facfe;
     margin-bottom: 1rem;
     font-size: 1.3rem;
+}
+
+.analytics-table-wrapper {
+    margin-top: 1rem;
+    overflow-x: auto;
+}
+
+.analytics-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.analytics-table th,
+.analytics-table td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.analytics-table th {
+    color: #8fd3fe;
+    font-weight: 600;
+    background: rgba(79, 172, 254, 0.1);
+}
+
+.analytics-table tbody tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.analytics-note {
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    color: #ffcb6b;
+    line-height: 1.5;
+}
+
+.analytics-hint {
+    color: rgba(255, 255, 255, 0.6);
+    font-style: italic;
+}
+
+.view-resource-btn {
+    background: rgba(79, 172, 254, 0.2);
+    border: 1px solid rgba(79, 172, 254, 0.3);
+    color: #fff;
+    padding: 0.45rem 0.9rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.view-resource-btn:hover {
+    background: rgba(79, 172, 254, 0.4);
+    border-color: rgba(79, 172, 254, 0.6);
+    transform: translateY(-1px);
+}
+
+.resource-breakdown-modal {
+    max-width: 640px;
+}
+
+.resource-breakdown-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    font-size: 0.95rem;
+}
+
+.resource-breakdown-summary .metric-label {
+    display: block;
+    font-weight: 600;
+    color: #8fd3fe;
+    margin-bottom: 0.25rem;
+}
+
+.resource-breakdown-note {
+    background: rgba(255, 255, 255, 0.05);
+    border-left: 4px solid rgba(79, 172, 254, 0.6);
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+
+.resource-breakdown-table-wrapper {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.resource-breakdown-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.resource-breakdown-table th,
+.resource-breakdown-table td {
+    padding: 0.6rem 0.8rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    text-align: left;
+}
+
+.resource-breakdown-table th {
+    background: rgba(79, 172, 254, 0.1);
+    color: #8fd3fe;
+    position: sticky;
+    top: 0;
+}
+
+/* Recipe Components */
+.component-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.component-item:last-child {
+    border-bottom: none;
+}
+
+.view-recipe-btn {
+    background: rgba(79, 172, 254, 0.2);
+    border: 1px solid rgba(79, 172, 254, 0.3);
+    color: #fff;
+    padding: 0.4rem 0.8rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.view-recipe-btn:hover {
+    background: rgba(79, 172, 254, 0.4);
+    border-color: rgba(79, 172, 254, 0.6);
+    transform: translateY(-1px);
+}
+
+.recipe-modal .stat-details-body {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.recipe-tier-section {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.recipe-tier-section h3 {
+    color: #4facfe;
+    margin-bottom: 1rem;
+    font-size: 1.3rem;
+}
+
+.recipe-tier-section h4 {
+    color: rgba(255, 255, 255, 0.9);
+    margin: 1rem 0 0.5rem 0;
+    font-size: 1rem;
+}
+
+.recipe-summary p,
+.recipe-total-resources p {
+    margin: 0.5rem 0;
+}
+
+.recipe-ingredients ul,
+.recipe-total-resources ul {
+    list-style: none;
+    padding: 0;
+    margin: 0.5rem 0;
+}
+
+.recipe-ingredients li,
+.recipe-total-resources li {
+    padding: 0.4rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.recipe-ingredients li:last-child,
+.recipe-total-resources li:last-child {
+    border-bottom: none;
+}
+
+.recipe-total-resources {
+    background: rgba(79, 172, 254, 0.05);
+    padding: 1rem;
+    border-radius: 6px;
+    margin-top: 1rem;
+}
+
+.recipe-actions {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.recipe-explorer-link {
+    display: inline-block;
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    color: white;
+    text-decoration: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 6px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.recipe-explorer-link:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(79, 172, 254, 0.4);
 }
 
 /* Responsive */

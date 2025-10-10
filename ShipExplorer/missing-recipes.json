@@ -1,0 +1,317 @@
+[
+  {
+    "id": 115166,
+    "name": "Bomb Bay",
+    "componentType": "Bomb Bay",
+    "className": "TTN",
+    "tierName": "T1",
+    "count": 172,
+    "reason": "No matching recipe pattern found"
+  },
+  {
+    "id": 116789,
+    "name": "Tufa Pyra",
+    "componentType": "Combat Heat",
+    "className": "",
+    "tierName": "",
+    "count": 138,
+    "reason": "No matching recipe pattern found"
+  },
+  {
+    "id": 116654,
+    "name": "Pearce Hulltank",
+    "componentType": "Combat Kinetic",
+    "className": "",
+    "tierName": "",
+    "count": 110,
+    "reason": "No matching recipe pattern found"
+  },
+  {
+    "id": 116684,
+    "name": "Pearce Shocktank",
+    "componentType": "Combat Energy",
+    "className": "",
+    "tierName": "",
+    "count": 105,
+    "reason": "No matching recipe pattern found"
+  },
+  {
+    "id": 116643,
+    "name": "Armstrong IMP Tote",
+    "componentType": "Freight",
+    "className": "",
+    "tierName": "",
+    "count": 101,
+    "reason": "No matching recipe pattern found"
+  },
+  {
+    "id": 115148,
+    "name": "Bomb Bay",
+    "componentType": "Bomb Bay",
+    "className": "CAP",
+    "tierName": "T1",
+    "count": 86,
+    "reason": "No matching recipe pattern found"
+  },
+  {
+    "id": 115154,
+    "name": "Bomb Bay",
+    "componentType": "Bomb Bay",
+    "className": "CMD",
+    "tierName": "T1",
+    "count": 86,
+    "reason": "No matching recipe pattern found"
+  },
+  {
+    "id": 115160,
+    "name": "Bomb Bay",
+    "componentType": "Bomb Bay",
+    "className": "Class 8",
+    "tierName": "T1",
+    "count": 86,
+    "reason": "No matching recipe pattern found"
+  },
+  {
+    "id": 116706,
+    "name": "Fimbul Zap",
+    "componentType": "Combat EMP",
+    "className": "",
+    "tierName": "",
+    "count": 68,
+    "reason": "No matching recipe pattern found"
+  },
+  {
+    "id": 116768,
+    "name": "Rainbow Gu",
+    "componentType": "Combat Gray Goo",
+    "className": "",
+    "tierName": "",
+    "count": 60,
+    "reason": "No matching recipe pattern found"
+  },
+  {
+    "id": 116685,
+    "name": "Fimbul Naga Pew",
+    "componentType": "Combat Energy",
+    "className": "",
+    "tierName": "",
+    "count": 56,
+    "reason": "No matching recipe pattern found"
+  },
+  {
+    "id": 116730,
+    "name": "Fimbul ECOS Crybot",
+    "componentType": "Combat Superchill",
+    "className": "",
+    "tierName": "",
+    "count": 53,
+    "reason": "No matching recipe pattern found"
+  },
+  {
+    "id": 116745,
+    "name": "Opal Womp",
+    "componentType": "Combat Shockwave",
+    "className": "",
+    "tierName": "",
+    "count": 48,
+    "reason": "No matching recipe pattern found"
+  },
+  {
+    "id": 115118,
+    "name": "Bomb Bay",
+    "componentType": "Bomb Bay",
+    "className": "XXS",
+    "tierName": "T1",
+    "count": 43,
+    "reason": "No matching recipe pattern found"
+  },
+  {
+    "id": 116653,
+    "name": "Fimbul Naga",
+    "componentType": "Combat Kinetic",
+    "className": "",
+    "tierName": "",
+    "count": 42,
+    "reason": "No matching recipe pattern found"
+  },
+  {
+    "id": 115167,
+    "name": "Bomb Bay",
+    "componentType": "Bomb Bay",
+    "className": "TTN",
+    "tierName": "T2",
+    "count": 4,
+    "reason": "No matching recipe pattern found"
+  },
+  {
+    "id": 115168,
+    "name": "Bomb Bay",
+    "componentType": "Bomb Bay",
+    "className": "TTN",
+    "tierName": "T3",
+    "count": 4,
+    "reason": "No matching recipe pattern found"
+  },
+  {
+    "id": 115169,
+    "name": "Bomb Bay",
+    "componentType": "Bomb Bay",
+    "className": "TTN",
+    "tierName": "T4",
+    "count": 4,
+    "reason": "No matching recipe pattern found"
+  },
+  {
+    "id": 115170,
+    "name": "Bomb Bay",
+    "componentType": "Bomb Bay",
+    "className": "TTN",
+    "tierName": "T5",
+    "count": 4,
+    "reason": "No matching recipe pattern found"
+  },
+  {
+    "id": 115149,
+    "name": "Bomb Bay",
+    "componentType": "Bomb Bay",
+    "className": "CAP",
+    "tierName": "T2",
+    "count": 2,
+    "reason": "No matching recipe pattern found"
+  },
+  {
+    "id": 115150,
+    "name": "Bomb Bay",
+    "componentType": "Bomb Bay",
+    "className": "CAP",
+    "tierName": "T3",
+    "count": 2,
+    "reason": "No matching recipe pattern found"
+  },
+  {
+    "id": 115151,
+    "name": "Bomb Bay",
+    "componentType": "Bomb Bay",
+    "className": "CAP",
+    "tierName": "T4",
+    "count": 2,
+    "reason": "No matching recipe pattern found"
+  },
+  {
+    "id": 115152,
+    "name": "Bomb Bay",
+    "componentType": "Bomb Bay",
+    "className": "CAP",
+    "tierName": "T5",
+    "count": 2,
+    "reason": "No matching recipe pattern found"
+  },
+  {
+    "id": 115155,
+    "name": "Bomb Bay",
+    "componentType": "Bomb Bay",
+    "className": "CMD",
+    "tierName": "T2",
+    "count": 2,
+    "reason": "No matching recipe pattern found"
+  },
+  {
+    "id": 115156,
+    "name": "Bomb Bay",
+    "componentType": "Bomb Bay",
+    "className": "CMD",
+    "tierName": "T3",
+    "count": 2,
+    "reason": "No matching recipe pattern found"
+  },
+  {
+    "id": 115157,
+    "name": "Bomb Bay",
+    "componentType": "Bomb Bay",
+    "className": "CMD",
+    "tierName": "T4",
+    "count": 2,
+    "reason": "No matching recipe pattern found"
+  },
+  {
+    "id": 115158,
+    "name": "Bomb Bay",
+    "componentType": "Bomb Bay",
+    "className": "CMD",
+    "tierName": "T5",
+    "count": 2,
+    "reason": "No matching recipe pattern found"
+  },
+  {
+    "id": 115161,
+    "name": "Bomb Bay",
+    "componentType": "Bomb Bay",
+    "className": "Class 8",
+    "tierName": "T2",
+    "count": 2,
+    "reason": "No matching recipe pattern found"
+  },
+  {
+    "id": 115162,
+    "name": "Bomb Bay",
+    "componentType": "Bomb Bay",
+    "className": "Class 8",
+    "tierName": "T3",
+    "count": 2,
+    "reason": "No matching recipe pattern found"
+  },
+  {
+    "id": 115163,
+    "name": "Bomb Bay",
+    "componentType": "Bomb Bay",
+    "className": "Class 8",
+    "tierName": "T4",
+    "count": 2,
+    "reason": "No matching recipe pattern found"
+  },
+  {
+    "id": 115164,
+    "name": "Bomb Bay",
+    "componentType": "Bomb Bay",
+    "className": "Class 8",
+    "tierName": "T5",
+    "count": 2,
+    "reason": "No matching recipe pattern found"
+  },
+  {
+    "id": 115119,
+    "name": "Bomb Bay",
+    "componentType": "Bomb Bay",
+    "className": "XXS",
+    "tierName": "T2",
+    "count": 1,
+    "reason": "No matching recipe pattern found"
+  },
+  {
+    "id": 115120,
+    "name": "Bomb Bay",
+    "componentType": "Bomb Bay",
+    "className": "XXS",
+    "tierName": "T3",
+    "count": 1,
+    "reason": "No matching recipe pattern found"
+  },
+  {
+    "id": 115121,
+    "name": "Bomb Bay",
+    "componentType": "Bomb Bay",
+    "className": "XXS",
+    "tierName": "T4",
+    "count": 1,
+    "reason": "No matching recipe pattern found"
+  },
+  {
+    "id": 115122,
+    "name": "Bomb Bay",
+    "componentType": "Bomb Bay",
+    "className": "XXS",
+    "tierName": "T5",
+    "count": 1,
+    "reason": "No matching recipe pattern found"
+  }
+]
