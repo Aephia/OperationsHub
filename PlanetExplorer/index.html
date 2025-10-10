@@ -4,131 +4,165 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Planet Explorer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <header>
-        <h1>🪐 Planet Explorer</h1>
+    <div class="orbital-glow"></div>
+    <div class="grid-overlay"></div>
 
-        <nav class="navigation-tabs">
-            <button class="nav-tab active" data-tab="explorer">🌍 Explorer</button>
-            <button class="nav-tab" data-tab="analytics">📊 Analytics</button>
-        </nav>
+    <header class="module-hero">
+        <div class="module-hero-content">
+            <span class="module-hero-label">Planet Intel Suite</span>
+            <h1 class="module-hero-title">dY�? Planet Explorer</h1>
+            <p class="module-hero-subtitle">
+                Survey star systems, evaluate planetary resources, and prioritize high-value worlds before you commit a fleet.
+            </p>
+            <div class="module-hero-actions">
+                <a class="hero-link" href="../index.html">Return to Command Nexus</a>
+            </div>
+        </div>
 
-        <nav class="breadcrumb">
-            <a href="../index.html">Home</a> > Planet Explorer
-        </nav>
+        <div class="module-hero-footer">
+            <nav class="navigation-tabs">
+                <button class="nav-tab active" data-tab="explorer">dYO? Explorer</button>
+                <button class="nav-tab" data-tab="analytics">dY"S Analytics</button>
+            </nav>
+            <nav class="module-breadcrumb">
+                <a href="../index.html">Command Nexus</a>
+                <span>Planet Explorer</span>
+            </nav>
+        </div>
     </header>
 
-    <main>
-        <!-- Explorer Tab Content -->
-        <div id="explorerTab" class="tab-content active">
-            <div class="stats">
-                <div class="stat-card">
-                    <span class="stat-number" id="totalSystems">0</span>
-                    <span class="stat-label">Star Systems</span>
+    <main class="module-main">
+        <section class="module-shell">
+            <!-- Explorer Tab Content -->
+            <div id="explorerTab" class="tab-content active">
+                <div class="stats">
+                    <div class="stat-card">
+                        <span class="stat-number" id="totalSystems">0</span>
+                        <span class="stat-label">Star Systems</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number" id="totalPlanets">0</span>
+                        <span class="stat-label">Planets</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number" id="uniqueResources">0</span>
+                        <span class="stat-label">Resource Types</span>
+                    </div>
                 </div>
-                <div class="stat-card">
-                    <span class="stat-number" id="totalPlanets">0</span>
-                    <span class="stat-label">Planets</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-number" id="uniqueResources">0</span>
-                    <span class="stat-label">Resource Types</span>
+
+                <div class="explorer-layout">
+                    <aside class="systems-sidebar glass-panel">
+                        <div class="panel-header">
+                            <h3>dYOY Systems</h3>
+                        </div>
+                        <div class="search-container" id="explorerControls">
+                            <input type="text" id="searchInput" placeholder="Search systems, planets, resources...">
+                        </div>
+                        <div class="checkbox-container" id="systemCheckboxes">
+                            <!-- System checkboxes will be populated here -->
+                        </div>
+                    </aside>
+
+                    <section class="systems-main glass-panel">
+                        <div class="panel-header">
+                            <h3>dY`^ Galaxy Overview</h3>
+                            <p>Choose a system to reveal its planets, atmospherics, and resource load-out.</p>
+                        </div>
+                        <div class="systems-list" id="systemsGrid">
+                            <!-- Systems will be populated here -->
+                        </div>
+                    </section>
+
+                    <aside class="resources-sidebar glass-panel">
+                        <div class="panel-header">
+                            <h3>dY"- Resources</h3>
+                        </div>
+                        <div class="checkbox-container" id="resourceCheckboxes">
+                            <!-- Resource checkboxes will be populated here -->
+                        </div>
+                    </aside>
                 </div>
             </div>
 
-            <div class="explorer-layout">
-                <div class="systems-sidebar">
-                    <h3>🌟 Systems</h3>
-                    <div class="search-container" id="explorerControls">
-                        <input type="text" id="searchInput" placeholder="Search systems, planets, resources...">
+            <!-- Analytics Tab Content -->
+            <div id="analyticsTab" class="tab-content">
+                <div class="analytics-header">
+                    <h2>dY"S Resource Analytics</h2>
+                    <p>Analyze resource distribution and scarcity across the galaxy</p>
+                </div>
+
+                <div class="analytics-stats">
+                    <div class="stat-card">
+                        <span class="stat-number" id="scarcestCount">0</span>
+                        <span class="stat-label">Ultra Rare Resources</span>
                     </div>
-                    <div class="checkbox-container" id="systemCheckboxes">
-                        <!-- System checkboxes will be populated here -->
+                    <div class="stat-card">
+                        <span class="stat-number" id="averageRichness">0</span>
+                        <span class="stat-label">Average Richness</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number" id="topSystemsCount">0</span>
+                        <span class="stat-label">Resource-Rich Systems</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number" id="regionalResourcesCount">0</span>
+                        <span class="stat-label">Regionally Limited Resources</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number" id="totalRegions">0</span>
+                        <span class="stat-label">Total Regions</span>
                     </div>
                 </div>
 
-                <div class="systems-main">
-                    <div class="systems-list" id="systemsGrid">
-                        <!-- Systems will be populated here -->
-                    </div>
-                </div>
+                <div class="analytics-sections">
+                    <section class="analytics-section glass-panel">
+                        <header class="panel-header">
+                            <h3>dY-��,? Regionally Limited Resources</h3>
+                            <p class="section-note">Resources that are NOT present in all regions. Regions are identified by the first three characters of system names.</p>
+                        </header>
+                        <div id="regionallyLimitedResources" class="resource-analysis-grid">
+                            <!-- Regionally limited resources will be populated here -->
+                        </div>
+                    </section>
 
-                <div class="resources-sidebar">
-                    <h3>🔗 Resources</h3>
-                    <div class="checkbox-container" id="resourceCheckboxes">
-                        <!-- Resource checkboxes will be populated here -->
-                    </div>
+                    <section class="analytics-section glass-panel">
+                        <header class="panel-header">
+                            <h3>dY"� Scarcest Resources</h3>
+                            <p class="section-note">The rarest resources in the galaxy, found in the fewest locations.</p>
+                        </header>
+                        <div id="scarcestResources" class="resource-analysis-grid">
+                            <!-- Scarcest resources will be populated here -->
+                        </div>
+                    </section>
+
+                    <section class="analytics-section glass-panel">
+                        <header class="panel-header">
+                            <h3>dY'Z Highest Quality Resources</h3>
+                            <p class="section-note">Resources with the highest average richness across all deposits.</p>
+                        </header>
+                        <div id="highestQuality" class="resource-analysis-grid">
+                            <!-- Highest quality resources will be populated here -->
+                        </div>
+                    </section>
+
+                    <section class="analytics-section glass-panel">
+                        <header class="panel-header">
+                            <h3>dYOY Top Resource Locations</h3>
+                            <p class="section-note">Star systems ranked by unique resource diversity. Strategic Score is provided by your dataset.</p>
+                        </header>
+                        <div id="topLocations" class="location-analysis-grid">
+                            <!-- Top locations will be populated here -->
+                        </div>
+                    </section>
                 </div>
             </div>
-        </div>
-
-        <!-- Analytics Tab Content -->
-        <div id="analyticsTab" class="tab-content">
-            <div class="analytics-header">
-                <h2>📊 Resource Analytics</h2>
-                <p>Analyze resource distribution and scarcity across the galaxy</p>
-            </div>
-
-            <div class="analytics-stats">
-                <div class="stat-card">
-                    <span class="stat-number" id="scarcestCount">0</span>
-                    <span class="stat-label">Ultra Rare Resources</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-number" id="averageRichness">0</span>
-                    <span class="stat-label">Average Richness</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-number" id="topSystemsCount">0</span>
-                    <span class="stat-label">Resource-Rich Systems</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-number" id="regionalResourcesCount">0</span>
-                    <span class="stat-label">Regionally Limited Resources</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-number" id="totalRegions">0</span>
-                    <span class="stat-label">Total Regions</span>
-                </div>
-            </div>
-
-            <div class="analytics-sections">
-                <div class="analytics-section">
-                    <h3>🗺️ Regionally Limited Resources</h3>
-                    <p class="section-note">Resources that are NOT present in all regions. Region is identified by the first 3 characters of system names. These resources may be valuable for regional trade or strategic importance.</p>
-                    <div id="regionallyLimitedResources" class="resource-analysis-grid">
-                        <!-- Regionally limited resources will be populated here -->
-                    </div>
-                </div>
-
-                <div class="analytics-section">
-                    <h3>🔥 Scarcest Resources</h3>
-                    <p class="section-note">The rarest resources in the galaxy, found in the fewest locations</p>
-                    <div id="scarcestResources" class="resource-analysis-grid">
-                        <!-- Scarcest resources will be populated here -->
-                    </div>
-                </div>
-
-                <div class="analytics-section">
-                    <h3>💎 Highest Quality Resources</h3>
-                    <p class="section-note">Resources with the highest average richness across all deposits</p>
-                    <div id="highestQuality" class="resource-analysis-grid">
-                        <!-- Highest quality resources will be populated here -->
-                    </div>
-                </div>
-
-                <div class="analytics-section">
-                    <h3>🌟 Top Resource Locations</h3>
-                    <p class="section-note">Star systems ranked by number of unique resource types (resource diversity across all planets). Strategic Score is a system rating from your data (meaning not defined here).</p>
-                    <div id="topLocations" class="location-analysis-grid">
-                        <!-- Top locations will be populated here -->
-                    </div>
-                </div>
-            </div>
-        </div>
-
+        </section>
     </main>
 
     <div class="modal" id="planetModal">
@@ -151,7 +185,6 @@
     <script src="analytics.js"></script>
     <script src="app.js"></script>
 
-    <!-- Import map for three.js so example modules can resolve the bare specifier 'three' -->
     <script type="importmap">
     {
         "imports": {
@@ -159,10 +192,5 @@
         }
     }
     </script>
-
-    <!-- Load data files -->
-    <script src="../Data/buildings-data.js"></script>
-    <script src="../Data/resources-data.js"></script>
-    <script src="../Data/recipes-data.js"></script>
 </body>
 </html>
