@@ -85,19 +85,11 @@ class ShipExplorer {
         try {
             console.log('[ShipExplorer] Loading component metadata...');
 
-            // Load both JSON files in parallel
-            const [componentsResponse, formulasResponse] = await Promise.all([
-                fetch('../JSON/ship-components.json'),
-                fetch('../JSON/ship-formulas.json')
-            ]);
-
-            if (!componentsResponse.ok || !formulasResponse.ok) {
-                throw new Error(`HTTP error - Components: ${componentsResponse.status}, Formulas: ${formulasResponse.status}`);
-            }
+            const basePath = '../JSON/';
 
             const [componentsData, formulasData] = await Promise.all([
-                componentsResponse.json(),
-                formulasResponse.json()
+                this.fetchComponentDataset(basePath),
+                this.fetchJsonOrThrow(`${basePath}ship-formulas.json`, 'ship formulas')
             ]);
 
             // Build component lookup from components file
@@ -137,6 +129,123 @@ class ShipExplorer {
         } catch (error) {
             console.error('[ShipExplorer] Failed to load component metadata:', error);
         }
+    }
+
+    async fetchJsonOrThrow(url, label) {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`HTTP error while loading ${label}: ${response.status}`);
+        }
+        return response.json();
+    }
+
+    async fetchComponentDataset(basePath) {
+        const manifestUrl = `${basePath}ship-components.json`;
+        const manifestResponse = await fetch(manifestUrl);
+        if (!manifestResponse.ok) {
+            throw new Error(`HTTP error while loading component manifest: ${manifestResponse.status}`);
+        }
+
+        const manifest = await manifestResponse.json();
+
+        // Backward compatibility: manifest already contains full data
+        if (!Array.isArray(manifest.parts) || manifest.parts.length === 0) {
+            return manifest;
+        }
+
+        console.log(`[ShipExplorer] Component manifest references ${manifest.parts.length} part(s)`);
+
+        const combined = {
+            version: manifest.version || null,
+            timestamp: manifest.timestamp || null,
+            shipConfigurations: [],
+            components: {
+                rewardTree: [],
+                categories: [],
+                nextId: manifest.components?.nextId || manifest.nextId || null,
+                allComponents: [],
+                componentsById: {}
+            }
+        };
+
+        const seenConfigNames = new Set();
+        const seenComponentIds = new Set();
+
+        const mergePart = (part) => {
+            if (!part || typeof part !== 'object') return;
+
+            if (Array.isArray(part.shipConfigurations)) {
+                part.shipConfigurations.forEach(config => {
+                    const key = config?.name || config?.id || JSON.stringify(config);
+                    if (!seenConfigNames.has(key)) {
+                        seenConfigNames.add(key);
+                        combined.shipConfigurations.push(config);
+                    }
+                });
+            }
+
+            if (part.components && typeof part.components === 'object') {
+                const partComponents = part.components;
+
+                if (Array.isArray(partComponents.rewardTree) && combined.components.rewardTree.length === 0) {
+                    combined.components.rewardTree = partComponents.rewardTree;
+                }
+
+                if (Array.isArray(partComponents.categories) && combined.components.categories.length === 0) {
+                    combined.components.categories = partComponents.categories;
+                }
+
+                if (partComponents.nextId) {
+                    combined.components.nextId = Math.max(
+                        combined.components.nextId || 0,
+                        partComponents.nextId
+                    );
+                }
+
+                if (Array.isArray(partComponents.allComponents)) {
+                    partComponents.allComponents.forEach(component => {
+                        const key = component?.id ?? JSON.stringify(component);
+                        if (!seenComponentIds.has(key)) {
+                            seenComponentIds.add(key);
+                            combined.components.allComponents.push(component);
+                        }
+                    });
+                }
+
+                if (partComponents.componentsById && typeof partComponents.componentsById === 'object') {
+                    Object.entries(partComponents.componentsById).forEach(([key, value]) => {
+                        combined.components.componentsById[key] = value;
+                        if (!seenComponentIds.has(key)) {
+                            seenComponentIds.add(key);
+                        }
+                    });
+                }
+            }
+        };
+
+        // Ensure we also merge any component data shipped directly within the manifest
+        mergePart(manifest);
+
+        for (const partName of manifest.parts) {
+            const partUrl = `${basePath}${partName}`;
+            try {
+                const partData = await this.fetchJsonOrThrow(partUrl, `component part ${partName}`);
+                mergePart(partData);
+                console.log(`[ShipExplorer] Loaded component part: ${partName}`);
+            } catch (partError) {
+                console.error('[ShipExplorer] Failed to load component data part:', partName, partError);
+            }
+        }
+
+        if (combined.components.rewardTree.length === 0 && Object.keys(combined.components.componentsById).length === 0) {
+            throw new Error('Component dataset is empty after merging parts');
+        }
+
+        if (combined.shipConfigurations.length === 0 && Array.isArray(manifest.shipConfigurations)) {
+            combined.shipConfigurations = manifest.shipConfigurations;
+        }
+
+        return combined;
     }
 
     initializeManagementModules() {
