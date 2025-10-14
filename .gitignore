@@ -2,3 +2,13 @@ GaliaViewer/models/*/*HighRes.fbx
 *.blend
 *.max
 *.psd
+
+# Node.js
+node_modules/
+package-lock.json
+
+# RefreshData cache
+RefreshData/.cache/
+
+# Temporary files
+nul

@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "planets.schema.json",
+  "title": "Planets Schema",
+  "description": "Schema for planets.json - defines planet data",
+  "type": "object",
+  "required": ["mapData"],
+  "properties": {
+    "mapData": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": { "type": "string" },
+          "name": { "type": "string" },
+          "star": { "type": "object" },
+          "mainPlanet": { "type": ["string", "null"] },
+          "links": { "type": "array" },
+          "closestFaction": { "type": "string" },
+          "coordinates": { "type": "array" },
+          "structure": { "type": ["object", "null"] },
+          "strategicScore": { "type": "number" },
+          "planets": { "type": "array" }
+        }
+      }
+    }
+  }
+}

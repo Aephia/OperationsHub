@@ -1,0 +1,188 @@
+{
+  "timestamp": "2025-10-14T03:19:53.840Z",
+  "summary": {
+    "total": 10,
+    "successful": 10,
+    "failed": 0,
+    "withChanges": 3,
+    "withBreakingChanges": 0,
+    "newFiles": 1
+  },
+  "details": [
+    {
+      "file": "recipes.json",
+      "success": true,
+      "outputFiles": [
+        "recipes-data.js"
+      ],
+      "changed": false,
+      "breaking": false,
+      "validationWarning": null,
+      "error": null,
+      "diff": {
+        "breaking": [],
+        "additions": [],
+        "modifications": []
+      }
+    },
+    {
+      "file": "buildings.json",
+      "success": true,
+      "outputFiles": [
+        "buildings-data.js"
+      ],
+      "changed": false,
+      "breaking": false,
+      "validationWarning": null,
+      "error": null,
+      "diff": {
+        "breaking": [],
+        "additions": [],
+        "modifications": []
+      }
+    },
+    {
+      "file": "planets.json",
+      "success": true,
+      "outputFiles": [
+        "planet-data.js"
+      ],
+      "changed": true,
+      "breaking": false,
+      "isNew": true,
+      "validationWarning": null,
+      "error": null,
+      "diff": {
+        "breaking": [],
+        "additions": [],
+        "modifications": [],
+        "isNew": true
+      }
+    },
+    {
+      "file": "resources.json",
+      "success": true,
+      "outputFiles": [
+        "resources-data.js"
+      ],
+      "changed": false,
+      "breaking": false,
+      "validationWarning": null,
+      "error": null,
+      "diff": {
+        "breaking": [],
+        "additions": [],
+        "modifications": []
+      }
+    },
+    {
+      "file": "Ships",
+      "success": true,
+      "outputFiles": [
+        "ships-data.json",
+        "ships-data.js"
+      ],
+      "changed": true,
+      "breaking": false,
+      "isNew": false,
+      "validationWarning": null,
+      "error": null,
+      "diff": {
+        "breaking": [],
+        "additions": [],
+        "modifications": [],
+        "isNew": false
+      }
+    },
+    {
+      "file": "craftingHabBuildings.json",
+      "success": true,
+      "outputFiles": [
+        "crafting-hab-data.js"
+      ],
+      "changed": false,
+      "breaking": false,
+      "validationWarning": null,
+      "error": null,
+      "diff": {
+        "breaking": [],
+        "additions": [],
+        "modifications": []
+      }
+    },
+    {
+      "file": "ship-formulas.json",
+      "success": true,
+      "outputFiles": [
+        "ship-formulas-data.js"
+      ],
+      "changed": false,
+      "breaking": false,
+      "validationWarning": null,
+      "error": null,
+      "diff": {
+        "breaking": [],
+        "additions": [],
+        "modifications": []
+      }
+    },
+    {
+      "file": "ship-components.json",
+      "success": true,
+      "outputFiles": [
+        "ship-components-data.json",
+        "ship-components-data.js"
+      ],
+      "changed": true,
+      "breaking": false,
+      "isNew": false,
+      "validationWarning": null,
+      "error": null,
+      "diff": {
+        "breaking": [],
+        "additions": [],
+        "modifications": [],
+        "isNew": false
+      }
+    },
+    {
+      "file": "resource_tier_analysis.json",
+      "success": true,
+      "outputFiles": [
+        "resource-tier-data.js"
+      ],
+      "changed": false,
+      "breaking": false,
+      "validationWarning": null,
+      "error": null,
+      "diff": {
+        "breaking": [],
+        "additions": [],
+        "modifications": []
+      }
+    },
+    {
+      "file": "resource_type_tier_lookup.json",
+      "success": true,
+      "outputFiles": [
+        "resource-type-tier-data.js"
+      ],
+      "changed": false,
+      "breaking": false,
+      "validationWarning": null,
+      "error": null,
+      "diff": {
+        "breaking": [],
+        "additions": [],
+        "modifications": []
+      }
+    }
+  ],
+  "alerts": [
+    {
+      "level": "INFO",
+      "file": "planets.json",
+      "message": "New file detected: planets.json"
+    }
+  ]
+}

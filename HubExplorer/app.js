@@ -16,9 +16,14 @@ async function init() {
 // Load hab data
 async function loadData() {
     try {
-        const response = await fetch('../JSON/craftingHabBuildings.json');
-        habData = await response.json();
-        console.log('Hab data loaded:', habData);
+        // Use validated, processed data from RefreshData pipeline
+        const response = await fetch('../Data/crafting-hab-data.js');
+        const text = await response.text();
+        // Execute the script to load the global variable
+        eval(text);
+        // craftingHabData is now available as a global variable
+        habData = window.craftingHabData || craftingHabData;
+        console.log('Hab data loaded from processed source:', habData);
     } catch (error) {
         console.error('Error loading hab data:', error);
     }

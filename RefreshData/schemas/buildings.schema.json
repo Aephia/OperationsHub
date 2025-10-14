@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "buildings.schema.json",
+  "title": "Buildings Schema",
+  "description": "Schema for buildings.json - defines facility buildings for claim stakes",
+  "type": "object",
+  "required": ["buildings"],
+  "properties": {
+    "buildings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "tier", "slots", "power"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "tier": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "minimumTier": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "slots": { "type": "integer", "minimum": 0 },
+          "power": { "type": "integer" },
+          "crewSlots": { "type": "integer", "minimum": 0 },
+          "neededCrew": { "type": "integer", "minimum": 0 },
+          "storage": { "type": "integer", "minimum": 0 },
+          "comesWithStake": { "type": "boolean" },
+          "cannotRemove": { "type": "boolean" },
+          "requiredTags": { "type": "array", "items": { "type": "string" } },
+          "addedTags": { "type": "array", "items": { "type": "string" } },
+          "constructionTime": { "type": "integer", "minimum": 0 },
+          "constructionCost": {
+            "type": "object",
+            "patternProperties": {
+              "^[a-z0-9-]+$": { "type": "number", "minimum": 0 }
+            }
+          },
+          "resourceExtractionRate": {
+            "type": "object",
+            "patternProperties": {
+              "^[a-z0-9-]+$": { "type": "number" }
+            }
+          },
+          "resourceRate": {
+            "type": "object",
+            "patternProperties": {
+              "^[a-z0-9-]+$": { "type": "number" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

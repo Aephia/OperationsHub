@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "shipFormulas.schema.json",
+  "title": "Ship Formulas Schema",
+  "description": "Schema for ship-formulas.json - defines component attribute formulas",
+  "type": "object",
+  "required": ["version", "timestamp", "componentAttributes"],
+  "properties": {
+    "version": { "type": "string" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "componentAttributes": {
+      "type": "object",
+      "patternProperties": {
+        "^.*$": {
+          "type": "object",
+          "patternProperties": {
+            "^.*$": {
+              "type": "object",
+              "patternProperties": {
+                "^[a-z_]+$": {
+                  "type": "object",
+                  "properties": {
+                    "type": { "type": "string" },
+                    "baseValue": { "type": "number" },
+                    "multiplicativeValue": { "type": "number" },
+                    "additiveValue": { "type": "number" },
+                    "values": {
+                      "type": "object",
+                      "patternProperties": {
+                        "^.*$": { "type": "number" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

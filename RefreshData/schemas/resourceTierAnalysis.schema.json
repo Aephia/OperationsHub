@@ -1,0 +1,77 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "resourceTierAnalysis.schema.json",
+  "title": "Resource Tier Analysis Schema",
+  "description": "Schema for resource_tier_analysis.json - resource tier mappings and analytics",
+  "type": "object",
+  "required": ["type_to_tier_mapping", "tier_summary"],
+  "properties": {
+    "type_to_tier_mapping": {
+      "type": "object",
+      "patternProperties": {
+        "^[0-9]+$": {
+          "type": "object",
+          "required": ["tier", "name", "id"],
+          "properties": {
+            "tier": { "type": "integer", "minimum": 1, "maximum": 5 },
+            "name": { "type": "string" },
+            "id": { "type": "string" }
+          }
+        }
+      }
+    },
+    "tier_summary": {
+      "type": "object",
+      "patternProperties": {
+        "^tier_[1-5]$": {
+          "type": "object",
+          "required": ["total_resources", "resources"],
+          "properties": {
+            "total_resources": { "type": "integer", "minimum": 0 },
+            "resources": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["type", "name", "id"],
+                "properties": {
+                  "type": { "type": "integer" },
+                  "name": { "type": "string" },
+                  "id": { "type": "string" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "planets_by_highest_tier": {
+      "type": "object",
+      "patternProperties": {
+        "^tier_[1-5]$": {
+          "type": "object",
+          "properties": {
+            "total_planets": { "type": "integer", "minimum": 0 },
+            "top_20_planets": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "rank": { "type": "integer", "minimum": 1 },
+                  "system": { "type": "string" },
+                  "planet": { "type": "string" },
+                  "tier_counts": {
+                    "type": "object",
+                    "patternProperties": {
+                      "^[1-5]$": { "type": "integer", "minimum": 0 }
+                    }
+                  },
+                  "total_resources": { "type": "integer", "minimum": 0 }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

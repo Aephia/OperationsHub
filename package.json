@@ -1,0 +1,20 @@
+{
+  "name": "siphawaal-explorer-suite",
+  "version": "1.0.0",
+  "description": "Star Atlas Explorer Suite - Data processing and validation",
+  "main": "RefreshData/refresh-data.js",
+  "scripts": {
+    "refresh": "node RefreshData/refresh-data.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "star-atlas",
+    "data",
+    "validation"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "ajv": "^8.12.0"
+  }
+}

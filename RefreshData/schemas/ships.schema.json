@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ships.schema.json",
+  "title": "Ships Schema",
+  "description": "Schema for individual ship JSON files in Ships/ directory",
+  "type": "object",
+  "properties": {
+    "shipIdentifier": { "type": "string" },
+    "version": { "type": "string" },
+    "timestamp": { "type": "string" },
+    "ship": {
+      "type": "object",
+      "properties": {
+        "Ship Name": { "type": "string" },
+        "Manufacturer": { "type": "string" },
+        "Spec": { "type": "string" },
+        "Class": { "type": ["integer", "string"] },
+        "ship_size": { "type": ["integer", "string", "null"] },
+        "required_crew": { "type": ["integer", "null"] },
+        "passenger_capacity": { "type": ["integer", "null"] },
+        "respawnTime": { "type": ["integer", "null"] }
+      }
+    },
+    "configurations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "locked": { "type": "boolean" },
+          "components": {
+            "type": "object",
+            "patternProperties": {
+              "^.*$": {
+                "type": "object",
+                "patternProperties": {
+                  "^.*$": {
+                    "oneOf": [
+                      { "type": "array" },
+                      { "type": "string" },
+                      { "type": "null" }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "activeConfigIndex": { "type": "integer", "minimum": 0 }
+  }
+}

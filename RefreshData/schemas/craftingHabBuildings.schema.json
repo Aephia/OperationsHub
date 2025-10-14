@@ -1,0 +1,76 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "craftingHabBuildings.schema.json",
+  "title": "Crafting Hab Buildings Schema",
+  "description": "Schema for craftingHabBuildings.json - defines habitat buildings",
+  "type": "object",
+  "required": ["habs", "craftingStations", "cargoStorage"],
+  "properties": {
+    "habs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "tier", "slots"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "tier": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "slots": { "type": "integer", "minimum": 0 },
+          "description": { "type": "string" },
+          "constructionTime": { "type": "integer", "minimum": 0 },
+          "storage": { "type": "integer", "minimum": 0 },
+          "constructionCost": {
+            "type": "object",
+            "patternProperties": {
+              "^[a-z0-9-]+$": { "type": "number", "minimum": 0 }
+            }
+          }
+        }
+      }
+    },
+    "craftingStations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "size", "speedBonus", "slots", "jobSlots"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "size": { "type": "string" },
+          "speedBonus": { "type": "number", "minimum": 0 },
+          "slots": { "type": "integer", "minimum": 0 },
+          "jobSlots": { "type": "integer", "minimum": 0 },
+          "constructionTime": { "type": "integer", "minimum": 0 },
+          "constructionCost": {
+            "type": "object",
+            "patternProperties": {
+              "^[a-z0-9-]+$": { "type": "number", "minimum": 0 }
+            }
+          }
+        }
+      }
+    },
+    "cargoStorage": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "tier", "slots", "storageBonus", "jobSlotBonus"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "tier": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "slots": { "type": "integer", "minimum": 0 },
+          "storageBonus": { "type": "integer", "minimum": 0 },
+          "jobSlotBonus": { "type": "integer", "minimum": 0 },
+          "constructionTime": { "type": "integer", "minimum": 0 },
+          "constructionCost": {
+            "type": "object",
+            "patternProperties": {
+              "^[a-z0-9-]+$": { "type": "number", "minimum": 0 }
+            }
+          }
+        }
+      }
+    }
+  }
+}
