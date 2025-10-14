@@ -61,22 +61,79 @@
         <div id="analyticsTab" class="tab-content">
             <div class="analytics-header">
                 <h2>📊 Ship Analytics</h2>
-                <p>Analyze ship specifications across all classes and manufacturers</p>
+                <p>Analyze ship specifications, fleet costs, sourcing, trade routes, and efficiency</p>
             </div>
 
-            <div class="analytics-sections" id="analyticsContent">
-                <!-- Analytics will be populated here -->
+            <!-- Sub-tabs for different analytics -->
+            <nav class="sub-navigation-tabs">
+                <button class="sub-nav-tab active" data-subtab="basic">📈 Basic Analytics</button>
+                <button class="sub-nav-tab" data-subtab="fleet">🚀 Fleet</button>
+                <button class="sub-nav-tab" data-subtab="sourcing">🗺️ Sourcing</button>
+                <button class="sub-nav-tab" data-subtab="trade">🛣️ Trade Routes</button>
+                <button class="sub-nav-tab" data-subtab="efficiency">📊 Efficiency</button>
+            </nav>
+
+            <!-- Basic Analytics Sub-tab -->
+            <div id="basicAnalyticsSubtab" class="subtab-content active">
+                <div class="analytics-sections" id="analyticsContent">
+                    <!-- Analytics will be populated here -->
+                </div>
+            </div>
+
+            <!-- Fleet Sub-tab -->
+            <div id="fleetAnalyticsSubtab" class="subtab-content">
+                <div id="fleetLoadingMessage" style="display: none;">
+                    <p>🔄 Loading fleet analytics...</p>
+                </div>
+                <div id="fleetContent" class="analytics-sections">
+                    <!-- Fleet content will be rendered here -->
+                </div>
+            </div>
+
+            <!-- Sourcing Sub-tab -->
+            <div id="sourcingAnalyticsSubtab" class="subtab-content">
+                <div id="sourcingLoadingMessage" style="display: none;">
+                    <p>🔄 Loading component sourcing analytics...</p>
+                </div>
+                <div id="sourcingContent" class="analytics-sections">
+                    <!-- Sourcing content will be rendered here -->
+                </div>
+            </div>
+
+            <!-- Trade Routes Sub-tab -->
+            <div id="tradeAnalyticsSubtab" class="subtab-content">
+                <div id="tradeLoadingMessage" style="display: none;">
+                    <p>🔄 Loading trade route analytics...</p>
+                </div>
+                <div id="tradeContent" class="analytics-sections">
+                    <!-- Trade routes content will be rendered here -->
+                </div>
+            </div>
+
+            <!-- Efficiency Sub-tab -->
+            <div id="efficiencyAnalyticsSubtab" class="subtab-content">
+                <div id="efficiencyLoadingMessage" style="display: none;">
+                    <p>🔄 Loading resource efficiency analytics...</p>
+                </div>
+                <div id="efficiencyContent" class="analytics-sections">
+                    <!-- Efficiency content will be rendered here -->
+                </div>
             </div>
         </div>
     </main>
 
     <script src="../Utils/DataLoader.js"></script>
+    <script src="../Utils/CrossExplorerAnalytics.js"></script>
     <script src="config-calculator.js"></script>
     <script src="js/attribute-management.js"></script>
     <script src="js/attributes-panel.js"></script>
     <script src="js/component-management.js"></script>
     <script src="js/custom-ship-management.js"></script>
     <script src="js/recipe-lookup.js"></script>
+    <script src="fleet-analytics.js"></script>
+    <script src="component-sourcing.js"></script>
+    <script src="trade-routes.js"></script>
+    <script src="resource-efficiency.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

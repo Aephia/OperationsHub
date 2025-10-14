@@ -426,6 +426,486 @@ main {
     color: white;
 }
 
+/* Sub-navigation tabs */
+.sub-navigation-tabs {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sub-nav-tab {
+    padding: 0.6rem 1.2rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+}
+
+.sub-nav-tab:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    transform: translateY(-1px);
+}
+
+.sub-nav-tab.active {
+    background: linear-gradient(45deg, #4facfe, #00f2fe);
+    color: white;
+    border-color: transparent;
+    box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
+}
+
+.subtab-content {
+    display: none;
+}
+
+.subtab-content.active {
+    display: block;
+}
+
+/* Flow Table Styles */
+.flow-table-container {
+    overflow-x: auto;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.flow-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.flow-table thead {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.flow-table th {
+    padding: 1rem;
+    text-align: left;
+    color: #4facfe;
+    font-weight: 600;
+    border-bottom: 2px solid rgba(79, 172, 254, 0.3);
+    white-space: nowrap;
+}
+
+.flow-table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.flow-table tbody tr {
+    transition: background 0.2s ease;
+}
+
+.flow-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.resource-name-cell {
+    color: white;
+}
+
+.tier-badge-mini {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: white;
+}
+
+.recipe-usage-link {
+    color: #4facfe;
+    cursor: pointer;
+    text-decoration: underline;
+    transition: color 0.2s ease;
+}
+
+.recipe-usage-link:hover {
+    color: #00f2fe;
+}
+
+.bottleneck-cell {
+    color: #e74c3c;
+    font-weight: 600;
+}
+
+.supply-demand-ratio {
+    font-family: 'Courier New', monospace;
+}
+
+.demand-score-cell {
+    color: #e74c3c;
+    font-weight: 600;
+}
+
+/* Pagination Controls */
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+}
+
+.pagination-btn {
+    background: linear-gradient(45deg, #4facfe, #00f2fe);
+    border: none;
+    color: white;
+    padding: 0.6rem 1.2rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    min-width: 100px;
+}
+
+.pagination-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
+}
+
+.pagination-btn:disabled {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.3);
+    cursor: not-allowed;
+}
+
+.pagination-info {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.9rem;
+    min-width: 120px;
+    text-align: center;
+}
+
+/* Recipe Usage Modal */
+.recipe-usage-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(5px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.recipe-usage-modal {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border-radius: 15px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(30px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.recipe-usage-modal-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.recipe-usage-modal-header h3 {
+    margin: 0;
+    color: #4facfe;
+    font-size: 1.5rem;
+}
+
+.close-modal-btn {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.close-modal-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.recipe-usage-modal-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.recipe-count-info {
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 1rem;
+    font-size: 0.95rem;
+}
+
+.recipe-usage-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.recipe-usage-item {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.2s ease;
+}
+
+.recipe-usage-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(79, 172, 254, 0.3);
+}
+
+.recipe-usage-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+}
+
+.recipe-usage-name {
+    color: white;
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+
+.view-recipe-btn {
+    background: linear-gradient(45deg, #4facfe, #00f2fe);
+    border: none;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.view-recipe-btn:hover {
+    transform: translateX(3px);
+    box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
+}
+
+/* Production Chain Styles */
+.chain-categories {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.chain-category {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 10px;
+    padding: 1.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.chain-category h4 {
+    color: #4facfe;
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+}
+
+.chain-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 1rem;
+}
+
+.chain-card {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    padding: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.chain-card:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(79, 172, 254, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(79, 172, 254, 0.2);
+}
+
+.chain-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.chain-output {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: white;
+}
+
+.chain-depth-badge {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.9);
+    white-space: nowrap;
+}
+
+.chain-path {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+    font-size: 0.85rem;
+}
+
+.chain-ingredient {
+    background: rgba(79, 172, 254, 0.2);
+    padding: 0.25rem 0.6rem;
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.chain-arrow {
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: bold;
+}
+
+.chain-result {
+    background: linear-gradient(45deg, rgba(79, 172, 254, 0.3), rgba(0, 242, 254, 0.3));
+    padding: 0.25rem 0.6rem;
+    border-radius: 6px;
+    color: white;
+    font-weight: 600;
+}
+
+.chain-more {
+    color: rgba(255, 255, 255, 0.6);
+    font-style: italic;
+}
+
+.chain-usage {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.8rem;
+}
+
+.more-chains-note {
+    color: rgba(255, 255, 255, 0.6);
+    font-style: italic;
+    padding: 1rem;
+    text-align: center;
+}
+
+/* Chain Modal Specific Styles */
+.chain-modal-info {
+    display: flex;
+    gap: 2rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+}
+
+.chain-modal-stat {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.chain-modal-stat .stat-label {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+}
+
+.chain-modal-stat .stat-value {
+    color: white;
+    font-weight: 600;
+}
+
+.chain-modal-ingredients {
+    margin-bottom: 1.5rem;
+}
+
+.chain-modal-ingredients h4 {
+    color: #4facfe;
+    margin-bottom: 0.75rem;
+    font-size: 1rem;
+}
+
+.ingredient-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.ingredient-tag {
+    background: rgba(79, 172, 254, 0.2);
+    border: 1px solid rgba(79, 172, 254, 0.3);
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.9rem;
+}
+
+.chain-modal-actions {
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .explorer-layout {
@@ -445,7 +925,39 @@ main {
         align-items: center;
     }
 
+    .sub-navigation-tabs {
+        flex-wrap: wrap;
+    }
+
     h1 {
         font-size: 2rem;
+    }
+
+    .flow-table-container {
+        overflow-x: scroll;
+    }
+
+    .flow-table {
+        font-size: 0.8rem;
+    }
+
+    .flow-table th,
+    .flow-table td {
+        padding: 0.5rem;
+    }
+
+    .recipe-usage-modal {
+        width: 95%;
+        max-height: 90vh;
+    }
+
+    .recipe-usage-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+
+    .view-recipe-btn {
+        width: 100%;
     }
 }

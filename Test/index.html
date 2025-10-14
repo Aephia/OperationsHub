@@ -212,6 +212,10 @@
                 🚀 Galia Viewer Tests
             </button>
 
+            <button class="test-button individual" onclick="runShipExplorerTestsUI()">
+                🚢 Ship Explorer Tests
+            </button>
+
             <button class="test-button individual" onclick="runUITestsUI()">
                 🎨 UI/UX Tests
             </button>
@@ -357,6 +361,7 @@
     <script src="claimstake-enhanced-tests.js"></script>
     <script src="galiaviewer-enhanced-tests.js"></script>
     <script src="explorer-analytics-tests.js"></script>
+    <script src="ship-explorer-tests.js"></script>
 
     <!-- Load unified test manager -->
     <script src="unified-test-manager.js"></script>
@@ -548,6 +553,17 @@
 
         async function runResourcesAnalyticsTests() {
             if (window.resourcesAnalyticsTests) await window.resourcesAnalyticsTests.run();
+        }
+
+        async function runShipExplorerTestsUI() {
+            if (window.shipExplorerTests) {
+                updateStatus('Running Ship Explorer Tests...', 'running');
+                await window.shipExplorerTests.run();
+                updateStatus('Ship Explorer Tests completed!', 'completed');
+            } else {
+                console.log('⚠️ Ship Explorer tests not loaded yet');
+                updateStatus('Ship Explorer tests not loaded', 'failed');
+            }
         }
 
         // Legacy support functions

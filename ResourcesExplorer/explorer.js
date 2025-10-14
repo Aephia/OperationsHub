@@ -256,7 +256,24 @@ class ResourcesExplorer extends BaseExplorer {
                     </div>
                 ` : ''}
             </div>
+
+            <div class="modal-actions">
+                <button class="view-recipe-btn" id="viewRecipeBtn" data-resource-name="${this.escapeHtml(resource.name)}">
+                    View Recipes →
+                </button>
+            </div>
         `;
+
+        // Setup recipe button click handler
+        setTimeout(() => {
+            const recipeBtn = document.getElementById('viewRecipeBtn');
+            if (recipeBtn) {
+                recipeBtn.addEventListener('click', () => {
+                    const resourceName = recipeBtn.getAttribute('data-resource-name');
+                    this.openRecipeExplorer(resourceName);
+                });
+            }
+        }, 0);
 
         // Add modal-specific styles if not already present
         if (!document.querySelector('#modalStyles')) {
@@ -325,6 +342,31 @@ class ResourcesExplorer extends BaseExplorer {
                     font-style: italic;
                 }
 
+                .modal-actions {
+                    margin-top: 1.5rem;
+                    padding-top: 1.5rem;
+                    border-top: 1px solid rgba(255, 255, 255, 0.1);
+                    display: flex;
+                    justify-content: center;
+                }
+
+                .view-recipe-btn {
+                    background: linear-gradient(45deg, #4facfe, #00f2fe);
+                    border: none;
+                    color: white;
+                    padding: 0.75rem 1.5rem;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-size: 1rem;
+                    font-weight: 600;
+                    transition: all 0.2s ease;
+                }
+
+                .view-recipe-btn:hover {
+                    transform: translateX(3px);
+                    box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
+                }
+
                 @media (max-width: 768px) {
                     .resource-info-grid {
                         grid-template-columns: 1fr;
@@ -333,6 +375,19 @@ class ResourcesExplorer extends BaseExplorer {
             `;
             document.head.appendChild(style);
         }
+    }
+
+    openRecipeExplorer(resourceName) {
+        // Open Recipe Explorer in new tab and search for recipes that output this resource
+        const url = `../RecipeExplorer/index.html?search=${encodeURIComponent(resourceName)}`;
+        window.open(url, '_blank');
+    }
+
+    escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     getModalId() {

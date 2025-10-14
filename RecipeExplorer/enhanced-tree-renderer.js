@@ -47,9 +47,17 @@ class EnhancedTreeRenderer {
 
         if (recipesToCache && recipesToCache.length > 0) {
             recipesToCache.forEach((recipe, index) => {
-                this.recipeCache.set(recipe.name, recipe);
+                // Store by ID for direct lookup
+                this.recipeCache.set(recipe.id, recipe);
+
+                // For name-based lookup (used by ingredients), store T1 as default
+                // Only store by name if we don't have one yet, or if this is T1
+                const existingByName = this.recipeCache.get(recipe.name);
+                if (!existingByName || recipe.tier === 1) {
+                    this.recipeCache.set(recipe.name, recipe);
+                }
             });
-            console.log(`✅ Built recipe cache with ${this.recipeCache.size} recipes`);
+            console.log(`✅ Built recipe cache with ${this.recipeCache.size} entries (including both ID and name keys)`);
         }
     }
 
@@ -304,16 +312,16 @@ class EnhancedTreeRenderer {
 
     // Zoom and pan methods restored for user control
 
-    renderRecipeTree(recipeName) {
+    renderRecipeTree(recipeId) {
         // Ensure recipe cache is built
         if (this.recipeCache.size === 0) {
             this.buildRecipeCache();
         }
 
-        const recipe = this.recipeCache.get(recipeName);
+        const recipe = this.recipeCache.get(recipeId);
         if (!recipe) {
-            console.error(`❌ Recipe "${recipeName}" not found in cache!`);
-            this.renderError(`Recipe "${recipeName}" not found`);
+            console.error(`❌ Recipe "${recipeId}" not found in cache!`);
+            this.renderError(`Recipe "${recipeId}" not found`);
             return;
         }
 
@@ -646,19 +654,19 @@ class EnhancedTreeRenderer {
         }
     }
 
-    renderMultipleRecipes(recipeNames) {
+    renderMultipleRecipes(recipeIds) {
         // Ensure recipe cache is built
         if (this.recipeCache.size === 0) {
             this.buildRecipeCache();
         }
 
-        if (recipeNames.length === 0) {
+        if (recipeIds.length === 0) {
             this.renderPlaceholder();
             return;
         }
 
-        if (recipeNames.length === 1) {
-            this.renderRecipeTree(recipeNames[0]);
+        if (recipeIds.length === 1) {
+            this.renderRecipeTree(recipeIds[0]);
             return;
         }
 
@@ -666,14 +674,14 @@ class EnhancedTreeRenderer {
         this.clearTree();
         let yOffset = 0;
 
-        recipeNames.forEach((recipeName, index) => {
-            const recipe = this.recipeCache.get(recipeName);
+        recipeIds.forEach((recipeId, index) => {
+            const recipe = this.recipeCache.get(recipeId);
             if (recipe) {
                 const treeData = this.buildTreeData(recipe, new Set());
                 const layout = this.calculateLayout(treeData);
 
                 // Adjust positions for multiple trees
-                layout.forEach((data, name) => {
+                layout.forEach((data, id) => {
                     data.y += yOffset;
                 });
 

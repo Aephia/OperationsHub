@@ -191,8 +191,9 @@ class RecipeExplorerApp {
 
                 const label = document.createElement('label');
                 label.htmlFor = `recipe-${recipe.id}`;
+                const tierText = recipe.tier ? ` (T${recipe.tier})` : '';
                 label.innerHTML = `
-                    ${this.getTypeIcon(recipe.type)} ${recipe.name}
+                    ${this.getTypeIcon(recipe.type)} ${recipe.name}${tierText}
                 `;
 
                 const typeSpan = document.createElement('span');
@@ -335,12 +336,8 @@ class RecipeExplorerApp {
             descriptionElement.textContent = `Viewing dependency trees for multiple recipes`;
         }
 
-        // Render the tree(s) - convert IDs to names for the tree renderer
-        const recipeNames = recipeIds.map(id => {
-            const recipe = this.findRecipeById(id);
-            return recipe ? recipe.name : id;
-        });
-        this.treeRenderer.renderMultipleRecipes(recipeNames);
+        // Render the tree(s) - pass IDs directly to the tree renderer
+        this.treeRenderer.renderMultipleRecipes(recipeIds);
     }
 
     findRecipeById(recipeId) {
@@ -356,9 +353,12 @@ class RecipeExplorerApp {
             return null;
         }
 
+        console.log('🔍 Resolving recipe from param:', recipeParam);
+
         // Direct ID match
         let recipe = this.findRecipeById(recipeParam);
         if (recipe) {
+            console.log('✅ Found recipe by direct ID match:', { id: recipe.id, name: recipe.name, tier: recipe.tier });
             return recipe;
         }
 
@@ -370,24 +370,58 @@ class RecipeExplorerApp {
             return recipe;
         }
 
+        // Extract tier from param if present (e.g., "ice-giant-central-hub-t1" -> tier 1)
+        const tierMatch = lowerParam.match(/-t(\d+)$/);
+        const tier = tierMatch ? parseInt(tierMatch[1], 10) : null;
+        const paramWithoutTier = tierMatch ? lowerParam.replace(/-t\d+$/, '') : lowerParam;
+
+        if (tier !== null) {
+            console.log(`🔍 Extracted tier ${tier} from URL, searching for: "${paramWithoutTier}"`);
+        }
+
         // Slug-style normalization (matches names or IDs that omit prefixes)
-        const normalizedParam = lowerParam
+        const normalizedParam = paramWithoutTier
             .replace(/[^a-z0-9]+/g, '-')
             .replace(/^-+|-+$/g, '');
+
+        // If tier is specified, try to match by name + tier first
+        if (tier !== null) {
+            recipe = this.allRecipes.find(r => {
+                const normalizedName = r.name
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/^-+|-+$/g, '');
+                return normalizedName === normalizedParam && r.tier === tier;
+            });
+            if (recipe) {
+                return recipe;
+            }
+        }
 
         // Match by normalized ID (handles prefixes like ship-component-)
         recipe = this.allRecipes.find(r => {
             const normalizedId = r.id.toLowerCase();
-            return normalizedId === normalizedParam
+            const matchesId = normalizedId === normalizedParam
                 || normalizedId.endsWith(`-${normalizedParam}`)
                 || normalizedId.includes(normalizedParam);
+
+            if (tier !== null) {
+                return matchesId && r.tier === tier;
+            }
+            return matchesId;
         });
         if (recipe) {
             return recipe;
         }
 
         // Match by exact name
-        recipe = this.allRecipes.find(r => r.name.toLowerCase() === lowerParam);
+        recipe = this.allRecipes.find(r => {
+            const matchesName = r.name.toLowerCase() === paramWithoutTier;
+            if (tier !== null) {
+                return matchesName && r.tier === tier;
+            }
+            return matchesName;
+        });
         if (recipe) {
             return recipe;
         }
@@ -398,7 +432,11 @@ class RecipeExplorerApp {
                 .toLowerCase()
                 .replace(/[^a-z0-9]+/g, '-')
                 .replace(/^-+|-+$/g, '');
-            return normalizedName === normalizedParam;
+            const matchesName = normalizedName === normalizedParam;
+            if (tier !== null) {
+                return matchesName && r.tier === tier;
+            }
+            return matchesName;
         });
 
         return recipe || null;
@@ -454,8 +492,15 @@ class RecipeExplorerApp {
         if (!recipeMatch) {
             console.error('\u274c Recipe not found in data:', recipeId);
             console.log('Available recipe IDs:', this.allRecipes.slice(0, 10).map(r => r.id));
+            // Try to find all Ice Giant Central Hub recipes for debugging
+            const iceGiantRecipes = this.allRecipes.filter(r => r.name && r.name.toLowerCase().includes('ice giant central hub'));
+            if (iceGiantRecipes.length > 0) {
+                console.log('🔍 Found Ice Giant Central Hub recipes:', iceGiantRecipes.map(r => ({ id: r.id, name: r.name, tier: r.tier })));
+            }
             return;
         }
+
+        console.log('✅ Resolved recipe:', { id: recipeMatch.id, name: recipeMatch.name, tier: recipeMatch.tier });
 
         const normalizedId = recipeMatch.id;
         if (normalizedId !== recipeId) {

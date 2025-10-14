@@ -2,6 +2,13 @@ class ResourceAnalytics extends BaseAnalytics {
     constructor(data) {
         super(data);
         this.resourceAnalytics = null;
+        this.valuableResourcesPage = 0;
+        this.valuableResourcesPageSize = 50;
+        this.valuableResourcesFilters = {
+            search: '',
+            tier: 'all',
+            category: 'all'
+        };
     }
 
     generateAnalytics() {
@@ -86,10 +93,9 @@ class ResourceAnalytics extends BaseAnalytics {
             data.averageValue = data.count > 0 ? Math.round(data.totalValue / data.count) : 0;
         });
 
-        // Sort value analysis
+        // Sort value analysis - keep all resources for table
         const mostValuable = valueAnalysis
-            .sort((a, b) => b.baseValue - a.baseValue)
-            .slice(0, 30);
+            .sort((a, b) => b.baseValue - a.baseValue);
 
         const bestStackValue = valueAnalysis
             .sort((a, b) => b.totalStackValue - a.totalStackValue)
@@ -139,18 +145,8 @@ class ResourceAnalytics extends BaseAnalytics {
             this.generateAnalytics();
         }
 
-        this.updateAnalyticsStats();
         this.renderMostValuableResources();
         this.renderCategoryDistribution();
-        this.renderStackSizeAnalysis();
-    }
-
-    updateAnalyticsStats() {
-        const analytics = this.resourceAnalytics;
-
-        this.updateStatElement('mostExpensiveValue', analytics.overview.mostExpensive);
-        this.updateStatElement('averageTier', analytics.overview.averageTier);
-        this.updateStatElement('totalValue', analytics.overview.totalValue);
     }
 
     renderMostValuableResources() {
@@ -160,38 +156,193 @@ class ResourceAnalytics extends BaseAnalytics {
             return;
         }
 
-        container.innerHTML = '';
         const analytics = this.resourceAnalytics;
 
-        analytics.mostValuable.forEach((resource, index) => {
-            const card = document.createElement('div');
-            card.className = 'analysis-item';
+        // Get unique tiers and categories for filters
+        const tiers = [...new Set(analytics.mostValuable.map(r => r.tier))].filter(t => t).sort();
+        const categories = [...new Set(analytics.mostValuable.map(r => r.category))].sort();
 
-            const tierBadge = resource.tier ? `Tier ${resource.tier}` : 'No Tier';
-            const rankEmoji = index < 3 ? ['🥇', '🥈', '🥉'][index] : `#${index + 1}`;
+        // Apply filters
+        const filteredResources = this.getFilteredValuableResources();
+        const totalFiltered = filteredResources.length;
+        const startIdx = this.valuableResourcesPage * this.valuableResourcesPageSize;
+        const endIdx = Math.min(startIdx + this.valuableResourcesPageSize, totalFiltered);
+        const paginatedResources = filteredResources.slice(startIdx, endIdx);
 
-            card.innerHTML = `
-                <h4>${rankEmoji} ${resource.name}</h4>
-                <div class="analysis-metric">
-                    <span class="label">Category:</span>
-                    <span class="value">${resource.category.charAt(0).toUpperCase() + resource.category.slice(1)}</span>
-                </div>
-                <div class="analysis-metric">
-                    <span class="label">Tier:</span>
-                    <span class="value">${tierBadge}</span>
-                </div>
-                <div class="analysis-metric">
-                    <span class="label">Base Value:</span>
-                    <span class="value">${resource.baseValue.toLocaleString()}</span>
-                </div>
-                <div class="analysis-metric">
-                    <span class="label">Stack Value:</span>
-                    <span class="value">${resource.totalStackValue.toLocaleString()}</span>
-                </div>
-            `;
+        container.innerHTML = `
+            <!-- Filter Controls -->
+            <div class="filter-row">
+                <input type="text" id="valuableSearchInput" class="column-filter" placeholder="Search resources..." value="${this.valuableResourcesFilters.search}">
+                <select id="valuableTierFilter" class="column-filter">
+                    <option value="all">All Tiers</option>
+                    ${tiers.map(tier => `<option value="${tier}" ${this.valuableResourcesFilters.tier == tier ? 'selected' : ''}>Tier ${tier}</option>`).join('')}
+                </select>
+                <select id="valuableCategoryFilter" class="column-filter">
+                    <option value="all">All Categories</option>
+                    ${categories.map(cat => `<option value="${cat}" ${this.valuableResourcesFilters.category == cat ? 'selected' : ''}>${cat.charAt(0).toUpperCase() + cat.slice(1)}</option>`).join('')}
+                </select>
+            </div>
 
-            container.appendChild(card);
-        });
+            <p class="section-note">Showing ${startIdx + 1}-${endIdx} of ${totalFiltered} ${totalFiltered !== analytics.mostValuable.length ? `(filtered from ${analytics.mostValuable.length})` : ''}</p>
+
+            ${this.createValuableResourcesTable(paginatedResources)}
+
+            <div class="pagination-controls">
+                <button class="pagination-btn" id="valuablePrevBtn" ${this.valuableResourcesPage === 0 ? 'disabled' : ''}>
+                    ← Previous
+                </button>
+                <span class="pagination-info">Page ${this.valuableResourcesPage + 1} of ${Math.ceil(totalFiltered / this.valuableResourcesPageSize)}</span>
+                <button class="pagination-btn" id="valuableNextBtn" ${endIdx >= totalFiltered ? 'disabled' : ''}>
+                    Next →
+                </button>
+            </div>
+        `;
+
+        // Setup listeners
+        this.setupValuableResourcesPagination();
+        this.setupValuableResourcesFilters();
+    }
+
+    createValuableResourcesTable(resources) {
+        return `
+            <div class="flow-table-container">
+                <table class="flow-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Resource</th>
+                            <th>Category</th>
+                            <th>Tier</th>
+                            <th>Base Value</th>
+                            <th>Stack Size</th>
+                            <th>Stack Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${resources.map((resource, idx) => {
+                            const globalRank = this.valuableResourcesPage * this.valuableResourcesPageSize + idx + 1;
+                            const rankEmoji = globalRank <= 3 ? ['🥇', '🥈', '🥉'][globalRank - 1] : `#${globalRank}`;
+                            const tierColor = this.getTierColor(resource.tier);
+
+                            return `
+                                <tr>
+                                    <td>${rankEmoji}</td>
+                                    <td class="resource-name-cell"><strong>${this.escapeHtml(resource.name)}</strong></td>
+                                    <td>${this.escapeHtml(resource.category.charAt(0).toUpperCase() + resource.category.slice(1))}</td>
+                                    <td>
+                                        <span class="tier-badge-mini" style="background: ${tierColor}">T${resource.tier || '?'}</span>
+                                    </td>
+                                    <td>${resource.baseValue.toLocaleString()}</td>
+                                    <td>${resource.stackSize}</td>
+                                    <td>${resource.totalStackValue.toLocaleString()}</td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    getFilteredValuableResources() {
+        let filtered = [...this.resourceAnalytics.mostValuable];
+
+        // Apply search filter
+        if (this.valuableResourcesFilters.search) {
+            const searchLower = this.valuableResourcesFilters.search.toLowerCase();
+            filtered = filtered.filter(r =>
+                r.name.toLowerCase().includes(searchLower)
+            );
+        }
+
+        // Apply tier filter
+        if (this.valuableResourcesFilters.tier !== 'all') {
+            filtered = filtered.filter(r =>
+                r.tier == this.valuableResourcesFilters.tier
+            );
+        }
+
+        // Apply category filter
+        if (this.valuableResourcesFilters.category !== 'all') {
+            filtered = filtered.filter(r =>
+                r.category == this.valuableResourcesFilters.category
+            );
+        }
+
+        return filtered;
+    }
+
+    setupValuableResourcesFilters() {
+        const searchInput = document.getElementById('valuableSearchInput');
+        const tierFilter = document.getElementById('valuableTierFilter');
+        const categoryFilter = document.getElementById('valuableCategoryFilter');
+
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                this.valuableResourcesFilters.search = e.target.value;
+                this.valuableResourcesPage = 0;
+                this.renderMostValuableResources();
+            });
+        }
+
+        if (tierFilter) {
+            tierFilter.addEventListener('change', (e) => {
+                this.valuableResourcesFilters.tier = e.target.value;
+                this.valuableResourcesPage = 0;
+                this.renderMostValuableResources();
+            });
+        }
+
+        if (categoryFilter) {
+            categoryFilter.addEventListener('change', (e) => {
+                this.valuableResourcesFilters.category = e.target.value;
+                this.valuableResourcesPage = 0;
+                this.renderMostValuableResources();
+            });
+        }
+    }
+
+    setupValuableResourcesPagination() {
+        const prevBtn = document.getElementById('valuablePrevBtn');
+        const nextBtn = document.getElementById('valuableNextBtn');
+
+        if (prevBtn) {
+            prevBtn.addEventListener('click', () => {
+                if (this.valuableResourcesPage > 0) {
+                    this.valuableResourcesPage--;
+                    this.renderMostValuableResources();
+                }
+            });
+        }
+
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => {
+                const filteredResources = this.getFilteredValuableResources();
+                const totalPages = Math.ceil(filteredResources.length / this.valuableResourcesPageSize);
+                if (this.valuableResourcesPage < totalPages - 1) {
+                    this.valuableResourcesPage++;
+                    this.renderMostValuableResources();
+                }
+            });
+        }
+    }
+
+    getTierColor(tier) {
+        const colors = {
+            1: '#7f8c8d',
+            2: '#95a5a6',
+            3: '#2ecc71',
+            4: '#3498db',
+            5: '#9b59b6'
+        };
+        return colors[tier] || '#7f8c8d';
+    }
+
+    escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     renderCategoryDistribution() {
@@ -241,58 +392,6 @@ class ResourceAnalytics extends BaseAnalytics {
                 <div class="analysis-metric">
                     <span class="label">Tier Distribution:</span>
                     <span class="value">${tierInfo}</span>
-                </div>
-            `;
-
-            container.appendChild(card);
-        });
-    }
-
-    renderStackSizeAnalysis() {
-        const container = document.getElementById('stackSizeAnalysis');
-        if (!container) {
-            console.error('❌ Stack size analysis container not found');
-            return;
-        }
-
-        container.innerHTML = '';
-        const analytics = this.resourceAnalytics;
-
-        // Sort stack size groups by range
-        const stackOrder = ['1-10', '11-50', '51-100', '101-200', '200+'];
-        const sortedStackGroups = stackOrder
-            .map(range => [range, analytics.stackSizeGroups.get(range)])
-            .filter(([_, data]) => data && data.count > 0);
-
-        sortedStackGroups.forEach(([range, data]) => {
-            const card = document.createElement('div');
-            card.className = 'analysis-item';
-
-            // Calculate percentage of total
-            const percentage = ((data.count / analytics.overview.totalResources) * 100).toFixed(1);
-
-            // Find highest value resource in this group
-            const highestValueResource = data.resources.reduce((max, resource) =>
-                (resource.baseValue || 0) > (max.baseValue || 0) ? resource : max
-            );
-
-            card.innerHTML = `
-                <h4>📦 Stack Size ${range}</h4>
-                <div class="analysis-metric">
-                    <span class="label">Resources:</span>
-                    <span class="value">${data.count} (${percentage}%)</span>
-                </div>
-                <div class="analysis-metric">
-                    <span class="label">Avg Value:</span>
-                    <span class="value">${data.averageValue.toLocaleString()}</span>
-                </div>
-                <div class="analysis-metric">
-                    <span class="label">Highest Value:</span>
-                    <span class="value">${highestValueResource.name}</span>
-                </div>
-                <div class="analysis-metric">
-                    <span class="label">Value:</span>
-                    <span class="value">${(highestValueResource.baseValue || 0).toLocaleString()}</span>
                 </div>
             `;
 

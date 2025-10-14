@@ -1367,6 +1367,50 @@ main {
     border: 1px solid rgba(100, 255, 218, 0.3);
 }
 
+/* Sub-navigation tabs */
+.sub-navigation-tabs {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sub-nav-tab {
+    padding: 0.6rem 1.2rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+}
+
+.sub-nav-tab:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    transform: translateY(-1px);
+}
+
+.sub-nav-tab.active {
+    background: linear-gradient(45deg, #4facfe, #00f2fe);
+    color: white;
+    border-color: transparent;
+    box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
+}
+
+.subtab-content {
+    display: none;
+}
+
+.subtab-content.active {
+    display: block;
+}
+
 /* Responsive tree controls */
 @media (max-width: 768px) {
     .tree-controls {
@@ -1385,4 +1429,82 @@ main {
         flex: 1;
         max-width: 60px;
     }
+
+    .sub-navigation-tabs {
+        flex-wrap: wrap;
+    }
+}
+
+/* Raw Materials Grid */
+.raw-materials-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.raw-material-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    padding: 1rem;
+    transition: all 0.3s ease;
+}
+
+.raw-material-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(100, 255, 218, 0.4);
+    box-shadow: 0 8px 25px rgba(100, 255, 218, 0.1);
+}
+
+.material-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.material-header h4 {
+    color: #64ffda;
+    font-size: 1rem;
+    margin: 0;
+}
+
+.material-header .tier-badge {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: bold;
+}
+
+.material-stat {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+    font-size: 0.9rem;
+}
+
+.material-stat .stat-label {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.material-stat .stat-value {
+    color: #4facfe;
+    font-weight: bold;
+}
+
+.usage-indicator {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.usage-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4facfe, #00f2fe);
+    border-radius: 3px;
+    transition: width 0.3s ease;
 }

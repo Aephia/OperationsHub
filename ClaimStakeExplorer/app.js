@@ -4,6 +4,7 @@ class ClaimStakeApp {
         this.data = null;
         this.buildingExplorer = null;
         this.buildingAnalytics = null;
+        this.competitiveAnalytics = null;
         this.currentTab = 'explorer';
         this.init();
     }
@@ -54,9 +55,42 @@ class ClaimStakeApp {
                 this.buildingAnalytics = new BuildingAnalytics(this.data);
                 window.buildingAnalytics = this.buildingAnalytics; // Available globally for planet modal
             }
+
+            // Initialize cross-explorer analytics modules
+            this.competitiveAnalytics = new CompetitiveAdvantageAnalytics();
+
+            // Initialize sub-tab navigation
+            this.initSubTabNavigation();
         } catch (error) {
             console.error('Error initializing modules:', error.message);
         }
+    }
+
+    initSubTabNavigation() {
+        const subNavButtons = document.querySelectorAll('.sub-nav-tab');
+        subNavButtons.forEach(button => {
+            button.addEventListener('click', async (e) => {
+                const subtab = e.target.dataset.subtab;
+
+                // Remove active class from all sub-tabs
+                document.querySelectorAll('.sub-nav-tab').forEach(btn => btn.classList.remove('active'));
+                document.querySelectorAll('.subtab-content').forEach(content => content.classList.remove('active'));
+
+                // Add active class to clicked button
+                e.target.classList.add('active');
+
+                // Show corresponding content
+                const subtabContent = document.getElementById(`${subtab}AnalyticsSubtab`);
+                if (subtabContent) {
+                    subtabContent.classList.add('active');
+                }
+
+                // Load analytics when tabs are clicked
+                if (subtab === 'competitive' && this.competitiveAnalytics) {
+                    await this.competitiveAnalytics.renderCompetitiveAdvantage();
+                }
+            });
+        });
     }
 
     setupEventListeners() {

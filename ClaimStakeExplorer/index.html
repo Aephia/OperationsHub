@@ -6,6 +6,8 @@
     <title>ClaimStake Explorer</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="../Utils/FacilityAnalytics.css">
+    <link rel="stylesheet" href="new-features-styles.css">
+    <link rel="stylesheet" href="analytics-styles.css">
     <!-- Chart.js for data visualization -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 </head>
@@ -164,31 +166,50 @@
         <!-- Analytics Tab Content -->
         <div id="analyticsTab" class="tab-content">
             <div class="analytics-header">
-                <h2>📊 ClaimStake Building Analytics</h2>
-                <p>Comprehensive analysis of building statistics, costs, and resource generation</p>
+                <h2>📊 ClaimStake Analytics</h2>
+                <p>Comprehensive analysis of buildings, profitability, efficiency, and strategy</p>
             </div>
 
-            <div class="analytics-stats">
-                <div class="stat-card">
-                    <h3>Total Buildings</h3>
-                    <div class="stat-number" id="analyticsTotal">0</div>
+            <!-- Sub-tabs for different analytics -->
+            <nav class="sub-navigation-tabs">
+                <button class="sub-nav-tab active" data-subtab="basic">📈 Building Analytics</button>
+                <button class="sub-nav-tab" data-subtab="competitive">📊 Competitive Advantage</button>
+            </nav>
+
+            <!-- Basic Analytics Sub-tab -->
+            <div id="basicAnalyticsSubtab" class="subtab-content active">
+                <div class="analytics-stats">
+                    <div class="stat-card">
+                        <h3>Total Buildings</h3>
+                        <div class="stat-number" id="analyticsTotal">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Unique Tiers</h3>
+                        <div class="stat-number" id="analyticsUniqueTiers">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Resource Types</h3>
+                        <div class="stat-number" id="analyticsResourceTypes">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Construction Materials</h3>
+                        <div class="stat-number" id="analyticsConstructionMaterials">0</div>
+                    </div>
                 </div>
-                <div class="stat-card">
-                    <h3>Unique Tiers</h3>
-                    <div class="stat-number" id="analyticsUniqueTiers">0</div>
-                </div>
-                <div class="stat-card">
-                    <h3>Resource Types</h3>
-                    <div class="stat-number" id="analyticsResourceTypes">0</div>
-                </div>
-                <div class="stat-card">
-                    <h3>Construction Materials</h3>
-                    <div class="stat-number" id="analyticsConstructionMaterials">0</div>
+
+                <div class="analytics-sections" id="analyticsContent">
+                    <!-- Analytics content will be populated by JavaScript -->
                 </div>
             </div>
 
-            <div class="analytics-sections" id="analyticsContent">
-                <!-- Analytics content will be populated by JavaScript -->
+            <!-- Competitive Advantage Sub-tab -->
+            <div id="competitiveAnalyticsSubtab" class="subtab-content">
+                <div id="competitiveLoadingMessage" style="display: none;">
+                    <p>🔄 Loading competitive advantage analytics...</p>
+                </div>
+                <div id="competitiveContent" class="analytics-sections">
+                    <!-- Competitive advantage content will be rendered here -->
+                </div>
             </div>
         </div>
         <!-- Construction Tab Content -->
@@ -228,6 +249,7 @@
     <script src="../Utils/BaseExplorer.js?v=20250925-2142" onload="console.log('✅ BaseExplorer.js loaded')" onerror="console.error('❌ Failed to load BaseExplorer.js')"></script>
     <script src="../Utils/BaseApp.js?v=20250925-2142" onload="console.log('✅ BaseApp.js loaded')" onerror="console.error('❌ Failed to load BaseApp.js')"></script>
     <script src="../Utils/DataLoader.js?v=20250925-2142" onload="console.log('✅ DataLoader.js loaded, DataLoader available:', typeof DataLoader !== 'undefined')" onerror="console.error('❌ Failed to load DataLoader.js')"></script>
+    <script src="../Utils/CrossExplorerAnalytics.js" onload="console.log('✅ CrossExplorerAnalytics.js loaded')" onerror="console.error('❌ Failed to load CrossExplorerAnalytics.js')"></script>
     <script src="../Utils/FacilityAnalytics.js" onload="console.log('✅ FacilityAnalytics.js loaded')" onerror="console.error('❌ Failed to load FacilityAnalytics.js')"></script>
     <script src="../Data/buildings-data.js?v=20250925-2142" onload="console.log('✅ buildings-data.js loaded, rawBuildingData available:', typeof rawBuildingData !== 'undefined')" onerror="console.error('❌ Failed to load buildings-data.js')"></script>
     <script src="../Data/planet-data.js?v=20250925-2142" onload="console.log('u2705 planet-data.js loaded')" onerror="console.error('❌ Failed to load planet-data.js')"></script>
@@ -235,6 +257,7 @@
     <script src="construction.js?v=20251003" onload="console.log('u2705 construction.js loaded')" onerror="console.error('❌ Failed to load construction.js')"></script>
     <script src="explorer.js?v=20250925-2142" onload="console.log('✅ explorer.js loaded')" onerror="console.error('❌ Failed to load explorer.js')"></script>
     <script src="analytics.js?v=20251006-regions-modal" onload="console.log('✅ analytics.js loaded')" onerror="console.error('❌ Failed to load analytics.js')"></script>
+    <script src="competitive-advantage.js" onload="console.log('✅ competitive-advantage.js loaded')" onerror="console.error('❌ Failed to load competitive-advantage.js')"></script>
     <script src="app.js?v=20250925-2142" onload="console.log('✅ app.js loaded - FRESH VERSION')" onerror="console.error('❌ Failed to load app.js')"></script>
 </body>
 </html>

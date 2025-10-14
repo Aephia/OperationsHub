@@ -1422,7 +1422,57 @@ class ShipExplorer {
 
 document.addEventListener('DOMContentLoaded', () => {
     window.shipExplorer = new ShipExplorer();
+
+    // Initialize cross-explorer analytics modules
+    if (typeof FleetAnalytics !== 'undefined') {
+        window.fleetAnalytics = new FleetAnalytics();
+    }
+    if (typeof ComponentSourcingAnalytics !== 'undefined') {
+        window.componentSourcingAnalytics = new ComponentSourcingAnalytics();
+    }
+    if (typeof TradeRouteAnalytics !== 'undefined') {
+        window.tradeRouteAnalytics = new TradeRouteAnalytics();
+    }
+    if (typeof ResourceEfficiencyAnalytics !== 'undefined') {
+        window.resourceEfficiencyAnalytics = new ResourceEfficiencyAnalytics();
+    }
+
+    // Initialize sub-tab navigation
+    initShipAnalyticsSubTabs();
 });
+
+function initShipAnalyticsSubTabs() {
+    const subNavButtons = document.querySelectorAll('.sub-nav-tab');
+    subNavButtons.forEach(button => {
+        button.addEventListener('click', async (e) => {
+            const subtab = e.target.dataset.subtab;
+
+            // Remove active class from all sub-tabs
+            document.querySelectorAll('.sub-nav-tab').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.subtab-content').forEach(content => content.classList.remove('active'));
+
+            // Add active class to clicked button
+            e.target.classList.add('active');
+
+            // Show corresponding content
+            const subtabContent = document.getElementById(`${subtab}AnalyticsSubtab`);
+            if (subtabContent) {
+                subtabContent.classList.add('active');
+            }
+
+            // Load analytics when tabs are clicked
+            if (subtab === 'fleet' && window.fleetAnalytics) {
+                await window.fleetAnalytics.renderFleetAnalytics();
+            } else if (subtab === 'sourcing' && window.componentSourcingAnalytics) {
+                await window.componentSourcingAnalytics.renderComponentSourcing();
+            } else if (subtab === 'trade' && window.tradeRouteAnalytics) {
+                await window.tradeRouteAnalytics.renderTradeRoutes();
+            } else if (subtab === 'efficiency' && window.resourceEfficiencyAnalytics) {
+                await window.resourceEfficiencyAnalytics.renderResourceEfficiency();
+            }
+        });
+    });
+}
 
 
 

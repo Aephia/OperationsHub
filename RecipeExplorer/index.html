@@ -60,9 +60,11 @@
         <div id="analyticsTab" class="tab-content">
             <div class="analytics-header">
                 <h2>📊 Recipe Analytics</h2>
-                <p>Analyze recipe complexity, resource requirements, and construction patterns across all recipes</p>
+                <p>Analyze recipe complexity, resource requirements, and manufacturing chains</p>
             </div>
 
+            <!-- Basic Analytics -->
+            <div id="basicAnalyticsSubtab" class="subtab-content active">
             <div class="analytics-stats">
                 <div class="stat-card">
                     <span class="stat-number" id="totalRecipeCount">0</span>
@@ -87,6 +89,14 @@
             </div>
 
             <div class="analytics-sections">
+                <div class="analytics-section">
+                    <h3>⛏️ Raw Materials</h3>
+                    <p class="section-note">Base resources that start production chains</p>
+                    <div id="rawMaterials" class="raw-materials-grid">
+                        <!-- Raw materials will be populated here -->
+                    </div>
+                </div>
+
                 <div class="analytics-section">
                     <h3>⏱️ Longest Construction Time</h3>
                     <p class="section-note">Recipes with the longest construction/crafting times</p>
@@ -127,6 +137,7 @@
                     </div>
                 </div>
             </div>
+            </div>
         </div>
     </main>
 
@@ -135,6 +146,7 @@
     <script src="../Utils/BaseExplorer.js"></script>
     <script src="../Utils/BaseApp.js"></script>
     <script src="../Utils/DataLoader.js"></script>
+    <script src="../Utils/CrossExplorerAnalytics.js"></script>
     <script src="../Data/recipes-data.js"></script>
     <script src="enhanced-tree-renderer.js"></script>
     <script src="analytics.js"></script>

@@ -24,11 +24,88 @@ class RecipeAnalytics {
 
     renderAnalytics() {
         this.updateStats();
+        this.renderRawMaterials();
         this.renderLongestConstructionTime();
         this.renderMostResourceIntensive();
         this.renderHighestTierRecipes();
         this.renderMostComplexDependencies();
         this.renderInfrastructureGiants();
+    }
+
+    async renderRawMaterials() {
+        // Load resources data to find raw materials (category: "raw")
+        let resourcesData;
+        try {
+            const response = await fetch('../JSON/resources.json');
+            resourcesData = await response.json();
+        } catch (error) {
+            console.error('[RawMaterials] Error loading resources:', error);
+            const container = document.getElementById('rawMaterials');
+            if (container) {
+                container.innerHTML = '<p class="empty-state">Error loading raw materials</p>';
+            }
+            return;
+        }
+
+        // Filter resources with category "raw"
+        const rawResources = resourcesData.resources.filter(r => r.category === 'raw');
+
+        // Count how many recipes use each raw material
+        const rawMaterials = rawResources.map(resource => {
+            let usageCount = 0;
+            this.allRecipes.forEach(recipe => {
+                if (recipe.inputs) {
+                    const usesResource = recipe.inputs.some(input =>
+                        input.name === resource.name || input.id === resource.id
+                    );
+                    if (usesResource) usageCount++;
+                }
+            });
+
+            return {
+                resource: resource.name,
+                tier: resource.tier,
+                usedInRecipes: usageCount
+            };
+        });
+
+        // Sort by usage count
+        rawMaterials.sort((a, b) => b.usedInRecipes - a.usedInRecipes);
+
+        const container = document.getElementById('rawMaterials');
+        if (!container) return;
+
+        container.innerHTML = '';
+
+        if (rawMaterials.length === 0) {
+            container.innerHTML = '<p class="empty-state">No raw materials found</p>';
+            return;
+        }
+
+        const maxUsage = rawMaterials[0]?.usedInRecipes || 1;
+
+        rawMaterials.forEach((material, index) => {
+            const item = document.createElement('div');
+            item.className = 'raw-material-card';
+
+            const usagePercent = (material.usedInRecipes / maxUsage) * 100;
+
+            item.innerHTML = `
+                <div class="material-header">
+                    <h4>#${index + 1} ${material.resource}</h4>
+                    <span class="tier-badge">T${material.tier}</span>
+                </div>
+                <div class="material-stat">
+                    <span class="stat-label">Used in:</span>
+                    <span class="stat-value">${material.usedInRecipes} recipe${material.usedInRecipes !== 1 ? 's' : ''}</span>
+                </div>
+                <div class="usage-indicator">
+                    <div class="usage-fill" style="width: ${usagePercent}%"></div>
+                </div>
+            `;
+
+            container.appendChild(item);
+        });
     }
 
     updateStats() {

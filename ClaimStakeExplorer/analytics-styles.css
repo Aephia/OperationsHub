@@ -1,0 +1,858 @@
+/* ========================================
+   PROFITABILITY ANALYTICS STYLES
+   ======================================== */
+
+.analytics-section {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 16px;
+    padding: 2rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 2rem;
+}
+
+.analytics-section h3 {
+    color: #ff9500;
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.section-note,
+.section-description {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+    font-style: italic;
+}
+
+/* Profit Cards Grid */
+.profit-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 1.5rem;
+}
+
+.profit-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.profit-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.profit-card.profit-excellent {
+    border-color: rgba(46, 204, 113, 0.4);
+}
+
+.profit-card.profit-great {
+    border-color: rgba(52, 152, 219, 0.4);
+}
+
+.profit-card.profit-good {
+    border-color: rgba(155, 89, 182, 0.4);
+}
+
+.profit-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.profit-rank {
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    color: #000;
+    font-weight: bold;
+    font-size: 1.2rem;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.profit-info h4 {
+    color: #ffffff;
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.profit-metrics {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.metric-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 6px;
+}
+
+.metric-row.highlight {
+    background: rgba(79, 172, 254, 0.1);
+    border: 1px solid rgba(79, 172, 254, 0.2);
+}
+
+.metric-icon {
+    font-size: 1.2rem;
+}
+
+.metric-details {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.metric-label {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.85rem;
+}
+
+.metric-value {
+    color: #ffffff;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.metric-value.profit-positive {
+    color: #2ecc71;
+}
+
+.profit-indicator {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: linear-gradient(90deg, rgba(79, 172, 254, 0.1), rgba(79, 172, 254, 0.05));
+    border-left: 3px solid #4facfe;
+    border-radius: 4px;
+    color: #4facfe;
+    font-weight: 600;
+    text-align: center;
+}
+
+/* Margin Cards */
+.margin-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1rem;
+}
+
+.margin-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1rem;
+    transition: all 0.3s ease;
+}
+
+.margin-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.margin-rank {
+    min-width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.3rem;
+    color: #000;
+}
+
+.margin-content {
+    flex: 1;
+}
+
+.margin-content h4 {
+    color: #ffffff;
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+}
+
+.margin-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    font-size: 0.85rem;
+}
+
+.margin-stat {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Time Cards */
+.time-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 1.5rem;
+}
+
+.time-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.time-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.time-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.time-rank {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+    color: #000;
+    font-weight: bold;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+}
+
+.time-header h4 {
+    color: #ffffff;
+    margin: 0;
+}
+
+.time-metric-large {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: rgba(46, 204, 113, 0.1);
+    border: 1px solid rgba(46, 204, 113, 0.2);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.metric-value-large {
+    display: block;
+    color: #2ecc71;
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.time-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.time-detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+/* Density Cards */
+.density-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1rem;
+}
+
+.density-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1rem;
+    transition: all 0.3s ease;
+}
+
+.density-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.density-icon {
+    font-size: 2.5rem;
+}
+
+.density-content {
+    flex: 1;
+}
+
+.density-content h4 {
+    color: #ffffff;
+    margin: 0 0 0.5rem 0;
+}
+
+.density-score {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 0.5rem;
+    color: #4facfe;
+    font-size: 1.3rem;
+    font-weight: bold;
+}
+
+.density-label {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.8rem;
+    font-weight: normal;
+}
+
+.density-stats {
+    display: flex;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Insights */
+.insights-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
+}
+
+.insight-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.insight-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.insight-card.highlight {
+    background: rgba(79, 172, 254, 0.05);
+    border-color: rgba(79, 172, 254, 0.3);
+}
+
+.insight-icon {
+    font-size: 2rem;
+    margin-bottom: 0.75rem;
+    display: block;
+}
+
+.insight-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.insight-content strong {
+    color: #4facfe;
+    font-size: 0.9rem;
+}
+
+.insight-recipe {
+    color: #ffffff;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.insight-value {
+    color: #2ecc71;
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+.insight-detail {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.85rem;
+}
+
+/* ========================================
+   COMPETITIVE ADVANTAGE STYLES
+   ======================================== */
+
+.competitive-section {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 16px;
+    padding: 2rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 2rem;
+}
+
+.competitive-section h3 {
+    color: #ff9500;
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+/* Manufacturing Grid */
+.manufacturing-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
+}
+
+.faction-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.faction-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.faction-card.faction-mud {
+    border-left: 4px solid #e74c3c;
+}
+
+.faction-card.faction-oni {
+    border-left: 4px solid #3498db;
+}
+
+.faction-card.faction-ustur {
+    border-left: 4px solid #2ecc71;
+}
+
+.faction-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.faction-rank {
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    color: #000;
+    font-weight: bold;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+}
+
+.faction-name {
+    flex: 1;
+    text-align: center;
+    color: #ffffff;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.faction-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 6px;
+}
+
+.stat-row.highlight {
+    background: rgba(79, 172, 254, 0.1);
+    border: 1px solid rgba(79, 172, 254, 0.2);
+}
+
+.stat-label {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.stat-value {
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.capability-bar {
+    height: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+
+.capability-fill {
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+.capability-fill.capability-excellent {
+    background: linear-gradient(90deg, #2ecc71, #27ae60);
+}
+
+.capability-fill.capability-good {
+    background: linear-gradient(90deg, #3498db, #2980b9);
+}
+
+.capability-fill.capability-moderate {
+    background: linear-gradient(90deg, #f39c12, #e67e22);
+}
+
+.capability-fill.capability-low {
+    background: linear-gradient(90deg, #e74c3c, #c0392b);
+}
+
+.capability-text {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 600;
+}
+
+/* Dominance Grid */
+.dominance-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1rem;
+}
+
+.dominance-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1rem;
+    transition: all 0.3s ease;
+}
+
+.dominance-card.monopoly {
+    border-color: rgba(231, 76, 60, 0.5);
+    background: rgba(231, 76, 60, 0.05);
+}
+
+.dominance-card:hover {
+    transform: translateY(-2px);
+}
+
+.dominance-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.resource-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.resource-name {
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.monopoly-badge {
+    background: #e74c3c;
+    color: #000;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: bold;
+}
+
+.control-percentage {
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+.control-percentage.faction-mud {
+    color: #e74c3c;
+}
+
+.control-percentage.faction-oni {
+    color: #3498db;
+}
+
+.control-percentage.faction-ustur {
+    color: #2ecc71;
+}
+
+.dominant-faction {
+    margin-bottom: 0.5rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.other-control {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.control-chip {
+    padding: 0.25rem 0.5rem;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+
+/* Vulnerability Grid */
+.vulnerability-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 1.5rem;
+}
+
+.vulnerability-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.vulnerability-card:hover {
+    transform: translateY(-2px);
+}
+
+.vulnerability-header h4 {
+    color: #ffffff;
+    margin: 0 0 1rem 0;
+}
+
+.vulnerability-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.vuln-stat {
+    text-align: center;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+}
+
+.vuln-number {
+    display: block;
+    color: #4facfe;
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.vuln-label {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.85rem;
+}
+
+.dependency-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.dependency-label {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+}
+
+.dependency-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+}
+
+.dep-faction {
+    font-weight: 600;
+}
+
+.dep-faction.faction-mud {
+    color: #e74c3c;
+}
+
+.dep-faction.faction-oni {
+    color: #3498db;
+}
+
+.dep-faction.faction-ustur {
+    color: #2ecc71;
+}
+
+.dep-count {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.85rem;
+}
+
+.no-dependencies {
+    padding: 1rem;
+    text-align: center;
+    color: #2ecc71;
+    font-weight: 600;
+}
+
+/* Chokepoint List */
+.chokepoint-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.chokepoint-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.chokepoint-item.critical {
+    border-color: rgba(231, 76, 60, 0.4);
+    background: rgba(231, 76, 60, 0.05);
+}
+
+.chokepoint-item:hover {
+    transform: translateX(4px);
+}
+
+.chokepoint-rank {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+    color: #000;
+    font-weight: bold;
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chokepoint-info {
+    flex: 1;
+}
+
+.chokepoint-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.chokepoint-resource {
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.chokepoint-details {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    font-size: 0.85rem;
+}
+
+.controller {
+    font-weight: 600;
+}
+
+.controller.faction-mud {
+    color: #e74c3c;
+}
+
+.controller.faction-oni {
+    color: #3498db;
+}
+
+.controller.faction-ustur {
+    color: #2ecc71;
+}
+
+.control-stat,
+.location-stat {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.chokepoint-impact {
+    display: flex;
+    gap: 1rem;
+}
+
+.impact-stat {
+    text-align: center;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+}
+
+.impact-number {
+    display: block;
+    color: #4facfe;
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+
+.impact-label {
+    display: block;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.75rem;
+}
+
+.no-data-message {
+    padding: 2rem;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.6);
+    font-style: italic;
+}
+
+/* Insights - Competitive */
+.insight-card.success {
+    border-color: rgba(46, 204, 113, 0.3);
+}
+
+.insight-card.warning {
+    border-color: rgba(243, 156, 18, 0.3);
+}
+
+.insight-card.danger {
+    border-color: rgba(231, 76, 60, 0.3);
+}
+
+.insight-card.info {
+    border-color: rgba(52, 152, 219, 0.3);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .profit-grid,
+    .margin-grid,
+    .time-grid,
+    .density-grid,
+    .insights-grid,
+    .manufacturing-grid,
+    .dominance-grid,
+    .vulnerability-grid {
+        grid-template-columns: 1fr;
+    }
+}

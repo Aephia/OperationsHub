@@ -79,44 +79,60 @@
                 <p>Analyze resource distribution, values, and categories</p>
             </div>
 
-            <div class="analytics-stats">
-                <div class="stat-card">
-                    <span class="stat-number" id="mostExpensiveValue">0</span>
-                    <span class="stat-label">Highest Base Value</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-number" id="averageTier">0</span>
-                    <span class="stat-label">Average Tier</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-number" id="totalValue">0</span>
-                    <span class="stat-label">Total Collection Value</span>
+            <!-- Sub-tabs for different analytics -->
+            <nav class="sub-navigation-tabs">
+                <button class="sub-nav-tab active" data-subtab="basic">📈 Basic Analytics</button>
+                <button class="sub-nav-tab" data-subtab="flow">🔄 Resource Flow</button>
+            </nav>
+
+            <!-- Basic Analytics Sub-tab -->
+            <div id="basicAnalyticsSubtab" class="subtab-content active">
+                <div class="analytics-sections">
+                    <div class="analytics-section">
+                        <h3>💰 Most Valuable Resources</h3>
+                        <p class="section-note">Resources ranked by base value</p>
+                        <div id="mostValuableResources">
+                            <!-- Most valuable resources table will be populated here -->
+                        </div>
+                    </div>
+
+                    <div class="analytics-section">
+                        <h3>📊 Category Distribution</h3>
+                        <p class="section-note">Resource breakdown by category and tier</p>
+                        <div id="categoryDistribution" class="category-analysis-grid">
+                            <!-- Category distribution will be populated here -->
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="analytics-sections">
-                <div class="analytics-section">
-                    <h3>💰 Most Valuable Resources</h3>
-                    <p class="section-note">Resources ranked by base value</p>
-                    <div id="mostValuableResources" class="resource-analysis-grid">
-                        <!-- Most valuable resources will be populated here -->
+            <!-- Resource Flow Sub-tab -->
+            <div id="flowAnalyticsSubtab" class="subtab-content">
+                <div id="flowLoadingMessage" style="display: none;">
+                    <p>🔄 Loading resource flow analysis...</p>
+                </div>
+
+                <div class="analytics-stats" id="flowStats">
+                    <div class="stat-card">
+                        <span class="stat-number" id="flowTotalResources">0</span>
+                        <span class="stat-label">Total Resources</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number" id="flowCriticalResources">0</span>
+                        <span class="stat-label">Critical Resources</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number" id="flowBottlenecks">0</span>
+                        <span class="stat-label">Supply Bottlenecks</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number" id="flowMaxDepth">0</span>
+                        <span class="stat-label">Max Chain Depth</span>
                     </div>
                 </div>
 
-                <div class="analytics-section">
-                    <h3>📊 Category Distribution</h3>
-                    <p class="section-note">Resource breakdown by category and tier</p>
-                    <div id="categoryDistribution" class="category-analysis-grid">
-                        <!-- Category distribution will be populated here -->
-                    </div>
-                </div>
-
-                <div class="analytics-section">
-                    <h3>⚖️ Stack Size Analysis</h3>
-                    <p class="section-note">Resources grouped by stack sizes for inventory optimization</p>
-                    <div id="stackSizeAnalysis" class="stack-analysis-grid">
-                        <!-- Stack size analysis will be populated here -->
-                    </div>
+                <div id="flowAnalysisContent" class="analytics-sections">
+                    <!-- Flow analysis content will be rendered here -->
                 </div>
             </div>
         </div>
@@ -136,9 +152,11 @@
     <script src="../Utils/BaseExplorer.js"></script>
     <script src="../Utils/BaseApp.js"></script>
     <script src="../Utils/DataLoader.js"></script>
+    <script src="../Utils/CrossExplorerAnalytics.js"></script>
     <script src="../Data/resources-data.js"></script>
     <script src="explorer.js"></script>
     <script src="analytics.js"></script>
+    <script src="flow-analytics.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

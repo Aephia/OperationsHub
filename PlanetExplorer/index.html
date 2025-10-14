@@ -67,10 +67,19 @@
         <!-- Analytics Tab Content -->
         <div id="analyticsTab" class="tab-content">
             <div class="analytics-header">
-                <h2>📊 Resource Analytics</h2>
-                <p>Analyze resource distribution and scarcity across the galaxy</p>
+                <h2>📊 Planet Analytics</h2>
+                <p>Analyze resources, manufacturing, and territory across the galaxy</p>
             </div>
 
+            <!-- Sub-tabs for different analytics -->
+            <nav class="sub-navigation-tabs">
+                <button class="sub-nav-tab active" data-subtab="basic">📈 Resource Analytics</button>
+                <button class="sub-nav-tab" data-subtab="manufacturing">🏭 Manufacturing</button>
+                <button class="sub-nav-tab" data-subtab="territory">🌍 Territory</button>
+            </nav>
+
+            <!-- Basic Analytics Sub-tab -->
+            <div id="basicAnalyticsSubtab" class="subtab-content active">
             <div class="analytics-stats">
                 <div class="stat-card">
                     <span class="stat-number" id="scarcestCount">0</span>
@@ -127,6 +136,48 @@
                     </div>
                 </div>
             </div>
+            </div>
+
+            <!-- Manufacturing Sub-tab -->
+            <div id="manufacturingAnalyticsSubtab" class="subtab-content">
+                <div id="mfgLoadingMessage" style="display: none;">
+                    <p>🔄 Loading manufacturing analytics...</p>
+                </div>
+
+                <div class="analytics-stats" id="mfgStats">
+                    <div class="stat-card">
+                        <span class="stat-number" id="mfgTotalPlanets">0</span>
+                        <span class="stat-label">Analyzed Planets</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number" id="mfgTopSufficiency">0</span>
+                        <span class="stat-label">Best Self-Sufficiency</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number" id="mfgSpecializations">0</span>
+                        <span class="stat-label">Specializations</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number" id="mfgTotalRecipes">0</span>
+                        <span class="stat-label">Total Recipes</span>
+                    </div>
+                </div>
+
+                <div class="analytics-sections" id="manufacturingContent">
+                    <!-- Manufacturing content will be rendered here -->
+                </div>
+            </div>
+
+            <!-- Territory Sub-tab -->
+            <div id="territoryAnalyticsSubtab" class="subtab-content">
+                <div id="terrLoadingMessage" style="display: none;">
+                    <p>🔄 Loading territory analytics...</p>
+                </div>
+
+                <div class="analytics-sections" id="territoryContent">
+                    <!-- Territory content will be rendered here -->
+                </div>
+            </div>
         </div>
 
     </main>
@@ -146,9 +197,12 @@
     <script src="../Utils/BaseExplorer.js"></script>
     <script src="../Utils/BaseApp.js"></script>
     <script src="../Utils/DataLoader.js"></script>
+    <script src="../Utils/CrossExplorerAnalytics.js"></script>
     <script src="../Data/planet-data.js"></script>
     <script src="explorer.js"></script>
     <script src="analytics.js"></script>
+    <script src="manufacturing-analytics.js"></script>
+    <script src="territory-analytics.js"></script>
     <script src="app.js"></script>
 
     <!-- Import map for three.js so example modules can resolve the bare specifier 'three' -->
