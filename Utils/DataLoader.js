@@ -220,7 +220,12 @@ class DataLoader {
                     type: 'product'
                 }],
                 time: recipe.constructionTime || 0,
+                craftingTime: recipe.constructionTime || 0,  // Add for analytics compatibility
                 tier: recipe.outputTier || 1,
+                buildingTier: recipe.buildingResourceTier || 1,  // Add building tier
+                planetTypes: recipe.planetTypes || [],  // Add planet types
+                factions: recipe.factions || [],  // Add factions
+                productionSteps: recipe.productionSteps || 1,  // Add production steps
                 category: category,
                 description: recipe.description || '',
                 rawData: recipe

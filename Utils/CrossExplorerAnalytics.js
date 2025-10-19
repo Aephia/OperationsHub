@@ -168,6 +168,7 @@ class CrossExplorerAnalytics {
                     if (usage) {
                         usage.usedInRecipes.push({
                             recipe: recipe.outputName,
+                            recipeId: recipe.outputId,  // Add recipe ID for linking to Recipe Explorer
                             quantity: ingredient.quantity,
                             outputTier: recipe.outputTier
                         });

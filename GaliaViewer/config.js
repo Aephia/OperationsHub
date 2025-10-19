@@ -33,34 +33,45 @@ export const Config = {
         zVariationFactor: 3.14 / 10, // Used in sin calculation for z-axis
     },
 
-    // Movement and controls
+    // Movement and controls - Smooth flight-like spaceship controls
     movement: {
+        // WASD acceleration/deceleration for smooth ship-like movement
+        acceleration: 0.05,          // How quickly speed builds up (much slower now)
+        deceleration: 0.94,          // How quickly movement slows down (slower deceleration)
+        maxSpeed: 0.8,               // Maximum movement speed (reduced from 2.5)
+        minSpeed: 0.001,             // Minimum speed threshold (stops movement)
+        distanceSpeedScale: 0.001,   // Speed scaling based on camera distance (reduced from 0.003)
+
+        // Legacy settings (kept for compatibility)
         baseSpeed: 0.08,
-        deceleration: 0.85,
-        minSpeed: 2,
-        maxSpeed: 50,
         speedMultiplier: 1,
         keyboardMoveSpeed: 5,
     },
 
-    // Controls sensitivity
+    // Controls sensitivity - Smooth camera controls
     controls: {
-        dampingFactor: 0.15,  // Increased for smoother, more responsive movement
-        baseZoomSpeed: 1.5,   // Reduced for slower, more controlled zoom
-        rotateSpeedBase: 1.0,
-        panSpeedBase: 1.0,
+        dampingFactor: 0.08,     // Lower = smoother camera movement (0.05-0.15 recommended)
+        baseZoomSpeed: 0.6,      // Base zoom speed (lower = smoother zoom)
+        rotateSpeedBase: 0.8,    // Rotation sensitivity
+        panSpeedBase: 0.8,       // Pan sensitivity
         maxPolarAngle: Math.PI,
         minDistance: 0.01,
         maxDistance: Infinity,
+
+        // Zoom wheel settings
+        zoomDampening: 0.85,     // Dampening for mouse wheel zoom (0.7-0.95, higher = smoother)
+        zoomStepSize: 0.05,      // Step size per wheel tick (0.02-0.1, lower = finer control)
+        minZoomSpeed: 0.1,       // Minimum zoom speed
+        maxZoomSpeed: 5.0,       // Maximum zoom speed
     },
 
-    // Zoom sensitivity thresholds
+    // Zoom sensitivity thresholds - Distance-based zoom scaling
     zoomSensitivity: {
-        veryClose: { threshold: 20, factor: 5.0 },
-        close: { threshold: 100, factor: 10.0 },
-        medium: { threshold: 500, factor: 15.0 },
-        far: { threshold: 2000, factor: 20.0 },
-        veryFar: { maxFactor: 30.0, increment: 200 },
+        veryClose: { threshold: 20, factor: 0.8 },     // Slower zoom when very close
+        close: { threshold: 100, factor: 1.5 },        // Moderate zoom at close range
+        medium: { threshold: 500, factor: 2.5 },       // Medium zoom at medium range
+        far: { threshold: 2000, factor: 4.0 },         // Faster zoom when far
+        veryFar: { maxFactor: 6.0, increment: 200 },   // Maximum zoom factor for very far distances
     },
 
     // Frustum culling

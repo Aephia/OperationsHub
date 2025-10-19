@@ -32,12 +32,141 @@ class RecipeAnalytics {
         this.renderInfrastructureGiants();
     }
 
+    showRawMaterialRecipes(material) {
+        // Find all recipes that use this raw material
+        const recipesUsingMaterial = this.allRecipes.filter(recipe => {
+            if (!recipe.inputs) return false;
+            return recipe.inputs.some(input =>
+                input.name === material.resource || input.id === material.resource
+            );
+        });
+
+        // Sort by tier and crafting time
+        recipesUsingMaterial.sort((a, b) => {
+            if (a.tier !== b.tier) return b.tier - a.tier;
+            return (b.craftingTime || 0) - (a.craftingTime || 0);
+        });
+
+        // Create modal
+        this.createRawMaterialModal(material, recipesUsingMaterial);
+    }
+
+    createRawMaterialModal(material, recipes) {
+        // Remove existing modal if present
+        const existingModal = document.getElementById('rawMaterialModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        // Create modal overlay
+        const modal = document.createElement('div');
+        modal.id = 'rawMaterialModal';
+        modal.className = 'recipe-modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>⛏️ ${material.resource} (T${material.tier})</h2>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="raw-material-info">
+                        <p class="material-description">
+                            This raw material is used in <strong>${recipes.length}</strong> recipe${recipes.length !== 1 ? 's' : ''}.
+                        </p>
+                    </div>
+
+                    ${recipes.length > 0 ? `
+                        <div class="recipes-using-material">
+                            <h3>📋 Recipes Using ${material.resource}</h3>
+                            <div class="recipe-grid">
+                                ${recipes.map(recipe => `
+                                    <div class="material-recipe-card" data-recipe-id="${recipe.id}">
+                                        <div class="recipe-card-header">
+                                            <span class="recipe-icon">${recipe.categoryIcon || '📦'}</span>
+                                            <span class="recipe-name">${recipe.name}</span>
+                                        </div>
+                                        <div class="recipe-card-meta">
+                                            <span class="recipe-category">${recipe.category}</span>
+                                            <span class="recipe-tier">T${recipe.tier}</span>
+                                        </div>
+                                        <div class="recipe-card-stats">
+                                            <div class="recipe-stat">
+                                                <span class="stat-label">Time:</span>
+                                                <span class="stat-value">${recipe.craftingTime}s</span>
+                                            </div>
+                                            <div class="recipe-stat">
+                                                <span class="stat-label">Ingredients:</span>
+                                                <span class="stat-value">${recipe.inputs?.length || 0}</span>
+                                            </div>
+                                        </div>
+                                        <div class="material-usage">
+                                            ${this.getMaterialUsageInRecipe(recipe, material.resource)}
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : `
+                        <p class="no-recipes">No recipes found using this material.</p>
+                    `}
+                </div>
+            </div>
+        `;
+
+        // Add to page
+        document.body.appendChild(modal);
+
+        // Add event listeners
+        modal.querySelector('.modal-close').addEventListener('click', () => {
+            modal.remove();
+        });
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
+
+        // Add click handlers for recipe cards to show recipe details
+        modal.querySelectorAll('.material-recipe-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const recipeId = card.getAttribute('data-recipe-id');
+                const recipe = this.allRecipes.find(r => r.id === recipeId);
+                if (recipe) {
+                    modal.remove(); // Close current modal
+                    this.showRecipeDetails(recipe); // Show recipe details
+                }
+            });
+        });
+
+        // Add escape key listener
+        const escapeHandler = (e) => {
+            if (e.key === 'Escape') {
+                modal.remove();
+                document.removeEventListener('keydown', escapeHandler);
+            }
+        };
+        document.addEventListener('keydown', escapeHandler);
+    }
+
+    getMaterialUsageInRecipe(recipe, materialName) {
+        if (!recipe.inputs) return '';
+
+        const materialInput = recipe.inputs.find(input =>
+            input.name === materialName || input.id === materialName
+        );
+
+        if (!materialInput) return '';
+
+        return `<span class="material-amount">Uses: ×${materialInput.amount}</span>`;
+    }
+
     async renderRawMaterials() {
         // Load resources data to find raw materials (category: "raw")
         let resourcesData;
         try {
-            const response = await fetch('../JSON/resources.json');
-            resourcesData = await response.json();
+            // Use DataLoader instead of fetch to avoid CORS issues
+            resourcesData = await DataLoader.loadExplorerData('resources');
         } catch (error) {
             console.error('[RawMaterials] Error loading resources:', error);
             const container = document.getElementById('rawMaterials');
@@ -103,6 +232,14 @@ class RecipeAnalytics {
                     <div class="usage-fill" style="width: ${usagePercent}%"></div>
                 </div>
             `;
+
+            // Add click handler to show recipes using this raw material
+            item.addEventListener('click', () => {
+                this.showRawMaterialRecipes(material);
+            });
+
+            // Add cursor pointer style
+            item.style.cursor = 'pointer';
 
             container.appendChild(item);
         });

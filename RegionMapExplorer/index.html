@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Region Map Explorer</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>🗺️ Region Map Explorer</h1>
+
+        <nav class="breadcrumb">
+            <a href="../index.html">Home</a> > Region Map Explorer
+        </nav>
+    </header>
+
+    <main>
+        <div class="map-layout">
+            <!-- Map Canvas -->
+            <div class="map-container">
+                <div class="map-header">
+                    <h2>Galia Region Map</h2>
+                    <div class="map-controls">
+                        <label>
+                            <input type="checkbox" id="showConnections" checked>
+                            Show All Connections
+                        </label>
+                        <label>
+                            <input type="checkbox" id="highlightConnections">
+                            Highlight Selected System
+                        </label>
+                        <label>
+                            <input type="checkbox" id="showLabels">
+                            Show System Labels
+                        </label>
+                        <button id="resetView" class="control-button">Reset View</button>
+                    </div>
+                </div>
+                <div class="conquest-controls">
+                    <div class="conquest-header">
+                        <h3>Conquest Simulator</h3>
+                        <div class="conquest-header-buttons">
+                            <button id="conquestImpactBtn" class="control-button impact-button">📊 Conquest Impact</button>
+                            <button id="resetConquest" class="control-button">Reset All</button>
+                        </div>
+                    </div>
+                    <div class="attacker-selection">
+                        <label>Attacking Faction:</label>
+                        <div class="faction-buttons">
+                            <button class="faction-btn" data-faction="MUD">MUD</button>
+                            <button class="faction-btn" data-faction="ONI">ONI</button>
+                            <button class="faction-btn" data-faction="UST">UST</button>
+                        </div>
+                    </div>
+                    <div class="conquest-info">
+                        <small>Click systems to conquer them for the selected faction. King systems shown with crowns, Core systems with stars.</small>
+                    </div>
+                </div>
+                <canvas id="regionMap"></canvas>
+                <div class="map-legend">
+                    <div class="legend-section">
+                        <strong>Factions:</strong>
+                        <div class="legend-item">
+                            <span class="legend-color" style="background: #ff4444;"></span>
+                            <span>MUD Territory</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-color" style="background: #4444ff;"></span>
+                            <span>ONI Conglomerate</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-color" style="background: #ffaa00;"></span>
+                            <span>Ustur Sector</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-color" style="background: #888888;"></span>
+                            <span>MRZ (Neutral)</span>
+                        </div>
+                    </div>
+                    <div class="legend-section">
+                        <strong>Connections:</strong>
+                        <div class="legend-item">
+                            <span class="legend-line" style="background: rgba(100, 255, 218, 0.8);"></span>
+                            <span>Intra-region / Same region</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-line" style="background: rgba(255, 100, 255, 0.8);"></span>
+                            <span>Inter-region / Cross-region</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-line" style="background: rgba(0, 204, 255, 0.8); box-shadow: 0 0 5px rgba(0, 204, 255, 0.6);"></span>
+                            <span>Selected system (animated)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Region Details Panel -->
+            <div class="details-panel">
+                <div class="details-header">
+                    <h3>Region Details</h3>
+                    <p class="details-hint">Click on a system to view its region details</p>
+                </div>
+
+                <div id="regionDetails" class="details-content">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🗺️</div>
+                        <p>Select a system on the map to view its region details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="../Data/planet-data.js"></script>
+    <script src="../Data/recipes-data.js"></script>
+    <script src="../Data/resources-data.js"></script>
+    <script src="../Data/buildings-data.js"></script>
+    <script src="conquest-statistics.js"></script>
+    <script src="conquest.js"></script>
+    <script src="region-details.js"></script>
+    <script src="region-map.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

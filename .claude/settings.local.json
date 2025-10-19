@@ -24,7 +24,10 @@
       "Bash(git fetch:*)",
       "Bash(curl -s \"https://ses.staratlas.com/Ship%20Config%20Lite/index.html\")",
       "Bash(curl -s \"https://ses.staratlas.com/Ship%20Config%20Lite/js/component-management.js\")",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(/dev/null)",
+      "Bash(npm install)",
+      "Bash(test:*)"
     ],
     "deny": [],
     "ask": []

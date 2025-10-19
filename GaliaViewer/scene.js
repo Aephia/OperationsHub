@@ -87,20 +87,35 @@ export class SceneManager {
 
     setupControls() {
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-        this.controls.enableDamping = true;
-        this.controls.dampingFactor = 0.15;  // Increased for smoother, more responsive movement
-        this.controls.maxDistance = Infinity; // Remove max distance limit completely
-        this.controls.minDistance = 0.01;     // Allow very close zoom
-        this.controls.maxPolarAngle = Math.PI;
+
+        // Import config settings for smooth controls
+        import('./config.js').then(({ Config }) => {
+            this.config = Config;
+
+            // Apply config settings
+            this.controls.enableDamping = true;
+            this.controls.dampingFactor = Config.controls.dampingFactor;
+            this.controls.maxDistance = Config.controls.maxDistance;
+            this.controls.minDistance = Config.controls.minDistance;
+            this.controls.maxPolarAngle = Config.controls.maxPolarAngle;
+            this.controls.rotateSpeed = Config.controls.rotateSpeedBase;
+            this.controls.panSpeed = Config.controls.panSpeedBase;
+            this.controls.zoomSpeed = Config.controls.baseZoomSpeed;
+
+            console.log('✅ Controls configured with smooth settings:', {
+                dampingFactor: Config.controls.dampingFactor,
+                zoomSpeed: Config.controls.baseZoomSpeed,
+                rotateSpeed: Config.controls.rotateSpeedBase
+            });
+        });
+
         this.controls.mouseButtons = {
             LEFT: THREE.MOUSE.ROTATE,
             MIDDLE: THREE.MOUSE.DOLLY,
             RIGHT: THREE.MOUSE.PAN
         };
         this.controls.enableZoom = true;
-        this.controls.zoomSpeed = 1.5;  // Reduced for slower, more controlled zoom
         this.controls.enablePan = true;
-        this.controls.panSpeed = 1.0;
         this.controls.screenSpacePanning = true;
 
         // Ensure zoom doesn't get disabled due to limits
@@ -122,36 +137,48 @@ export class SceneManager {
 
     updateControlSensitivity() {
         const dist = this.camera.position.length();
-        const baseSensitivity = Math.max(0.5, Math.min(3.0, dist / 100));
 
-        // Dynamic sensitivity based on distance
-        this.controls.rotateSpeed = baseSensitivity;
-        this.controls.panSpeed = baseSensitivity * 0.8;
+        // Load config settings (will be available after init)
+        const config = this.config || {};
+        const zoomSensitivity = config.zoomSensitivity || {
+            veryClose: { threshold: 20, factor: 0.8 },
+            close: { threshold: 100, factor: 1.5 },
+            medium: { threshold: 500, factor: 2.5 },
+            far: { threshold: 2000, factor: 4.0 },
+            veryFar: { maxFactor: 6.0, increment: 200 }
+        };
 
-        // Extremely aggressive zoom sensitivity that scales dramatically with distance
-        // Much higher multipliers for faster zooming
+        // Dynamic rotation and pan sensitivity based on distance
+        const baseSensitivity = Math.max(0.5, Math.min(2.0, dist / 100));
+        this.controls.rotateSpeed = baseSensitivity * (config.controls?.rotateSpeedBase || 0.8);
+        this.controls.panSpeed = baseSensitivity * (config.controls?.panSpeedBase || 0.8);
+
+        // Smooth, distance-based zoom scaling with reduced factors
         let zoomFactor;
-        if (dist < 20) {
-            zoomFactor = 5.0; // Fast even when very close
-        } else if (dist < 100) {
-            zoomFactor = 10.0; // Very fast at close-medium distance
-        } else if (dist < 500) {
-            zoomFactor = 15.0; // Extremely fast at medium distance
-        } else if (dist < 2000) {
-            zoomFactor = 20.0; // Super fast for far views
+        const { veryClose, close, medium, far, veryFar } = zoomSensitivity;
+
+        if (dist < veryClose.threshold) {
+            zoomFactor = veryClose.factor;
+        } else if (dist < close.threshold) {
+            zoomFactor = close.factor;
+        } else if (dist < medium.threshold) {
+            zoomFactor = medium.factor;
+        } else if (dist < far.threshold) {
+            zoomFactor = far.factor;
         } else {
-            // Scale up to maximum of 30x for very far distances
-            zoomFactor = Math.min(30.0, 20.0 + (dist - 2000) / 200);
+            // Gradually scale up to maximum for very far distances
+            zoomFactor = Math.min(veryFar.maxFactor, far.factor + (dist - far.threshold) / veryFar.increment);
         }
-        this.controls.zoomSpeed = zoomFactor;
+
+        this.controls.zoomSpeed = (config.controls?.baseZoomSpeed || 0.6) * zoomFactor;
 
         // Dynamic frustum to handle all zoom levels from very close to extremely far
         this.camera.near = Math.max(0.001, Math.min(0.1, dist * 0.0001));
         this.camera.far = Math.max(10000, dist * 20);
         this.camera.updateProjectionMatrix();
 
-        // Soft warning if too far out (optional, can remove if annoying)
-        if (dist > 50000) {
+        // Soft warning if too far out (optional)
+        if (dist > 50000 && config.debug?.logPerformanceWarnings) {
             console.log('Camera very far from origin:', dist.toFixed(0), 'units');
         }
     }

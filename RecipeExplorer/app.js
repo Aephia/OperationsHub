@@ -34,7 +34,10 @@ class RecipeExplorerApp {
         console.log('✅ Recipe Explorer App initialization complete');
 
         // Check URL parameters after checkboxes are fully rendered
-        setTimeout(() => this.checkURLParameters(), 200);
+        setTimeout(() => {
+            this.checkURLParameters();
+            this.checkSearchParameter();
+        }, 200);
     }
 
     async loadData() {
@@ -532,6 +535,27 @@ class RecipeExplorerApp {
                 this.selectedRecipes.add(normalizedId);
                 this.updateTreeDisplay();
             }
+        }
+    }
+
+    // Check for search parameter and populate search box
+    checkSearchParameter() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const searchTerm = urlParams.get('search');
+
+        if (!searchTerm) return;
+
+        console.log('🔍 Search term from URL:', searchTerm);
+
+        // Populate the search input
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            searchInput.value = searchTerm;
+            // Trigger the search
+            this.handleSearch(searchTerm);
+            console.log('✅ Applied search filter:', searchTerm);
+        } else {
+            console.warn('⚠️ Search input not found');
         }
     }
 

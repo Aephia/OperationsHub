@@ -21,10 +21,20 @@ export class EventHandlers {
 
         // WASD keyboard controls - smooth ship-like flight
         this.keyStates = {
-            w: false, a: false, s: false, d: false
+            w: false, a: false, s: false, d: false, space: false, shift: false
         };
-        this.velocity = new THREE.Vector3(0, 0, 0); // Current velocity
-        this.baseSpeed = 0.08; // Very slow constant speed
+        this.velocity = new THREE.Vector3(0, 0, 0); // Current velocity vector
+        this.targetVelocity = new THREE.Vector3(0, 0, 0); // Target velocity based on input
+
+        // Load config for smooth movement
+        import('./config.js').then(({ Config }) => {
+            this.movementConfig = Config.movement;
+            console.log('✅ Movement configured for smooth flight:', {
+                acceleration: this.movementConfig.acceleration,
+                deceleration: this.movementConfig.deceleration,
+                maxSpeed: this.movementConfig.maxSpeed
+            });
+        });
 
         // Object pooling for performance
         this.tempVector = new THREE.Vector3();
@@ -369,10 +379,18 @@ export class EventHandlers {
             return;
         }
 
-        // Handle WASD movement keys only if not typing
-        if (['w', 'a', 's', 'd'].includes(key) && !isTyping) {
-            this.keyStates[key] = true;
-            event.preventDefault(); // Prevent default browser behavior
+        // Handle movement keys only if not typing
+        if (!isTyping) {
+            if (['w', 'a', 's', 'd'].includes(key)) {
+                this.keyStates[key] = true;
+                event.preventDefault(); // Prevent default browser behavior
+            } else if (key === ' ') {
+                this.keyStates.space = true;
+                event.preventDefault(); // Prevent page scroll
+            } else if (event.key === 'Shift') {
+                this.keyStates.shift = true;
+                event.preventDefault();
+            }
         }
     }
 
@@ -387,45 +405,86 @@ export class EventHandlers {
 
         const key = event.key.toLowerCase();
 
-        // Handle WASD movement keys only if not typing
-        if (['w', 'a', 's', 'd'].includes(key) && !isTyping) {
-            this.keyStates[key] = false;
+        // Handle movement keys only if not typing
+        if (!isTyping) {
+            if (['w', 'a', 's', 'd'].includes(key)) {
+                this.keyStates[key] = false;
+            } else if (key === ' ') {
+                this.keyStates.space = false;
+            } else if (event.key === 'Shift') {
+                this.keyStates.shift = false;
+            }
         }
     }
 
     processKeyboardMovement() {
-        // Get camera distance for very slight speed scaling
-        const cameraDistance = this.sceneManager.camera.position.length();
-        const speedScale = Math.max(1, cameraDistance * 0.0005); // Much smaller multiplier for minimal scaling
+        // Load movement config (defaults if not loaded yet)
+        const config = this.movementConfig || {
+            acceleration: 0.15,
+            deceleration: 0.92,
+            maxSpeed: 2.5,
+            minSpeed: 0.001,
+            distanceSpeedScale: 0.003
+        };
 
-        // Calculate movement direction based on camera orientation
-        const moveVector = new THREE.Vector3();
+        // Get camera distance for distance-based speed scaling
+        const cameraDistance = this.sceneManager.camera.position.length();
+        const distanceScale = 1 + (cameraDistance * config.distanceSpeedScale);
+
+        // Calculate camera-relative directions
         const cameraDirection = new THREE.Vector3();
         const rightVector = new THREE.Vector3();
+        const upVector = this.sceneManager.camera.up.clone();
 
         this.sceneManager.camera.getWorldDirection(cameraDirection);
-        rightVector.crossVectors(cameraDirection, this.sceneManager.camera.up).normalize();
+        rightVector.crossVectors(cameraDirection, upVector).normalize();
 
-        const currentSpeed = this.baseSpeed * speedScale;
+        // Calculate target velocity based on key states
+        this.targetVelocity.set(0, 0, 0);
 
-        // Build movement vector based on key states - direct constant movement
         if (this.keyStates.w) {
-            moveVector.add(cameraDirection.clone().multiplyScalar(currentSpeed));
+            this.targetVelocity.add(cameraDirection);
         }
         if (this.keyStates.s) {
-            moveVector.add(cameraDirection.clone().multiplyScalar(-currentSpeed));
+            this.targetVelocity.sub(cameraDirection);
         }
         if (this.keyStates.a) {
-            moveVector.add(rightVector.clone().multiplyScalar(-currentSpeed));
+            this.targetVelocity.sub(rightVector);
         }
         if (this.keyStates.d) {
-            moveVector.add(rightVector.clone().multiplyScalar(currentSpeed));
+            this.targetVelocity.add(rightVector);
+        }
+        if (this.keyStates.space) {
+            this.targetVelocity.add(upVector);
+        }
+        if (this.keyStates.shift) {
+            this.targetVelocity.sub(upVector);
         }
 
-        // Apply movement directly without acceleration/deceleration
-        if (moveVector.length() > 0) {
-            this.sceneManager.camera.position.add(moveVector);
-            this.sceneManager.controls.target.add(moveVector);
+        // Normalize target velocity and scale to max speed
+        if (this.targetVelocity.length() > 0) {
+            this.targetVelocity.normalize();
+            this.targetVelocity.multiplyScalar(config.maxSpeed * distanceScale);
+        }
+
+        // Smooth interpolation towards target velocity (acceleration/deceleration)
+        if (this.targetVelocity.length() > 0) {
+            // Accelerate towards target velocity
+            this.velocity.lerp(this.targetVelocity, config.acceleration);
+        } else {
+            // Decelerate when no keys pressed
+            this.velocity.multiplyScalar(config.deceleration);
+
+            // Stop completely if velocity is very small
+            if (this.velocity.length() < config.minSpeed) {
+                this.velocity.set(0, 0, 0);
+            }
+        }
+
+        // Apply velocity to camera and controls target
+        if (this.velocity.length() > 0) {
+            this.sceneManager.camera.position.add(this.velocity);
+            this.sceneManager.controls.target.add(this.velocity);
             this.sceneManager.controls.update();
         }
     }

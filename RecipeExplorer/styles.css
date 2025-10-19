@@ -1448,12 +1448,14 @@ main {
     border-radius: 12px;
     padding: 1rem;
     transition: all 0.3s ease;
+    cursor: pointer;
 }
 
 .raw-material-card:hover {
     transform: translateY(-2px);
     border-color: rgba(100, 255, 218, 0.4);
     box-shadow: 0 8px 25px rgba(100, 255, 218, 0.1);
+    background: rgba(100, 255, 218, 0.05);
 }
 
 .material-header {
@@ -1507,4 +1509,186 @@ main {
     background: linear-gradient(90deg, #4facfe, #00f2fe);
     border-radius: 3px;
     transition: width 0.3s ease;
+}
+
+/* Raw Material Modal Styles */
+.raw-material-info {
+    text-align: center;
+    padding: 1.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    margin-bottom: 2rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.material-description {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 1.1rem;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.material-description strong {
+    color: #4facfe;
+    font-weight: bold;
+}
+
+.recipes-using-material h3 {
+    color: #4facfe;
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.recipe-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.material-recipe-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.material-recipe-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(100, 255, 218, 0.4);
+    box-shadow: 0 8px 25px rgba(100, 255, 218, 0.15);
+    background: rgba(100, 255, 218, 0.05);
+}
+
+.material-recipe-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(100, 255, 218, 0.1), transparent);
+    transition: left 0.5s ease;
+}
+
+.material-recipe-card:hover::before {
+    left: 100%;
+}
+
+.recipe-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.recipe-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.recipe-name {
+    color: #64ffda;
+    font-size: 1.1rem;
+    font-weight: bold;
+    flex-grow: 1;
+    line-height: 1.3;
+}
+
+.recipe-card-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    gap: 0.5rem;
+}
+
+.recipe-category {
+    background: rgba(0, 242, 254, 0.2);
+    color: #00f2fe;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.recipe-tier {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 0.25rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: bold;
+}
+
+.recipe-card-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+}
+
+.recipe-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.recipe-stat .stat-label {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.75rem;
+    margin-bottom: 0.25rem;
+}
+
+.recipe-stat .stat-value {
+    color: #4facfe;
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+
+.material-usage {
+    text-align: center;
+    padding: 0.75rem;
+    background: rgba(100, 255, 218, 0.1);
+    border-radius: 8px;
+    border: 1px solid rgba(100, 255, 218, 0.2);
+}
+
+.material-amount {
+    color: #64ffda;
+    font-weight: bold;
+    font-size: 1rem;
+}
+
+.no-recipes {
+    text-align: center;
+    padding: 3rem;
+    color: rgba(255, 255, 255, 0.6);
+    font-style: italic;
+    font-size: 1.1rem;
+}
+
+/* Responsive design for raw material modal */
+@media (max-width: 768px) {
+    .recipe-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .raw-material-info {
+        padding: 1rem;
+    }
+
+    .material-description {
+        font-size: 1rem;
+    }
 }
