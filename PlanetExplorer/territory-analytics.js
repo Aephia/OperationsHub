@@ -6,6 +6,14 @@ class TerritoryAnalytics {
     constructor() {
         this.crossAnalytics = new CrossExplorerAnalytics();
         this.data = null;
+
+        // Formula weights with defaults
+        this.formulaWeights = {
+            uniqueResources: { enabled: true, value: 10 },
+            manufacturableRecipes: { enabled: true, value: 5 },
+            rareResources: { enabled: true, value: 20 },
+            avgRichness: { enabled: true, value: 5 }
+        };
     }
 
     async renderTerritoryAnalytics() {
@@ -46,14 +54,66 @@ class TerritoryAnalytics {
         this.renderFactionDominance();
     }
 
+    recalculateTerritoryValues() {
+        if (!this.data?.territoryAnalysis) return;
+
+        // Recalculate territory values with current weights
+        this.data.territoryAnalysis.forEach(system => {
+            system.territoryValue =
+                (this.formulaWeights.uniqueResources.enabled ? system.uniqueResources * this.formulaWeights.uniqueResources.value : 0) +
+                (this.formulaWeights.manufacturableRecipes.enabled ? system.manufacturingCapability * this.formulaWeights.manufacturableRecipes.value : 0) +
+                (this.formulaWeights.rareResources.enabled ? system.rareResourceCount * this.formulaWeights.rareResources.value : 0) +
+                (this.formulaWeights.avgRichness.enabled ? parseFloat(system.avgRichness) * this.formulaWeights.avgRichness.value : 0);
+        });
+
+        // Re-sort by new values
+        this.data.territoryAnalysis.sort((a, b) => b.territoryValue - a.territoryValue);
+        this.data.topSystems = this.data.territoryAnalysis.slice(0, 30);
+
+        // Update faction summaries with new values
+        const factionTerritory = new Map();
+        this.data.territoryAnalysis.forEach(territory => {
+            if (!factionTerritory.has(territory.faction)) {
+                factionTerritory.set(territory.faction, []);
+            }
+            factionTerritory.get(territory.faction).push(territory);
+        });
+
+        this.data.factionSummary = Array.from(factionTerritory.entries()).map(([faction, territories]) => ({
+            name: faction,
+            controlledSystems: territories.length,
+            contestedSystems: territories.filter(t => t.contested).length || 0,
+            totalValue: territories.reduce((sum, t) => sum + t.territoryValue, 0),
+            averageValue: territories.reduce((sum, t) => sum + t.territoryValue, 0) / territories.length,
+            keyRegions: [...new Set(territories.map(t => t.system.substring(0, 3)))].slice(0, 5)
+        })).sort((a, b) => b.totalValue - a.totalValue);
+    }
+
+    getFormulaString() {
+        const parts = [];
+        if (this.formulaWeights.uniqueResources.enabled) {
+            parts.push(`(Unique Resources × ${this.formulaWeights.uniqueResources.value})`);
+        }
+        if (this.formulaWeights.manufacturableRecipes.enabled) {
+            parts.push(`(Manufacturable Recipes × ${this.formulaWeights.manufacturableRecipes.value})`);
+        }
+        if (this.formulaWeights.rareResources.enabled) {
+            parts.push(`(Rare Resources × ${this.formulaWeights.rareResources.value})`);
+        }
+        if (this.formulaWeights.avgRichness.enabled) {
+            parts.push(`(Avg Richness × ${this.formulaWeights.avgRichness.value})`);
+        }
+        return parts.length > 0 ? parts.join(' + ') : 'No factors enabled';
+    }
+
     renderTopSystems() {
         const container = document.getElementById('territoryContent');
-        if (!container || !this.data?.topSystems) {
+        if (!container || !this.data?.territoryAnalysis) {
             return;
         }
 
         // Enhance systems data with full information from planet data
-        const enhancedSystems = this.data.topSystems.map(system => {
+        const enhancedSystems = this.data.territoryAnalysis.map(system => {
             // Find the full system data
             const fullSystemData = this.crossAnalytics.dataCache.planets.find(s => s.name === system.system);
 
@@ -82,7 +142,56 @@ class TerritoryAnalytics {
         section.className = 'analytics-section';
         section.innerHTML = `
             <h3>🏰 Highest Value Systems</h3>
-            <p class="section-note">Territory scores calculated as: <strong>(Unique Resources × 10) + (Manufacturable Recipes × 5) + (Rare Resources × 20) + (Avg Richness × 5)</strong></p>
+            <p class="section-note">Territory scores calculated as: <strong id="formulaDisplay">${this.getFormulaString()}</strong></p>
+
+            <!-- Formula Customization Controls -->
+            <div class="formula-customization">
+                <h4>🔧 Customize Formula</h4>
+                <div class="formula-controls">
+                    <div class="formula-control-item">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="enableUniqueResources" ${this.formulaWeights.uniqueResources.enabled ? 'checked' : ''}>
+                            Unique Resources
+                        </label>
+                        <input type="number" id="weightUniqueResources"
+                               value="${this.formulaWeights.uniqueResources.value}"
+                               min="0" max="100" step="1"
+                               ${!this.formulaWeights.uniqueResources.enabled ? 'disabled' : ''}>
+                    </div>
+                    <div class="formula-control-item">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="enableManufacturableRecipes" ${this.formulaWeights.manufacturableRecipes.enabled ? 'checked' : ''}>
+                            Manufacturable Recipes
+                        </label>
+                        <input type="number" id="weightManufacturableRecipes"
+                               value="${this.formulaWeights.manufacturableRecipes.value}"
+                               min="0" max="100" step="1"
+                               ${!this.formulaWeights.manufacturableRecipes.enabled ? 'disabled' : ''}>
+                    </div>
+                    <div class="formula-control-item">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="enableRareResources" ${this.formulaWeights.rareResources.enabled ? 'checked' : ''}>
+                            Rare Resources (T4, T5)
+                        </label>
+                        <input type="number" id="weightRareResources"
+                               value="${this.formulaWeights.rareResources.value}"
+                               min="0" max="100" step="1"
+                               ${!this.formulaWeights.rareResources.enabled ? 'disabled' : ''}>
+                    </div>
+                    <div class="formula-control-item">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="enableAvgRichness" ${this.formulaWeights.avgRichness.enabled ? 'checked' : ''}>
+                            Avg Richness
+                        </label>
+                        <input type="number" id="weightAvgRichness"
+                               value="${this.formulaWeights.avgRichness.value}"
+                               min="0" max="100" step="0.1"
+                               ${!this.formulaWeights.avgRichness.enabled ? 'disabled' : ''}>
+                    </div>
+                </div>
+                <button id="applyFormulaBtn" class="apply-formula-btn">Apply Formula</button>
+                <button id="resetFormulaBtn" class="reset-formula-btn">Reset to Defaults</button>
+            </div>
 
             <div class="pagination-controls">
                 <button id="terrPrevPage" class="pagination-btn">⟵ Previous</button>
@@ -97,9 +206,9 @@ class TerritoryAnalytics {
                         <tr>
                             <th>#</th>
                             <th>System</th>
-                            <th title="Score = (Resources × 10) + (Recipes × 5) + (Rare × 20) + (Richness × 5)">Score</th>
+                            <th title="Score based on custom formula">Score</th>
                             <th>Faction</th>
-                            <th class="clickable-header">Key Resources</th>
+                            <th class="clickable-header" title="Total unique resources across all planets in the system">Unique Resources</th>
                         </tr>
                         <tr class="filter-row">
                             <th></th>
@@ -142,6 +251,107 @@ class TerritoryAnalytics {
         section.querySelectorAll('.column-filter').forEach(input => {
             input.addEventListener('input', (event) => this.handleSystemFilter(event));
         });
+
+        // Setup formula customization controls
+        this.setupFormulaControls();
+    }
+
+    setupFormulaControls() {
+        // Checkbox event handlers
+        const checkboxes = [
+            { id: 'enableUniqueResources', key: 'uniqueResources', weightId: 'weightUniqueResources' },
+            { id: 'enableManufacturableRecipes', key: 'manufacturableRecipes', weightId: 'weightManufacturableRecipes' },
+            { id: 'enableRareResources', key: 'rareResources', weightId: 'weightRareResources' },
+            { id: 'enableAvgRichness', key: 'avgRichness', weightId: 'weightAvgRichness' }
+        ];
+
+        checkboxes.forEach(({ id, key, weightId }) => {
+            const checkbox = document.getElementById(id);
+            const weightInput = document.getElementById(weightId);
+
+            if (checkbox && weightInput) {
+                checkbox.addEventListener('change', (e) => {
+                    this.formulaWeights[key].enabled = e.target.checked;
+                    weightInput.disabled = !e.target.checked;
+                });
+
+                weightInput.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    if (!isNaN(value) && value >= 0) {
+                        this.formulaWeights[key].value = value;
+                    }
+                });
+            }
+        });
+
+        // Apply button
+        const applyBtn = document.getElementById('applyFormulaBtn');
+        if (applyBtn) {
+            applyBtn.addEventListener('click', () => {
+                this.recalculateTerritoryValues();
+
+                // Update formula display
+                const formulaDisplay = document.getElementById('formulaDisplay');
+                if (formulaDisplay) {
+                    formulaDisplay.textContent = this.getFormulaString();
+                }
+
+                // Re-render all systems with new values
+                this.allSystems = [...this.data.territoryAnalysis.map(system => {
+                    const fullSystemData = this.crossAnalytics.dataCache.planets.find(s => s.name === system.system);
+                    const allResources = new Set();
+                    if (fullSystemData && fullSystemData.planets) {
+                        fullSystemData.planets.forEach(planet => {
+                            if (planet.resources) {
+                                planet.resources.forEach(res => allResources.add(res.name));
+                            }
+                        });
+                    }
+                    return {
+                        ...system,
+                        topResources: Array.from(allResources),
+                        faction: system.faction || fullSystemData?.closestFaction || '—'
+                    };
+                })];
+                this.filteredSystems = [...this.allSystems];
+                this.currentPage = 1;
+                this.renderSystemTablePage(1);
+            });
+        }
+
+        // Reset button
+        const resetBtn = document.getElementById('resetFormulaBtn');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => {
+                // Reset to defaults
+                this.formulaWeights = {
+                    uniqueResources: { enabled: true, value: 10 },
+                    manufacturableRecipes: { enabled: true, value: 5 },
+                    rareResources: { enabled: true, value: 20 },
+                    avgRichness: { enabled: true, value: 5 }
+                };
+
+                // Update UI controls
+                document.getElementById('enableUniqueResources').checked = true;
+                document.getElementById('weightUniqueResources').value = 10;
+                document.getElementById('weightUniqueResources').disabled = false;
+
+                document.getElementById('enableManufacturableRecipes').checked = true;
+                document.getElementById('weightManufacturableRecipes').value = 5;
+                document.getElementById('weightManufacturableRecipes').disabled = false;
+
+                document.getElementById('enableRareResources').checked = true;
+                document.getElementById('weightRareResources').value = 20;
+                document.getElementById('weightRareResources').disabled = false;
+
+                document.getElementById('enableAvgRichness').checked = true;
+                document.getElementById('weightAvgRichness').value = 5;
+                document.getElementById('weightAvgRichness').disabled = false;
+
+                // Trigger recalculation
+                document.getElementById('applyFormulaBtn').click();
+            });
+        }
     }
 
     renderSystemTablePage(page) {
@@ -287,6 +497,14 @@ class TerritoryAnalytics {
         }
 
         const resources = system.topResources || [];
+
+        // Get resource tier information from the cached data
+        const resourcesData = this.crossAnalytics.dataCache.resources || [];
+        const resourceTierMap = new Map();
+        resourcesData.forEach(res => {
+            resourceTierMap.set(res.name, res.tier || 1);
+        });
+
         const modal = document.createElement('div');
         modal.className = 'recipe-modal-overlay';
         modal.innerHTML = `
@@ -294,7 +512,7 @@ class TerritoryAnalytics {
                 <div class="recipe-modal-header">
                     <div>
                         <h2>${this.escapeHtml(system.system)}</h2>
-                        <p class="modal-subtitle">Key Resources for Territory Control</p>
+                        <p class="modal-subtitle">System Resource Overview</p>
                     </div>
                     <button class="modal-close-btn" aria-label="Close">&times;</button>
                 </div>
@@ -309,8 +527,16 @@ class TerritoryAnalytics {
                             <span class="stat-value">${system.uniqueResources || resources.length}</span>
                         </div>
                         <div class="modal-stat">
+                            <span class="stat-label">Rare Resources (T4-T5)</span>
+                            <span class="stat-value">${system.rareResourceCount || 0}</span>
+                        </div>
+                        <div class="modal-stat">
                             <span class="stat-label">Manufacturable Recipes</span>
                             <span class="stat-value">${system.manufacturingCapability || 0}</span>
+                        </div>
+                        <div class="modal-stat">
+                            <span class="stat-label">Average Richness</span>
+                            <span class="stat-value">${system.avgRichness || 0}</span>
                         </div>
                         <div class="modal-stat">
                             <span class="stat-label">Faction</span>
@@ -321,22 +547,30 @@ class TerritoryAnalytics {
                     <div class="score-formula">
                         <h4>📐 Score Calculation</h4>
                         <div class="formula-breakdown">
+                            ${this.formulaWeights.uniqueResources.enabled ? `
                             <div class="formula-item">
                                 <span class="formula-label">Unique Resources:</span>
-                                <span class="formula-value">${system.uniqueResources || resources.length} × 10 = ${(system.uniqueResources || resources.length) * 10}</span>
+                                <span class="formula-value">${system.uniqueResources || resources.length} × ${this.formulaWeights.uniqueResources.value} = ${(system.uniqueResources || resources.length) * this.formulaWeights.uniqueResources.value}</span>
                             </div>
+                            ` : ''}
+                            ${this.formulaWeights.manufacturableRecipes.enabled ? `
                             <div class="formula-item">
                                 <span class="formula-label">Manufacturable Recipes:</span>
-                                <span class="formula-value">${system.manufacturingCapability || 0} × 5 = ${(system.manufacturingCapability || 0) * 5}</span>
+                                <span class="formula-value">${system.manufacturingCapability || 0} × ${this.formulaWeights.manufacturableRecipes.value} = ${(system.manufacturingCapability || 0) * this.formulaWeights.manufacturableRecipes.value}</span>
                             </div>
+                            ` : ''}
+                            ${this.formulaWeights.rareResources.enabled ? `
                             <div class="formula-item">
                                 <span class="formula-label">Rare Resources (T4-T5):</span>
-                                <span class="formula-value">${system.rareResourceCount || 0} × 20 = ${(system.rareResourceCount || 0) * 20}</span>
+                                <span class="formula-value">${system.rareResourceCount || 0} × ${this.formulaWeights.rareResources.value} = ${(system.rareResourceCount || 0) * this.formulaWeights.rareResources.value}</span>
                             </div>
+                            ` : ''}
+                            ${this.formulaWeights.avgRichness.enabled ? `
                             <div class="formula-item">
                                 <span class="formula-label">Average Richness:</span>
-                                <span class="formula-value">${system.avgRichness || 0} × 5 = ${((parseFloat(system.avgRichness) || 0) * 5).toFixed(1)}</span>
+                                <span class="formula-value">${system.avgRichness || 0} × ${this.formulaWeights.avgRichness.value} = ${((parseFloat(system.avgRichness) || 0) * this.formulaWeights.avgRichness.value).toFixed(1)}</span>
                             </div>
+                            ` : ''}
                             <div class="formula-total">
                                 <span class="formula-label">Total Score:</span>
                                 <span class="formula-value">${system.territoryValue.toFixed(1)}</span>
@@ -346,13 +580,16 @@ class TerritoryAnalytics {
 
                     ${resources.length > 0 ? `
                         <div class="resource-categories">
-                            <h3>📦 Key Resources (${resources.length})</h3>
+                            <h3>📦 All Unique Resources in System (${resources.length})</h3>
                             <div class="resource-grid">
-                                ${resources.map(resource => `
+                                ${resources.map(resource => {
+                                    const tier = resourceTierMap.get(resource) || 1;
+                                    return `
                                     <div class="resource-item-card">
-                                        <div class="resource-item-name">${this.escapeHtml(resource)}</div>
+                                        <div class="resource-item-name">${this.escapeHtml(resource)} <span class="resource-tier-badge tier-${tier}">(T${tier})</span></div>
                                     </div>
-                                `).join('')}
+                                    `;
+                                }).join('')}
                             </div>
                         </div>
                     ` : `

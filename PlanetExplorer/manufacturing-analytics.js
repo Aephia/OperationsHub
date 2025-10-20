@@ -242,7 +242,7 @@ class ManufacturingAnalytics {
                     <td>${this.escapeHtml(planet.planet)}</td>
                     <td>${this.getPlanetTypeName(planet.planetType)}</td>
                     <td class="number-cell">${planet.totalResources}</td>
-                    <td class="number-cell">${planet.selfSufficiencyScore.toFixed(1)}%</td>
+                    <td class="number-cell">${planet.selfSufficiencyScore.toFixed(3)}%</td>
                     <td class="clickable-recipes-cell" data-planet-index="${startIdx + index}" title="Click to view ${details.count} manufacturable recipes\nTop specialization: ${specialization}">
                         <span class="clickable-value">${details.count}</span>
                         <span class="click-hint">🔍 View Details</span>

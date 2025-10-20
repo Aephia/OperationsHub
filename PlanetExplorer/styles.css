@@ -1775,10 +1775,165 @@ main {
     color: #00f2fe;
     font-weight: 500;
     font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.resource-tier-badge {
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    color: white;
+    white-space: nowrap;
+}
+
+.resource-tier-badge.tier-1 {
+    background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+}
+
+.resource-tier-badge.tier-2 {
+    background: linear-gradient(135deg, #3498db, #2980b9);
+}
+
+.resource-tier-badge.tier-3 {
+    background: linear-gradient(135deg, #9b59b6, #8e44ad);
+}
+
+.resource-tier-badge.tier-4 {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+}
+
+.resource-tier-badge.tier-5 {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+}
+
+/* Formula Customization Styles */
+.formula-customization {
+    background: rgba(79, 172, 254, 0.05);
+    border: 1px solid rgba(79, 172, 254, 0.3);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+}
+
+.formula-customization h4 {
+    color: #4facfe;
+    margin: 0 0 1rem 0;
+    font-size: 1.1rem;
+}
+
+.formula-controls {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.formula-control-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    gap: 1rem;
+}
+
+.formula-control-item label.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.9rem;
+    cursor: pointer;
+    flex: 1;
+}
+
+.formula-control-item input[type="checkbox"] {
+    accent-color: #4facfe;
+    transform: scale(1.2);
+    cursor: pointer;
+}
+
+.formula-control-item input[type="number"] {
+    width: 80px;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 6px;
+    color: white;
+    font-size: 0.9rem;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.formula-control-item input[type="number"]:focus {
+    outline: none;
+    border-color: #4facfe;
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 0 8px rgba(79, 172, 254, 0.3);
+}
+
+.formula-control-item input[type="number"]:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.apply-formula-btn,
+.reset-formula-btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    margin-right: 0.5rem;
+}
+
+.apply-formula-btn {
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    color: white;
+    box-shadow: 0 4px 15px rgba(79, 172, 254, 0.3);
+}
+
+.apply-formula-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(79, 172, 254, 0.4);
+}
+
+.reset-formula-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.reset-formula-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-2px);
 }
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
+    .formula-controls {
+        grid-template-columns: 1fr;
+    }
+
+    .formula-control-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .formula-control-item input[type="number"] {
+        width: 100%;
+    }
+
     .recipe-modal {
         max-width: 95vw;
         max-height: 95vh;
