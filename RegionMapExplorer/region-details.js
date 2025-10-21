@@ -67,7 +67,7 @@ class RegionDetailsManager {
             <div class="conquest-status-card">
                 <h4>Conquest Status</h4>
                 <div class="status-badge ${status.class}">${status.text}</div>
-                ${regionStatus.faction ? `<div class="status-owner">Controlled by: <strong>${regionStatus.faction}</strong></div>` : '<div class="status-owner">Neutral Territory</div>'}
+                ${regionStatus.faction ? `<div class="status-owner">Controlled by: <strong style="color: ${this.getFactionColor(regionStatus.faction)}">${regionStatus.faction}</strong></div>` : '<div class="status-owner">Neutral Territory</div>'}
                 <div class="status-metrics">
                     <div class="metric">
                         <span class="metric-label">Core Control:</span>
@@ -157,13 +157,14 @@ class RegionDetailsManager {
                 </div>
             </div>
 
-            <div class="conquest-tips">
-                <h4>Conquest Requirements</h4>
-                <ul>
-                    <li><strong>To Claim Region:</strong> Control King System + 60%+ of Core Systems (${Math.ceil((regionalValue.coreSystems.length + 1) * 0.6)} of ${regionalValue.coreSystems.length + 1})</li>
-                    <li><strong>To Make Border → Neutral:</strong> Enemy needs 40%+ Core control</li>
-                    <li><strong>To Make Safe:</strong> Control all systems + all neighboring regions</li>
-                </ul>
+            <div class="conquest-impact-section">
+                <div class="conquest-impact-header" id="conquestImpactToggle">
+                    <h4>📊 Conquest Impact Analysis</h4>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="conquest-impact-content" id="conquestImpactContent" style="display: none;">
+                    <div class="loading-placeholder">Click to load conquest impact analysis...</div>
+                </div>
             </div>
         `;
 
@@ -171,6 +172,9 @@ class RegionDetailsManager {
 
         // Add click handlers for stat cards
         this.attachDetailHandlers(region, regionalValue);
+
+        // Add toggle handler for conquest impact
+        this.attachConquestImpactToggle(region);
     }
 
     attachDetailHandlers(region, regionalValue) {
@@ -189,6 +193,48 @@ class RegionDetailsManager {
                     this.showModal('Planet Resources', this.renderPlanetsResourcesBreakdown(region));
                 }
             });
+        });
+    }
+
+    attachConquestImpactToggle(region) {
+        const toggle = document.getElementById('conquestImpactToggle');
+        const content = document.getElementById('conquestImpactContent');
+        const icon = toggle.querySelector('.toggle-icon');
+
+        if (!toggle || !content) return;
+
+        let isLoaded = false;
+
+        toggle.addEventListener('click', () => {
+            const isExpanded = content.style.display !== 'none';
+
+            if (isExpanded) {
+                // Collapse
+                content.style.display = 'none';
+                icon.textContent = '▼';
+            } else {
+                // Expand
+                content.style.display = 'block';
+                icon.textContent = '▲';
+
+                // Load content if not already loaded
+                if (!isLoaded) {
+                    content.innerHTML = '<div class="loading-placeholder">Loading conquest impact analysis...</div>';
+
+                    // Initialize statistics calculator if needed
+                    if (!window.conquestStatsCalculator) {
+                        window.conquestStatsCalculator = new ConquestStatistics();
+                        window.conquestStatsCalculator.init();
+                    }
+
+                    const stats = window.conquestStatsCalculator;
+                    const report = stats.generateConquestReport(region, 'Attacker');
+
+                    // Render the statistics
+                    content.innerHTML = this.renderConquestStatisticsInline(report);
+                    isLoaded = true;
+                }
+            }
         });
     }
 
@@ -464,46 +510,191 @@ class RegionDetailsManager {
     }
 
     /**
-     * Show conquest statistics modal
+     * Show conquest statistics modal (DEPRECATED - now using inline version in region details)
      */
-    showConquestStatistics(region) {
-        // Initialize statistics calculator if needed
-        if (!window.conquestStatsCalculator) {
-            window.conquestStatsCalculator = new ConquestStatistics();
-            window.conquestStatsCalculator.init();
-        }
+    // showConquestStatistics(region) {
+    //     // Initialize statistics calculator if needed
+    //     if (!window.conquestStatsCalculator) {
+    //         window.conquestStatsCalculator = new ConquestStatistics();
+    //         window.conquestStatsCalculator.init();
+    //     }
 
-        const stats = window.conquestStatsCalculator;
-        const report = stats.generateConquestReport(region, 'Attacker');
+    //     const stats = window.conquestStatsCalculator;
+    //     const report = stats.generateConquestReport(region, 'Attacker');
 
-        // Create modal
-        const modal = document.createElement('div');
-        modal.className = 'conquest-stats-modal';
-        modal.innerHTML = `
-            <div class="conquest-stats-content">
-                <div class="conquest-stats-header">
-                    <h2>📊 Conquest Impact Analysis: ${region.name}</h2>
-                    <button class="close-modal-btn">✕</button>
+    //     // Create modal
+    //     const modal = document.createElement('div');
+    //     modal.className = 'conquest-stats-modal';
+    //     modal.innerHTML = `
+    //         <div class="conquest-stats-content">
+    //             <div class="conquest-stats-header">
+    //                 <h2>📊 Conquest Impact Analysis: ${region.name}</h2>
+    //                 <button class="close-modal-btn">✕</button>
+    //             </div>
+
+    //             <div class="conquest-stats-body">
+    //                 ${this.renderConquestStatistics(report)}
+    //             </div>
+    //         </div>
+    //     `;
+
+    //     document.body.appendChild(modal);
+
+    //     // Add event listeners
+    //     modal.querySelector('.close-modal-btn').addEventListener('click', () => {
+    //         modal.remove();
+    //     });
+
+    //     modal.addEventListener('click', (e) => {
+    //         if (e.target === modal) {
+    //             modal.remove();
+    //         }
+    //     });
+    // }
+
+    /**
+     * Render conquest statistics content (inline version for region details panel)
+     */
+    renderConquestStatisticsInline(report) {
+        const { region, resourceImpact, productionImpact, craftingImpact } = report;
+
+        return `
+            <div class="conquest-summary-section">
+                <h4>📋 Executive Summary</h4>
+                <div class="summary-grid-inline">
+                    <div class="summary-card-inline resources-card">
+                        <div class="summary-card-icon">💎</div>
+                        <div class="summary-card-content">
+                            <div class="summary-card-label">Resource Impact</div>
+                            <div class="summary-card-value">${resourceImpact.totalResourceLocations}</div>
+                            <div class="summary-card-detail">${resourceImpact.uniqueResources} unique resources on ${resourceImpact.totalPlanets} planets</div>
+                        </div>
+                    </div>
+
+                    <div class="summary-card-inline production-card">
+                        <div class="summary-card-icon">🏭</div>
+                        <div class="summary-card-content">
+                            <div class="summary-card-label">Production Loss (Hypothetical)</div>
+                            <div class="summary-card-value">${Math.round(productionImpact.estimatedProduction.totalMiningOutput)} tons/day</div>
+                            <div class="summary-card-detail">From ${productionImpact.totalStakes} hypothetical claim stakes</div>
+                        </div>
+                    </div>
+
+                    <div class="summary-card-inline crafting-card">
+                        <div class="summary-card-icon">🔧</div>
+                        <div class="summary-card-content">
+                            <div class="summary-card-label">Crafting Impact</div>
+                            <div class="summary-card-value">${craftingImpact.totalRecipes}</div>
+                            <div class="summary-card-detail">${craftingImpact.highDependencyRecipes} high-dependency recipes affected</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="conquest-stats-section-inline">
+                <h4>🔴 Resource Locations Lost</h4>
+                <div class="stats-summary-inline">
+                    <div class="summary-stat-inline">
+                        <span class="stat-number">${resourceImpact.totalResourceLocations}</span>
+                        <span class="stat-label">Total Resource Locations</span>
+                    </div>
+                    <div class="summary-stat-inline">
+                        <span class="stat-number">${resourceImpact.uniqueResources}</span>
+                        <span class="stat-label">Unique Resources</span>
+                    </div>
+                    <div class="summary-stat-inline">
+                        <span class="stat-number">${resourceImpact.totalPlanets}</span>
+                        <span class="stat-label">Total Planets</span>
+                    </div>
                 </div>
 
-                <div class="conquest-stats-body">
-                    ${this.renderConquestStatistics(report)}
+                <div class="resource-chart">
+                    <h5>Top Resources Lost</h5>
+                    ${resourceImpact.resourceLocations.slice(0, 10).map(res => `
+                        <div class="resource-bar-item">
+                            <div class="resource-bar-header">
+                                <span class="resource-name">${res.name}</span>
+                                <span class="resource-stat">${res.count} locations (Avg: ${res.avgRichness.toFixed(1)})</span>
+                            </div>
+                            <div class="resource-bar-container">
+                                <div class="resource-bar-fill" style="width: ${(res.count / resourceImpact.resourceLocations[0].count) * 100}%"></div>
+                            </div>
+                            <div class="resource-richness-breakdown">
+                                <span class="richness-badge poor">Poor: ${res.richnessCounts[1]}</span>
+                                <span class="richness-badge medium">Medium: ${res.richnessCounts[2]}</span>
+                                <span class="richness-badge rich">Rich: ${res.richnessCounts[3]}</span>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+
+            <div class="conquest-stats-section-inline">
+                <h4>🏭 Hypothetical Production Impact</h4>
+                <div class="hypothetical-notice">
+                    ⚠️ <strong>Hypothetical Scenario:</strong> Assumes 50 claim stakes distributed across the region based on system importance
+                </div>
+
+                <div class="stats-summary-inline">
+                    <div class="summary-stat-inline">
+                        <span class="stat-number">${productionImpact.totalStakes}</span>
+                        <span class="stat-label">Hypothetical Claim Stakes</span>
+                    </div>
+                    <div class="summary-stat-inline">
+                        <span class="stat-number">${productionImpact.estimatedProduction.totalMiningFacilities}</span>
+                        <span class="stat-label">Est. Mining Facilities</span>
+                    </div>
+                    <div class="summary-stat-inline">
+                        <span class="stat-number">${Math.round(productionImpact.estimatedProduction.totalMiningOutput)}</span>
+                        <span class="stat-label">Tons/Day Production Lost</span>
+                    </div>
+                </div>
+
+                <div class="production-chart">
+                    <h5>Top Production Losses (tons/day)</h5>
+                    ${productionImpact.estimatedProduction.mining.slice(0, 8).map(item => `
+                        <div class="production-bar-item">
+                            <div class="production-bar-header">
+                                <span class="production-name">${item.resource}</span>
+                                <span class="production-value">${item.tonsPerDay} tons/day</span>
+                            </div>
+                            <div class="production-bar-container">
+                                <div class="production-bar-fill" style="width: ${(item.tonsPerDay / productionImpact.estimatedProduction.mining[0].tonsPerDay) * 100}%"></div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+
+            <div class="conquest-stats-section-inline">
+                <h4>🔧 Crafting Impact</h4>
+                <div class="stats-summary-inline">
+                    <div class="summary-stat-inline">
+                        <span class="stat-number">${craftingImpact.totalRecipes}</span>
+                        <span class="stat-label">Recipes Using Regional Resources</span>
+                    </div>
+                    <div class="summary-stat-inline">
+                        <span class="stat-number">${craftingImpact.highDependencyRecipes}</span>
+                        <span class="stat-label">High Dependency Recipes (>50%)</span>
+                    </div>
+                </div>
+
+                <div class="crafting-recipes-list">
+                    <h5>Most Impacted Recipes</h5>
+                    ${craftingImpact.craftableRecipes.slice(0, 15).map(recipe => `
+                        <div class="recipe-impact-item">
+                            <div class="recipe-header">
+                                <span class="recipe-name">${recipe.name}</span>
+                                <span class="recipe-dependency">${recipe.regionalDependency.toFixed(0)}% regional</span>
+                            </div>
+                            <div class="recipe-inputs">
+                                ${recipe.regionalInputs.map(input => `<span class="recipe-input-tag">${input}</span>`).join('')}
+                            </div>
+                        </div>
+                    `).join('')}
                 </div>
             </div>
         `;
-
-        document.body.appendChild(modal);
-
-        // Add event listeners
-        modal.querySelector('.close-modal-btn').addEventListener('click', () => {
-            modal.remove();
-        });
-
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.remove();
-            }
-        });
     }
 
     /**

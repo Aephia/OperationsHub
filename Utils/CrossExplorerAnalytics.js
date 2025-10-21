@@ -1229,13 +1229,12 @@ class CrossExplorerAnalytics {
         // Identify profitable routes (resource is scarce at destination but abundant at source)
         const tradeRoutes = [];
 
-        resourceAnalysis.slice(0, 50).forEach(resourceInfo => {
+        resourceAnalysis.forEach(resourceInfo => {
             const locations = resourceLocations.get(resourceInfo.resource);
 
             // Find pairs: abundant sources (high richness) to scarce destination (few other locations nearby)
             const abundantSources = locations
-                .sort((a, b) => b.richness - a.richness)
-                .slice(0, 5);
+                .sort((a, b) => b.richness - a.richness);
 
             abundantSources.forEach(source => {
                 // Simulate destination as a location with few resources
@@ -1264,13 +1263,11 @@ class CrossExplorerAnalytics {
 
         // Sort by profit margin
         const mostProfitableRoutes = tradeRoutes
-            .sort((a, b) => b.profitMargin - a.profitMargin)
-            .slice(0, 30);
+            .sort((a, b) => b.profitMargin - a.profitMargin);
 
         // Best profit per distance
         const bestProfitPerDistance = tradeRoutes
-            .sort((a, b) => b.profitPerUnit - a.profitPerUnit)
-            .slice(0, 30);
+            .sort((a, b) => b.profitPerUnit - a.profitPerUnit);
 
         // Routes by resource tier
         const routesByTier = {

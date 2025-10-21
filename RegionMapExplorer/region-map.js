@@ -732,7 +732,28 @@ class RegionMap {
             if (region.systems.length === 0) return;
 
             const faction = region.originalFaction || 'neutral';
-            const baseColor = this.colors[faction] || this.colors.neutral;
+
+            // Check if this region is SAFE (requires conquest manager)
+            let isSafe = false;
+            let isConquered = false;
+            let actualControllingFaction = faction; // Default to original faction
+
+            if (window.regionMapApp && window.regionMapApp.conquestManager) {
+                const regionStatus = window.regionMapApp.conquestManager.getRegionStatus(region.id);
+                if (regionStatus) {
+                    isSafe = regionStatus.status === 'SAFE';
+                    isConquered = regionStatus.faction && regionStatus.faction !== region.originalFaction;
+
+                    // Use the actual controlling faction from region status
+                    if (regionStatus.faction) {
+                        actualControllingFaction = regionStatus.faction;
+                    }
+                }
+            }
+
+            // Use neutral color if controlled by Neutral, otherwise use faction color
+            const displayFaction = actualControllingFaction === 'Neutral' ? 'neutral' : faction;
+            const baseColor = this.colors[displayFaction] || this.colors.neutral;
 
             // Use cached convex hull if available
             let hull = this.regionHullCache.get(region.id);
@@ -754,17 +775,6 @@ class RegionMap {
 
                 // Cache the hull (it never changes)
                 this.regionHullCache.set(region.id, hull);
-            }
-
-            // Check if this region is SAFE (requires conquest manager)
-            let isSafe = false;
-            let isConquered = false;
-            if (window.regionMapApp && window.regionMapApp.conquestManager) {
-                const regionStatus = window.regionMapApp.conquestManager.getRegionStatus(region.id);
-                if (regionStatus) {
-                    isSafe = regionStatus.status === 'SAFE';
-                    isConquered = regionStatus.faction && regionStatus.faction !== region.originalFaction;
-                }
             }
 
             // Build the path once

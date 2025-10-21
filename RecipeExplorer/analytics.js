@@ -25,11 +25,10 @@ class RecipeAnalytics {
     renderAnalytics() {
         this.updateStats();
         this.renderRawMaterials();
-        this.renderLongestConstructionTime();
+        this.renderProcessedComponents();
         this.renderMostResourceIntensive();
         this.renderHighestTierRecipes();
         this.renderMostComplexDependencies();
-        this.renderInfrastructureGiants();
     }
 
     showRawMaterialRecipes(material) {
@@ -198,22 +197,23 @@ class RecipeAnalytics {
             };
         });
 
-        // Sort by usage count
+        // Sort by usage count and limit to top 50
         rawMaterials.sort((a, b) => b.usedInRecipes - a.usedInRecipes);
+        const top50RawMaterials = rawMaterials.slice(0, 50);
 
         const container = document.getElementById('rawMaterials');
         if (!container) return;
 
         container.innerHTML = '';
 
-        if (rawMaterials.length === 0) {
+        if (top50RawMaterials.length === 0) {
             container.innerHTML = '<p class="empty-state">No raw materials found</p>';
             return;
         }
 
-        const maxUsage = rawMaterials[0]?.usedInRecipes || 1;
+        const maxUsage = top50RawMaterials[0]?.usedInRecipes || 1;
 
-        rawMaterials.forEach((material, index) => {
+        top50RawMaterials.forEach((material, index) => {
             const item = document.createElement('div');
             item.className = 'raw-material-card';
 
@@ -234,6 +234,99 @@ class RecipeAnalytics {
             `;
 
             // Add click handler to show recipes using this raw material
+            item.addEventListener('click', () => {
+                this.showRawMaterialRecipes(material);
+            });
+
+            // Add cursor pointer style
+            item.style.cursor = 'pointer';
+
+            container.appendChild(item);
+        });
+    }
+
+    async renderProcessedComponents() {
+        // Load resources data to find processed materials and components
+        let resourcesData;
+        try {
+            resourcesData = await DataLoader.loadExplorerData('resources');
+        } catch (error) {
+            console.error('[ProcessedComponents] Error loading resources:', error);
+            const container = document.getElementById('processedComponents');
+            if (container) {
+                container.innerHTML = '<p class="empty-state">Error loading processed materials and components</p>';
+            }
+            return;
+        }
+
+        // Filter resources with category "processed" or "component"
+        const processedAndComponents = resourcesData.resources.filter(r =>
+            r.category === 'processed' || r.category === 'component'
+        );
+
+        // Count how many recipes use each processed/component material
+        const materials = processedAndComponents.map(resource => {
+            let usageCount = 0;
+            this.allRecipes.forEach(recipe => {
+                if (recipe.inputs) {
+                    const usesResource = recipe.inputs.some(input =>
+                        input.name === resource.name || input.id === resource.id
+                    );
+                    if (usesResource) usageCount++;
+                }
+            });
+
+            return {
+                resource: resource.name,
+                tier: resource.tier,
+                category: resource.category,
+                usedInRecipes: usageCount
+            };
+        });
+
+        // Sort by usage count and limit to top 50
+        materials.sort((a, b) => b.usedInRecipes - a.usedInRecipes);
+        const top50Materials = materials.slice(0, 50);
+
+        const container = document.getElementById('processedComponents');
+        if (!container) return;
+
+        container.innerHTML = '';
+
+        if (top50Materials.length === 0) {
+            container.innerHTML = '<p class="empty-state">No processed materials or components found</p>';
+            return;
+        }
+
+        const maxUsage = top50Materials[0]?.usedInRecipes || 1;
+
+        top50Materials.forEach((material, index) => {
+            const item = document.createElement('div');
+            item.className = 'raw-material-card';
+
+            const usagePercent = (material.usedInRecipes / maxUsage) * 100;
+            const categoryIcon = material.category === 'processed' ? '⚙️' : '🔩';
+            const categoryLabel = material.category === 'processed' ? 'Processed' : 'Component';
+
+            item.innerHTML = `
+                <div class="material-header">
+                    <h4>#${index + 1} ${categoryIcon} ${material.resource}</h4>
+                    <span class="tier-badge">T${material.tier}</span>
+                </div>
+                <div class="material-stat">
+                    <span class="stat-label">Type:</span>
+                    <span class="stat-value">${categoryLabel}</span>
+                </div>
+                <div class="material-stat">
+                    <span class="stat-label">Used in:</span>
+                    <span class="stat-value">${material.usedInRecipes} recipe${material.usedInRecipes !== 1 ? 's' : ''}</span>
+                </div>
+                <div class="usage-indicator">
+                    <div class="usage-fill" style="width: ${usagePercent}%"></div>
+                </div>
+            `;
+
+            // Add click handler to show recipes using this material
             item.addEventListener('click', () => {
                 this.showRawMaterialRecipes(material);
             });
@@ -276,25 +369,6 @@ class RecipeAnalytics {
         document.getElementById('complexRecipes').textContent = complexRecipes.toLocaleString();
     }
 
-    renderLongestConstructionTime() {
-        const sorted = [...this.allRecipes]
-            .filter(recipe => recipe.craftingTime > 0)
-            .sort((a, b) => (b.craftingTime || 0) - (a.craftingTime || 0))
-            .slice(0, 30);
-
-        const container = document.getElementById('longestTime');
-        container.innerHTML = '';
-
-        sorted.forEach((recipe, index) => {
-            const item = this.createAnalyticsItem(recipe, index + 1, {
-                primaryStat: `${recipe.craftingTime}s`,
-                primaryLabel: 'Construction Time',
-                secondaryStat: recipe.inputs ? recipe.inputs.length : 0,
-                secondaryLabel: 'Ingredients'
-            });
-            container.appendChild(item);
-        });
-    }
 
     renderMostResourceIntensive() {
         const sorted = [...this.allRecipes]
@@ -379,35 +453,6 @@ class RecipeAnalytics {
         });
     }
 
-    renderInfrastructureGiants() {
-        // Focus on Infrastructure recipes, sorted by complexity and tier
-        const infrastructureRecipes = this.allRecipes
-            .filter(recipe => recipe.category === 'Infrastructure')
-            .map(recipe => {
-                const totalQuantity = recipe.inputs?.reduce((sum, input) => sum + (input.amount || 0), 0) || 0;
-                const ingredientCount = recipe.inputs?.length || 0;
-
-                return {
-                    ...recipe,
-                    complexityScore: (recipe.tier || 1) * 10 + ingredientCount * 5 + (recipe.craftingTime || 0) / 10
-                };
-            })
-            .sort((a, b) => b.complexityScore - a.complexityScore)
-            .slice(0, 30);
-
-        const container = document.getElementById('infrastructureGiants');
-        container.innerHTML = '';
-
-        infrastructureRecipes.forEach((recipe, index) => {
-            const item = this.createAnalyticsItem(recipe, index + 1, {
-                primaryStat: `T${recipe.tier}`,
-                primaryLabel: 'Tier',
-                secondaryStat: recipe.inputs?.length || 0,
-                secondaryLabel: 'Ingredients'
-            });
-            container.appendChild(item);
-        });
-    }
 
     createAnalyticsItem(recipe, rank, stats) {
         const item = document.createElement('div');

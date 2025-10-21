@@ -22,6 +22,80 @@ class TradeRouteAnalytics {
         this.filteredProfitable = [];
         this.filteredEfficiency = [];
         this.filteredResources = [];
+
+        // Graph for hop distance calculations
+        this.systemGraph = null;
+        this.cssSystem = 'CSS-MUD-KING-01'; // Target CSS system
+    }
+
+    /**
+     * Build a graph of system connections from planet data
+     */
+    buildSystemGraph() {
+        if (this.systemGraph) return this.systemGraph;
+
+        const planets = this.crossAnalytics.dataCache.planets || [];
+        const graph = new Map();
+
+        planets.forEach(system => {
+            if (!graph.has(system.name)) {
+                graph.set(system.name, []);
+            }
+            if (system.links && Array.isArray(system.links)) {
+                graph.get(system.name).push(...system.links);
+            }
+        });
+
+        this.systemGraph = graph;
+        return graph;
+    }
+
+    /**
+     * Calculate hop distance from source system to CSS system using BFS
+     * Returns number of hops, or -1 if no path exists
+     */
+    calculateHopDistance(sourceSystem) {
+        const result = this.findRoute(sourceSystem);
+        return result.distance;
+    }
+
+    /**
+     * Find the full route from source system to CSS system using BFS
+     * Returns { distance: number, path: string[] }
+     */
+    findRoute(sourceSystem) {
+        const graph = this.buildSystemGraph();
+
+        if (sourceSystem === this.cssSystem) {
+            return { distance: 0, path: [sourceSystem] };
+        }
+        if (!graph.has(sourceSystem)) {
+            return { distance: -1, path: [] };
+        }
+
+        const queue = [[sourceSystem, 0, [sourceSystem]]]; // [system, distance, path]
+        const visited = new Set([sourceSystem]);
+
+        while (queue.length > 0) {
+            const [currentSystem, distance, path] = queue.shift();
+
+            const neighbors = graph.get(currentSystem) || [];
+            for (const neighbor of neighbors) {
+                if (neighbor === this.cssSystem) {
+                    return {
+                        distance: distance + 1,
+                        path: [...path, neighbor]
+                    };
+                }
+
+                if (!visited.has(neighbor)) {
+                    visited.add(neighbor);
+                    queue.push([neighbor, distance + 1, [...path, neighbor]]);
+                }
+            }
+        }
+
+        return { distance: -1, path: [] }; // No path found
     }
 
     async renderTradeRoutes() {
@@ -198,6 +272,32 @@ class TradeRouteAnalytics {
 
         tbody.innerHTML = routesToShow.map((route, index) => {
             const rank = startIdx + index + 1;
+
+            // Check if system is from ONI, MUD, or UST faction and calculate hop distance
+            const isFactionSystem = route.sourceSystem.includes('-ONI-') ||
+                                   route.sourceSystem.includes('-MUD-') ||
+                                   route.sourceSystem.includes('-UST-') ||
+                                   route.sourceSystem.startsWith('ONI-') ||
+                                   route.sourceSystem.startsWith('MUD-') ||
+                                   route.sourceSystem.startsWith('UST-') ||
+                                   route.sourceSystem.startsWith('006-ONI') ||
+                                   route.sourceSystem.startsWith('011-MUD') ||
+                                   route.sourceSystem.startsWith('017-UST');
+            let distanceDisplay;
+            let distanceClass = 'number-cell';
+
+            if (isFactionSystem) {
+                const hopDistance = this.calculateHopDistance(route.sourceSystem);
+                if (hopDistance >= 0) {
+                    distanceDisplay = `${hopDistance} ${hopDistance === 1 ? 'hop' : 'hops'}`;
+                    distanceClass = 'number-cell clickable-route-cell';
+                } else {
+                    distanceDisplay = `${route.estimatedDistance} systems <span class="warning-text" title="No connection path found to CSS">(⚠️ no path)</span>`;
+                }
+            } else {
+                distanceDisplay = `${route.estimatedDistance} systems`;
+            }
+
             return `
                 <tr>
                     <td class="rank-cell">${rank}</td>
@@ -205,13 +305,23 @@ class TradeRouteAnalytics {
                     <td class="tier-cell">T${route.tier}</td>
                     <td>${this.escapeHtml(route.sourceSystem)}</td>
                     <td class="number-cell">${route.sourceRichness.toFixed(1)}</td>
-                    <td class="number-cell">${route.estimatedDistance} systems</td>
+                    <td class="${distanceClass}" data-system="${this.escapeHtml(route.sourceSystem)}" title="${distanceClass.includes('clickable') ? 'Click to view route' : ''}">${distanceDisplay}</td>
                     <td class="number-cell">${route.tradeValue.toFixed(0)}</td>
                     <td class="number-cell warning-cell">${route.estimatedFuelCost}</td>
                     <td class="number-cell highlight-cell">${route.profitMargin.toFixed(0)}</td>
                 </tr>
             `;
         }).join('');
+
+        // Add click handlers for route cells
+        tbody.querySelectorAll('.clickable-route-cell').forEach(cell => {
+            cell.addEventListener('click', (e) => {
+                const system = e.currentTarget.getAttribute('data-system');
+                if (system) {
+                    this.showRouteModal(system);
+                }
+            });
+        });
 
         ['profitablePageInfo', 'profitablePageInfoBottom'].forEach(id => {
             const el = document.getElementById(id);
@@ -354,18 +464,54 @@ class TradeRouteAnalytics {
 
         tbody.innerHTML = routesToShow.map((route, index) => {
             const rank = startIdx + index + 1;
+
+            // Check if system is from ONI, MUD, or UST faction and calculate hop distance
+            const isFactionSystem = route.sourceSystem.includes('-ONI-') ||
+                                   route.sourceSystem.includes('-MUD-') ||
+                                   route.sourceSystem.includes('-UST-') ||
+                                   route.sourceSystem.startsWith('ONI-') ||
+                                   route.sourceSystem.startsWith('MUD-') ||
+                                   route.sourceSystem.startsWith('UST-') ||
+                                   route.sourceSystem.startsWith('006-ONI') ||
+                                   route.sourceSystem.startsWith('011-MUD') ||
+                                   route.sourceSystem.startsWith('017-UST');
+            let distanceDisplay;
+            let distanceClass = 'number-cell';
+
+            if (isFactionSystem) {
+                const hopDistance = this.calculateHopDistance(route.sourceSystem);
+                if (hopDistance >= 0) {
+                    distanceDisplay = `${hopDistance} ${hopDistance === 1 ? 'hop' : 'hops'}`;
+                    distanceClass = 'number-cell clickable-route-cell';
+                } else {
+                    distanceDisplay = `${route.estimatedDistance} systems <span class="warning-text" title="No connection path found to CSS">(⚠️ no path)</span>`;
+                }
+            } else {
+                distanceDisplay = `${route.estimatedDistance} systems`;
+            }
+
             return `
                 <tr>
                     <td class="rank-cell">${rank}</td>
                     <td>${this.escapeHtml(route.resource)}</td>
                     <td class="tier-cell">T${route.tier}</td>
                     <td>${this.escapeHtml(route.sourceSystem)}</td>
-                    <td class="number-cell">${route.estimatedDistance} systems</td>
+                    <td class="${distanceClass}" data-system="${this.escapeHtml(route.sourceSystem)}" title="${distanceClass.includes('clickable') ? 'Click to view route' : ''}">${distanceDisplay}</td>
                     <td class="number-cell">${route.profitMargin.toFixed(0)}</td>
                     <td class="number-cell highlight-cell">${route.profitPerUnit.toFixed(1)}</td>
                 </tr>
             `;
         }).join('');
+
+        // Add click handlers for route cells
+        tbody.querySelectorAll('.clickable-route-cell').forEach(cell => {
+            cell.addEventListener('click', (e) => {
+                const system = e.currentTarget.getAttribute('data-system');
+                if (system) {
+                    this.showRouteModal(system);
+                }
+            });
+        });
 
         ['efficiencyPageInfo', 'efficiencyPageInfoBottom'].forEach(id => {
             const el = document.getElementById(id);
@@ -549,6 +695,72 @@ class TradeRouteAnalytics {
         ['resourcesNextPage', 'resourcesNextPageBottom'].forEach(id => {
             const btn = document.getElementById(id);
             if (btn) btn.disabled = disableNext;
+        });
+    }
+
+    showRouteModal(sourceSystem) {
+        const routeInfo = this.findRoute(sourceSystem);
+
+        if (routeInfo.distance < 0 || routeInfo.path.length === 0) {
+            alert('No route found to CSS-MUD-KING-01');
+            return;
+        }
+
+        const modal = document.createElement('div');
+        modal.className = 'route-modal-overlay';
+        modal.innerHTML = `
+            <div class="route-modal">
+                <div class="route-modal-header">
+                    <div>
+                        <h2>🗺️ Trade Route</h2>
+                        <p class="modal-subtitle">${this.escapeHtml(sourceSystem)} → CSS-MUD-KING-01</p>
+                    </div>
+                    <button class="modal-close-btn" aria-label="Close">&times;</button>
+                </div>
+                <div class="route-modal-body">
+                    <div class="route-stats">
+                        <div class="route-stat">
+                            <span class="stat-label">Total Hops</span>
+                            <span class="stat-value">${routeInfo.distance}</span>
+                        </div>
+                        <div class="route-stat">
+                            <span class="stat-label">Systems</span>
+                            <span class="stat-value">${routeInfo.path.length}</span>
+                        </div>
+                    </div>
+
+                    <div class="route-path">
+                        <h3>Route Path</h3>
+                        <div class="route-steps">
+                            ${routeInfo.path.map((system, index) => {
+                                const isStart = index === 0;
+                                const isEnd = index === routeInfo.path.length - 1;
+                                let icon = '📍';
+                                if (isStart) icon = '🚀';
+                                if (isEnd) icon = '🎯';
+
+                                return `
+                                    <div class="route-step ${isStart ? 'start' : ''} ${isEnd ? 'end' : ''}">
+                                        <div class="step-number">${icon} ${index + 1}</div>
+                                        <div class="step-system">${this.escapeHtml(system)}</div>
+                                        ${!isEnd ? '<div class="step-arrow">↓</div>' : ''}
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        const closeModal = () => modal.remove();
+        modal.querySelector('.modal-close-btn').addEventListener('click', closeModal);
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                closeModal();
+            }
         });
     }
 

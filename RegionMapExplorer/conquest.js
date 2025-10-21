@@ -47,16 +47,17 @@ class ConquestManager {
 
         const currentFaction = this.conquestState.get(system.id) || system.controllingFaction;
 
-        // If already owned by attacking faction, reset to original faction (toggle off)
+        // If already owned by attacking faction, reset to initial controlling faction (toggle off)
         if (currentFaction === this.attackingFaction) {
-            this.conquestState.set(system.id, system.originalFaction);
-            system.controllingFaction = system.originalFaction;
-            console.log(`[ConquestManager] ${system.name} reset to ${system.originalFaction} (was ${this.attackingFaction})`);
+            const resetFaction = system.initialControllingFaction || system.controllingFaction;
+            this.conquestState.set(system.id, resetFaction);
+            system.controllingFaction = resetFaction;
+            console.log(`[ConquestManager] ${system.name} reset to ${resetFaction} (was ${this.attackingFaction})`);
 
             // Recalculate region status
             this.updateAllRegionStatus();
 
-            return {success: true, oldFaction: this.attackingFaction, newFaction: system.originalFaction, toggled: true};
+            return {success: true, oldFaction: this.attackingFaction, newFaction: resetFaction, toggled: true};
         }
 
         // Update system ownership to attacking faction
@@ -72,24 +73,27 @@ class ConquestManager {
     }
 
     /**
-     * Reset a system to its original faction
+     * Reset a system to its initial controlling faction
      */
     resetSystem(system) {
-        this.conquestState.set(system.id, system.originalFaction);
-        system.controllingFaction = system.originalFaction;
+        const resetFaction = system.initialControllingFaction || system.controllingFaction;
+        this.conquestState.set(system.id, resetFaction);
+        system.controllingFaction = resetFaction;
         this.updateAllRegionStatus();
     }
 
     /**
-     * Reset all systems to original state
+     * Reset all systems to initial controlling state
      */
     resetAll() {
         this.systems.forEach(sys => {
-            this.conquestState.set(sys.id, sys.originalFaction);
-            sys.controllingFaction = sys.originalFaction;
+            // Reset to initial controlling faction (which may be "Neutral" even for UST/MUD/ONI territory)
+            const resetFaction = sys.initialControllingFaction || sys.controllingFaction;
+            this.conquestState.set(sys.id, resetFaction);
+            sys.controllingFaction = resetFaction;
         });
         this.updateAllRegionStatus();
-        console.log('[ConquestManager] All systems reset to original state');
+        console.log('[ConquestManager] All systems reset to initial controlling state');
     }
 
     /**

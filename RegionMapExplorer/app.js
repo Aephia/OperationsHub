@@ -95,7 +95,8 @@ class RegionMapApp {
                 const regionCode = nameParts[0]; // First 3 chars (CSS, 004, 016, etc.)
                 const faction = nameParts[1]; // MUD, ONI, UST
 
-                const controllingFaction = system.closestFaction || faction;
+                // Use controllingFaction from data if available, otherwise fall back to closestFaction or faction from name
+                const controllingFaction = system.controllingFaction || system.closestFaction || faction;
 
                 // Determine system type
                 // King systems: structure.type === 1 OR name contains "-KING-"
@@ -117,6 +118,7 @@ class RegionMapApp {
                     mainPlanet: system.mainPlanet || '',
                     originalFaction: faction,
                     controllingFaction: controllingFaction,
+                    initialControllingFaction: controllingFaction, // Save initial state for reset
                     regionId: `${regionCode}-${faction}`, // e.g., "CSS-MUD", "004-MUD", "016-UST"
                     regionCode: regionCode,
                     type: systemType,
@@ -237,7 +239,6 @@ class RegionMapApp {
     setupConquestControls() {
         const factionButtons = document.querySelectorAll('.faction-btn');
         const resetConquestButton = document.getElementById('resetConquest');
-        const conquestImpactButton = document.getElementById('conquestImpactBtn');
 
         // Faction selection
         factionButtons.forEach(btn => {
@@ -252,22 +253,6 @@ class RegionMapApp {
                 this.conquestManager.setAttackingFaction(faction);
             });
         });
-
-        // Conquest Impact Analysis
-        if (conquestImpactButton) {
-            conquestImpactButton.addEventListener('click', () => {
-                if (this.regionMap.selectedSystem) {
-                    const region = this.regionMap.regions.find(r => r.id === this.regionMap.selectedSystem.regionId);
-                    if (region) {
-                        this.regionDetailsManager.showConquestStatistics(region);
-                    } else {
-                        alert('Please select a system on the map first to view conquest impact analysis.');
-                    }
-                } else {
-                    alert('Please select a system on the map first to view conquest impact analysis.');
-                }
-            });
-        }
 
         // Reset conquest
         if (resetConquestButton) {
