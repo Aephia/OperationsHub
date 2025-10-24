@@ -9,6 +9,8 @@
     <link rel="stylesheet" href="analytics-styles.css">
     <!-- Chart.js for data visualization -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <!-- html2canvas for image export -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 </head>
 <body>
     <header>
@@ -172,7 +174,7 @@
             <!-- Sub-tabs for different analytics -->
             <nav class="sub-navigation-tabs">
                 <button class="sub-nav-tab active" data-subtab="basic">📈 Building Analytics</button>
-                <button class="sub-nav-tab" data-subtab="competitive">📊 Competitive Advantage</button>
+                <button class="sub-nav-tab" data-subtab="recipe-optimizer">🎯 Recipe Optimizer</button>
             </nav>
 
             <!-- Basic Analytics Sub-tab -->
@@ -201,13 +203,51 @@
                 </div>
             </div>
 
-            <!-- Competitive Advantage Sub-tab -->
-            <div id="competitiveAnalyticsSubtab" class="subtab-content">
-                <div id="competitiveLoadingMessage" style="display: none;">
-                    <p>🔄 Loading competitive advantage analytics...</p>
+            <!-- Recipe Optimizer Sub-tab -->
+            <div id="recipe-optimizerAnalyticsSubtab" class="subtab-content">
+                <div class="recipe-optimizer-header">
+                    <h3>🎯 Recipe-Based ClaimStake Placement Optimizer</h3>
+                    <p>Find the best regions to place your claim stakes (T1-T5) based on recipe resource requirements</p>
                 </div>
-                <div id="competitiveContent" class="analytics-sections">
-                    <!-- Competitive advantage content will be rendered here -->
+
+                <div class="recipe-search-section">
+                    <div class="search-container">
+                        <input type="text" id="recipeOptimizerSearch" placeholder="Search for a recipe..." autocomplete="off">
+                        <button id="optimizeButton" disabled>🎯 Optimize Placement</button>
+                    </div>
+                    <div id="recipeSearchResults" class="recipe-search-results"></div>
+
+                    <div class="faction-filter-section">
+                        <label style="color: rgba(255, 255, 255, 0.8); font-weight: 600; margin-bottom: 0.5rem; display: block;">Filter by Faction:</label>
+                        <div class="faction-checkboxes">
+                            <label class="faction-checkbox-item">
+                                <input type="checkbox" id="factionMUD" value="MUD" checked>
+                                <span style="color: #ff4444;">MUD</span>
+                            </label>
+                            <label class="faction-checkbox-item">
+                                <input type="checkbox" id="factionONI" value="ONI" checked>
+                                <span style="color: #4444ff;">ONI</span>
+                            </label>
+                            <label class="faction-checkbox-item">
+                                <input type="checkbox" id="factionUST" value="UST" checked>
+                                <span style="color: #ffaa00;">UST</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="recipeOptimizerResults" class="recipe-optimizer-results">
+                    <div class="placeholder-content">
+                        <div class="placeholder-icon">🎯</div>
+                        <h3>Recipe ClaimStake Optimizer</h3>
+                        <p>Search for a recipe above to find optimal claim stake placement recommendations</p>
+                        <div class="placeholder-tips">
+                            <div class="tip">🔍 <strong>Search:</strong> Enter a recipe name to get started</div>
+                            <div class="tip">🌍 <strong>Regional Analysis:</strong> Find best regions with required resources</div>
+                            <div class="tip">📍 <strong>Proximity:</strong> Identifies planets closer together for efficiency</div>
+                            <div class="tip">⭐ <strong>Tier Matching:</strong> Recommends appropriate claim stake tiers (T1-T5)</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -256,7 +296,7 @@
     <script src="construction.js?v=20251003" onload="console.log('u2705 construction.js loaded')" onerror="console.error('❌ Failed to load construction.js')"></script>
     <script src="explorer.js?v=20250925-2142" onload="console.log('✅ explorer.js loaded')" onerror="console.error('❌ Failed to load explorer.js')"></script>
     <script src="analytics.js?v=20251006-regions-modal" onload="console.log('✅ analytics.js loaded')" onerror="console.error('❌ Failed to load analytics.js')"></script>
-    <script src="competitive-advantage.js" onload="console.log('✅ competitive-advantage.js loaded')" onerror="console.error('❌ Failed to load competitive-advantage.js')"></script>
+    <script src="recipe-optimizer.js" onload="console.log('✅ recipe-optimizer.js loaded')" onerror="console.error('❌ Failed to load recipe-optimizer.js')"></script>
     <script src="app.js?v=20250925-2142" onload="console.log('✅ app.js loaded - FRESH VERSION')" onerror="console.error('❌ Failed to load app.js')"></script>
 </body>
 </html>

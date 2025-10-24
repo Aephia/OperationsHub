@@ -4,7 +4,6 @@ class ClaimStakeApp {
         this.data = null;
         this.buildingExplorer = null;
         this.buildingAnalytics = null;
-        this.competitiveAnalytics = null;
         this.currentTab = 'explorer';
         this.init();
     }
@@ -56,9 +55,6 @@ class ClaimStakeApp {
                 window.buildingAnalytics = this.buildingAnalytics; // Available globally for planet modal
             }
 
-            // Initialize cross-explorer analytics modules
-            this.competitiveAnalytics = new CompetitiveAdvantageAnalytics();
-
             // Initialize sub-tab navigation
             this.initSubTabNavigation();
         } catch (error) {
@@ -83,11 +79,6 @@ class ClaimStakeApp {
                 const subtabContent = document.getElementById(`${subtab}AnalyticsSubtab`);
                 if (subtabContent) {
                     subtabContent.classList.add('active');
-                }
-
-                // Load analytics when tabs are clicked
-                if (subtab === 'competitive' && this.competitiveAnalytics) {
-                    await this.competitiveAnalytics.renderCompetitiveAdvantage();
                 }
             });
         });

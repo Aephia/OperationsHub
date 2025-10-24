@@ -843,6 +843,499 @@
     border-color: rgba(52, 152, 219, 0.3);
 }
 
+/* ========================================
+   RECIPE OPTIMIZER STYLES
+   ======================================== */
+
+.recipe-optimizer-header {
+    margin-bottom: 2rem;
+}
+
+.recipe-optimizer-header h3 {
+    color: #ff9500;
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.recipe-optimizer-header p {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+}
+
+.recipe-search-section {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 16px;
+    padding: 2rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 2rem;
+}
+
+.faction-filter-section {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.faction-checkboxes {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.faction-checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    padding: 0.5rem 0.75rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 6px;
+    transition: background 0.2s ease;
+}
+
+.faction-checkbox-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.faction-checkbox-item input[type="checkbox"] {
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
+}
+
+.faction-checkbox-item span {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.recipe-search-section .search-container {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+#recipeOptimizerSearch {
+    flex: 1;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: #ffffff;
+    font-size: 1rem;
+}
+
+#recipeOptimizerSearch:focus {
+    outline: none;
+    border-color: #4facfe;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+#optimizeButton {
+    padding: 1rem 2rem;
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    border: none;
+    border-radius: 8px;
+    color: #000;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+#optimizeButton:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(79, 172, 254, 0.4);
+}
+
+#optimizeButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.recipe-search-results {
+    display: none;
+    max-height: 300px;
+    overflow-y: auto;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    margin-top: 0.5rem;
+}
+
+.recipe-result-item {
+    padding: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.recipe-result-item:hover {
+    background: rgba(79, 172, 254, 0.1);
+}
+
+.recipe-result-item:last-child {
+    border-bottom: none;
+}
+
+.recipe-result-name {
+    color: #ffffff;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.recipe-result-meta {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.85rem;
+}
+
+.no-results {
+    padding: 1rem;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* Optimizer Results */
+.recipe-optimizer-results {
+    min-height: 300px;
+}
+
+.optimizer-results-header {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 16px;
+    padding: 2rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 2rem;
+}
+
+.optimizer-results-header h3 {
+    color: #ff9500;
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.recipe-summary {
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+}
+
+.summary-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.summary-label {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.85rem;
+}
+
+.summary-value {
+    color: #4facfe;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+/* Region Cards */
+.regions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    gap: 1.5rem;
+}
+
+.region-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.region-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.region-card-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.region-rank {
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    color: #000;
+    font-weight: bold;
+    font-size: 1.2rem;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.region-title {
+    flex: 1;
+}
+
+.region-title h4 {
+    color: #ffffff;
+    margin: 0 0 0.25rem 0;
+    font-size: 1.1rem;
+}
+
+.region-score {
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.region-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.region-stats-grid .stat-item {
+    display: flex;
+    flex-direction: column;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    text-align: center;
+}
+
+.region-stats-grid .stat-label {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.75rem;
+    margin-bottom: 0.25rem;
+}
+
+.region-stats-grid .stat-value {
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+/* Missing Resources */
+.missing-resources {
+    margin-bottom: 1rem;
+}
+
+.all-resources-found {
+    padding: 0.75rem;
+    background: rgba(46, 204, 113, 0.1);
+    border: 1px solid rgba(46, 204, 113, 0.2);
+    border-radius: 8px;
+    color: #2ecc71;
+    font-weight: 600;
+    text-align: center;
+}
+
+.missing-resources-list {
+    padding: 0.75rem;
+    background: rgba(243, 156, 18, 0.1);
+    border: 1px solid rgba(243, 156, 18, 0.2);
+    border-radius: 8px;
+}
+
+.missing-resources-list strong {
+    color: #f39c12;
+    font-size: 0.85rem;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.resource-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.resource-tag {
+    padding: 0.25rem 0.75rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.resource-tag.missing {
+    background: rgba(243, 156, 18, 0.1);
+    border-color: rgba(243, 156, 18, 0.3);
+    color: #f39c12;
+}
+
+/* Faction Recommendations */
+.faction-recommendations h5 {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.9rem;
+    margin-bottom: 0.75rem;
+}
+
+.faction-recommendation {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.faction-recommendation:last-child {
+    margin-bottom: 0;
+}
+
+.faction-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.faction-name {
+    color: #4facfe;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.faction-coverage {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.85rem;
+}
+
+.faction-planets {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.faction-planets-scrollable {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+
+.faction-planets-scrollable::-webkit-scrollbar {
+    width: 8px;
+}
+
+.faction-planets-scrollable::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+}
+
+.faction-planets-scrollable::-webkit-scrollbar-thumb {
+    background: rgba(79, 172, 254, 0.3);
+    border-radius: 4px;
+}
+
+.faction-planets-scrollable::-webkit-scrollbar-thumb:hover {
+    background: rgba(79, 172, 254, 0.5);
+}
+
+.planet-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    font-size: 0.85rem;
+}
+
+.planet-item-detailed {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    font-size: 0.85rem;
+}
+
+.planet-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.planet-name {
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 600;
+}
+
+.planet-resources-count {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.8rem;
+}
+
+.planet-resources-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.resource-tag-small {
+    padding: 0.2rem 0.5rem;
+    background: rgba(79, 172, 254, 0.15);
+    border: 1px solid rgba(79, 172, 254, 0.3);
+    border-radius: 4px;
+    font-size: 0.75rem;
+    color: #4facfe;
+}
+
+/* Raw resources - Green (found on planets) */
+.resource-tag-small.raw-resource {
+    background: rgba(46, 204, 113, 0.15);
+    border-color: rgba(46, 204, 113, 0.3);
+    color: #2ecc71;
+}
+
+/* Processed resources - Orange (must be crafted) */
+.resource-tag-small.processed-resource {
+    background: rgba(243, 156, 18, 0.15);
+    border-color: rgba(243, 156, 18, 0.3);
+    color: #f39c12;
+}
+
+/* Component resources - Orange (must be crafted, same as processed) */
+.resource-tag-small.component-resource {
+    background: rgba(243, 156, 18, 0.15);
+    border-color: rgba(243, 156, 18, 0.3);
+    color: #f39c12;
+}
+
+.more-planets {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.8rem;
+    text-align: center;
+    padding: 0.5rem;
+}
+
+.no-results-found {
+    background: rgba(231, 76, 60, 0.1);
+    border: 1px solid rgba(231, 76, 60, 0.2);
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
+}
+
+.no-results-found h3 {
+    color: #e74c3c;
+    margin-bottom: 0.5rem;
+}
+
+.no-results-found p {
+    color: rgba(255, 255, 255, 0.7);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .profit-grid,
@@ -852,7 +1345,16 @@
     .insights-grid,
     .manufacturing-grid,
     .dominance-grid,
-    .vulnerability-grid {
+    .vulnerability-grid,
+    .regions-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .recipe-search-section .search-container {
+        flex-direction: column;
+    }
+
+    .region-stats-grid {
         grid-template-columns: 1fr;
     }
 }
