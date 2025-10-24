@@ -280,33 +280,96 @@ class CrossExplorerAnalytics {
                 // Get available resources on this planet
                 const availableResources = new Set(planet.resources.map(r => r.name));
 
-                // Check manufacturability for each recipe
-                const manufacturableRecipes = recipes.filter(recipe => {
-                    // Must have ingredients to be manufacturable
-                    if (!recipe.ingredients || recipe.ingredients.length === 0) return false;
+                // Depth-aware manufacturability calculation (matches manufacturing-analytics.js)
+                const planetTypeName = this.getPlanetTypeName(planet.type);
+                // Strip faction prefix (e.g., "UST Terrestrial Planet" -> "Terrestrial Planet")
+                const planetTypeWithoutFaction = planetTypeName.replace(/^(ONI|MUD|UST|USTUR)\s+/, '');
+                const planetTypeNameLower = planetTypeWithoutFaction.toLowerCase();
 
-                    // Check if planet type matches
-                    if (recipe.planetTypes && recipe.planetTypes.length > 0) {
-                        const planetTypeName = this.getPlanetTypeName(planet.type);
-                        // Flexible planet type matching (handles "Volcanic" vs "Volcanic Planet")
-                        const planetTypeMatch = recipe.planetTypes.some(recipeType =>
-                            recipeType.toLowerCase().includes(planetTypeName.toLowerCase()) ||
-                            planetTypeName.toLowerCase().includes(recipeType.toLowerCase())
+                const matchesPlanetType = (recipe) => {
+                    if (!recipe.planetTypes || recipe.planetTypes.length === 0) {
+                        return true;
+                    }
+                    return recipe.planetTypes.some(type => {
+                        const lower = type.toLowerCase();
+                        return lower.includes(planetTypeNameLower) || planetTypeNameLower.includes(lower);
+                    });
+                };
+
+                const relevantRecipes = recipes.filter(recipe =>
+                    recipe.ingredients &&
+                    recipe.ingredients.length > 0 &&
+                    matchesPlanetType(recipe)
+                );
+
+                const maxDepthIterations = 6;
+                const availableItems = new Set(availableResources);
+                const remaining = [...relevantRecipes];
+                const manufacturableRecipes = [];
+
+                let depth = 1;
+                while (remaining.length > 0 && depth <= maxDepthIterations) {
+                    const nextRemaining = [];
+                    const newlyManufacturable = [];
+
+                    for (const recipe of remaining) {
+                        const canManufacture = recipe.ingredients.every(ingredient =>
+                            availableItems.has(ingredient.name)
                         );
-                        if (!planetTypeMatch) return false;
+                        if (canManufacture) {
+                            newlyManufacturable.push({ ...recipe, depth });
+                        } else {
+                            nextRemaining.push(recipe);
+                        }
                     }
 
-                    // Check if ALL ingredients are available (self-sufficient)
-                    const hasAllIngredients = recipe.ingredients.every(ing =>
-                        availableResources.has(ing.name)
-                    );
+                    if (newlyManufacturable.length === 0) {
+                        break;
+                    }
 
-                    return hasAllIngredients;
-                });
+                    newlyManufacturable.forEach(recipe => {
+                        manufacturableRecipes.push(recipe);
 
-                // Calculate self-sufficiency score
+                        // Add recipe outputs to available items for next depth
+                        const outputs = new Set();
+                        if (recipe.outputName) {
+                            outputs.add(recipe.outputName);
+                        }
+                        if (Array.isArray(recipe.outputs)) {
+                            recipe.outputs.forEach(output => {
+                                if (output && output.name) {
+                                    outputs.add(output.name);
+                                }
+                            });
+                        }
+                        outputs.forEach(item => availableItems.add(item));
+                    });
+
+                    remaining.length = 0;
+                    remaining.push(...nextRemaining);
+                    depth += 1;
+                }
+
+                // Calculate self-sufficiency score (depth-aware)
                 const totalRecipes = recipes.length;
                 const selfSufficiencyScore = (manufacturableRecipes.length / totalRecipes) * 100;
+
+                // DEBUG: Log for first few planets to verify calculation
+                if (planet.name === '016-UST-KING-01-P8') {
+                    console.log(`[CrossExplorerAnalytics] Planet: ${planet.name}`);
+                    console.log(`  Planet type ID: ${planet.type}`);
+                    console.log(`  Planet type name (full): ${planetTypeName}`);
+                    console.log(`  Planet type name (stripped): ${planetTypeWithoutFaction}`);
+                    console.log(`  Available resources (${availableResources.size}):`, Array.from(availableResources).slice(0, 5));
+                    console.log(`  Total recipes in game: ${totalRecipes}`);
+                    console.log(`  Recipes with ingredients: ${recipes.filter(r => r.ingredients && r.ingredients.length > 0).length}`);
+                    console.log(`  Relevant recipes (matching planet type): ${relevantRecipes.length}`);
+                    if (relevantRecipes.length > 0) {
+                        console.log(`  Sample relevant recipe:`, relevantRecipes[0]);
+                    }
+                    console.log(`  Manufacturable recipes: ${manufacturableRecipes.length}`);
+                    console.log(`  Self-Sufficiency: ${selfSufficiencyScore.toFixed(3)}%`);
+                }
 
                 // Calculate specialization (what this planet is best at)
                 const specializationMap = new Map();
@@ -591,9 +654,14 @@ class CrossExplorerAnalytics {
     }
 
     /**
-     * Helper: Get planet type name from type ID
+     * Helper: Get planet type name from type ID (using global utility)
      */
     getPlanetTypeName(typeId) {
+        // Use global getPlanetTypeName if available
+        if (typeof getPlanetTypeName === 'function') {
+            return getPlanetTypeName(typeId);
+        }
+        // Fallback to basic types
         const types = {
             1: 'Terrestrial Planet', 2: 'Desert Planet', 3: 'Ice Planet',
             4: 'Oceanic Planet', 5: 'Volcanic Planet', 6: 'Gas Giant',

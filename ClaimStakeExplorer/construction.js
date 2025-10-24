@@ -183,6 +183,10 @@ class ConstructionManager {
                                         style="background: #ff4444; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-right: 10px;">
                                     Clear Plan
                                 </button>
+                                <button onclick="window.constructionManager.exportFacilityDiagram()"
+                                        style="background: #2196F3; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-right: 10px;">
+                                    📊 Export Diagram
+                                </button>
                                 <button onclick="window.constructionManager.constructFacility()"
                                         style="background: #4CAF50; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
                                     🚀 Construct Facility
@@ -1048,6 +1052,174 @@ class ConstructionManager {
     // Open Recipe Explorer with selected building - Uses shared utility
     openRecipeExplorer(buildingName, tier) {
         ConstructionUtils.openRecipeExplorer(buildingName, tier);
+    }
+
+    // Export facility diagram as image
+    async exportFacilityDiagram() {
+        if (!this.currentFacilityPlan || this.currentFacilityPlan.buildings.length === 0) {
+            alert('❌ No facility plan to export. Please add buildings first.');
+            return;
+        }
+
+        // Check if html2canvas is available
+        if (typeof html2canvas === 'undefined') {
+            alert('❌ Export library not loaded. Please refresh the page and try again.');
+            console.error('html2canvas library not found');
+            return;
+        }
+
+        try {
+            // Create export view
+            const exportContainer = this.createExportView();
+            document.body.appendChild(exportContainer);
+
+            // Give browser time to render
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            // Capture as image
+            const canvas = await html2canvas(exportContainer, {
+                backgroundColor: '#1a1a2e',
+                scale: 2, // Higher quality
+                logging: false,
+                windowWidth: 1200,
+                windowHeight: exportContainer.scrollHeight
+            });
+
+            // Remove export container
+            document.body.removeChild(exportContainer);
+
+            // Download image
+            const link = document.createElement('a');
+            const planetName = this.currentFacilityPlan.planetName.replace(/[^a-z0-9]/gi, '_');
+            const timestamp = new Date().toISOString().slice(0, 10);
+            link.download = `facility_${planetName}_${timestamp}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+
+            console.log('✅ Facility diagram exported successfully');
+        } catch (error) {
+            console.error('❌ Error exporting diagram:', error);
+            alert('Failed to export diagram. Check console for details.');
+        }
+    }
+
+    // Create export-friendly view of the facility
+    createExportView() {
+        const facilityStats = this.calculateFacilityStats();
+        const validation = this.validateFacilityPlan();
+        const totalTime = this.currentFacilityPlan.buildings.reduce((sum, b) => sum + (b.constructionTime || 0), 0);
+
+        const container = document.createElement('div');
+        container.style.cssText = `
+            position: fixed;
+            left: -9999px;
+            top: 0;
+            width: 1200px;
+            background: #1a1a2e;
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 40px;
+            box-sizing: border-box;
+        `;
+
+        container.innerHTML = `
+            <div style="margin-bottom: 30px; text-align: center;">
+                <h1 style="color: #4CAF50; margin: 0 0 10px 0; font-size: 32px;">🏗️ Facility Construction Plan</h1>
+                <div style="font-size: 18px; color: #ccc;">${this.currentFacilityPlan.planetName}</div>
+                <div style="font-size: 14px; color: #888; margin-top: 5px;">${this.currentFacilityPlan.system.name || 'System'} • Tier ${this.currentFacilityPlan.claimStakeTier} Claim Stake</div>
+                <div style="font-size: 12px; color: #666; margin-top: 10px;">Generated: ${new Date().toLocaleString()}</div>
+            </div>
+
+            ${validation.valid ? `
+                <div style="background: #2e7d32; padding: 15px; border-radius: 8px; margin-bottom: 25px; text-align: center;">
+                    <div style="font-size: 20px; font-weight: bold;">✅ Facility Plan Valid</div>
+                </div>
+            ` : `
+                <div style="background: #c62828; padding: 15px; border-radius: 8px; margin-bottom: 25px;">
+                    <div style="font-size: 18px; font-weight: bold; margin-bottom: 10px;">⚠️ Validation Issues</div>
+                    ${validation.slotsExceeded ? `<div>• Slots exceeded: ${validation.slotsUsed}/${validation.availableSlots}</div>` : ''}
+                    ${validation.powerInsufficient ? `<div>• Power insufficient: ${validation.powerOutput}/${validation.powerConsumption}</div>` : ''}
+                </div>
+            `}
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
+                <div style="background: #2a2a3e; padding: 20px; border-radius: 8px;">
+                    <h3 style="color: #4CAF50; margin-top: 0;">📊 Facility Summary</h3>
+                    <div style="line-height: 1.8;">
+                        <div><strong>Buildings:</strong> ${this.currentFacilityPlan.buildings.length}</div>
+                        <div><strong>Construction Time:</strong> ${totalTime} minutes</div>
+                        <div><strong>Slots Used:</strong> ${validation.slotsUsed}/${validation.availableSlots}</div>
+                        <div><strong>Crew Required:</strong> ${facilityStats.totalNeededCrew}/${facilityStats.totalCrewSlots}</div>
+                        <div><strong>Power Output:</strong> <span style="color: ${facilityStats.totalPower < 0 ? '#ff4444' : '#4CAF50'}">${facilityStats.totalPower}</span></div>
+                        <div><strong>Storage:</strong> ${facilityStats.totalStorage.toLocaleString()}</div>
+                    </div>
+                </div>
+
+                <div style="background: #2a2a3e; padding: 20px; border-radius: 8px;">
+                    <h3 style="color: #4CAF50; margin-top: 0;">💰 Resource Cost</h3>
+                    <div style="line-height: 1.6; font-size: 13px; max-height: 200px; overflow-y: auto;">
+                        ${Object.entries(facilityStats.totalRecipeCost).length > 0 ?
+                            Object.entries(facilityStats.totalRecipeCost).map(([resource, amount]) =>
+                                `<div>• ${resource}: <strong>${amount}</strong></div>`
+                            ).join('') :
+                            '<div style="color: #888;">No recipe ingredients required</div>'
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 25px;">
+                <h3 style="color: #4CAF50;">🏢 Building Architecture</h3>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+                    ${this.currentFacilityPlan.buildings.map(building => `
+                        <div style="background: #2a2a3e; padding: 15px; border-radius: 6px; ${building.comesWithStake ? 'border: 2px solid #FF9800;' : 'border: 1px solid #444;'}">
+                            <div style="font-weight: bold; color: #4CAF50; margin-bottom: 8px; font-size: 14px;">${building.name}</div>
+                            <div style="font-size: 11px; color: #ccc; margin-bottom: 8px;">Tier ${building.tier} • ${building.constructionTime || 0} min</div>
+                            <div style="display: flex; gap: 12px; font-size: 12px; flex-wrap: wrap;">
+                                <span title="Crew">👥 ${building.neededCrew || 0}/${building.crewSlots || 0}</span>
+                                <span title="Power">⚡ ${building.power || 0}</span>
+                                <span title="Storage">📦 ${(building.storage || 0).toLocaleString()}</span>
+                            </div>
+                            ${building.comesWithStake ? '<div style="color: #FF9800; font-size: 10px; margin-top: 8px;">📍 Included with Stake</div>' : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+
+            ${Object.keys(facilityStats.resourceExtraction).length > 0 || Object.keys(facilityStats.resourceConsumption).length > 0 ? `
+                <div style="background: #2a2a3e; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+                    <h3 style="color: #4CAF50; margin-top: 0;">🔄 Resource Production Flow</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        ${Object.keys(facilityStats.resourceExtraction).length > 0 ? `
+                            <div>
+                                <h4 style="color: #66bb6a; font-size: 14px;">Production (+)</h4>
+                                <div style="font-size: 12px; line-height: 1.6;">
+                                    ${Object.entries(facilityStats.resourceExtraction).map(([resource, rate]) =>
+                                        `<div>• ${resource}: <span style="color: #66bb6a;">+${rate.toFixed(3)}/hour</span></div>`
+                                    ).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                        ${Object.keys(facilityStats.resourceConsumption).length > 0 ? `
+                            <div>
+                                <h4 style="color: #ef5350; font-size: 14px;">Consumption (-)</h4>
+                                <div style="font-size: 12px; line-height: 1.6;">
+                                    ${Object.entries(facilityStats.resourceConsumption).map(([resource, rate]) =>
+                                        `<div>• ${resource}: <span style="color: #ef5350;">-${rate.toFixed(3)}/hour</span></div>`
+                                    ).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            ` : ''}
+
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #444; text-align: center; color: #666; font-size: 12px;">
+                Generated by ClaimStake Explorer • Star Atlas Planning Tool
+            </div>
+        `;
+
+        return container;
     }
 }
 
