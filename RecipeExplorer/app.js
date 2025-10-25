@@ -252,6 +252,18 @@ class RecipeExplorerApp {
                 this.handleSearch(e.target.value);
             });
         }
+
+        // Add search mode toggle listeners
+        const searchModeRadios = document.querySelectorAll('input[name="searchMode"]');
+        searchModeRadios.forEach(radio => {
+            radio.addEventListener('change', () => {
+                // Re-run search when mode changes
+                const currentSearch = searchInput ? searchInput.value : '';
+                if (currentSearch) {
+                    this.handleSearch(currentSearch);
+                }
+            });
+        });
     }
 
     setupTabSwitching() {
@@ -292,12 +304,33 @@ class RecipeExplorerApp {
         if (!term) {
             this.filteredRecipes = [...this.allRecipes];
         } else {
-            this.filteredRecipes = this.allRecipes.filter(recipe =>
-                recipe.name.toLowerCase().includes(term) ||
-                (recipe.description && recipe.description.toLowerCase().includes(term)) ||
-                recipe.category.toLowerCase().includes(term) ||
-                (recipe.inputs && recipe.inputs.some(input => input.name.toLowerCase().includes(term)))
-            );
+            // Get selected search mode
+            const searchMode = document.querySelector('input[name="searchMode"]:checked')?.value || 'recipe';
+
+            if (searchMode === 'ingredient') {
+                // Search by ingredient names only
+                this.filteredRecipes = this.allRecipes.filter(recipe => {
+                    // Check ingredients (from inputs or ingredients property)
+                    if (recipe.inputs && recipe.inputs.some(input =>
+                        input.name && input.name.toLowerCase().includes(term)
+                    )) {
+                        return true;
+                    }
+                    if (recipe.ingredients && recipe.ingredients.some(ing =>
+                        ing.name && ing.name.toLowerCase().includes(term)
+                    )) {
+                        return true;
+                    }
+                    return false;
+                });
+            } else {
+                // Search by recipe name (original behavior)
+                this.filteredRecipes = this.allRecipes.filter(recipe =>
+                    recipe.name.toLowerCase().includes(term) ||
+                    (recipe.description && recipe.description.toLowerCase().includes(term)) ||
+                    recipe.category.toLowerCase().includes(term)
+                );
+            }
         }
 
         this.populateRecipeCheckboxes();

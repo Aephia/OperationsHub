@@ -5,6 +5,20 @@ class RecipeAnalytics {
         this.extractAllRecipes();
     }
 
+    /**
+     * Get color for tier badge
+     */
+    getTierColor(tier) {
+        const tierColors = {
+            1: '#64ffda',  // Cyan/Teal - T1
+            2: '#4facfe',  // Blue - T2
+            3: '#9b59b6',  // Purple - T3
+            4: '#f39c12',  // Orange - T4
+            5: '#e74c3c',  // Red - T5
+        };
+        return tierColors[tier] || '#999'; // Default gray for unknown tiers
+    }
+
     extractAllRecipes() {
         this.allRecipes = [];
         if (!this.data || !this.data.categories) {
@@ -218,11 +232,12 @@ class RecipeAnalytics {
             item.className = 'raw-material-card';
 
             const usagePercent = (material.usedInRecipes / maxUsage) * 100;
+            const tierColor = this.getTierColor(material.tier);
 
             item.innerHTML = `
                 <div class="material-header">
                     <h4>#${index + 1} ${material.resource}</h4>
-                    <span class="tier-badge">T${material.tier}</span>
+                    <span class="tier-badge" style="background: ${tierColor}; color: #000;">T${material.tier}</span>
                 </div>
                 <div class="material-stat">
                     <span class="stat-label">Used in:</span>
@@ -307,11 +322,12 @@ class RecipeAnalytics {
             const usagePercent = (material.usedInRecipes / maxUsage) * 100;
             const categoryIcon = material.category === 'processed' ? '⚙️' : '🔩';
             const categoryLabel = material.category === 'processed' ? 'Processed' : 'Component';
+            const tierColor = this.getTierColor(material.tier);
 
             item.innerHTML = `
                 <div class="material-header">
                     <h4>#${index + 1} ${categoryIcon} ${material.resource}</h4>
-                    <span class="tier-badge">T${material.tier}</span>
+                    <span class="tier-badge" style="background: ${tierColor}; color: #000;">T${material.tier}</span>
                 </div>
                 <div class="material-stat">
                     <span class="stat-label">Type:</span>

@@ -145,6 +145,43 @@ main {
     color: rgba(255, 255, 255, 0.6);
 }
 
+.search-mode-toggle {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.75rem;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+}
+
+.search-mode-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    transition: background 0.2s ease;
+}
+
+.search-mode-label:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.search-mode-label input[type="radio"] {
+    cursor: pointer;
+}
+
+.search-mode-label span {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.search-mode-label input[type="radio"]:checked + span {
+    color: #64ffda;
+    font-weight: 600;
+}
+
 .checkbox-container {
     display: flex;
     flex-direction: column;
