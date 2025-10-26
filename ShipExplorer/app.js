@@ -1097,6 +1097,63 @@ class ShipExplorer {
         return definition ? definition.label : statKey;
     }
 
+    getAllComponentsFromConfig(config) {
+        if (!config || !config.components) return [];
+
+        const allComponents = [];
+        const components = config.components;
+
+        // Iterate through all categories
+        Object.entries(components).forEach(([category, componentTypes]) => {
+            if (!componentTypes) return;
+
+            // Iterate through all component types within this category
+            Object.entries(componentTypes).forEach(([componentType, value]) => {
+                if (!value) return;
+
+                let items = [];
+
+                // Handle different data structures
+                if (Array.isArray(value)) {
+                    items = value.filter(Boolean);
+                } else if (value.items && Array.isArray(value.items)) {
+                    items = value.items.filter(Boolean);
+                } else if (typeof value === 'number' || typeof value === 'string') {
+                    items = [value];
+                }
+
+                // For each component ID, look up its details
+                items.forEach(componentId => {
+                    const componentKey = componentId.toString();
+                    const info = this.componentsById[componentKey];
+
+                    if (info) {
+                        allComponents.push({
+                            componentId,
+                            componentName: info.name || componentType,
+                            category,
+                            componentType,
+                            className: info.className,
+                            tierName: info.tierName
+                        });
+                    } else {
+                        // Even if we don't have info, add it with basic details
+                        allComponents.push({
+                            componentId,
+                            componentName: componentType,
+                            category,
+                            componentType,
+                            className: null,
+                            tierName: null
+                        });
+                    }
+                });
+            });
+        });
+
+        return allComponents;
+    }
+
     showStatDetails(shipId, configName, statKey) {
         if (!this.componentDataLoaded) {
             alert('Component data is still loading. Please try again in a moment.');
@@ -1128,8 +1185,13 @@ class ShipExplorer {
             };
         }).sort((a, b) => b.impactScore - a.impactScore);
 
+        // Get ALL components from the configuration, not just those affecting this stat
+        const config = (ship.configurations || []).find(cfg => cfg.name === configName);
+        const allComponents = this.getAllComponentsFromConfig(config);
+
         const rawEffects = detail?.rawEffects || [];
         console.log('[showStatDetails] rawEffects:', rawEffects);
+        console.log('[showStatDetails] allComponents:', allComponents);
         const statLabel = this.getStatLabel(statKey);
         const shipLabel = this.getShipDisplayName(ship);
 
@@ -1189,24 +1251,24 @@ class ShipExplorer {
                         </table>
                     `}
                 </div>
-                ${rawEffects.length ? `
+                ${allComponents.length ? `
                     <div class="stat-detail-section">
-                        <h3>Installed Components</h3>
+                        <h3>All Installed Components (${allComponents.length})</h3>
                         <ul class="stat-detail-list">
-                            ${rawEffects.map(effect => `
+                            ${allComponents.map(comp => `
                                 <li class="component-item">
                                     <div>
-                                        <span class="component-name">${this.escapeHtml(effect.componentName || effect.groupName || 'Component')}</span>
+                                        <span class="component-name">${this.escapeHtml(comp.componentName || 'Component')}</span>
                                         <span class="component-meta">
-                                            ${this.escapeHtml(effect.category || '')}${effect.componentType ? ` &middot; ${this.escapeHtml(effect.componentType)}` : ''}
-                                            ${effect.className || effect.tierName ? ` &middot; ${[effect.className, effect.tierName].filter(Boolean).join(' ')}` : ''}
+                                            ${this.escapeHtml(comp.category || '')}${comp.componentType ? ` &middot; ${this.escapeHtml(comp.componentType)}` : ''}
+                                            ${comp.className || comp.tierName ? ` &middot; ${[comp.className, comp.tierName].filter(Boolean).join(' ')}` : ''}
                                         </span>
                                     </div>
-                                    ${effect.componentType && effect.className ? `
+                                    ${comp.componentType && comp.className ? `
                                         <button class="view-recipe-btn"
-                                                data-component-type="${this.escapeAttribute(effect.componentType)}"
-                                                data-component-class="${this.escapeAttribute(effect.className)}"
-                                                data-component-tier="${this.escapeAttribute(effect.tierName || '')}"
+                                                data-component-type="${this.escapeAttribute(comp.componentType)}"
+                                                data-component-class="${this.escapeAttribute(comp.className)}"
+                                                data-component-tier="${this.escapeAttribute(comp.tierName || '')}"
                                                 title="View crafting recipes">
                                             📋 Recipe
                                         </button>
@@ -1398,24 +1460,91 @@ class ShipExplorer {
 
     getStatDefinitions() {
         return [
+            // Capacities
             { key: 'cargo_capacity', label: 'Cargo Capacity', path: ['stats', 'capacities', 'cargoCapacity'] },
             { key: 'fuel_capacity', label: 'Fuel Capacity', path: ['stats', 'capacities', 'fuelCapacity'] },
             { key: 'ammo_capacity', label: 'Ammo Capacity', path: ['stats', 'capacities', 'ammoCapacity'] },
+
+            // Mining
+            { key: 'asteroid_mining_rate', label: 'Asteroid Mining Rate', path: ['stats', 'mining', 'asteroidMiningRate'] },
+            { key: 'asteroid_mining_food_rate', label: 'Asteroid Mining Food Rate', path: ['stats', 'mining', 'asteroidMiningFoodRate'] },
+            { key: 'asteroid_mining_ammo_rate', label: 'Asteroid Mining Ammo Rate', path: ['stats', 'mining', 'asteroidMiningAmmoRate'] },
+
+            // Travel
             { key: 'subwarp_speed', label: 'Subwarp Speed', path: ['stats', 'travel', 'subwarpSpeed'] },
             { key: 'warp_speed', label: 'Warp Speed', path: ['stats', 'travel', 'warpSpeed'] },
             { key: 'max_warp_distance', label: 'Max Warp Distance', path: ['stats', 'travel', 'maxWarpDistance'] },
             { key: 'warp_cool_down', label: 'Warp Cooldown', path: ['stats', 'travel', 'warpCoolDown'] },
             { key: 'warp_fuel_consumption', label: 'Warp Fuel Consumption', path: ['stats', 'travel', 'warpFuelConsumption'] },
             { key: 'subwarp_fuel_consumption', label: 'Subwarp Fuel Consumption', path: ['stats', 'travel', 'subwarpFuelConsumption'] },
+            { key: 'planet_exit_fuel', label: 'Planet Exit Fuel', path: ['stats', 'travel', 'planetExitFuel'] },
+            { key: 'warp_lane_speed', label: 'Warp Lane Speed', path: ['stats', 'travel', 'warpLaneSpeed'] },
+            { key: 'warp_lane_fee', label: 'Warp Lane Fee', path: ['stats', 'travel', 'warpLaneFee'] },
+            { key: 'warp_spool_time', label: 'Warp Spool Time', path: ['stats', 'travel', 'warpSpoolTime'] },
+            { key: 'loading_rate', label: 'Loading Rate', path: ['stats', 'travel', 'loadingRate'] },
+
+            // Scanning
             { key: 'scan_power', label: 'Scan Power', path: ['stats', 'scanning', 'scanPower'] },
             { key: 'scan_cool_down', label: 'Scan Cooldown', path: ['stats', 'scanning', 'scanCoolDown'] },
+            { key: 'sdu_per_scan', label: 'SDU Per Scan', path: ['stats', 'scanning', 'sduPerScan'] },
+            { key: 'scan_cost', label: 'Scan Cost', path: ['stats', 'scanning', 'scanCost'] },
+
+            // Combat
+            { key: 'damage', label: 'Damage', path: ['stats', 'combat', 'damage'] },
+            { key: 'damage_range', label: 'Damage Range', path: ['stats', 'combat', 'damageRange'] },
+            { key: 'max_ap', label: 'Max AP', path: ['stats', 'combat', 'maxAp'] },
+            { key: 'ap_recharge_time', label: 'AP Recharge Time', path: ['stats', 'combat', 'apRechargeTime'] },
             { key: 'hit_points', label: 'Hit Points', path: ['stats', 'combat', 'hitPoints'] },
             { key: 'shield_points', label: 'Shield Points', path: ['stats', 'combat', 'shieldPoints'] },
             { key: 'shield_recharge_rate', label: 'Shield Recharge Rate', path: ['stats', 'combat', 'shieldRechargeRate'] },
-            { key: 'damage', label: 'Damage', path: ['stats', 'combat', 'damage'] },
-            { key: 'damage_range', label: 'Damage Range', path: ['stats', 'combat', 'damageRange'] },
+            { key: 'shield_break_delay', label: 'Shield Break Delay', path: ['stats', 'combat', 'shieldBreakDelay'] },
+            { key: 'stealth_power', label: 'Stealth Power', path: ['stats', 'combat', 'stealthPower'] },
+            { key: 'missile_power', label: 'Missile Power', path: ['stats', 'combat', 'missilePower'] },
+            { key: 'missile_capacity', label: 'Missile Capacity', path: ['stats', 'combat', 'missileCapacity'] },
+            { key: 'hit_chance', label: 'Hit Chance', path: ['stats', 'combat', 'hitChance'] },
+            { key: 'hit_points_range', label: 'Hit Points Range', path: ['stats', 'combat', 'hitPointsRange'] },
+            { key: 'shield_points_range', label: 'Shield Points Range', path: ['stats', 'combat', 'shieldPointsRange'] },
+            { key: 'stealth_power_range', label: 'Stealth Power Range', path: ['stats', 'combat', 'stealthPowerRange'] },
+            { key: 'missile_power_range', label: 'Missile Power Range', path: ['stats', 'combat', 'missilePowerRange'] },
+            { key: 'crit_chance', label: 'Crit Chance', path: ['stats', 'combat', 'critChance'] },
+            { key: 'crit_multiplier', label: 'Crit Multiplier', path: ['stats', 'combat', 'critMultiplier'] },
+            { key: 'damage_bomb', label: 'Bomb Damage', path: ['stats', 'combat', 'damageBomb'] },
+
+            // Damage Types
+            { key: 'damage_kinetic', label: 'Kinetic Damage', path: ['stats', 'damageTypes', 'kinetic'] },
+            { key: 'damage_energy', label: 'Energy Damage', path: ['stats', 'damageTypes', 'energy'] },
+            { key: 'damage_emp', label: 'EMP Damage', path: ['stats', 'damageTypes', 'emp'] },
+            { key: 'damage_superchill', label: 'Superchill Damage', path: ['stats', 'damageTypes', 'superchill'] },
+            { key: 'damage_shockwave', label: 'Shockwave Damage', path: ['stats', 'damageTypes', 'shockwave'] },
+            { key: 'damage_graygoo', label: 'Graygoo Damage', path: ['stats', 'damageTypes', 'graygoo'] },
+            { key: 'damage_heat', label: 'Heat Damage', path: ['stats', 'damageTypes', 'heat'] },
+
+            // Defense Counters
+            { key: 'counter_decoy', label: 'Decoy Counter', path: ['stats', 'defense', 'counters', 'decoy'] },
+            { key: 'counter_energy_capacitor', label: 'Energy Capacitor Counter', path: ['stats', 'defense', 'counters', 'energyCapacitor'] },
+            { key: 'counter_fire_suppressor', label: 'Fire Suppressor Counter', path: ['stats', 'defense', 'counters', 'fireSuppressor'] },
+            { key: 'counter_flare', label: 'Flare Counter', path: ['stats', 'defense', 'counters', 'flare'] },
+            { key: 'counter_healing_nanobots', label: 'Healing Nanobots Counter', path: ['stats', 'defense', 'counters', 'healingNanobots'] },
+            { key: 'counter_mine', label: 'Mine Counter', path: ['stats', 'defense', 'counters', 'mine'] },
+            { key: 'counter_negative_rem_plating', label: 'Negative REM Plating Counter', path: ['stats', 'defense', 'counters', 'negativeRemPlating'] },
+            { key: 'counter_warming_plates', label: 'Warming Plates Counter', path: ['stats', 'defense', 'counters', 'warmingPlates'] },
+            { key: 'counter_faraday_shielding', label: 'Faraday Shielding Counter', path: ['stats', 'defense', 'counters', 'faradayShielding'] },
+
+            // Repair
+            { key: 'repair_cost', label: 'Repair Cost', path: ['stats', 'repair', 'repairCost'] },
             { key: 'repair_rate', label: 'Repair Rate', path: ['stats', 'repair', 'repairRate'] },
-            { key: 'required_crew', label: 'Required Crew', path: ['crew', 'required'] }
+            { key: 'repair_ability', label: 'Repair Ability', path: ['stats', 'repair', 'repairAbility'] },
+            { key: 'repair_efficiency', label: 'Repair Efficiency', path: ['stats', 'repair', 'repairEfficiency'] },
+            { key: 'repair_cooldown', label: 'Repair Cooldown', path: ['stats', 'repair', 'repairCooldown'] },
+
+            // Economics
+            { key: 'loot_rate', label: 'Loot Rate', path: ['stats', 'economics', 'lootRate'] },
+            { key: 'ship_size_value', label: 'Ship Size Value', path: ['stats', 'economics', 'shipSizeValue'] },
+            { key: 'lp_value', label: 'LP Value', path: ['stats', 'economics', 'lpValue'] },
+
+            // Crew
+            { key: 'required_crew', label: 'Required Crew', path: ['crew', 'required'] },
+            { key: 'passengers', label: 'Passengers', path: ['crew', 'passengers'] }
         ];
     }
 }
@@ -1426,12 +1555,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize cross-explorer analytics modules
     if (typeof FleetAnalytics !== 'undefined') {
         window.fleetAnalytics = new FleetAnalytics();
-    }
-    if (typeof ComponentSourcingAnalytics !== 'undefined') {
-        window.componentSourcingAnalytics = new ComponentSourcingAnalytics();
-    }
-    if (typeof TradeRouteAnalytics !== 'undefined') {
-        window.tradeRouteAnalytics = new TradeRouteAnalytics();
     }
     if (typeof ResourceEfficiencyAnalytics !== 'undefined') {
         window.resourceEfficiencyAnalytics = new ResourceEfficiencyAnalytics();
@@ -1463,10 +1586,6 @@ function initShipAnalyticsSubTabs() {
             // Load analytics when tabs are clicked
             if (subtab === 'fleet' && window.fleetAnalytics) {
                 await window.fleetAnalytics.renderFleetAnalytics();
-            } else if (subtab === 'sourcing' && window.componentSourcingAnalytics) {
-                await window.componentSourcingAnalytics.renderComponentSourcing();
-            } else if (subtab === 'trade' && window.tradeRouteAnalytics) {
-                await window.tradeRouteAnalytics.renderTradeRoutes();
             } else if (subtab === 'efficiency' && window.resourceEfficiencyAnalytics) {
                 await window.resourceEfficiencyAnalytics.renderResourceEfficiency();
             }

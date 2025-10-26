@@ -61,15 +61,13 @@
         <div id="analyticsTab" class="tab-content">
             <div class="analytics-header">
                 <h2>📊 Ship Analytics</h2>
-                <p>Analyze ship specifications, fleet costs, sourcing, trade routes, and efficiency</p>
+                <p>Analyze ship specifications, fleet costs, and resource efficiency</p>
             </div>
 
             <!-- Sub-tabs for different analytics -->
             <nav class="sub-navigation-tabs">
                 <button class="sub-nav-tab active" data-subtab="basic">📈 Basic Analytics</button>
                 <button class="sub-nav-tab" data-subtab="fleet">🚀 Fleet</button>
-                <button class="sub-nav-tab" data-subtab="sourcing">🗺️ Sourcing</button>
-                <button class="sub-nav-tab" data-subtab="trade">🛣️ Trade Routes</button>
                 <button class="sub-nav-tab" data-subtab="efficiency">📊 Efficiency</button>
             </nav>
 
@@ -87,26 +85,6 @@
                 </div>
                 <div id="fleetContent" class="analytics-sections">
                     <!-- Fleet content will be rendered here -->
-                </div>
-            </div>
-
-            <!-- Sourcing Sub-tab -->
-            <div id="sourcingAnalyticsSubtab" class="subtab-content">
-                <div id="sourcingLoadingMessage" style="display: none;">
-                    <p>🔄 Loading component sourcing analytics...</p>
-                </div>
-                <div id="sourcingContent" class="analytics-sections">
-                    <!-- Sourcing content will be rendered here -->
-                </div>
-            </div>
-
-            <!-- Trade Routes Sub-tab -->
-            <div id="tradeAnalyticsSubtab" class="subtab-content">
-                <div id="tradeLoadingMessage" style="display: none;">
-                    <p>🔄 Loading trade route analytics...</p>
-                </div>
-                <div id="tradeContent" class="analytics-sections">
-                    <!-- Trade routes content will be rendered here -->
                 </div>
             </div>
 
@@ -131,8 +109,6 @@
     <script src="js/custom-ship-management.js"></script>
     <script src="js/recipe-lookup.js"></script>
     <script src="fleet-analytics.js"></script>
-    <script src="component-sourcing.js"></script>
-    <script src="trade-routes.js"></script>
     <script src="resource-efficiency.js"></script>
     <script src="app.js"></script>
 </body>
