@@ -55,6 +55,11 @@ class RegionMapApp {
                 this.displayRegionDetails(e.detail);
             });
 
+            // Listen for region label clicks
+            window.addEventListener('regionLabelClicked', (e) => {
+                this.handleRegionLabelClick(e.detail.region);
+            });
+
             console.log('[RegionMapApp] Initialization complete');
         } catch (error) {
             console.error('[RegionMapApp] Initialization error:', error);
@@ -251,6 +256,10 @@ class RegionMapApp {
                 // Set attacking faction
                 const faction = btn.getAttribute('data-faction');
                 this.conquestManager.setAttackingFaction(faction);
+
+                // Enable region label clicking
+                this.regionMap.regionLabelsClickable = true;
+                this.regionMap.render();
             });
         });
 
@@ -300,6 +309,35 @@ class RegionMapApp {
                 }
             }
         });
+    }
+
+    handleRegionLabelClick(region) {
+        if (!this.conquestManager.attackingFaction) {
+            alert('Please select a faction first before making regions SAFE.');
+            return;
+        }
+
+        // Show confirmation dialog
+        const faction = this.conquestManager.attackingFaction;
+        const message = `Make region ${region.name} SAFE for ${faction}?\n\n` +
+                       `This will conquer all systems in ${region.name} and all neighboring regions for ${faction}.`;
+
+        if (confirm(message)) {
+            const result = this.conquestManager.makeRegionSafe(region);
+
+            if (result.success) {
+                // Update the map
+                this.regionMap.render();
+
+                // Show success message
+                const statusMsg = result.isSafe ? 'SAFE' : result.status?.status || 'BORDER';
+                alert(`Region ${region.name} is now ${statusMsg} for ${faction}!\n\n` +
+                     `Systems conquered: ${result.systemsConquered.length}\n` +
+                     `Regions affected: ${result.regionsAffected.join(', ')}`);
+            } else {
+                alert(`Failed to make region SAFE: ${result.reason}`);
+            }
+        }
     }
 
     displayRegionDetails(data) {

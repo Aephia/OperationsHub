@@ -20,9 +20,11 @@ class RegionMap {
         // Map state
         this.selectedSystem = null;
         this.hoveredSystem = null;
+        this.hoveredRegion = null; // Track hovered region label
         this.showConnections = true;
         this.showLabels = false; // Too many systems for labels by default
         this.highlightConnections = false; // Show only selected system connections
+        this.regionLabelsClickable = false; // Whether region labels are clickable (when faction selected)
 
         // Animation state
         this.animationPhase = 0;
@@ -230,14 +232,29 @@ class RegionMap {
             this.mouse.dragStart = { x: this.mouse.x, y: this.mouse.y };
             this.render();
         } else {
-            // Check for hover
-            const worldPos = this.screenToWorld(this.mouse.x, this.mouse.y);
-            const hoveredSystem = this.getSystemAt(worldPos.x, worldPos.y);
+            // Check for region label hover (priority over system hover when labels are clickable)
+            const hoveredRegion = this.getRegionLabelAt(this.mouse.x, this.mouse.y);
 
-            if (hoveredSystem !== this.hoveredSystem) {
-                this.hoveredSystem = hoveredSystem;
-                this.canvas.style.cursor = hoveredSystem ? 'pointer' : 'default';
-                this.render();
+            if (hoveredRegion) {
+                // Hovering over a region label
+                if (this.hoveredRegion !== hoveredRegion.id) {
+                    this.hoveredRegion = hoveredRegion.id;
+                    this.canvas.style.cursor = 'pointer';
+                    this.render();
+                }
+            } else {
+                // Check for system hover
+                const worldPos = this.screenToWorld(this.mouse.x, this.mouse.y);
+                const hoveredSystem = this.getSystemAt(worldPos.x, worldPos.y);
+
+                const prevHoveredRegion = this.hoveredRegion;
+                this.hoveredRegion = null;
+
+                if (hoveredSystem !== this.hoveredSystem || prevHoveredRegion) {
+                    this.hoveredSystem = hoveredSystem;
+                    this.canvas.style.cursor = hoveredSystem ? 'pointer' : 'default';
+                    this.render();
+                }
             }
         }
     }
@@ -254,6 +271,19 @@ class RegionMap {
     }
 
     onMouseClick(e) {
+        // Check if clicking on a region label
+        const clickedRegion = this.getRegionLabelAt(this.mouse.x, this.mouse.y);
+
+        if (clickedRegion) {
+            // Dispatch event for region label click
+            const event = new CustomEvent('regionLabelClicked', {
+                detail: { region: clickedRegion }
+            });
+            window.dispatchEvent(event);
+            return;
+        }
+
+        // Otherwise check for system click
         if (this.hoveredSystem) {
             this.selectSystem(this.hoveredSystem);
         }
@@ -315,6 +345,21 @@ class RegionMap {
 
             if (distance < clickRadius) {
                 return sys;
+            }
+        }
+        return null;
+    }
+
+    getRegionLabelAt(screenX, screenY) {
+        if (!this.regionLabelsClickable) return null;
+
+        for (const region of this.regions) {
+            if (!region.labelBounds) continue;
+
+            const bounds = region.labelBounds;
+            if (screenX >= bounds.x && screenX <= bounds.x + bounds.width &&
+                screenY >= bounds.y && screenY <= bounds.y + bounds.height) {
+                return region;
             }
         }
         return null;
@@ -904,12 +949,43 @@ class RegionMap {
             const textWidth = textMetrics.width;
             const textHeight = 14;
 
-            ctx.fillStyle = 'rgba(12, 17, 35, 0.8)';
-            ctx.fillRect(labelPos.x - 2, labelPos.y - textHeight, textWidth + 4, textHeight + 2);
+            // Check if this region is hovered and labels are clickable
+            const isHovered = this.regionLabelsClickable && this.hoveredRegion === region.id;
+
+            // Enhanced background for clickable/hovered labels
+            if (this.regionLabelsClickable) {
+                if (isHovered) {
+                    // Bright highlight when hovered
+                    ctx.fillStyle = 'rgba(6, 147, 227, 0.9)';
+                    ctx.fillRect(labelPos.x - 4, labelPos.y - textHeight - 2, textWidth + 8, textHeight + 4);
+                    // Add border
+                    ctx.strokeStyle = '#0693e3';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(labelPos.x - 4, labelPos.y - textHeight - 2, textWidth + 8, textHeight + 4);
+                } else {
+                    // Subtle highlight for clickable labels
+                    ctx.fillStyle = 'rgba(6, 147, 227, 0.4)';
+                    ctx.fillRect(labelPos.x - 3, labelPos.y - textHeight - 1, textWidth + 6, textHeight + 3);
+                }
+            } else {
+                ctx.fillStyle = 'rgba(12, 17, 35, 0.8)';
+                ctx.fillRect(labelPos.x - 2, labelPos.y - textHeight, textWidth + 4, textHeight + 2);
+            }
 
             // Draw label text
-            ctx.fillStyle = baseColor;
+            ctx.fillStyle = isHovered ? '#ffffff' : baseColor;
             ctx.fillText(region.name, labelPos.x, labelPos.y);
+
+            // Store label bounds for click detection
+            if (this.regionLabelsClickable) {
+                if (!region.labelBounds) region.labelBounds = {};
+                region.labelBounds = {
+                    x: labelPos.x - 4,
+                    y: labelPos.y - textHeight - 2,
+                    width: textWidth + 8,
+                    height: textHeight + 4
+                };
+            }
         });
     }
 

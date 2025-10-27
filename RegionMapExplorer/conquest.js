@@ -260,6 +260,92 @@ class ConquestManager {
     }
 
     /**
+     * Make a region SAFE by conquering all necessary systems and neighbors
+     * This will set all systems in the region and all neighboring regions to the attacking faction
+     */
+    makeRegionSafe(region) {
+        if (!this.attackingFaction) {
+            console.warn('[ConquestManager] No attacking faction set');
+            return {success: false, reason: 'No attacking faction selected'};
+        }
+
+        console.log(`[ConquestManager] Making region ${region.id} SAFE for ${this.attackingFaction}`);
+
+        const systemsConquered = [];
+        const regionsAffected = new Set();
+
+        // Step 1: Conquer all systems in the target region
+        region.systems.forEach(sys => {
+            const currentFaction = this.conquestState.get(sys.id) || sys.controllingFaction;
+            if (currentFaction !== this.attackingFaction) {
+                this.conquestState.set(sys.id, this.attackingFaction);
+                sys.controllingFaction = this.attackingFaction;
+                systemsConquered.push(sys.name);
+            }
+        });
+
+        regionsAffected.add(region.id);
+
+        // Step 2: Find all neighboring regions
+        const neighborRegions = new Set();
+
+        region.systems.forEach(sys => {
+            this.warpLanes.forEach(lane => {
+                let otherSystemId = null;
+
+                if (lane.fromSystemId === sys.id) {
+                    otherSystemId = lane.toSystemId;
+                } else if (lane.toSystemId === sys.id) {
+                    otherSystemId = lane.fromSystemId;
+                }
+
+                if (otherSystemId) {
+                    const otherSystem = this.systems.find(s => s.id === otherSystemId);
+                    if (otherSystem && otherSystem.regionId !== region.id) {
+                        neighborRegions.add(otherSystem.regionId);
+                    }
+                }
+            });
+        });
+
+        // Step 3: Conquer all systems in all neighboring regions
+        neighborRegions.forEach(neighborRegionId => {
+            const neighborRegion = this.regions.find(r => r.id === neighborRegionId);
+            if (neighborRegion) {
+                neighborRegion.systems.forEach(sys => {
+                    const currentFaction = this.conquestState.get(sys.id) || sys.controllingFaction;
+                    if (currentFaction !== this.attackingFaction) {
+                        this.conquestState.set(sys.id, this.attackingFaction);
+                        sys.controllingFaction = this.attackingFaction;
+                        systemsConquered.push(sys.name);
+                    }
+                });
+                regionsAffected.add(neighborRegionId);
+            }
+        });
+
+        // Step 4: Update all region statuses
+        this.updateAllRegionStatus();
+
+        // Verify the region is now SAFE
+        const regionStatus = this.regionStatus.get(region.id);
+        const isSafe = regionStatus && regionStatus.status === 'SAFE';
+
+        console.log(`[ConquestManager] Region ${region.id} is now ${regionStatus?.status || 'UNKNOWN'}`);
+        console.log(`[ConquestManager] Systems conquered: ${systemsConquered.length}`);
+        console.log(`[ConquestManager] Regions affected: ${Array.from(regionsAffected).join(', ')}`);
+
+        return {
+            success: true,
+            regionId: region.id,
+            isSafe,
+            systemsConquered,
+            regionsAffected: Array.from(regionsAffected),
+            status: regionStatus
+        };
+    }
+
+    /**
      * Get statistics about conquered systems
      */
     getConquestStats() {
