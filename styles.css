@@ -1,14 +1,13 @@
 ﻿:root {
-    --bg-primary: #060810;
-    --bg-secondary: #0d1224;
-    --accent-cyan: #33d0ff;
-    --accent-teal: #39ffba;
-    --accent-purple: #6c4bff;
-    --text-primary: #f2f6ff;
-    --text-muted: #8fa1c7;
-    --card-bg: rgba(13, 18, 36, 0.85);
-    --border-glow: rgba(57, 255, 186, 0.4);
-    --shadow-strong: 0 25px 60px rgba(18, 25, 48, 0.85);
+    --bg-primary: #000000;
+    --bg-secondary: #32373c;
+    --accent-cyan: #0693e3;
+    --accent-purple: #9b51e0;
+    --text-primary: #ffffff;
+    --text-muted: #a0a0a0;
+    --card-bg: rgba(50, 55, 60, 0.5);
+    --border-glow: rgba(6, 147, 227, 0.3);
+    --shadow-strong: 0 10px 40px rgba(0, 0, 0, 0.8);
 }
 
 * {
@@ -18,7 +17,7 @@
 }
 
 body {
-    font-family: 'Poppins', 'Segoe UI', Tahoma, Geneva, sans-serif;
+    font-family: 'Open Sans', 'Segoe UI', Tahoma, Geneva, sans-serif;
     background: var(--bg-primary);
     color: var(--text-primary);
     min-height: 100vh;
@@ -30,9 +29,9 @@ body::before {
     content: '';
     position: fixed;
     inset: 0;
-    background: linear-gradient(140deg, rgba(6, 42, 83, 0.8) 0%, rgba(12, 8, 32, 0.95) 55%, rgba(35, 10, 62, 0.9) 100%),
-        url('https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&w=2400&q=80') center/cover no-repeat;
-    filter: brightness(0.65);
+    background: linear-gradient(140deg, rgba(0, 0, 0, 0.95) 0%, rgba(20, 20, 30, 0.9) 50%, rgba(10, 10, 20, 0.95) 100%),
+        url('https://images.unsplash.com/photo-1462331940025-496dfbfc7564?auto=format&fit=crop&w=2400&q=80') center/cover no-repeat;
+    filter: brightness(0.4);
     z-index: -3;
 }
 
@@ -40,9 +39,9 @@ body::after {
     content: '';
     position: fixed;
     inset: 0;
-    background: radial-gradient(circle at 20% 20%, rgba(57, 255, 186, 0.18), transparent 55%),
-        radial-gradient(circle at 80% 30%, rgba(102, 126, 255, 0.22), transparent 60%),
-        radial-gradient(circle at 50% 80%, rgba(28, 217, 255, 0.12), transparent 50%);
+    background: radial-gradient(circle at 20% 20%, rgba(6, 147, 227, 0.12), transparent 55%),
+        radial-gradient(circle at 80% 30%, rgba(155, 81, 224, 0.1), transparent 60%),
+        radial-gradient(circle at 50% 80%, rgba(6, 147, 227, 0.08), transparent 50%);
     mix-blend-mode: screen;
     z-index: -2;
 }
@@ -51,20 +50,20 @@ body::after {
     position: fixed;
     inset: 0;
     pointer-events: none;
-    background: radial-gradient(circle at 15% 15%, rgba(57, 255, 186, 0.35), transparent 50%),
-        radial-gradient(circle at 85% 25%, rgba(87, 109, 255, 0.3), transparent 45%),
-        radial-gradient(circle at 30% 80%, rgba(51, 208, 255, 0.25), transparent 50%);
-    filter: blur(60px);
+    background: radial-gradient(circle at 15% 15%, rgba(6, 147, 227, 0.15), transparent 50%),
+        radial-gradient(circle at 85% 25%, rgba(155, 81, 224, 0.12), transparent 45%),
+        radial-gradient(circle at 30% 80%, rgba(6, 147, 227, 0.1), transparent 50%);
+    filter: blur(80px);
     z-index: -1;
 }
 
 .grid-overlay {
     position: fixed;
     inset: 0;
-    background-image: linear-gradient(rgba(78, 93, 141, 0.06) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(78, 93, 141, 0.06) 1px, transparent 1px);
+    background-image: linear-gradient(rgba(6, 147, 227, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(6, 147, 227, 0.03) 1px, transparent 1px);
     background-size: 80px 80px;
-    opacity: 0.6;
+    opacity: 0.4;
     mix-blend-mode: overlay;
     pointer-events: none;
     z-index: -1;
@@ -81,11 +80,25 @@ body::after {
 .hero-content {
     max-width: 780px;
     backdrop-filter: blur(18px);
-    background: linear-gradient(120deg, rgba(18, 24, 48, 0.85), rgba(12, 18, 32, 0.65));
-    border: 1px solid rgba(57, 255, 186, 0.15);
+    background: linear-gradient(120deg, rgba(0, 0, 0, 0.9), rgba(50, 55, 60, 0.8));
+    border: 1px solid rgba(6, 147, 227, 0.3);
     border-radius: 24px;
     padding: 3.5rem;
-    box-shadow: 0 30px 70px rgba(9, 12, 24, 0.8);
+    box-shadow: 0 30px 70px rgba(0, 0, 0, 0.9);
+}
+
+.hero-logo {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+}
+
+.logo-image {
+    width: 120px;
+    height: 120px;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(6, 147, 227, 0.4);
+    border: 2px solid rgba(6, 147, 227, 0.5);
 }
 
 .hero-tag {
@@ -95,20 +108,21 @@ body::after {
     font-size: 0.9rem;
     letter-spacing: 0.18em;
     text-transform: uppercase;
-    color: var(--accent-teal);
-    background: rgba(51, 208, 255, 0.12);
-    border: 1px solid rgba(51, 208, 255, 0.35);
+    color: var(--accent-cyan);
+    background: rgba(6, 147, 227, 0.12);
+    border: 1px solid rgba(6, 147, 227, 0.35);
     border-radius: 999px;
 }
 
 .hero-title {
-    font-family: 'Orbitron', 'Poppins', sans-serif;
+    font-family: 'Open Sans', sans-serif;
     font-size: 3.8rem;
-    letter-spacing: 0.12em;
+    font-weight: 700;
+    letter-spacing: 0.08em;
     line-height: 1.1;
     text-transform: uppercase;
     margin-bottom: 1.5rem;
-    background: linear-gradient(90deg, var(--accent-teal), var(--accent-cyan));
+    background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
     -webkit-text-fill-color: transparent;
     -webkit-background-clip: text;
     background-clip: text;
@@ -144,11 +158,11 @@ body::after {
 .module-card {
     position: relative;
     background: var(--card-bg);
-    border-radius: 22px;
+    border-radius: 16px;
     padding: 2.2rem;
-    border: 1px solid rgba(100, 255, 218, 0.08);
+    border: 1px solid rgba(6, 147, 227, 0.2);
     box-shadow: var(--shadow-strong);
-    transition: transform 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
+    transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
     overflow: hidden;
 }
 
@@ -156,15 +170,15 @@ body::after {
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(135deg, rgba(51, 208, 255, 0.25), rgba(57, 255, 186, 0));
+    background: linear-gradient(135deg, rgba(6, 147, 227, 0.15), rgba(155, 81, 224, 0.05));
     opacity: 0;
-    transition: opacity 0.4s ease;
+    transition: opacity 0.3s ease;
 }
 
 .module-card:hover {
-    transform: translateY(-10px);
+    transform: translateY(-6px);
     border-color: var(--border-glow);
-    box-shadow: 0 35px 70px rgba(12, 18, 36, 0.85);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.9);
 }
 
 .module-card:hover::before {
@@ -186,9 +200,10 @@ body::after {
 }
 
 .module-card h2 {
-    font-family: 'Orbitron', 'Poppins', sans-serif;
+    font-family: 'Open Sans', sans-serif;
     font-size: 1.9rem;
-    letter-spacing: 0.08em;
+    font-weight: 700;
+    letter-spacing: 0.05em;
 }
 
 .module-card p {
@@ -217,32 +232,19 @@ body::after {
     font-weight: 600;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    border-radius: 999px;
+    border-radius: 50px;
     border: none;
     cursor: pointer;
-    color: var(--bg-primary);
-    background: linear-gradient(90deg, var(--accent-teal), var(--accent-cyan));
-    box-shadow: 0 10px 25px rgba(57, 255, 186, 0.35);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.launch-btn::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    background: linear-gradient(90deg, rgba(255, 255, 255, 0.6), transparent 70%);
-    opacity: 0;
-    transition: opacity 0.3s ease;
+    color: #ffffff;
+    background: var(--bg-secondary);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
 }
 
 .launch-btn:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 18px 40px rgba(57, 255, 186, 0.45);
-}
-
-.launch-btn:hover::after {
-    opacity: 0.3;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+    background: #3d4349;
 }
 
 .launch-btn.primary {
@@ -255,8 +257,8 @@ body::after {
     align-items: center;
     gap: 0.4rem;
     padding: 0.85rem 1.6rem;
-    border-radius: 999px;
-    border: 1px solid rgba(100, 149, 255, 0.4);
+    border-radius: 50px;
+    border: 1px solid rgba(6, 147, 227, 0.4);
     color: var(--text-primary);
     text-decoration: none;
     letter-spacing: 0.12em;
@@ -266,9 +268,9 @@ body::after {
 }
 
 .secondary-link:hover {
-    border-color: rgba(100, 149, 255, 0.8);
-    background: rgba(100, 149, 255, 0.1);
-    color: #a9c6ff;
+    border-color: rgba(6, 147, 227, 0.8);
+    background: rgba(6, 147, 227, 0.15);
+    color: var(--accent-cyan);
 }
 
 .intel-strip {
@@ -278,24 +280,25 @@ body::after {
 }
 
 .intel-card {
-    background: linear-gradient(120deg, rgba(12, 18, 32, 0.85), rgba(24, 32, 58, 0.85));
+    background: linear-gradient(120deg, rgba(0, 0, 0, 0.7), rgba(50, 55, 60, 0.6));
     border-radius: 16px;
     padding: 1.8rem;
-    border: 1px solid rgba(86, 121, 255, 0.15);
-    box-shadow: 0 20px 50px rgba(9, 12, 24, 0.75);
+    border: 1px solid rgba(6, 147, 227, 0.2);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7);
     transition: transform 0.3s ease, border-color 0.3s ease;
 }
 
 .intel-card:hover {
-    transform: translateY(-6px);
-    border-color: rgba(86, 121, 255, 0.4);
+    transform: translateY(-4px);
+    border-color: rgba(6, 147, 227, 0.4);
 }
 
 .intel-card h3 {
-    font-family: 'Orbitron', 'Poppins', sans-serif;
+    font-family: 'Open Sans', sans-serif;
     font-size: 1.2rem;
+    font-weight: 700;
     margin-bottom: 0.8rem;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.05em;
 }
 
 .intel-card p {
