@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Region Map Explorer</title>
+    <title>Aephia Industries - Region Map Explorer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/jpeg" href="../Images/channels4_profile.jpg">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -57,6 +61,9 @@
                     </div>
                     <div class="conquest-info">
                         <small>Click systems to conquer them for the selected faction. King systems shown with crowns, Core systems with stars.</small>
+                    </div>
+                    <div class="conquest-info conquest-tip">
+                        <small>💡 <strong>Tip:</strong> Click on region labels (when faction selected) to automatically make that region SAFE by conquering all systems + neighbors.</small>
                     </div>
                 </div>
                 <canvas id="regionMap"></canvas>

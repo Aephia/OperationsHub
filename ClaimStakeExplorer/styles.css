@@ -1,5 +1,17 @@
 /* ClaimStake Explorer Styles */
 
+:root {
+    --bg-primary: #000000;
+    --bg-secondary: #32373c;
+    --accent-cyan: #0693e3;
+    --accent-purple: #9b51e0;
+    --text-primary: #ffffff;
+    --text-muted: #a0a0a0;
+    --card-bg: rgba(50, 55, 60, 0.5);
+    --border-color: rgba(6, 147, 227, 0.3);
+    --shadow-strong: 0 10px 40px rgba(0, 0, 0, 0.8);
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -7,18 +19,42 @@
 }
 
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #0c1123 0%, #1a1a2e 50%, #16213e 100%);
-    color: #ffffff;
+    font-family: 'Open Sans', 'Segoe UI', Tahoma, Geneva, sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
     min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+}
+
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(140deg, rgba(0, 0, 0, 0.95) 0%, rgba(20, 20, 30, 0.9) 50%, rgba(10, 10, 20, 0.95) 100%),
+        url('https://images.unsplash.com/photo-1462331940025-496dfbfc7564?auto=format&fit=crop&w=2400&q=80') center/cover no-repeat;
+    filter: brightness(0.4);
+    z-index: -3;
+}
+
+body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(circle at 20% 20%, rgba(6, 147, 227, 0.12), transparent 55%),
+        radial-gradient(circle at 80% 30%, rgba(155, 81, 224, 0.1), transparent 60%),
+        radial-gradient(circle at 50% 80%, rgba(6, 147, 227, 0.08), transparent 50%);
+    mix-blend-mode: screen;
+    z-index: -2;
 }
 
 /* Header */
 header {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
+    background: var(--card-bg);
+    backdrop-filter: blur(18px);
     padding: 1.5rem 2rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
     position: sticky;
     top: 0;
     z-index: 100;
@@ -27,7 +63,9 @@ header {
 header h1 {
     font-size: 2.5rem;
     margin-bottom: 0.5rem;
-    background: linear-gradient(45deg, #ff9500, #ffb347);
+    font-family: 'Open Sans', sans-serif;
+    font-weight: 700;
+    background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -37,17 +75,18 @@ header h1 {
 .breadcrumb {
     text-align: center;
     font-size: 0.9rem;
-    opacity: 0.8;
+    color: var(--text-muted);
 }
 
 .breadcrumb a {
-    color: #ff9500;
+    color: var(--accent-cyan);
     text-decoration: none;
-    transition: color 0.2s ease;
+    transition: color 0.3s ease;
 }
 
 .breadcrumb a:hover {
-    color: #ffb347;
+    color: var(--accent-purple);
+    text-decoration: underline;
 }
 
 /* Navigation Tabs */
@@ -59,12 +98,13 @@ header h1 {
 }
 
 .nav-tab {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 8px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 50px;
     padding: 0.75rem 1.5rem;
-    color: rgba(255, 255, 255, 0.8);
+    color: var(--text-muted);
     font-size: 0.9rem;
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
     display: flex;
@@ -73,16 +113,16 @@ header h1 {
 }
 
 .nav-tab:hover {
-    background: rgba(255, 255, 255, 0.15);
-    border-color: rgba(255, 149, 0, 0.5);
-    color: #ff9500;
+    background: rgba(50, 55, 60, 0.7);
+    border-color: var(--accent-cyan);
+    color: var(--text-primary);
 }
 
 .nav-tab.active {
-    background: rgba(255, 149, 0, 0.2);
-    border-color: rgba(255, 149, 0, 0.6);
-    color: #ff9500;
-    box-shadow: 0 2px 10px rgba(255, 149, 0, 0.3);
+    background: var(--bg-secondary);
+    border-color: var(--accent-cyan);
+    color: var(--text-primary);
+    box-shadow: 0 4px 12px rgba(6, 147, 227, 0.3);
 }
 
 /* Tab Content */
@@ -104,12 +144,13 @@ header h1 {
 }
 
 .sub-nav-tab {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 8px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 50px;
     padding: 0.75rem 1.25rem;
-    color: rgba(255, 255, 255, 0.7);
+    color: var(--text-muted);
     font-size: 0.9rem;
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
     display: flex;
@@ -118,16 +159,16 @@ header h1 {
 }
 
 .sub-nav-tab:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 149, 0, 0.4);
-    color: rgba(255, 255, 255, 0.9);
+    background: rgba(50, 55, 60, 0.7);
+    border-color: var(--border-color);
+    color: var(--text-primary);
 }
 
 .sub-nav-tab.active {
-    background: rgba(255, 149, 0, 0.2);
-    border-color: rgba(255, 149, 0, 0.6);
-    color: #ff9500;
-    box-shadow: 0 2px 10px rgba(255, 149, 0, 0.2);
+    background: var(--bg-secondary);
+    border-color: var(--accent-cyan);
+    color: var(--text-primary);
+    box-shadow: 0 4px 12px rgba(6, 147, 227, 0.3);
 }
 
 /* Subtab Content */
@@ -155,20 +196,22 @@ main {
 
 /* Sidebar */
 .buildings-sidebar {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--card-bg);
     border-radius: 16px;
     padding: 1.5rem;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--border-color);
     backdrop-filter: blur(10px);
+    box-shadow: var(--shadow-strong);
     overflow-y: auto;
 }
 
 .buildings-sidebar h3 {
-    color: #ff9500;
+    color: var(--accent-cyan);
     margin-bottom: 1rem;
     font-size: 1.1rem;
+    font-weight: 600;
     text-align: center;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    border-bottom: 1px solid var(--border-color);
     padding-bottom: 0.5rem;
 }
 
@@ -179,24 +222,30 @@ main {
 .search-container input {
     width: 100%;
     padding: 0.75rem;
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    border: 1px solid var(--border-color);
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.1);
-    color: white;
+    background: rgba(0, 0, 0, 0.3);
+    color: var(--text-primary);
     font-size: 0.9rem;
+    transition: border-color 0.3s ease;
+}
+
+.search-container input:focus {
+    outline: none;
+    border-color: var(--accent-cyan);
 }
 
 .search-container input::placeholder {
-    color: rgba(255, 255, 255, 0.6);
+    color: var(--text-muted);
 }
 
 /* Stats Overview */
 .stats-overview {
     margin-bottom: 1.5rem;
     padding: 1rem;
-    background: rgba(255, 149, 0, 0.1);
+    background: rgba(6, 147, 227, 0.1);
     border-radius: 8px;
-    border: 1px solid rgba(255, 149, 0, 0.3);
+    border: 1px solid rgba(6, 147, 227, 0.3);
 }
 
 .stat-item {
@@ -216,7 +265,7 @@ main {
 }
 
 .stat-value {
-    color: #ff9500;
+    color: var(--accent-cyan);
     font-weight: bold;
     font-size: 0.9rem;
 }
@@ -229,7 +278,7 @@ main {
 }
 
 .filter-section h4 {
-    color: #ffb347;
+    color: var(--accent-purple);
     margin-bottom: 0.5rem;
     font-size: 0.95rem;
 }
@@ -255,12 +304,12 @@ main {
 
 .checkbox-item:hover {
     background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 149, 0, 0.3);
+    border-color: rgba(6, 147, 227, 0.3);
 }
 
 .checkbox-item input[type="checkbox"] {
     margin-right: 0.5rem;
-    accent-color: #ff9500;
+    accent-color: var(--accent-cyan);
     transform: scale(1.1);
 }
 
@@ -288,7 +337,7 @@ main {
 }
 
 .buildings-header h2 {
-    color: #ff9500;
+    color: var(--accent-cyan);
     font-size: 1.8rem;
     margin-bottom: 0.5rem;
 }
@@ -326,8 +375,8 @@ main {
 
 .building-card:hover {
     transform: translateY(-2px);
-    border-color: rgba(255, 149, 0, 0.4);
-    box-shadow: 0 8px 25px rgba(255, 149, 0, 0.1);
+    border-color: rgba(6, 147, 227, 0.4);
+    box-shadow: 0 8px 25px rgba(6, 147, 227, 0.1);
 }
 
 .building-card::before {
@@ -337,7 +386,7 @@ main {
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 149, 0, 0.1), transparent);
+    background: linear-gradient(90deg, transparent, rgba(6, 147, 227, 0.1), transparent);
     transition: left 0.5s ease;
 }
 
@@ -353,7 +402,7 @@ main {
 }
 
 .building-name {
-    color: #ff9500;
+    color: var(--accent-cyan);
     font-size: 1.1rem;
     font-weight: bold;
     flex: 1;
@@ -361,8 +410,8 @@ main {
 }
 
 .building-tier {
-    background: rgba(255, 149, 0, 0.3);
-    color: #ff9500;
+    background: rgba(6, 147, 227, 0.3);
+    color: var(--accent-cyan);
     padding: 0.25rem 0.75rem;
     border-radius: 20px;
     font-size: 0.8rem;
@@ -396,7 +445,7 @@ main {
 }
 
 .section-title {
-    color: #ffb347;
+    color: var(--accent-purple);
     font-size: 0.85rem;
     font-weight: 600;
     margin-bottom: 0.5rem;
@@ -418,7 +467,7 @@ main {
 
 .property-tag {
     background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 149, 0, 0.3);
+    border: 1px solid rgba(6, 147, 227, 0.3);
     padding: 0.25rem 0.5rem;
     border-radius: 12px;
     font-size: 0.7rem;
@@ -448,7 +497,7 @@ main {
 }
 
 .placeholder-content h3 {
-    color: #ff9500;
+    color: var(--accent-cyan);
     font-size: 1.8rem;
     margin-bottom: 1rem;
 }
@@ -470,8 +519,8 @@ main {
 }
 
 .tip {
-    background: rgba(255, 149, 0, 0.1);
-    border: 1px solid rgba(255, 149, 0, 0.3);
+    background: rgba(6, 147, 227, 0.1);
+    border: 1px solid rgba(6, 147, 227, 0.3);
     border-radius: 12px;
     padding: 1rem;
     font-size: 0.95rem;
@@ -479,28 +528,30 @@ main {
 }
 
 .tip strong {
-    color: #ffb347;
+    color: var(--accent-purple);
 }
 
 /* Analytics Styles */
 .analytics-header {
     text-align: center;
     padding: 2rem;
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--card-bg);
     border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--border-color);
     backdrop-filter: blur(10px);
+    box-shadow: var(--shadow-strong);
     margin-bottom: 2rem;
 }
 
 .analytics-header h2 {
-    color: #ff9500;
+    color: var(--accent-cyan);
     font-size: 2rem;
+    font-weight: 700;
     margin-bottom: 0.5rem;
 }
 
 .analytics-header p {
-    color: rgba(255, 255, 255, 0.8);
+    color: var(--text-muted);
     font-size: 1.1rem;
 }
 
@@ -532,7 +583,7 @@ main {
 }
 
 .stat-number {
-    color: #ff9500;
+    color: var(--accent-cyan);
     font-size: 2rem;
     font-weight: bold;
 }
@@ -544,15 +595,17 @@ main {
 }
 
 .analytics-section {
-    background: rgba(255, 255, 255, 0.02);
+    background: var(--card-bg);
     border-radius: 16px;
     padding: 2rem;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-strong);
 }
 
 .analytics-section h3 {
-    color: #ff9500;
+    color: var(--accent-cyan);
     font-size: 1.5rem;
+    font-weight: 600;
     margin-bottom: 0.5rem;
     display: flex;
     align-items: center;
@@ -587,8 +640,8 @@ main {
 
 .analytics-item:hover {
     transform: translateY(-2px);
-    border-color: rgba(255, 149, 0, 0.4);
-    box-shadow: 0 8px 25px rgba(255, 149, 0, 0.1);
+    border-color: rgba(6, 147, 227, 0.4);
+    box-shadow: 0 8px 25px rgba(6, 147, 227, 0.1);
 }
 
 .item-content {
@@ -604,15 +657,15 @@ main {
 }
 
 .item-header h4 {
-    color: #ff9500;
+    color: var(--accent-cyan);
     font-size: 1.1rem;
     font-weight: bold;
 }
 
 .tier-badge,
 .type-badge {
-    background: rgba(255, 149, 0, 0.3);
-    color: #ff9500;
+    background: rgba(6, 147, 227, 0.3);
+    color: var(--accent-cyan);
     padding: 0.25rem 0.75rem;
     border-radius: 20px;
     font-size: 0.8rem;
@@ -634,14 +687,14 @@ main {
 }
 
 .primary-stat .stat-value {
-    color: #ff9500;
+    color: var(--accent-cyan);
     font-size: 1.5rem;
     font-weight: bold;
     line-height: 1;
 }
 
 .secondary-stat .stat-value {
-    color: #ffb347;
+    color: var(--accent-purple);
     font-size: 1.2rem;
     font-weight: bold;
     line-height: 1;
@@ -662,7 +715,7 @@ main {
 
 /* Resource Analysis */
 .resource-analysis-tabs h4 {
-    color: #ffb347;
+    color: var(--accent-purple);
     font-size: 1.2rem;
     margin: 1.5rem 0 1rem 0;
 }
@@ -685,7 +738,7 @@ main {
 }
 
 .resource-name {
-    color: #ff9500;
+    color: var(--accent-cyan);
     font-weight: bold;
     margin-bottom: 0.5rem;
 }
@@ -716,7 +769,7 @@ main {
 }
 
 .material-name {
-    color: #ff9500;
+    color: var(--accent-cyan);
     font-weight: bold;
     margin-bottom: 0.75rem;
     font-size: 1rem;
@@ -747,7 +800,7 @@ main {
 
 .property-stat-card {
     background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 149, 0, 0.3);
+    border: 1px solid rgba(6, 147, 227, 0.3);
     border-radius: 12px;
     padding: 1.5rem;
     text-align: center;
@@ -756,7 +809,7 @@ main {
 
 .property-stat-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 5px 20px rgba(255, 149, 0, 0.1);
+    box-shadow: 0 5px 20px rgba(6, 147, 227, 0.1);
 }
 
 .property-icon {
@@ -765,7 +818,7 @@ main {
 }
 
 .property-stat .stat-number {
-    color: #ff9500;
+    color: var(--accent-cyan);
     font-size: 2rem;
     font-weight: bold;
     display: block;
@@ -803,13 +856,13 @@ main {
 
 .modal-content {
     background: linear-gradient(135deg, #0c1123 0%, #1a1a2e 50%, #16213e 100%);
-    border: 1px solid rgba(255, 149, 0, 0.3);
+    border: 1px solid rgba(6, 147, 227, 0.3);
     border-radius: 16px;
     max-width: 1000px;
     width: 100%;
     max-height: 90vh;
     overflow: hidden;
-    box-shadow: 0 20px 60px rgba(255, 149, 0, 0.2);
+    box-shadow: 0 20px 60px rgba(6, 147, 227, 0.2);
 }
 
 .modal-header {
@@ -822,7 +875,7 @@ main {
 }
 
 .modal-header h2 {
-    color: #ff9500;
+    color: var(--accent-cyan);
     font-size: 1.8rem;
     margin: 0;
 }
@@ -879,7 +932,7 @@ main {
 }
 
 .details-section h3 {
-    color: #ff9500;
+    color: var(--accent-cyan);
     font-size: 1.3rem;
     margin-bottom: 1rem;
 }
@@ -908,7 +961,7 @@ main {
 
 .material-amount,
 .resource-rate {
-    color: #ff9500;
+    color: var(--accent-cyan);
     font-weight: bold;
 }
 
@@ -931,7 +984,7 @@ main {
 }
 
 .technical-info strong {
-    color: #ff9500;
+    color: var(--accent-cyan);
 }
 
 
@@ -945,7 +998,7 @@ main {
 }
 
 .planet-recommendations h3 {
-    color: #ff9500;
+    color: var(--accent-cyan);
     font-size: 1.5rem;
     margin-bottom: 0.5rem;
     display: flex;
@@ -1060,12 +1113,12 @@ main {
 
 .planet-card:hover {
     background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 149, 0, 0.4);
+    border-color: rgba(6, 147, 227, 0.4);
     transform: translateY(-2px);
 }
 
 .planet-name {
-    color: #ff9500;
+    color: var(--accent-cyan);
     font-weight: 600;
     font-size: 0.9rem;
     margin-bottom: 0.5rem;
@@ -1154,7 +1207,7 @@ main {
 .planet-recommendations h3 {
     font-size: 1.8rem;
     margin-bottom: 0.5rem;
-    color: #ff9500;
+    color: var(--accent-cyan);
 }
 
 .planet-recommendations .section-note {
@@ -1274,7 +1327,7 @@ main {
 
 .planet-card:hover {
     background: rgba(255, 255, 255, 0.12);
-    border-color: rgba(255, 149, 0, 0.4);
+    border-color: rgba(6, 147, 227, 0.4);
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
@@ -1326,8 +1379,8 @@ main {
 
 /* Label Explanation Styles */
 .label-explanation {
-    background: rgba(255, 149, 0, 0.08);
-    border: 1px solid rgba(255, 149, 0, 0.3);
+    background: rgba(6, 147, 227, 0.08);
+    border: 1px solid rgba(6, 147, 227, 0.3);
     border-radius: 8px;
     padding: 1.25rem;
     margin-bottom: 1.5rem;
@@ -1336,7 +1389,7 @@ main {
 .label-explanation h4 {
     font-size: 1.1rem;
     margin-bottom: 1rem;
-    color: #ff9500;
+    color: var(--accent-cyan);
 }
 
 .explanation-grid {
@@ -1403,16 +1456,16 @@ main {
 
 .region-header h5 {
     font-size: 1.1rem;
-    color: #ff9500;
+    color: var(--accent-cyan);
     margin: 0;
 }
 
 .region-count {
-    background: rgba(255, 149, 0, 0.2);
+    background: rgba(6, 147, 227, 0.2);
     padding: 0.3rem 0.7rem;
     border-radius: 12px;
     font-size: 0.85rem;
-    color: #ff9500;
+    color: var(--accent-cyan);
     font-weight: 600;
 }
 
@@ -1424,7 +1477,7 @@ main {
 .planet-card.clickable:hover {
     transform: translateY(-3px) scale(1.02);
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
-    border-color: rgba(255, 149, 0, 0.6);
+    border-color: rgba(6, 147, 227, 0.6);
 }
 
 .planet-card.clickable:active {
@@ -1443,8 +1496,8 @@ main {
 .resource-list-section h3 {
     font-size: 1.2rem;
     margin-bottom: 1rem;
-    color: #ff9500;
-    border-bottom: 2px solid rgba(255, 149, 0, 0.3);
+    color: var(--accent-cyan);
+    border-bottom: 2px solid rgba(6, 147, 227, 0.3);
     padding-bottom: 0.5rem;
 }
 

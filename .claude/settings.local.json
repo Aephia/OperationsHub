@@ -1,33 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(grep:*)",
-      "Bash(mkdir:*)",
-      "Bash(python:*)",
-      "Bash(node:*)",
-      "Read(//c/Users/khawa/Desktop/**)",
-      "Bash(find:*)",
       "Bash(git add:*)",
-      "Bash(git commit -m \"$(cat <<''EOF''\nMajor refactor: Centralized config, WebGL effects, ClaimStake construction, and fleet management\n\n## GaliaViewer Enhancements\n\n### Configuration & Code Quality (v4.0)\n- ✨ NEW: Centralized config.js with all magic numbers and constants\n  - Performance settings (FPS, intervals, pixel ratio)\n  - Camera, distance, movement, controls settings\n  - Planet colors, star colors, faction colors\n  - Instancing limits, starfield, lighting configs\n  - WebGL effects toggle and configuration\n- 🔧 Re-enabled WebGL effects with config toggle (webgl-effects.js, webgl-integration.js)\n- 📝 Comprehensive documentation in GaliaViewer/Documentation/\n- 🎨 Dark brown texture applied to Tufa Spirit ship\n- 🔧 Fixed ship scaling: Tufa Spirit (0.3 → 0.05), BYOS Packlite (1.0 → 1.2)\n\n### Fleet Management System\n- ✨ NEW: Complete fleet visualization system\n  - FleetDataManager for fleet data handling\n  - FleetVisualizer for 3D ship model rendering\n  - FleetUIManager for fleet interface controls\n  - ModelLoader for FBX ship model loading\n- 🚀 Added ship models for 4 manufacturers:\n  - Armstrong Imp (Capital ship)\n  - BYOS Packlite (Medium freighter)\n  - Ogrika Jod Asteris (Capital ship)\n  - Tufa Spirit (Corvette with custom dark brown texture)\n- 📦 Included textures and LOD models for all ships\n\n### Core Improvements\n- 🏗️ Updated imports and error handling in core.js\n- ⚡ Performance optimizations and validation\n- 🔗 Enhanced connection visualization\n- 🎯 Improved event handling and UI interactions\n\n## ClaimStake Explorer Enhancements\n\n### Construction Facility Feature (929 lines)\n- ✨ NEW: Complete facility construction system matching GaliaViewer\n- 🏗️ construction.js with ALL GaliaViewer building functions:\n  - Planet selection from star systems\n  - Building compatibility filtering (planet type & tier)\n  - Claim stake tier selection (Tier 1-5)\n  - Comprehensive validation (slots & power)\n  - Facility plan builder with stats\n  - Building details modal\n  - Construction confirmation with full stats\n- 📊 Comprehensive facility statistics:\n  - Resource costs, crew requirements\n  - Power output/consumption validation  \n  - Storage capacity, enabled features\n  - Resource production/consumption rates\n- ✅ Complete validation system:\n  - Slot limit enforcement (4/32/108/256/500)\n  - Power requirement checking (100/200/300/400/500 base)\n  - Tier requirement validation\n  - Planet type compatibility (20+ planet types)\n\n### UI & Integration\n- 🎨 Added Construction tab to ClaimStake Explorer\n- 🔗 Integrated construction functionality with app.js\n- 📋 Building selection with Add to Plan functionality\n- 🗑️ Remove buildings and clear plan features\n- 💾 Export facility plan as JSON\n\n## General Updates\n- 📚 Moved DATA-MANAGEMENT.md to GaliaViewer/Documentation/\n- 🧹 Code cleanup and organization improvements\n- 📝 Added comprehensive documentation files\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
-      "Bash(git push:*)",
-      "Bash(git config:*)",
-      "Bash(git reset:*)",
-      "Bash(git commit:*)",
-      "Bash(start:*)",
-      "Bash(git log:*)",
-      "Bash(git checkout:*)",
-      "Bash(iconv:*)",
-      "Bash(git rm:*)",
-      "Bash(rm:*)",
-      "Bash(mv:*)",
-      "Bash(cat:*)",
-      "Bash(git fetch:*)",
-      "Bash(curl -s \"https://ses.staratlas.com/Ship%20Config%20Lite/index.html\")",
-      "Bash(curl -s \"https://ses.staratlas.com/Ship%20Config%20Lite/js/component-management.js\")",
-      "Bash(curl:*)",
-      "Bash(/dev/null)",
-      "Bash(npm install)",
-      "Bash(test:*)"
+      "Bash(git commit -m \"$(cat <<''EOF''\nMajor feature: Recipe Optimizer for ClaimStake Analytics\n\nReplaced Competitive Advantage view with new Recipe-Based ClaimStake Placement Optimizer.\n\nFeatures:\n- Recipe search with autocomplete\n- Intelligent resource analysis (raw + processed/component materials)\n- Recursive recipe expansion to find all raw materials needed\n- Multi-level crafting chain detection (items craftable on single planets)\n- Multi-planet cooperation detection (items requiring transport between planets)\n- Regional optimization with coverage scoring and proximity analysis\n- Faction filtering (MUD, ONI, UST/USTUR)\n- Asteroid belt exclusion (types 3, 11, 19)\n- Color-coded resources (green=raw, orange=processed/component)\n- Hammer icon (🔨) indicates items craftable on specific planets\n- Chain link icon (🔗) marks multi-planet cooperation items\n- Scrollable planet lists showing all matches with resource tags\n- Comprehensive legend and recipe requirements breakdown\n\nAlgorithm:\n- Expands processed ingredients to raw materials via depth-first search\n- Analyzes planets by region and faction grouping\n- Calculates coverage score (% of resources available)\n- Calculates proximity score (planets closer together)\n- Ranks regions by overall suitability\n- Detects single-planet vs multi-planet craftability\n- Shows top 10 regions with detailed recommendations\n\nUI/UX:\n- Clean search interface with faction checkboxes\n- Real-time filtering and optimization\n- Scrollable planet widgets (max 400px height)\n- Custom styled scrollbars\n- Detailed resource breakdowns per planet\n- Multi-planet cooperation warnings in red-bordered section\n\n🤖 Generated with Claude Code (https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git push)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []
