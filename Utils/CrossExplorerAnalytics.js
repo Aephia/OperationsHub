@@ -137,6 +137,18 @@ class CrossExplorerAnalytics {
     }
 
     /**
+     * Helper function to normalize resource names
+     * Converts kebab-case to Title Case (e.g., 'tidal-kelp' -> 'Tidal Kelp')
+     */
+    normalizeResourceName(name) {
+        if (!name) return name;
+        return name
+            .split('-')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+    }
+
+    /**
      * ANALYTICS 1: Resource Flow Analysis
      * Complete supply chain from raw resources to final products
      */
@@ -187,7 +199,8 @@ class CrossExplorerAnalytics {
         buildings.forEach(building => {
             if (building.resourceExtractionRate) {
                 Object.entries(building.resourceExtractionRate).forEach(([resource, rate]) => {
-                    const usage = resourceUsage.get(resource);
+                    const normalizedName = this.normalizeResourceName(resource);
+                    const usage = resourceUsage.get(normalizedName);
                     if (usage) {
                         usage.extractedBy.push({
                             building: building.name,
@@ -200,7 +213,8 @@ class CrossExplorerAnalytics {
 
             if (building.resourceRate) {
                 Object.entries(building.resourceRate).forEach(([resource, rate]) => {
-                    const usage = resourceUsage.get(resource);
+                    const normalizedName = this.normalizeResourceName(resource);
+                    const usage = resourceUsage.get(normalizedName);
                     if (usage) {
                         usage.consumedBy.push({
                             building: building.name,
@@ -253,7 +267,7 @@ class CrossExplorerAnalytics {
         return {
             resourceUsage: flowAnalysis,
             bottlenecks: flowAnalysis.filter(r => r.demandScore > r.supplyScore * 2),
-            criticalResources: flowAnalysis.sort((a, b) => b.criticalityScore - a.criticalityScore).slice(0, 30)
+            criticalResources: flowAnalysis.sort((a, b) => b.criticalityScore - a.criticalityScore)
         };
     }
 

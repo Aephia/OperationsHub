@@ -11,8 +11,20 @@ class ResourceFlowAnalytics {
         this.bottleneckPageSize = 100;
         this.bottleneckFilters = {
             search: '',
-            tier: 'all'
+            tier: 'all',
+            recipeUsage: '',
+            demandScore: ''
         };
+        this.criticalPage = 0;
+        this.criticalPageSize = 100;
+        this.criticalFilters = {
+            resource: '',
+            tier: '',
+            criticality: '',
+            extractedBy: '',
+            consumedBy: ''
+        };
+        this.filteredCriticalResources = [];
     }
 
     async renderFlowAnalytics() {
@@ -60,6 +72,138 @@ class ResourceFlowAnalytics {
                 }
             });
         });
+
+        // Add click handlers for building usage links
+        document.querySelectorAll('.building-usage-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                const resourceName = e.target.getAttribute('data-resource');
+                const buildingsJson = e.target.getAttribute('data-buildings');
+                const type = e.target.getAttribute('data-type');
+                try {
+                    const buildings = JSON.parse(buildingsJson);
+                    this.showBuildingUsageModal(resourceName, buildings, type);
+                } catch (error) {
+                    console.error('Error parsing building data:', error);
+                }
+            });
+        });
+    }
+
+    setupColumnFilters() {
+        const filters = document.querySelectorAll('#criticalResourcesSection .column-filter');
+        filters.forEach(input => {
+            input.addEventListener('input', (e) => {
+                const column = e.target.getAttribute('data-column');
+                const value = e.target.value.trim();
+                this.criticalFilters[column] = value;
+                this.criticalPage = 0; // Reset to first page
+                this.updateCriticalResourcesTable();
+            });
+        });
+    }
+
+    setupCriticalPagination() {
+        const prevBtn = document.getElementById('criticalPrevBtn');
+        const nextBtn = document.getElementById('criticalNextBtn');
+
+        if (prevBtn) {
+            prevBtn.addEventListener('click', () => {
+                if (this.criticalPage > 0) {
+                    this.criticalPage--;
+                    this.updateCriticalResourcesTable();
+                }
+            });
+        }
+
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => {
+                const totalPages = Math.ceil(this.filteredCriticalResources.length / this.criticalPageSize);
+                if (this.criticalPage < totalPages - 1) {
+                    this.criticalPage++;
+                    this.updateCriticalResourcesTable();
+                }
+            });
+        }
+    }
+
+    applyColumnFilters() {
+        this.filteredCriticalResources = this.flowData.criticalResources.filter(resource => {
+            // Resource name filter
+            if (this.criticalFilters.resource) {
+                const searchLower = this.criticalFilters.resource.toLowerCase();
+                if (!resource.name.toLowerCase().includes(searchLower)) {
+                    return false;
+                }
+            }
+
+            // Tier filter
+            if (this.criticalFilters.tier) {
+                const tier = parseInt(this.criticalFilters.tier);
+                if (!isNaN(tier) && resource.resourceData?.tier !== tier) {
+                    return false;
+                }
+            }
+
+            // Criticality filter (min value)
+            if (this.criticalFilters.criticality) {
+                const min = parseFloat(this.criticalFilters.criticality);
+                if (!isNaN(min) && resource.criticalityScore < min) {
+                    return false;
+                }
+            }
+
+            // Extracted By filter (min value)
+            if (this.criticalFilters.extractedBy) {
+                const min = parseInt(this.criticalFilters.extractedBy);
+                if (!isNaN(min) && resource.extractedBy.length < min) {
+                    return false;
+                }
+            }
+
+            // Consumed By filter (min value)
+            if (this.criticalFilters.consumedBy) {
+                const min = parseInt(this.criticalFilters.consumedBy);
+                if (!isNaN(min) && resource.consumedBy.length < min) {
+                    return false;
+                }
+            }
+
+            return true;
+        });
+    }
+
+    updateCriticalResourcesTable() {
+        const section = document.getElementById('criticalResourcesSection');
+        if (!section) return;
+
+        // Apply filters
+        this.applyColumnFilters();
+
+        const totalFiltered = this.filteredCriticalResources.length;
+        const startIdx = this.criticalPage * this.criticalPageSize;
+        const endIdx = Math.min(startIdx + this.criticalPageSize, totalFiltered);
+        const paginatedResources = this.filteredCriticalResources.slice(startIdx, endIdx);
+
+        section.innerHTML = `
+            <h3>🎯 Critical Resources</h3>
+            <p class="section-note">Resources with highest demand across recipes and buildings (criticality score = recipe usage × 10 + extraction × 5 + consumption × 3 + chain depth × 2)</p>
+            <p class="section-note">Showing ${startIdx + 1}-${endIdx} of ${totalFiltered} ${totalFiltered !== this.flowData.criticalResources.length ? `(filtered from ${this.flowData.criticalResources.length})` : ''}</p>
+            ${this.createResourceTable(paginatedResources, 'critical')}
+            <div class="pagination-controls">
+                <button class="pagination-btn" id="criticalPrevBtn" ${this.criticalPage === 0 ? 'disabled' : ''}>
+                    ← Previous
+                </button>
+                <span class="pagination-info">Page ${this.criticalPage + 1} of ${Math.ceil(totalFiltered / this.criticalPageSize)}</span>
+                <button class="pagination-btn" id="criticalNextBtn" ${endIdx >= totalFiltered ? 'disabled' : ''}>
+                    Next →
+                </button>
+            </div>
+        `;
+
+        // Re-setup listeners
+        this.setupCriticalPagination();
+        this.setupColumnFilters();
+        this.setupRecipeUsageListeners();
     }
 
     updateFlowStats() {
@@ -81,14 +225,44 @@ class ResourceFlowAnalytics {
         const container = document.getElementById('flowAnalysisContent');
         if (!container || !this.flowData) return;
 
+        // Initialize filtered resources if not done
+        if (this.filteredCriticalResources.length === 0) {
+            this.filteredCriticalResources = [...this.flowData.criticalResources];
+        }
+
+        // Apply filters
+        this.applyColumnFilters();
+
+        const totalFiltered = this.filteredCriticalResources.length;
+        const startIdx = this.criticalPage * this.criticalPageSize;
+        const endIdx = Math.min(startIdx + this.criticalPageSize, totalFiltered);
+        const paginatedResources = this.filteredCriticalResources.slice(startIdx, endIdx);
+
         const section = document.createElement('div');
         section.className = 'analytics-section';
+        section.id = 'criticalResourcesSection';
         section.innerHTML = `
             <h3>🎯 Critical Resources</h3>
             <p class="section-note">Resources with highest demand across recipes and buildings (criticality score = recipe usage × 10 + extraction × 5 + consumption × 3 + chain depth × 2)</p>
-            ${this.createResourceTable(this.flowData.criticalResources, 'critical')}
+            <p class="section-note">Showing ${startIdx + 1}-${endIdx} of ${totalFiltered} ${totalFiltered !== this.flowData.criticalResources.length ? `(filtered from ${this.flowData.criticalResources.length})` : ''}</p>
+            ${this.createResourceTable(paginatedResources, 'critical')}
+            <div class="pagination-controls">
+                <button class="pagination-btn" id="criticalPrevBtn" ${this.criticalPage === 0 ? 'disabled' : ''}>
+                    ← Previous
+                </button>
+                <span class="pagination-info">Page ${this.criticalPage + 1} of ${Math.ceil(totalFiltered / this.criticalPageSize)}</span>
+                <button class="pagination-btn" id="criticalNextBtn" ${endIdx >= totalFiltered ? 'disabled' : ''}>
+                    Next →
+                </button>
+            </div>
         `;
         container.appendChild(section);
+
+        // Setup pagination
+        this.setupCriticalPagination();
+
+        // Setup column filters
+        this.setupColumnFilters();
     }
 
     renderBottlenecks() {
@@ -106,9 +280,6 @@ class ResourceFlowAnalytics {
                 <p class="empty-state">No significant bottlenecks detected</p>
             `;
         } else {
-            // Get unique tiers for filter
-            const tiers = [...new Set(this.flowData.bottlenecks.map(r => r.resourceData?.tier).filter(t => t))].sort();
-
             // Apply filters
             const filteredBottlenecks = this.getFilteredBottlenecks();
             const totalFiltered = filteredBottlenecks.length;
@@ -118,17 +289,7 @@ class ResourceFlowAnalytics {
 
             section.innerHTML = `
                 <h3>⚠️ Supply Bottlenecks</h3>
-                <p class="section-note">Resources where demand significantly exceeds supply (demand > supply × 2)</p>
-
-                <!-- Filter Controls -->
-                <div class="filter-row">
-                    <input type="text" id="bottleneckSearchInput" class="column-filter" placeholder="Search resources..." value="${this.bottleneckFilters.search}">
-                    <select id="bottleneckTierFilter" class="column-filter">
-                        <option value="all">All Tiers</option>
-                        ${tiers.map(tier => `<option value="${tier}" ${this.bottleneckFilters.tier == tier ? 'selected' : ''}>Tier ${tier}</option>`).join('')}
-                    </select>
-                </div>
-
+                <p class="section-note">Resources where demand significantly exceeds supply (demand > supply × 2). Demand Score = Recipe Usage + Consumed By buildings.</p>
                 <p class="section-note">Showing ${startIdx + 1}-${endIdx} of ${totalFiltered} ${totalFiltered !== this.flowData.bottlenecks.length ? `(filtered from ${this.flowData.bottlenecks.length})` : ''}</p>
 
                 ${this.createResourceTable(paginatedBottlenecks, 'bottleneck')}
@@ -170,10 +331,31 @@ class ResourceFlowAnalytics {
             );
         }
 
+        // Apply recipe usage filter (min value)
+        if (this.bottleneckFilters.recipeUsage) {
+            const min = parseInt(this.bottleneckFilters.recipeUsage);
+            if (!isNaN(min)) {
+                filtered = filtered.filter(r =>
+                    r.usedInRecipes.length >= min
+                );
+            }
+        }
+
+        // Apply demand score filter (min value)
+        if (this.bottleneckFilters.demandScore) {
+            const min = parseInt(this.bottleneckFilters.demandScore);
+            if (!isNaN(min)) {
+                filtered = filtered.filter(r =>
+                    r.demandScore >= min
+                );
+            }
+        }
+
         return filtered;
     }
 
     setupBottleneckFilters() {
+        // Handle old-style filters (if they exist)
         const searchInput = document.getElementById('bottleneckSearchInput');
         const tierFilter = document.getElementById('bottleneckTierFilter');
 
@@ -190,6 +372,31 @@ class ResourceFlowAnalytics {
                 this.bottleneckFilters.tier = e.target.value;
                 this.bottleneckPage = 0; // Reset to first page
                 this.updateBottleneckTable();
+            });
+        }
+
+        // Handle new column filters in the bottleneck section
+        const section = document.getElementById('bottleneckSection');
+        if (section) {
+            const filters = section.querySelectorAll('.column-filter');
+            filters.forEach(input => {
+                input.addEventListener('input', (e) => {
+                    const column = e.target.getAttribute('data-column');
+                    const value = e.target.value.trim();
+
+                    if (column === 'resource') {
+                        this.bottleneckFilters.search = value;
+                    } else if (column === 'tier') {
+                        this.bottleneckFilters.tier = value || 'all';
+                    } else if (column === 'recipeUsage') {
+                        this.bottleneckFilters.recipeUsage = value;
+                    } else if (column === 'demandScore') {
+                        this.bottleneckFilters.demandScore = value;
+                    }
+
+                    this.bottleneckPage = 0; // Reset to first page
+                    this.updateBottleneckTable();
+                });
             });
         }
     }
@@ -222,9 +429,6 @@ class ResourceFlowAnalytics {
         const section = document.getElementById('bottleneckSection');
         if (!section) return;
 
-        // Get unique tiers for filter
-        const tiers = [...new Set(this.flowData.bottlenecks.map(r => r.resourceData?.tier).filter(t => t))].sort();
-
         // Apply filters
         const filteredBottlenecks = this.getFilteredBottlenecks();
         const totalFiltered = filteredBottlenecks.length;
@@ -234,17 +438,7 @@ class ResourceFlowAnalytics {
 
         section.innerHTML = `
             <h3>⚠️ Supply Bottlenecks</h3>
-            <p class="section-note">Resources where demand significantly exceeds supply (demand > supply × 2)</p>
-
-            <!-- Filter Controls -->
-            <div class="filter-row">
-                <input type="text" id="bottleneckSearchInput" class="column-filter" placeholder="Search resources..." value="${this.bottleneckFilters.search}">
-                <select id="bottleneckTierFilter" class="column-filter">
-                    <option value="all">All Tiers</option>
-                    ${tiers.map(tier => `<option value="${tier}" ${this.bottleneckFilters.tier == tier ? 'selected' : ''}>Tier ${tier}</option>`).join('')}
-                </select>
-            </div>
-
+            <p class="section-note">Resources where demand significantly exceeds supply (demand > supply × 2). Demand Score = Recipe Usage + Consumed By buildings.</p>
             <p class="section-note">Showing ${startIdx + 1}-${endIdx} of ${totalFiltered} ${totalFiltered !== this.flowData.bottlenecks.length ? `(filtered from ${this.flowData.bottlenecks.length})` : ''}</p>
 
             ${this.createResourceTable(paginatedBottlenecks, 'bottleneck')}
@@ -276,9 +470,14 @@ class ResourceFlowAnalytics {
                             <tr>
                                 <th>Resource</th>
                                 <th>Tier</th>
-                                <th>Chain Depth</th>
                                 <th>Recipe Usage</th>
-                                <th>Demand Score</th>
+                                <th title="Demand Score = Recipe Usage + Consumed By (higher = more critical)">Demand Score</th>
+                            </tr>
+                            <tr class="filter-row">
+                                <th><input type="text" class="column-filter" data-column="resource" placeholder="Filter..." value="${this.bottleneckFilters.search}"></th>
+                                <th><input type="text" class="column-filter" data-column="tier" placeholder="Tier..." value="${this.bottleneckFilters.tier === 'all' ? '' : this.bottleneckFilters.tier}"></th>
+                                <th><input type="text" class="column-filter" data-column="recipeUsage" placeholder="Min..." value="${this.bottleneckFilters.recipeUsage || ''}"></th>
+                                <th><input type="text" class="column-filter" data-column="demandScore" placeholder="Min..." value="${this.bottleneckFilters.demandScore || ''}"></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -297,10 +496,17 @@ class ResourceFlowAnalytics {
                                 <th>Resource</th>
                                 <th>Tier</th>
                                 <th>Criticality</th>
-                                <th>Chain Depth</th>
                                 <th>Extracted By</th>
                                 <th>Consumed By</th>
                                 <th>Recipe Usage</th>
+                            </tr>
+                            <tr class="filter-row">
+                                <th><input type="text" class="column-filter" data-column="resource" placeholder="Filter..." value="${this.criticalFilters.resource}"></th>
+                                <th><input type="text" class="column-filter" data-column="tier" placeholder="Tier..." value="${this.criticalFilters.tier}"></th>
+                                <th><input type="text" class="column-filter" data-column="criticality" placeholder="Min..." value="${this.criticalFilters.criticality}"></th>
+                                <th><input type="text" class="column-filter" data-column="extractedBy" placeholder="Min..." value="${this.criticalFilters.extractedBy}"></th>
+                                <th><input type="text" class="column-filter" data-column="consumedBy" placeholder="Min..." value="${this.criticalFilters.consumedBy}"></th>
+                                <th></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -315,6 +521,8 @@ class ResourceFlowAnalytics {
     createResourceTableRow(resource) {
         const tierColor = this.getTierColor(resource.resourceData?.tier || 1);
         const recipeCount = resource.usedInRecipes.length;
+        const extractedByCount = resource.extractedBy.length;
+        const consumedByCount = resource.consumedBy.length;
 
         return `
             <tr>
@@ -325,9 +533,20 @@ class ResourceFlowAnalytics {
                     <span class="tier-badge-mini" style="background: ${tierColor}">T${resource.resourceData?.tier || '?'}</span>
                 </td>
                 <td>${resource.criticalityScore.toFixed(0)}</td>
-                <td>${resource.supplyChainDepth}</td>
-                <td>${resource.extractedBy.length}</td>
-                <td>${resource.consumedBy.length}</td>
+                <td>
+                    ${extractedByCount > 0 ? `
+                        <span class="building-usage-link" data-resource="${this.escapeHtml(resource.name)}" data-buildings='${JSON.stringify(resource.extractedBy)}' data-type="extraction">
+                            ${extractedByCount} building${extractedByCount !== 1 ? 's' : ''}
+                        </span>
+                    ` : '—'}
+                </td>
+                <td>
+                    ${consumedByCount > 0 ? `
+                        <span class="building-usage-link" data-resource="${this.escapeHtml(resource.name)}" data-buildings='${JSON.stringify(resource.consumedBy)}' data-type="consumption">
+                            ${consumedByCount} building${consumedByCount !== 1 ? 's' : ''}
+                        </span>
+                    ` : '—'}
+                </td>
                 <td>
                     ${recipeCount > 0 ? `
                         <span class="recipe-usage-link" data-resource="${this.escapeHtml(resource.name)}" data-recipes='${JSON.stringify(resource.usedInRecipes)}'>
@@ -351,7 +570,6 @@ class ResourceFlowAnalytics {
                 <td>
                     <span class="tier-badge-mini" style="background: ${tierColor}">T${resource.resourceData?.tier || '?'}</span>
                 </td>
-                <td>${resource.supplyChainDepth}</td>
                 <td>
                     ${recipeCount > 0 ? `
                         <span class="recipe-usage-link" data-resource="${this.escapeHtml(resource.name)}" data-recipes='${JSON.stringify(resource.usedInRecipes)}'>
@@ -359,7 +577,7 @@ class ResourceFlowAnalytics {
                         </span>
                     ` : '—'}
                 </td>
-                <td class="demand-score-cell">${resource.demandScore}</td>
+                <td class="demand-score-cell" title="Recipe Usage (${recipeCount}) + Consumed By (${resource.consumedBy?.length || 0}) = ${resource.demandScore}">${resource.demandScore}</td>
             </tr>
         `;
     }
@@ -393,6 +611,55 @@ class ResourceFlowAnalytics {
                                 <button class="view-recipe-btn" onclick="window.flowAnalytics.openRecipeInExplorer('${this.escapeAttribute(recipe.recipeId)}')">
                                     View Recipe →
                                 </button>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Close on backdrop click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
+    }
+
+    showBuildingUsageModal(resourceName, buildings, type) {
+        // Remove existing modal if any
+        const existingModal = document.getElementById('buildingUsageModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        const typeLabel = type === 'extraction' ? 'Extracted By' : 'Consumed By';
+        const typeVerb = type === 'extraction' ? 'extracts' : 'consumes';
+
+        // Create modal
+        const modal = document.createElement('div');
+        modal.id = 'buildingUsageModal';
+        modal.className = 'recipe-usage-modal-overlay';
+        modal.innerHTML = `
+            <div class="recipe-usage-modal">
+                <div class="recipe-usage-modal-header">
+                    <h3>${typeLabel}: ${this.escapeHtml(resourceName)}</h3>
+                    <button class="close-modal-btn" onclick="document.getElementById('buildingUsageModal').remove()">✕</button>
+                </div>
+                <div class="recipe-usage-modal-body">
+                    <p class="recipe-count-info">${buildings.length} building${buildings.length !== 1 ? 's' : ''} ${typeVerb} this resource:</p>
+                    <div class="recipe-usage-list">
+                        ${buildings.map(building => `
+                            <div class="recipe-usage-item">
+                                <div class="recipe-usage-info">
+                                    <span class="recipe-usage-name">${this.escapeHtml(building.building)}</span>
+                                    <span class="tier-badge-mini" style="background: ${this.getTierColor(building.tier)}">T${building.tier}</span>
+                                </div>
+                                <div class="building-rate">
+                                    Rate: ${building.rate.toFixed(4)}/s
+                                </div>
                             </div>
                         `).join('')}
                     </div>

@@ -546,15 +546,23 @@ main {
     color: white;
 }
 
-.recipe-usage-link {
+.recipe-usage-link,
+.building-usage-link {
     color: var(--accent-cyan);
     cursor: pointer;
     text-decoration: underline;
     transition: color 0.2s ease;
 }
 
-.recipe-usage-link:hover {
+.recipe-usage-link:hover,
+.building-usage-link:hover {
     color: var(--accent-purple);
+}
+
+.building-rate {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
 }
 
 .bottleneck-cell {
