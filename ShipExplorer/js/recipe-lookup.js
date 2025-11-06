@@ -214,7 +214,8 @@ class RecipeLookup {
         if (!recipe || depth > maxDepth) return null;
 
         const costs = {
-            totalResources: {},
+            totalResources: {},      // Only raw materials (leaf nodes)
+            allMaterials: {},        // ALL materials including intermediate/processed
             totalTime: recipe.constructionTime || 0,
             steps: recipe.productionSteps || 0
         };
@@ -228,19 +229,29 @@ class RecipeLookup {
             const subRecipe = this.recipes.find(r => r.outputName === ingredient.name);
 
             if (subRecipe && depth < maxDepth) {
+                // This is a processed/intermediate material - add it to allMaterials
+                costs.allMaterials[ingredient.name] = (costs.allMaterials[ingredient.name] || 0) + qty;
+
                 // Recursive: get costs of sub-recipe
                 const subCosts = this.calculateRecipeCost(subRecipe, depth + 1, maxDepth);
                 if (subCosts) {
-                    // Add sub-recipe resources
+                    // Add sub-recipe raw resources (leaf nodes only)
                     Object.entries(subCosts.totalResources).forEach(([resource, amount]) => {
                         costs.totalResources[resource] = (costs.totalResources[resource] || 0) + (amount * qty);
                     });
+
+                    // Add all materials from sub-recipe
+                    Object.entries(subCosts.allMaterials).forEach(([material, amount]) => {
+                        costs.allMaterials[material] = (costs.allMaterials[material] || 0) + (amount * qty);
+                    });
+
                     costs.totalTime += subCosts.totalTime * qty;
                     costs.steps += subCosts.steps;
                 }
             } else {
                 // Leaf ingredient (base resource)
                 costs.totalResources[ingredient.name] = (costs.totalResources[ingredient.name] || 0) + qty;
+                costs.allMaterials[ingredient.name] = (costs.allMaterials[ingredient.name] || 0) + qty;
             }
         });
 

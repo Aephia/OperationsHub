@@ -44,9 +44,13 @@
 
             <div class="explorer-layout">
                 <div class="ships-sidebar">
-                    <h3>🚀 Ships</h3>
+                    <div class="view-mode-toggle">
+                        <button class="view-mode-btn active" data-mode="ships">🚀 Ships</button>
+                        <button class="view-mode-btn" data-mode="configurations">⚙️ Configurations</button>
+                    </div>
+                    <h3 id="sidebarTitle">🚀 Ships</h3>
                     <div class="search-container">
-                        <input type="text" id="searchInput" placeholder="Search ships...">
+                        <input type="text" id="searchInput" placeholder="Search...">
                     </div>
                     <div class="checkbox-container" id="shipCheckboxes">
                         <!-- Ship checkboxes will be populated here -->
@@ -64,42 +68,12 @@
         <!-- Analytics Tab Content -->
         <div id="analyticsTab" class="tab-content">
             <div class="analytics-header">
-                <h2>📊 Ship Analytics</h2>
-                <p>Analyze ship specifications, fleet costs, and resource efficiency</p>
+                <h2>📊 Configuration Resource Analytics</h2>
+                <p>Analyze resource requirements for ship configurations</p>
             </div>
 
-            <!-- Sub-tabs for different analytics -->
-            <nav class="sub-navigation-tabs">
-                <button class="sub-nav-tab active" data-subtab="basic">📈 Basic Analytics</button>
-                <button class="sub-nav-tab" data-subtab="fleet">🚀 Fleet</button>
-                <button class="sub-nav-tab" data-subtab="efficiency">📊 Efficiency</button>
-            </nav>
-
-            <!-- Basic Analytics Sub-tab -->
-            <div id="basicAnalyticsSubtab" class="subtab-content active">
-                <div class="analytics-sections" id="analyticsContent">
-                    <!-- Analytics will be populated here -->
-                </div>
-            </div>
-
-            <!-- Fleet Sub-tab -->
-            <div id="fleetAnalyticsSubtab" class="subtab-content">
-                <div id="fleetLoadingMessage" style="display: none;">
-                    <p>🔄 Loading fleet analytics...</p>
-                </div>
-                <div id="fleetContent" class="analytics-sections">
-                    <!-- Fleet content will be rendered here -->
-                </div>
-            </div>
-
-            <!-- Efficiency Sub-tab -->
-            <div id="efficiencyAnalyticsSubtab" class="subtab-content">
-                <div id="efficiencyLoadingMessage" style="display: none;">
-                    <p>🔄 Loading resource efficiency analytics...</p>
-                </div>
-                <div id="efficiencyContent" class="analytics-sections">
-                    <!-- Efficiency content will be rendered here -->
-                </div>
+            <div class="analytics-sections" id="analyticsContent">
+                <!-- Analytics will be populated here -->
             </div>
         </div>
     </main>
@@ -112,8 +86,6 @@
     <script src="js/component-management.js"></script>
     <script src="js/custom-ship-management.js"></script>
     <script src="js/recipe-lookup.js"></script>
-    <script src="fleet-analytics.js"></script>
-    <script src="resource-efficiency.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

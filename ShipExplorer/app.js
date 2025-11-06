@@ -8,9 +8,23 @@ class ShipExplorer {
         this.ships = [];
         this.shipData = null;
         this.selectedShips = new Set();
+        this.selectedConfigurations = new Set(); // Set of "shipId::configName" strings
         this.configSelections = [{}, {}, {}, {}]; // keyed by shipId
         this.currentTab = 'explorer';
+        this.viewMode = 'ships'; // 'ships' or 'configurations'
         this.searchTerm = '';
+
+        // Analytics table filters
+        this.analyticsFilters = {
+            ship: '',
+            configuration: '',
+            components: '',
+            totalRawInputs: ''
+        };
+
+        // Pagination
+        this.analyticsCurrentPage = 1;
+        this.analyticsPageSize = 50;
 
         this.componentDataLoaded = false;
         this.shipMap = new Map();
@@ -344,11 +358,48 @@ class ShipExplorer {
             });
         });
 
+        // View mode toggle
+        document.querySelectorAll('.view-mode-btn').forEach(btn => {
+            btn.addEventListener('click', (event) => {
+                this.switchViewMode(event.target.dataset.mode);
+            });
+        });
+
         const searchInput = document.getElementById('searchInput');
         if (searchInput) {
             searchInput.addEventListener('input', (event) => {
                 this.handleSearch(event.target.value);
             });
+        }
+    }
+
+    switchViewMode(mode) {
+        this.viewMode = mode;
+
+        // Update button states
+        document.querySelectorAll('.view-mode-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.mode === mode);
+        });
+
+        // Update sidebar title
+        const title = document.getElementById('sidebarTitle');
+        if (title) {
+            title.textContent = mode === 'ships' ? '🚀 Ships' : '⚙️ Configurations';
+        }
+
+        // Update search placeholder
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            searchInput.placeholder = mode === 'ships' ? 'Search ships...' : 'Search configurations...';
+        }
+
+        this.renderCheckboxes();
+
+        // Update main content area based on mode
+        if (mode === 'configurations') {
+            this.renderConfigurationDetails();
+        } else {
+            this.renderComparison();
         }
     }
 
@@ -369,7 +420,34 @@ class ShipExplorer {
         return tokens.includes(this.searchTerm);
     }
 
+    matchesConfigSearch(ship, config) {
+        if (!this.searchTerm) return true;
+
+        // Search by ship name/manufacturer should return ALL configs for that ship
+        const shipTokens = [
+            ship?.name,
+            ship?.manufacturer,
+            ship?.sizeTier
+        ].filter(Boolean).join(' ').toLowerCase();
+
+        if (shipTokens.includes(this.searchTerm)) {
+            return true; // Return all configs if ship matches
+        }
+
+        // Otherwise search by config name specifically
+        const configName = (config?.name || '').toLowerCase();
+        return configName.includes(this.searchTerm);
+    }
+
     renderCheckboxes() {
+        if (this.viewMode === 'ships') {
+            this.renderShipsCheckboxes();
+        } else {
+            this.renderConfigurationsCheckboxes();
+        }
+    }
+
+    renderShipsCheckboxes() {
         const container = document.getElementById('shipCheckboxes');
         if (!container) return;
 
@@ -407,6 +485,259 @@ class ShipExplorer {
             div.appendChild(label);
             container.appendChild(div);
         });
+    }
+
+    renderConfigurationsCheckboxes() {
+        const container = document.getElementById('shipCheckboxes');
+        if (!container) return;
+
+        container.innerHTML = '';
+
+        // Collect all configurations from all ships
+        const allConfigs = [];
+        this.ships.forEach(ship => {
+            if (!ship.configurations || !Array.isArray(ship.configurations)) return;
+
+            ship.configurations.forEach(config => {
+                // Skip "Default" configurations
+                if (config.name && config.name.toLowerCase() === 'default') {
+                    return;
+                }
+
+                if (this.matchesConfigSearch(ship, config)) {
+                    allConfigs.push({
+                        ship,
+                        config,
+                        configKey: `${ship.id}::${config.name}`
+                    });
+                }
+            });
+        });
+
+        if (allConfigs.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'empty-state';
+            empty.textContent = 'No configurations match your search.';
+            container.appendChild(empty);
+            return;
+        }
+
+        allConfigs.forEach(({ ship, config, configKey }) => {
+            const div = document.createElement('div');
+            div.className = 'checkbox-item config-item';
+
+            const headerDiv = document.createElement('div');
+            headerDiv.className = 'checkbox-header';
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = `config-${configKey}`;
+            checkbox.checked = this.selectedConfigurations.has(configKey);
+            checkbox.addEventListener('change', () => {
+                this.toggleConfiguration(configKey, ship, config);
+            });
+
+            const label = document.createElement('label');
+            label.htmlFor = `config-${configKey}`;
+            label.textContent = config.name || 'Unnamed Configuration';
+
+            headerDiv.appendChild(checkbox);
+            headerDiv.appendChild(label);
+            div.appendChild(headerDiv);
+
+            // Add ship label
+            const shipLabel = document.createElement('div');
+            shipLabel.className = 'config-ship-label';
+            shipLabel.textContent = `${ship.manufacturer || 'Unknown'} ${ship.name || 'Ship'}`;
+            div.appendChild(shipLabel);
+
+            // Don't add components list in sidebar - we show details in main area instead
+
+            container.appendChild(div);
+        });
+    }
+
+    renderComponentsList(config) {
+        const listDiv = document.createElement('div');
+        listDiv.className = 'config-components-list expanded';
+
+        const components = this.getAllComponentsFromConfig(config);
+
+        if (components.length === 0) {
+            const noComponents = document.createElement('div');
+            noComponents.className = 'component-list-item';
+            noComponents.textContent = 'No components in this configuration';
+            listDiv.appendChild(noComponents);
+            return listDiv;
+        }
+
+        components.forEach(comp => {
+            const compItem = document.createElement('div');
+            compItem.className = 'component-list-item';
+
+            const idSpan = document.createElement('span');
+            idSpan.className = 'component-id';
+            idSpan.textContent = `#${comp.componentId}`;
+
+            const detailsSpan = document.createElement('span');
+            detailsSpan.className = 'component-details';
+
+            const parts = [comp.componentName];
+            if (comp.className) parts.push(comp.className);
+            if (comp.tierName) parts.push(comp.tierName);
+
+            detailsSpan.textContent = parts.join(' • ');
+
+            compItem.appendChild(idSpan);
+            compItem.appendChild(detailsSpan);
+            listDiv.appendChild(compItem);
+        });
+
+        return listDiv;
+    }
+
+    toggleConfiguration(configKey, ship, config) {
+        if (this.selectedConfigurations.has(configKey)) {
+            this.selectedConfigurations.delete(configKey);
+        } else {
+            this.selectedConfigurations.add(configKey);
+        }
+
+        this.renderCheckboxes();
+        this.renderConfigurationDetails();
+    }
+
+    renderConfigurationDetails() {
+        const wrapper = document.getElementById('comparisonTableWrapper');
+        if (!wrapper) return;
+
+        if (this.selectedConfigurations.size === 0) {
+            wrapper.innerHTML = '<div class="empty-state">Select configurations from the list to view their details.</div>';
+            return;
+        }
+
+        // Get selected configurations with their ship info
+        const selectedConfigs = [];
+        this.selectedConfigurations.forEach(configKey => {
+            const [shipId, configName] = configKey.split('::');
+            const ship = this.shipMap.get(shipId) || this.ships.find(s => s.id === shipId);
+            if (!ship) return;
+
+            const config = ship.configurations?.find(c => c.name === configName);
+            if (!config) return;
+
+            selectedConfigs.push({ ship, config, configKey });
+        });
+
+        if (selectedConfigs.length === 0) {
+            wrapper.innerHTML = '<div class="empty-state">No valid configurations selected.</div>';
+            return;
+        }
+
+        // Build the details view
+        let html = '<div class="config-details-container">';
+
+        selectedConfigs.forEach(({ ship, config }) => {
+            const components = this.getAllComponentsFromConfig(config);
+            const componentsByCategory = this.groupComponentsByCategory(components);
+
+            html += `
+                <div class="config-detail-card">
+                    <div class="config-detail-header">
+                        <h3>${this.escapeHtml(config.name || 'Unnamed Configuration')}</h3>
+                        <div class="config-ship-info">
+                            ${this.escapeHtml(ship.manufacturer || 'Unknown')} ${this.escapeHtml(ship.name || 'Ship')}
+                            ${ship.sizeTier ? `<span class="size-tier-badge">${this.escapeHtml(ship.sizeTier)}</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="config-detail-body">
+                        <div class="config-summary">
+                            <div class="summary-stat">
+                                <span class="summary-label">Total Components:</span>
+                                <span class="summary-value">${components.length}</span>
+                            </div>
+                            <div class="summary-stat">
+                                <span class="summary-label">Categories:</span>
+                                <span class="summary-value">${Object.keys(componentsByCategory).length}</span>
+                            </div>
+                        </div>
+                        ${this.renderComponentsByCategory(componentsByCategory)}
+                    </div>
+                </div>
+            `;
+        });
+
+        html += '</div>';
+        wrapper.innerHTML = html;
+
+        // Add event listeners for recipe buttons
+        wrapper.querySelectorAll('.mini-recipe-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const componentType = btn.dataset.componentType;
+                const componentClass = btn.dataset.componentClass;
+                const componentTier = btn.dataset.componentTier;
+                this.showRecipeCosts(componentType, componentClass, componentTier);
+            });
+        });
+    }
+
+    groupComponentsByCategory(components) {
+        const grouped = {};
+        components.forEach(comp => {
+            const category = comp.category || 'Uncategorized';
+            if (!grouped[category]) {
+                grouped[category] = [];
+            }
+            grouped[category].push(comp);
+        });
+        return grouped;
+    }
+
+    renderComponentsByCategory(componentsByCategory) {
+        let html = '<div class="components-by-category">';
+
+        Object.entries(componentsByCategory).forEach(([category, components]) => {
+            html += `
+                <div class="category-section">
+                    <h4 class="category-title">${this.escapeHtml(category)} (${components.length})</h4>
+                    <div class="category-components">
+            `;
+
+            components.forEach(comp => {
+                const hasRecipe = comp.componentType && comp.className;
+                html += `
+                    <div class="component-detail-item">
+                        <div class="component-main-info">
+                            <span class="component-id-badge">#${comp.componentId}</span>
+                            <span class="component-name-text">${this.escapeHtml(comp.componentName)}</span>
+                        </div>
+                        <div class="component-meta-info">
+                            ${comp.componentType ? `<span class="meta-type">${this.escapeHtml(comp.componentType)}</span>` : ''}
+                            ${comp.className ? `<span class="meta-class">${this.escapeHtml(comp.className)}</span>` : ''}
+                            ${comp.tierName ? `<span class="meta-tier">${this.escapeHtml(comp.tierName)}</span>` : ''}
+                        </div>
+                        ${hasRecipe ? `
+                            <button class="mini-recipe-btn"
+                                    data-component-type="${this.escapeAttribute(comp.componentType)}"
+                                    data-component-class="${this.escapeAttribute(comp.className)}"
+                                    data-component-tier="${this.escapeAttribute(comp.tierName || '')}"
+                                    title="View recipe">
+                                📋
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+            });
+
+            html += `
+                    </div>
+                </div>
+            `;
+        });
+
+        html += '</div>';
+        return html;
     }
 
     getShipDisplayName(ship) {
@@ -690,25 +1021,154 @@ class ShipExplorer {
         const container = document.getElementById('analyticsContent');
         if (!container) return;
 
-        const totalShips = this.ships.length;
-        const averageConfigs = this.shipData?.configStats?.averageComponentsPerConfig ?? '�';
-        const avgFilled = this.shipData?.configStats?.averageSlotFillRate ?? '�';
-
-        const overviewSection = `
-            <div class="analytics-section">
-                <h3>Ship Dataset Overview</h3>
-                <p>Total ships indexed: <strong>${totalShips}</strong></p>
-                <p>Average components per configuration: <strong>${averageConfigs}</strong></p>
-                <p>Average slot fill rate: <strong>${avgFilled}%</strong></p>
-            </div>
-        `;
-
         const resourcesSection = this.buildConfigResourceAnalyticsSection();
 
-        container.innerHTML = `
-            ${overviewSection}
-            ${resourcesSection}
-        `;
+        container.innerHTML = resourcesSection;
+
+        // Attach event listeners to filter inputs and pagination
+        this.attachAnalyticsFilterListeners();
+        this.attachPaginationListeners();
+    }
+
+    attachAnalyticsFilterListeners() {
+        const filterShip = document.getElementById('filterShip');
+        const filterConfiguration = document.getElementById('filterConfiguration');
+        const filterComponents = document.getElementById('filterComponents');
+        const filterTotalRawInputs = document.getElementById('filterTotalRawInputs');
+        const clearFiltersBtn = document.getElementById('clearAnalyticsFilters');
+
+        // Apply filter on Enter key press only
+        const applyFilterOnEnter = (e, filterProperty) => {
+            if (e.key === 'Enter') {
+                this.analyticsFilters[filterProperty] = e.target.value;
+                this.analyticsCurrentPage = 1; // Reset to first page when filtering
+                this.renderAnalytics();
+            }
+        };
+
+        if (filterShip) {
+            filterShip.addEventListener('keydown', (e) => applyFilterOnEnter(e, 'ship'));
+        }
+
+        if (filterConfiguration) {
+            filterConfiguration.addEventListener('keydown', (e) => applyFilterOnEnter(e, 'configuration'));
+        }
+
+        if (filterComponents) {
+            filterComponents.addEventListener('keydown', (e) => applyFilterOnEnter(e, 'components'));
+        }
+
+        if (filterTotalRawInputs) {
+            filterTotalRawInputs.addEventListener('keydown', (e) => applyFilterOnEnter(e, 'totalRawInputs'));
+        }
+
+        if (clearFiltersBtn) {
+            clearFiltersBtn.addEventListener('click', () => {
+                this.analyticsFilters.ship = '';
+                this.analyticsFilters.configuration = '';
+                this.analyticsFilters.components = '';
+                this.analyticsFilters.totalRawInputs = '';
+
+                // Clear the input field values
+                if (filterShip) filterShip.value = '';
+                if (filterConfiguration) filterConfiguration.value = '';
+                if (filterComponents) filterComponents.value = '';
+                if (filterTotalRawInputs) filterTotalRawInputs.value = '';
+
+                this.analyticsCurrentPage = 1; // Reset to first page when clearing filters
+                this.renderAnalytics();
+            });
+        }
+    }
+
+    attachPaginationListeners() {
+        const firstPageBtn = document.getElementById('firstPage');
+        const prevPageBtn = document.getElementById('prevPage');
+        const nextPageBtn = document.getElementById('nextPage');
+        const lastPageBtn = document.getElementById('lastPage');
+
+        if (firstPageBtn) {
+            firstPageBtn.addEventListener('click', () => {
+                this.analyticsCurrentPage = 1;
+                this.renderAnalytics();
+            });
+        }
+
+        if (prevPageBtn) {
+            prevPageBtn.addEventListener('click', () => {
+                if (this.analyticsCurrentPage > 1) {
+                    this.analyticsCurrentPage--;
+                    this.renderAnalytics();
+                }
+            });
+        }
+
+        if (nextPageBtn) {
+            nextPageBtn.addEventListener('click', () => {
+                // Calculate total pages based on filtered results
+                const filteredRows = this.getFilteredConfigRows();
+                const totalPages = Math.ceil(filteredRows.length / this.analyticsPageSize);
+
+                if (this.analyticsCurrentPage < totalPages) {
+                    this.analyticsCurrentPage++;
+                    this.renderAnalytics();
+                }
+            });
+        }
+
+        if (lastPageBtn) {
+            lastPageBtn.addEventListener('click', () => {
+                // Calculate total pages based on filtered results
+                const filteredRows = this.getFilteredConfigRows();
+                const totalPages = Math.ceil(filteredRows.length / this.analyticsPageSize);
+
+                this.analyticsCurrentPage = totalPages;
+                this.renderAnalytics();
+            });
+        }
+    }
+
+    getFilteredConfigRows() {
+        // Extract the filtering logic to reuse it
+        const allRows = [];
+
+        this.ships.forEach(ship => {
+            if (!ship || !ship.configurations) return;
+
+            Object.entries(ship.configurations).forEach(([configName, config]) => {
+                if (!config) return;
+
+                const componentIds = this.collectComponentIds(config);
+                allRows.push({
+                    shipName: ship.name,
+                    configName,
+                    componentCount: componentIds.length,
+                    shipId: ship.id,
+                    config
+                });
+            });
+        });
+
+        // Apply filters
+        const shipFilter = this.analyticsFilters.ship.toLowerCase();
+        const configFilter = this.analyticsFilters.configuration.toLowerCase();
+        const componentsFilter = this.analyticsFilters.components.toLowerCase();
+        const totalRawInputsFilter = this.analyticsFilters.totalRawInputs.toLowerCase();
+
+        return allRows.filter(row => {
+            if (shipFilter && !row.shipName.toLowerCase().includes(shipFilter)) {
+                return false;
+            }
+            if (configFilter && !row.configName.toLowerCase().includes(configFilter)) {
+                return false;
+            }
+            if (componentsFilter && !row.componentCount.toString().includes(componentsFilter)) {
+                return false;
+            }
+            // Note: totalRawInputsFilter would require computing the resources, which is expensive
+            // For now, we'll skip this filter in the extraction method
+            return true;
+        });
     }
 
     buildConfigResourceAnalyticsSection() {
@@ -755,24 +1215,74 @@ class ShipExplorer {
             `;
         }
 
-        const rowsHtml = summary.rows.map(row => {
-            const cachedTotals = this.configResourceTotalsCache.get(row.configName);
+        // Apply filters
+        const filteredRows = summary.rows.filter(row => {
+            const cacheKey = `${row.shipId}::${row.configName}`;
+            const cachedTotals = this.configResourceTotalsCache.get(cacheKey);
+
+            const shipDisplayName = row.manufacturer
+                ? `${row.manufacturer} ${row.shipName} ${row.sizeTier || ''}`
+                : `${row.shipName} ${row.sizeTier || ''}`;
+
+            // Filter by ship
+            if (this.analyticsFilters.ship && !shipDisplayName.toLowerCase().includes(this.analyticsFilters.ship.toLowerCase())) {
+                return false;
+            }
+
+            // Filter by configuration
+            if (this.analyticsFilters.configuration && !row.configName.toLowerCase().includes(this.analyticsFilters.configuration.toLowerCase())) {
+                return false;
+            }
+
+            // Filter by components count
+            if (this.analyticsFilters.components) {
+                const searchTerm = this.analyticsFilters.components.toLowerCase();
+                if (!row.componentCount.toString().includes(searchTerm)) {
+                    return false;
+                }
+            }
+
+            // Filter by total raw inputs
+            if (this.analyticsFilters.totalRawInputs && cachedTotals) {
+                const searchTerm = this.analyticsFilters.totalRawInputs.toLowerCase();
+                const totalStr = cachedTotals.totalQuantity.toLocaleString(undefined, { maximumFractionDigits: 2 });
+                if (!totalStr.toLowerCase().includes(searchTerm)) {
+                    return false;
+                }
+            }
+
+            return true;
+        });
+
+        // Apply pagination
+        const totalPages = Math.ceil(filteredRows.length / this.analyticsPageSize);
+        const startIndex = (this.analyticsCurrentPage - 1) * this.analyticsPageSize;
+        const endIndex = startIndex + this.analyticsPageSize;
+        const paginatedRows = filteredRows.slice(startIndex, endIndex);
+
+        const rowsHtml = paginatedRows.map(row => {
+            const cacheKey = `${row.shipId}::${row.configName}`;
+            const cachedTotals = this.configResourceTotalsCache.get(cacheKey);
             const totalCell = cachedTotals
                 ? cachedTotals.totalQuantity.toLocaleString(undefined, { maximumFractionDigits: 2 })
                 : '<span class="analytics-hint">Click to calculate</span>';
             const buttonLabel = cachedTotals ? 'View Again' : 'View Raw Inputs';
 
+            const shipDisplayName = row.manufacturer
+                ? `${this.escapeHtml(row.manufacturer)} ${this.escapeHtml(row.shipName)}`
+                : this.escapeHtml(row.shipName);
+
             return `
                 <tr>
+                    <td>${shipDisplayName}${row.sizeTier ? ` <span class="tier-badge">${this.escapeHtml(row.sizeTier)}</span>` : ''}</td>
                     <td>${this.escapeHtml(row.configName)}</td>
-                    <td>${row.configCount.toLocaleString()}</td>
                     <td>${row.componentCount.toLocaleString()}</td>
                     <td>${totalCell}</td>
-                    <td>
+                    <td class="action-cell">
                         <button
                             type="button"
                             class="view-resource-btn"
-                            onclick="window.shipExplorer.showConfigResourceBreakdown('${this.escapeAttribute(row.configName)}')"
+                            onclick="window.shipExplorer.showShipConfigResourceBreakdown('${this.escapeAttribute(row.shipId)}', '${this.escapeAttribute(row.configName)}')"
                         >
                             ${buttonLabel}
                         </button>
@@ -780,6 +1290,27 @@ class ShipExplorer {
                 </tr>
             `;
         }).join('');
+
+        const filterActive = this.analyticsFilters.ship || this.analyticsFilters.configuration ||
+                             this.analyticsFilters.components || this.analyticsFilters.totalRawInputs;
+
+        // Pagination controls
+        const paginationHtml = totalPages > 1 ? `
+            <div class="pagination-controls">
+                <button type="button" class="pagination-btn" id="firstPage" ${this.analyticsCurrentPage === 1 ? 'disabled' : ''}>⏮️ First</button>
+                <button type="button" class="pagination-btn" id="prevPage" ${this.analyticsCurrentPage === 1 ? 'disabled' : ''}>◀️ Prev</button>
+                <span class="pagination-info">Page ${this.analyticsCurrentPage} of ${totalPages} (${startIndex + 1}-${Math.min(endIndex, filteredRows.length)} of ${filteredRows.length})</span>
+                <button type="button" class="pagination-btn" id="nextPage" ${this.analyticsCurrentPage === totalPages ? 'disabled' : ''}>Next ▶️</button>
+                <button type="button" class="pagination-btn" id="lastPage" ${this.analyticsCurrentPage === totalPages ? 'disabled' : ''}>Last ⏭️</button>
+            </div>
+        ` : '';
+
+        const filterInfoHtml = filterActive
+            ? `<div class="analytics-note" style="color: var(--accent-cyan); display: flex; align-items: center; gap: 1rem;">
+                <span>📊 Showing ${filteredRows.length} of ${summary.rows.length} configurations</span>
+                <button type="button" class="clear-filters-btn" id="clearAnalyticsFilters" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;">Clear Filters</button>
+               </div>`
+            : '';
 
         const noteHtml = `
             <div class="analytics-note">
@@ -790,15 +1321,55 @@ class ShipExplorer {
         return `
             <div class="analytics-section">
                 <h3>Configuration Resource Totals</h3>
-                <p>Spot-check resource requirements per configuration without incurring up-front processing costs.</p>
+                <p>Spot-check resource requirements per ship configuration without incurring up-front processing costs.</p>
+                ${filterInfoHtml}
                 <div class="analytics-table-wrapper">
-                    <table class="analytics-table">
+                    <table class="analytics-table" id="configResourceTable">
                         <thead>
                             <tr>
+                                <th>Ship</th>
                                 <th>Configuration</th>
-                                <th>Configs Counted</th>
                                 <th>Components</th>
                                 <th>Total Raw Inputs</th>
+                                <th></th>
+                            </tr>
+                            <tr class="filter-row">
+                                <th>
+                                    <input
+                                        type="text"
+                                        class="analytics-filter-input"
+                                        id="filterShip"
+                                        placeholder="Filter ships..."
+                                        value="${this.escapeAttribute(this.analyticsFilters.ship)}"
+                                    />
+                                </th>
+                                <th>
+                                    <input
+                                        type="text"
+                                        class="analytics-filter-input"
+                                        id="filterConfiguration"
+                                        placeholder="Filter configs..."
+                                        value="${this.escapeAttribute(this.analyticsFilters.configuration)}"
+                                    />
+                                </th>
+                                <th>
+                                    <input
+                                        type="text"
+                                        class="analytics-filter-input"
+                                        id="filterComponents"
+                                        placeholder="Filter..."
+                                        value="${this.escapeAttribute(this.analyticsFilters.components)}"
+                                    />
+                                </th>
+                                <th>
+                                    <input
+                                        type="text"
+                                        class="analytics-filter-input"
+                                        id="filterTotalRawInputs"
+                                        placeholder="Filter..."
+                                        value="${this.escapeAttribute(this.analyticsFilters.totalRawInputs)}"
+                                    />
+                                </th>
                                 <th></th>
                             </tr>
                         </thead>
@@ -807,6 +1378,7 @@ class ShipExplorer {
                         </tbody>
                     </table>
                 </div>
+                ${paginationHtml}
                 ${noteHtml}
             </div>
         `;
@@ -868,13 +1440,14 @@ class ShipExplorer {
         }
 
         const recipeCost = this.recipeLookup.calculateRecipeCost(recipes[0]);
-        if (!recipeCost || !recipeCost.totalResources) {
+        if (!recipeCost || !recipeCost.allMaterials) {
             this.recipeCostCache.set(cacheKey, null);
             return null;
         }
 
         const normalizedResources = {};
-        Object.entries(recipeCost.totalResources).forEach(([resource, amount]) => {
+        // Use allMaterials instead of totalResources to show ALL materials (raw + intermediate)
+        Object.entries(recipeCost.allMaterials).forEach(([resource, amount]) => {
             if (typeof amount === 'number' && !Number.isNaN(amount)) {
                 normalizedResources[resource] = (normalizedResources[resource] || 0) + amount;
             }
@@ -890,79 +1463,114 @@ class ShipExplorer {
     }
 
     calculateConfigResourceSummary() {
-        const totals = new Map();
+        const rows = [];
 
+        // Group configurations by ship
         this.ships.forEach(ship => {
             const configurations = Array.isArray(ship?.configurations) ? ship.configurations : [];
             configurations.forEach(config => {
-                const entry = totals.get(config.name) || {
-                    configCount: 0,
-                    componentCount: 0
-                };
-
-                entry.configCount += 1;
+                // Skip "Default" configurations
+                if (config.name && config.name.toLowerCase() === 'default') {
+                    return;
+                }
 
                 const componentIds = this.collectComponentIds(config);
-                entry.componentCount += componentIds.length;
 
-                totals.set(config.name, entry);
+                rows.push({
+                    shipId: ship.id,
+                    shipName: ship.name,
+                    manufacturer: ship.manufacturer,
+                    sizeTier: ship.sizeTier,
+                    configName: config.name,
+                    configCount: 1, // One config per row now
+                    componentCount: componentIds.length
+                });
             });
         });
 
-        const rows = Array.from(totals.entries()).map(([configName, data]) => {
-            return {
-                configName,
-                configCount: data.configCount,
-                componentCount: data.componentCount
-            };
-        }).sort((a, b) => {
-            if (b.configCount !== a.configCount) return b.configCount - a.configCount;
-            if (b.componentCount !== a.componentCount) return b.componentCount - a.componentCount;
-            return a.configName.localeCompare(b.configName);
+        // Sort by ship name, then config name
+        rows.sort((a, b) => {
+            const shipCompare = (a.shipName || '').localeCompare(b.shipName || '');
+            if (shipCompare !== 0) return shipCompare;
+            return (a.configName || '').localeCompare(b.configName || '');
         });
 
         return { rows };
     }
 
-    getConfigResourceTotals(configName) {
-        if (!configName) return null;
+    getShipConfigResourceTotals(shipId, configName) {
+        if (!shipId || !configName) return null;
         if (!this.componentDataLoaded || !this.recipeLookup || !this.recipeLookup.recipesLoaded) {
             return null;
         }
 
-        if (this.configResourceTotalsCache.has(configName)) {
-            return this.configResourceTotalsCache.get(configName);
+        const cacheKey = `${shipId}::${configName}`;
+        if (this.configResourceTotalsCache.has(cacheKey)) {
+            return this.configResourceTotalsCache.get(cacheKey);
         }
 
-        let configCount = 0;
+        const ship = this.shipMap.get(shipId) || this.ships.find(s => s.id === shipId);
+        if (!ship) return null;
+
+        const config = ship.configurations?.find(c => c.name === configName);
+        if (!config) return null;
+
         let componentCount = 0;
         let evaluatedComponents = 0;
         let missingRecipes = 0;
         const resourceMap = new Map();
+        const missingComponentsMap = new Map();
 
-        this.ships.forEach(ship => {
-            const configurations = Array.isArray(ship?.configurations) ? ship.configurations : [];
-            configurations.forEach(config => {
-                if (config.name !== configName) {
-                    return;
-                }
+        const componentIds = this.collectComponentIds(config);
+        componentCount = componentIds.length;
 
-                configCount += 1;
-                const componentIds = this.collectComponentIds(config);
-                componentCount += componentIds.length;
+        componentIds.forEach(componentId => {
+            evaluatedComponents += 1;
+            const cost = this.getResourceCostForComponent(componentId);
+            if (!cost) {
+                missingRecipes += 1;
 
-                componentIds.forEach(componentId => {
-                    evaluatedComponents += 1;
-                    const cost = this.getResourceCostForComponent(componentId);
-                    if (!cost) {
-                        missingRecipes += 1;
-                        return;
+                // Track which components are missing
+                const componentKey = componentId.toString();
+                const info = this.componentsById[componentKey];
+
+                if (info) {
+                    const missingKey = `${info.name}|${info.componentType || ''}|${info.className || ''}|${info.tierName || ''}`;
+                    const existing = missingComponentsMap.get(missingKey);
+                    if (existing) {
+                        existing.count += 1;
+                    } else {
+                        missingComponentsMap.set(missingKey, {
+                            id: componentId,
+                            name: info.name,
+                            componentType: info.componentType || 'Unknown',
+                            className: info.className || '',
+                            tierName: info.tierName || '',
+                            count: 1
+                        });
                     }
+                } else {
+                    // Component ID not found in lookup
+                    const missingKey = `unknown-${componentId}`;
+                    const existing = missingComponentsMap.get(missingKey);
+                    if (existing) {
+                        existing.count += 1;
+                    } else {
+                        missingComponentsMap.set(missingKey, {
+                            id: componentId,
+                            name: `Unknown (ID: ${componentId})`,
+                            componentType: 'Unknown',
+                            className: '',
+                            tierName: '',
+                            count: 1
+                        });
+                    }
+                }
+                return;
+            }
 
-                    Object.entries(cost.resources).forEach(([resource, amount]) => {
-                        resourceMap.set(resource, (resourceMap.get(resource) || 0) + amount);
-                    });
-                });
+            Object.entries(cost.resources).forEach(([resource, amount]) => {
+                resourceMap.set(resource, (resourceMap.get(resource) || 0) + amount);
             });
         });
 
@@ -971,6 +1579,87 @@ class ShipExplorer {
             .map(([resource, amount]) => ({ resource, amount }));
         const totalQuantity = resources.reduce((sum, entry) => sum + entry.amount, 0);
 
+        // Convert missing components map to sorted array
+        const missingComponents = Array.from(missingComponentsMap.values())
+            .sort((a, b) => b.count - a.count);
+
+        const shipDisplayName = ship.manufacturer
+            ? `${ship.manufacturer} ${ship.name}`
+            : ship.name;
+
+        const result = {
+            shipId,
+            shipName: shipDisplayName,
+            configName,
+            configCount: 1,
+            componentCount,
+            totalQuantity,
+            resources,
+            missingRecipes,
+            evaluatedComponents,
+            missingComponents
+        };
+
+        this.configResourceTotalsCache.set(cacheKey, result);
+        return result;
+    }
+
+    // Keep old method for backwards compatibility
+    getConfigResourceTotals(configName) {
+        // This now aggregates all ships with this config name
+        if (!configName) return null;
+        if (!this.componentDataLoaded || !this.recipeLookup || !this.recipeLookup.recipesLoaded) {
+            return null;
+        }
+
+        // Try to return cached value with old key format
+        if (this.configResourceTotalsCache.has(configName)) {
+            return this.configResourceTotalsCache.get(configName);
+        }
+
+        // Aggregate from all ships
+        let configCount = 0;
+        let componentCount = 0;
+        let evaluatedComponents = 0;
+        let missingRecipes = 0;
+        const resourceMap = new Map();
+        const missingComponentsMap = new Map();
+
+        this.ships.forEach(ship => {
+            const config = ship.configurations?.find(c => c.name === configName);
+            if (!config) return;
+
+            const totals = this.getShipConfigResourceTotals(ship.id, configName);
+            if (!totals) return;
+
+            configCount += 1;
+            componentCount += totals.componentCount;
+            evaluatedComponents += totals.evaluatedComponents;
+            missingRecipes += totals.missingRecipes;
+
+            totals.resources.forEach(({ resource, amount }) => {
+                resourceMap.set(resource, (resourceMap.get(resource) || 0) + amount);
+            });
+
+            totals.missingComponents.forEach(comp => {
+                const key = `${comp.name}|${comp.componentType}|${comp.className}|${comp.tierName}`;
+                const existing = missingComponentsMap.get(key);
+                if (existing) {
+                    existing.count += comp.count;
+                } else {
+                    missingComponentsMap.set(key, { ...comp });
+                }
+            });
+        });
+
+        const resources = Array.from(resourceMap.entries())
+            .sort((a, b) => b[1] - a[1])
+            .map(([resource, amount]) => ({ resource, amount }));
+        const totalQuantity = resources.reduce((sum, entry) => sum + entry.amount, 0);
+
+        const missingComponents = Array.from(missingComponentsMap.values())
+            .sort((a, b) => b.count - a.count);
+
         const result = {
             configName,
             configCount,
@@ -978,7 +1667,8 @@ class ShipExplorer {
             totalQuantity,
             resources,
             missingRecipes,
-            evaluatedComponents
+            evaluatedComponents,
+            missingComponents
         };
 
         this.configResourceTotalsCache.set(configName, result);
@@ -1007,6 +1697,35 @@ class ShipExplorer {
         // Refresh the analytics table so the cached total appears
         this.renderAnalytics();
 
+        this.showResourceBreakdownModal(totals);
+    }
+
+    showShipConfigResourceBreakdown(shipId, configName) {
+        if (!shipId || !configName) return;
+
+        if (!this.componentDataLoaded) {
+            alert('Component metadata has not finished loading yet. Please try again shortly.');
+            return;
+        }
+
+        if (!this.recipeLookup || !this.recipeLookup.recipesLoaded) {
+            alert('Recipe data is still loading. Please try again once recipes are available.');
+            return;
+        }
+
+        const totals = this.getShipConfigResourceTotals(shipId, configName);
+        if (!totals) {
+            alert('Unable to calculate resource totals for this ship configuration.');
+            return;
+        }
+
+        // Refresh the analytics table so the cached total appears
+        this.renderAnalytics();
+
+        this.showResourceBreakdownModal(totals);
+    }
+
+    showResourceBreakdownModal(totals) {
         if (this.activeResourceOverlay) {
             this.activeResourceOverlay.remove();
             this.activeResourceOverlay = null;
@@ -1031,18 +1750,64 @@ class ShipExplorer {
             ? `⚠️ ${totals.missingRecipes.toLocaleString()} component slots were missing recipe data and are excluded.`
             : '✅ All component recipes were resolved for this calculation.';
 
+        // Build missing components section
+        const missingComponentsSection = (totals.missingComponents && totals.missingComponents.length > 0) ? `
+            <div class="missing-components-section">
+                <button type="button" class="missing-components-toggle" onclick="this.classList.toggle('expanded'); this.nextElementSibling.classList.toggle('expanded');">
+                    <span class="toggle-icon">▶</span>
+                    View Missing Components (${totals.missingComponents.length} unique types, ${totals.missingRecipes} total slots)
+                </button>
+                <div class="missing-components-details">
+                    <table class="missing-components-table">
+                        <thead>
+                            <tr>
+                                <th>Component Name</th>
+                                <th>Type</th>
+                                <th>Class</th>
+                                <th>Tier</th>
+                                <th>Occurrences</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${totals.missingComponents.map(comp => `
+                                <tr>
+                                    <td>${this.escapeHtml(comp.name)}</td>
+                                    <td>${this.escapeHtml(comp.componentType)}</td>
+                                    <td>${this.escapeHtml(comp.className || '—')}</td>
+                                    <td>${this.escapeHtml(comp.tierName || '—')}</td>
+                                    <td>${comp.count.toLocaleString()}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        ` : '';
+
+        // Build title based on whether we have ship name
+        const title = totals.shipName
+            ? `Raw Inputs: ${this.escapeHtml(totals.shipName)} - ${this.escapeHtml(totals.configName)}`
+            : `Raw Inputs: ${this.escapeHtml(totals.configName)}`;
+
+        // Build summary - hide "Configurations" count for single ship+config view
+        const summaryItems = [];
+        if (totals.configCount > 1) {
+            summaryItems.push(`<div><span class="metric-label">Configurations:</span> ${totals.configCount.toLocaleString()}</div>`);
+        }
+        summaryItems.push(`<div><span class="metric-label">Components Evaluated:</span> ${totals.componentCount.toLocaleString()}</div>`);
+        summaryItems.push(`<div><span class="metric-label">Total Raw Inputs:</span> ${totals.totalQuantity.toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>`);
+
         modal.innerHTML = `
             <div class="stat-details-header">
-                <h2>Raw Inputs: ${this.escapeHtml(configName)}</h2>
+                <h2>${title}</h2>
                 <button type="button" class="close-button" aria-label="Close">&times;</button>
             </div>
             <div class="stat-details-body">
                 <div class="resource-breakdown-summary">
-                    <div><span class="metric-label">Configurations:</span> ${totals.configCount.toLocaleString()}</div>
-                    <div><span class="metric-label">Components Evaluated:</span> ${totals.componentCount.toLocaleString()}</div>
-                    <div><span class="metric-label">Total Raw Inputs:</span> ${totals.totalQuantity.toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
+                    ${summaryItems.join('')}
                 </div>
                 <div class="resource-breakdown-note">${this.escapeHtml(noteMessage)}</div>
+                ${missingComponentsSection}
                 <div class="resource-breakdown-table-wrapper">
                     <table class="resource-breakdown-table">
                         <thead>
@@ -1551,47 +2316,7 @@ class ShipExplorer {
 
 document.addEventListener('DOMContentLoaded', () => {
     window.shipExplorer = new ShipExplorer();
-
-    // Initialize cross-explorer analytics modules
-    if (typeof FleetAnalytics !== 'undefined') {
-        window.fleetAnalytics = new FleetAnalytics();
-    }
-    if (typeof ResourceEfficiencyAnalytics !== 'undefined') {
-        window.resourceEfficiencyAnalytics = new ResourceEfficiencyAnalytics();
-    }
-
-    // Initialize sub-tab navigation
-    initShipAnalyticsSubTabs();
 });
-
-function initShipAnalyticsSubTabs() {
-    const subNavButtons = document.querySelectorAll('.sub-nav-tab');
-    subNavButtons.forEach(button => {
-        button.addEventListener('click', async (e) => {
-            const subtab = e.target.dataset.subtab;
-
-            // Remove active class from all sub-tabs
-            document.querySelectorAll('.sub-nav-tab').forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('.subtab-content').forEach(content => content.classList.remove('active'));
-
-            // Add active class to clicked button
-            e.target.classList.add('active');
-
-            // Show corresponding content
-            const subtabContent = document.getElementById(`${subtab}AnalyticsSubtab`);
-            if (subtabContent) {
-                subtabContent.classList.add('active');
-            }
-
-            // Load analytics when tabs are clicked
-            if (subtab === 'fleet' && window.fleetAnalytics) {
-                await window.fleetAnalytics.renderFleetAnalytics();
-            } else if (subtab === 'efficiency' && window.resourceEfficiencyAnalytics) {
-                await window.resourceEfficiencyAnalytics.renderResourceEfficiency();
-            }
-        });
-    });
-}
 
 
 
