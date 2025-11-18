@@ -41,6 +41,7 @@
                 <p>Surface atmosphere composition, orbital data, and resource tiers for any surveyed world. Build perfect extraction chains before you touch ground.</p>
                 <div class="module-meta">Mapping • Resources • Strategy</div>
                 <button class="launch-btn" data-href="PlanetExplorer/index.html">Launch Module</button>
+                <button class="help-btn" data-module="planetExplorer">Module Guide</button>
             </article>
 
             <article class="module-card">
@@ -51,6 +52,7 @@
                 <p>Audit hull performance, compare manufacturer loadouts, and study configuration coverage to optimize every fleet deployment.</p>
                 <div class="module-meta">Fleet | Components | Analytics</div>
                 <button class="launch-btn" data-href="ShipExplorer/index.html">Launch Module</button>
+                <button class="help-btn" data-module="shipExplorer">Module Guide</button>
             </article>
 
             <article class="module-card">
@@ -61,6 +63,7 @@
                 <p>Immersive 3D holo-map with fleet telemetry, holographic overlays, and cinematic fly-throughs of the Galia Expanse.</p>
                 <div class="module-meta">3D Map • Fleet Overlay • Effects Suite</div>
                 <button class="launch-btn" data-href="GaliaViewer/index.html">Launch Viewer</button>
+                <button class="help-btn" data-module="galiaViewer">Module Guide</button>
             </article>
 
             <article class="module-card">
@@ -71,6 +74,7 @@
                 <p>Decrypt crafting trees, optimize throughput, and highlight bottlenecks with visualized Star Atlas fabrication pipelines.</p>
                 <div class="module-meta">Crafting • Logistics • Throughput</div>
                 <button class="launch-btn" data-href="RecipeExplorer/index.html">Launch Module</button>
+                <button class="help-btn" data-module="recipeExplorer">Module Guide</button>
             </article>
 
             <article class="module-card">
@@ -81,6 +85,7 @@
                 <p>Compare facility load-outs, calculate build costs, and lock in profitable claim stakes with tier-aware recommendations.</p>
                 <div class="module-meta">Construction • ROI • Automation</div>
                 <button class="launch-btn" data-href="ClaimStakeExplorer/index.html">Launch Module</button>
+                <button class="help-btn" data-module="claimStakeExplorer">Module Guide</button>
             </article>
 
             <article class="module-card">
@@ -91,6 +96,7 @@
                 <p>Search, filter, and benchmark every resource in the Star Atlas economy. Track rarity, use cases, and conversion paths.</p>
                 <div class="module-meta">Commodities • Trading • Analytics</div>
                 <button class="launch-btn" data-href="ResourcesExplorer/index.html">Launch Module</button>
+                <button class="help-btn" data-module="resourcesExplorer">Module Guide</button>
             </article>
 
             <article class="module-card">
@@ -101,6 +107,7 @@
                 <p>Plan habitat construction, compare crafting stations, and optimize storage capacity with comprehensive build planners.</p>
                 <div class="module-meta">Habitat • Crafting • Planning</div>
                 <button class="launch-btn" data-href="HubExplorer/index.html">Launch Module</button>
+                <button class="help-btn" data-module="hubExplorer">Module Guide</button>
             </article>
 
             <article class="module-card">
@@ -111,6 +118,7 @@
                 <p>Interactive 2D map of all Galia regions. Click regions to view ownership status, border security, warp lane connections, and strategic distances.</p>
                 <div class="module-meta">2D Map • Region Status • Connections</div>
                 <button class="launch-btn" data-href="RegionMapExplorer/index.html">Launch Module</button>
+                <button class="help-btn" data-module="regionMapExplorer">Module Guide</button>
             </article>
         </section>
 
@@ -134,8 +142,20 @@
         <p>&copy; 2024 Aephia Industries | Star Atlas Operations Hub</p>
     </footer>
 
+    <!-- Help Modal -->
+    <div class="help-modal" id="helpModal">
+        <div class="help-modal-content">
+            <span class="help-modal-close" id="closeHelpModal">&times;</span>
+            <div id="helpModalBody">
+                <!-- Help content will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="Documentation/module-help-content.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // Launch module buttons
             document.querySelectorAll('.launch-btn[data-href]').forEach((button) => {
                 button.addEventListener('click', () => {
                     const href = button.getAttribute('data-href');
@@ -143,6 +163,42 @@
                         window.location.href = href;
                     }
                 });
+            });
+
+            // Help button handlers
+            const helpModal = document.getElementById('helpModal');
+            const helpModalBody = document.getElementById('helpModalBody');
+            const closeHelpModal = document.getElementById('closeHelpModal');
+
+            document.querySelectorAll('.help-btn[data-module]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    const moduleKey = button.getAttribute('data-module');
+                    const content = moduleHelpContent[moduleKey];
+
+                    if (content) {
+                        let html = `<h2>${content.title}</h2>`;
+                        content.sections.forEach(section => {
+                            html += `
+                                <div class="help-section">
+                                    <h3>${section.heading}</h3>
+                                    <div class="help-section-content">${section.content}</div>
+                                </div>
+                            `;
+                        });
+                        helpModalBody.innerHTML = html;
+                        helpModal.style.display = 'flex';
+                    }
+                });
+            });
+
+            closeHelpModal.addEventListener('click', () => {
+                helpModal.style.display = 'none';
+            });
+
+            window.addEventListener('click', (event) => {
+                if (event.target === helpModal) {
+                    helpModal.style.display = 'none';
+                }
             });
         });
     </script>

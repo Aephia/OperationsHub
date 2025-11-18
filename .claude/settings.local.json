@@ -4,7 +4,10 @@
       "Bash(git add:*)",
       "Bash(git commit -m \"$(cat <<''EOF''\nMajor feature: Recipe Optimizer for ClaimStake Analytics\n\nReplaced Competitive Advantage view with new Recipe-Based ClaimStake Placement Optimizer.\n\nFeatures:\n- Recipe search with autocomplete\n- Intelligent resource analysis (raw + processed/component materials)\n- Recursive recipe expansion to find all raw materials needed\n- Multi-level crafting chain detection (items craftable on single planets)\n- Multi-planet cooperation detection (items requiring transport between planets)\n- Regional optimization with coverage scoring and proximity analysis\n- Faction filtering (MUD, ONI, UST/USTUR)\n- Asteroid belt exclusion (types 3, 11, 19)\n- Color-coded resources (green=raw, orange=processed/component)\n- Hammer icon (🔨) indicates items craftable on specific planets\n- Chain link icon (🔗) marks multi-planet cooperation items\n- Scrollable planet lists showing all matches with resource tags\n- Comprehensive legend and recipe requirements breakdown\n\nAlgorithm:\n- Expands processed ingredients to raw materials via depth-first search\n- Analyzes planets by region and faction grouping\n- Calculates coverage score (% of resources available)\n- Calculates proximity score (planets closer together)\n- Ranks regions by overall suitability\n- Detects single-planet vs multi-planet craftability\n- Shows top 10 regions with detailed recommendations\n\nUI/UX:\n- Clean search interface with faction checkboxes\n- Real-time filtering and optimization\n- Scrollable planet widgets (max 400px height)\n- Custom styled scrollbars\n- Detailed resource breakdowns per planet\n- Multi-planet cooperation warnings in red-bordered section\n\n🤖 Generated with Claude Code (https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(git push)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(node:*)",
+      "Bash(del test-normalize.js)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []
