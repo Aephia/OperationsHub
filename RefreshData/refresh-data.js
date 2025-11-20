@@ -93,7 +93,7 @@ const DATA_TASKS = [
         source: 'ship-components.json',
         parts: ['ship-components-part1.json', 'ship-components-part2.json'],
         outputJs: 'ship-components-data.js',
-        outputJson: 'ship-components-data.json',
+        outputJson: null, // Not used by any app - ShipExplorer fetches raw JSON directly
         globalVar: 'shipComponentsData',
         schema: 'shipComponents.schema.json'
     },

@@ -6,53 +6,44 @@
   "type": "object",
   "properties": {
     "version": { "type": "string" },
-    "timestamp": { "type": "string", "format": "date-time" },
+    "timestamp": { "type": "string" },
     "parts": {
       "type": "array",
       "items": { "type": "string" }
     },
     "components": {
-      "oneOf": [
-        {
-          "type": "object",
-          "properties": {
-            "nextId": { "type": "integer", "minimum": 0 }
-          }
-        },
-        {
-          "type": "object",
-          "properties": {
-            "allComponents": {
-              "type": "array",
-              "items": {
+      "type": "object",
+      "properties": {
+        "nextId": { "type": "integer", "minimum": 0 },
+        "allComponents": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name"],
+            "properties": {
+              "id": { "type": "integer" },
+              "name": { "type": "string" },
+              "quantity": { "type": "integer", "minimum": 1 },
+              "properties": {
                 "type": "object",
-                "required": ["id", "name"],
-                "properties": {
-                  "id": { "type": "integer" },
-                  "name": { "type": "string" },
-                  "quantity": { "type": "integer", "minimum": 1 },
-                  "properties": {
-                    "type": "object",
-                    "patternProperties": {
-                      "^.*$": { "type": "string" }
-                    }
-                  },
-                  "propertyOrder": {
-                    "type": "array",
-                    "items": { "type": "string" }
-                  },
-                  "children": {
-                    "type": "array"
-                  },
-                  "expanded": { "type": "boolean" },
-                  "status": { "type": "string" },
-                  "nameSource": { "type": "string" }
+                "patternProperties": {
+                  "^.*$": { "type": "string" }
                 }
-              }
+              },
+              "propertyOrder": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "children": {
+                "type": "array"
+              },
+              "expanded": { "type": "boolean" },
+              "status": { "type": "string" },
+              "nameSource": { "type": "string" }
             }
           }
         }
-      ]
+      }
     }
   }
 }

@@ -1,8 +1,8 @@
 # RefreshData Enhancement - Implementation Summary
 
-**Date**: October 13, 2025
-**Status**: ✅ COMPLETE
-**Version**: 2.0
+**Date**: November 19, 2025
+**Status**: ✅ COMPLETE & OPTIMIZED
+**Version**: 2.1
 
 ---
 
@@ -31,7 +31,7 @@ All recommendations from REFRESH-DATA-ANALYSIS.md have been implemented:
 | 5 | Ships/*.json (67 files) | ships-data.js + ships-data.json | 12 MB each | ✅ Validated |
 | 6 | **craftingHabBuildings.json** | **crafting-hab-data.js** | **8.3 KB** | ✅ **NEW** |
 | 7 | **ship-formulas.json** | **ship-formulas-data.js** | **5.6 MB** | ✅ **NEW** |
-| 8 | **ship-components.json + parts** | **ship-components-data.js/json** | **8.2 MB each** | ✅ **NEW** |
+| 8 | **ship-components.json + parts** | **ship-components-data.js** | **8.2 MB** | ✅ **NEW** |
 | 9 | **resource_tier_analysis.json** | **resource-tier-data.js** | **36 KB** | ✅ **NEW** |
 | 10 | **resource_type_tier_lookup.json** | **resource-type-tier-data.js** | **2.6 KB** | ✅ **NEW** |
 
@@ -418,7 +418,7 @@ All 10 Data/ output files generated successfully:
 - ✅ ships-data.js (12 MB) + ships-data.json (12 MB)
 - ✅ crafting-hab-data.js (8.3 KB)
 - ✅ ship-formulas-data.js (5.6 MB)
-- ✅ ship-components-data.js (8.2 MB) + ship-components-data.json (8.2 MB)
+- ✅ ship-components-data.js (8.2 MB) ~~+ ship-components-data.json (8.2 MB)~~ **[Removed: dead code]**
 - ✅ resource-tier-data.js (36 KB)
 - ✅ resource-type-tier-data.js (2.6 KB)
 - ✅ REFRESH-REPORT.json (3.9 KB)
@@ -448,4 +448,27 @@ The RefreshData enhancement successfully transforms a basic JSON-to-JS converter
 
 ---
 
-**Questions?** See [REFRESH-DATA-ANALYSIS.md](./REFRESH-DATA-ANALYSIS.md) for detailed analysis and recommendations.
+---
+
+## 🆕 Version 2.1 Updates (November 19, 2025)
+
+### Optimizations
+- ✅ **Removed dead code**: `ship-components-data.json` (8.3 MB saved)
+  - File was generated but never used by any application
+  - ShipExplorer fetches raw JSON files directly from `JSON/` folder
+  - Only `.js` output is now generated for ship-components
+
+### Bug Fixes
+- ✅ Fixed schema validation issues:
+  - Fixed `oneOf` constraint error in `shipComponents.schema.json`
+  - Added `ajv-formats` package for date-time format validation
+  - All schemas now validate cleanly without warnings
+
+### Improvements
+- ✅ Enhanced schema flexibility for ship-components manifest and parts
+- ✅ Better error messages and validation reporting
+- ✅ Cleaner output with no false positives
+
+---
+
+**Questions?** See [Documentation/Archive/REFRESH-DATA-ANALYSIS.md](../Documentation/Archive/REFRESH-DATA-ANALYSIS.md) for original analysis (archived).

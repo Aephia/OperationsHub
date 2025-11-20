@@ -1,12 +1,12 @@
 {
-  "timestamp": "2025-10-14T03:19:53.840Z",
+  "timestamp": "2025-11-20T03:04:39.593Z",
   "summary": {
     "total": 10,
     "successful": 10,
     "failed": 0,
-    "withChanges": 3,
+    "withChanges": 2,
     "withBreakingChanges": 0,
-    "newFiles": 1
+    "newFiles": 0
   },
   "details": [
     {
@@ -47,16 +47,14 @@
       "outputFiles": [
         "planet-data.js"
       ],
-      "changed": true,
+      "changed": false,
       "breaking": false,
-      "isNew": true,
       "validationWarning": null,
       "error": null,
       "diff": {
         "breaking": [],
         "additions": [],
-        "modifications": [],
-        "isNew": true
+        "modifications": []
       }
     },
     {
@@ -130,7 +128,6 @@
       "file": "ship-components.json",
       "success": true,
       "outputFiles": [
-        "ship-components-data.json",
         "ship-components-data.js"
       ],
       "changed": true,
@@ -178,11 +175,5 @@
       }
     }
   ],
-  "alerts": [
-    {
-      "level": "INFO",
-      "file": "planets.json",
-      "message": "New file detected: planets.json"
-    }
-  ]
+  "alerts": []
 }

@@ -5,12 +5,14 @@
  */
 
 const Ajv = require('ajv');
+const addFormats = require('ajv-formats');
 const fs = require('fs');
 const path = require('path');
 
 class SchemaValidator {
     constructor(schemasDir) {
         this.ajv = new Ajv({ allErrors: true, strict: false });
+        addFormats(this.ajv); // Add support for format validation (date-time, email, etc.)
         this.schemas = {};
         this.schemasDir = schemasDir;
         this.loadSchemas();
