@@ -564,3 +564,313 @@ body::after {
         font-size: 0.95rem;
     }
 }
+
+/* ====================================
+   JSON Manager Modal Styles
+   ==================================== */
+
+.json-manager-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.json-manager-btn.top-right {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    z-index: 100;
+}
+
+.json-manager-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+}
+
+.json-manager-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+}
+
+.json-manager-content {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border: 2px solid rgba(6, 147, 227, 0.3);
+    border-radius: 16px;
+    max-width: 900px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.json-manager-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2rem 2.5rem;
+    border-bottom: 1px solid rgba(6, 147, 227, 0.2);
+}
+
+.json-manager-header h2 {
+    color: #0693e3;
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.json-manager-close {
+    font-size: 2.5rem;
+    color: #a0a0a0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    line-height: 1;
+    padding: 0 0.3rem;
+}
+
+.json-manager-close:hover {
+    color: #ff4444;
+    transform: rotate(90deg);
+}
+
+.json-manager-body {
+    padding: 2rem 2.5rem;
+}
+
+.json-manager-description {
+    color: #a0a0a0;
+    font-size: 1rem;
+    margin-bottom: 2rem;
+    line-height: 1.6;
+}
+
+.json-file-list h3,
+.json-upload-section h3,
+.json-reset-section h3 {
+    color: #ffffff;
+    font-size: 1.3rem;
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.file-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2.5rem;
+}
+
+.file-card {
+    background: rgba(50, 55, 60, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.file-card:hover {
+    border-color: rgba(6, 147, 227, 0.5);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(6, 147, 227, 0.2);
+}
+
+.file-card.custom-file {
+    border-color: rgba(155, 81, 224, 0.5);
+    background: rgba(155, 81, 224, 0.1);
+}
+
+.file-info {
+    margin-bottom: 1rem;
+}
+
+.file-name {
+    color: #0693e3;
+    font-weight: 600;
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.file-description {
+    color: #a0a0a0;
+    font-size: 0.85rem;
+    margin-bottom: 0.3rem;
+}
+
+.file-size {
+    color: #666;
+    font-size: 0.8rem;
+}
+
+.custom-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-top: 0.5rem;
+}
+
+.file-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.download-btn,
+.reset-file-btn,
+.upload-btn,
+.reset-btn {
+    padding: 0.6rem 1rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.download-btn {
+    background: linear-gradient(135deg, #0693e3 0%, #0567a8 100%);
+    color: white;
+    flex: 1;
+}
+
+.download-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(6, 147, 227, 0.4);
+}
+
+.reset-file-btn {
+    background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+    color: white;
+}
+
+.reset-file-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(243, 156, 18, 0.4);
+}
+
+.json-upload-section,
+.json-reset-section {
+    background: rgba(50, 55, 60, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.upload-note,
+.reset-note {
+    color: #a0a0a0;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+    line-height: 1.5;
+}
+
+.upload-note {
+    color: #f39c12;
+}
+
+.upload-controls {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.upload-btn {
+    background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+    color: white;
+}
+
+.upload-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(46, 204, 113, 0.4);
+}
+
+.selected-file-name {
+    color: #0693e3;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.upload-status {
+    padding: 0.75rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+}
+
+.upload-status.success {
+    background: rgba(46, 204, 113, 0.2);
+    border: 1px solid rgba(46, 204, 113, 0.5);
+    color: #2ecc71;
+}
+
+.upload-status.error {
+    background: rgba(231, 76, 60, 0.2);
+    border: 1px solid rgba(231, 76, 60, 0.5);
+    color: #e74c3c;
+}
+
+.reset-btn {
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    color: white;
+}
+
+.reset-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(231, 76, 60, 0.4);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .json-manager-modal {
+        padding: 1rem;
+    }
+
+    .json-manager-content {
+        max-height: 95vh;
+    }
+
+    .json-manager-header,
+    .json-manager-body {
+        padding: 1.5rem;
+    }
+
+    .file-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .upload-controls {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}

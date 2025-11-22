@@ -43,6 +43,13 @@ class DataLoader {
                 return window.resourcesData;
             }
 
+            // Check if JsonManager is available and has custom file
+            if (window.JsonManager) {
+                const data = await window.JsonManager.getFileData('resources.json', '../JSON/resources.json');
+                console.log('✅ Loaded resources data (via JsonManager)');
+                return data;
+            }
+
             // Fallback to loading from JSON file
             const response = await fetch('../JSON/resources.json');
             if (!response.ok) {
@@ -61,7 +68,19 @@ class DataLoader {
      * Load recipe data
      */
     static async loadRecipeData(basePath) {
-        // Try to get data from global variable first (for backward compatibility)
+        // Check for custom file FIRST (highest priority)
+        if (window.JsonManager && window.JsonManager.hasCustomFile('recipes.json')) {
+            try {
+                const customData = window.JsonManager.getCustomFile('recipes.json');
+                const data = JSON.parse(customData);
+                console.log('✅ Using CUSTOM recipe data from JsonManager');
+                return this.processRecipeData(data);
+            } catch (error) {
+                console.warn('⚠️ Could not parse custom recipes.json:', error);
+            }
+        }
+
+        // Fall back to global variable (from recipes-data.js)
         if (typeof window.rawRecipeData !== 'undefined' && window.rawRecipeData?.recipes) {
             console.log('✅ Using recipe data from global variable');
             return this.processRecipeData(window.rawRecipeData);
@@ -91,7 +110,19 @@ class DataLoader {
      * Load ClaimStake building data
      */
     static async loadClaimStakeData(basePath) {
-        // Try to get data from global variable first
+        // Check for custom file FIRST (highest priority)
+        if (window.JsonManager && window.JsonManager.hasCustomFile('buildings.json')) {
+            try {
+                const customData = window.JsonManager.getCustomFile('buildings.json');
+                const data = JSON.parse(customData);
+                console.log('✅ Using CUSTOM building data from JsonManager');
+                return this.processClaimStakeData(data);
+            } catch (error) {
+                console.warn('⚠️ Could not parse custom buildings.json:', error);
+            }
+        }
+
+        // Fall back to global variable (from buildings-data.js)
         if (typeof window.rawBuildingData !== 'undefined' && window.rawBuildingData?.buildings) {
             console.log('✅ Using building data from global variable');
             return this.processClaimStakeData(window.rawBuildingData);
@@ -121,7 +152,22 @@ class DataLoader {
      * Load Planet data
      */
     static async loadPlanetData(basePath) {
-        // Try to get data from global variable first
+        // Check for custom file FIRST (highest priority)
+        if (window.JsonManager && window.JsonManager.hasCustomFile('planets.json')) {
+            try {
+                const customData = window.JsonManager.getCustomFile('planets.json');
+                const data = JSON.parse(customData);
+                console.log('✅ Using CUSTOM planet data from JsonManager');
+                return {
+                    mapData: data.mapData || data,
+                    totalSystems: (data.mapData || data).length
+                };
+            } catch (error) {
+                console.warn('⚠️ Could not parse custom planets.json:', error);
+            }
+        }
+
+        // Fall back to global variable (from planets-data.js)
         if (typeof window.planetData !== 'undefined' && window.planetData?.mapData) {
             console.log('✅ Using planet data from global variable');
             return {
@@ -162,20 +208,24 @@ class DataLoader {
     static async loadShipData(basePath) {
         // Prefer global variable if available
         if (typeof window.rawShipData !== 'undefined' && window.rawShipData?.ships) {
-            console.log('�o. Using ship data from global variable');
+            console.log('✅ Using ship data from global variable');
             return this.processShipData(window.rawShipData);
         }
+
+        // Note: ship-formulas.json and ship-components files in JsonManager are for reference
+        // ShipExplorer uses raw JSON files from Ships/ directory, not the aggregated data
+        // The JSON Manager files listed are the source data files
 
         // Attempt to fetch aggregated JSON file
         try {
             const response = await fetch(`${basePath}ships-data.json`);
             if (response.ok) {
                 const data = await response.json();
-                console.log('�o. Loaded ship data from JSON file');
+                console.log('✅ Loaded ship data from JSON file');
                 return this.processShipData(data);
             }
         } catch (error) {
-            console.warn('�s��,? Could not load ships-data.json, checking fallback sources');
+            console.warn('⚠️ Could not load ships-data.json, checking fallback sources');
         }
 
         // Fallback to global variable defined without window attachment

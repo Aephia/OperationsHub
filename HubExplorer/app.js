@@ -16,16 +16,28 @@ async function init() {
 // Load hab data
 async function loadData() {
     try {
-        // Use validated, processed data from RefreshData pipeline
+        // Check for custom file FIRST (highest priority)
+        if (window.JsonManager && window.JsonManager.hasCustomFile('craftingHabBuildings.json')) {
+            try {
+                const customData = window.JsonManager.getCustomFile('craftingHabBuildings.json');
+                habData = JSON.parse(customData);
+                console.log('✅ Using CUSTOM hab data from JsonManager:', habData);
+                return;
+            } catch (error) {
+                console.warn('⚠️ Could not parse custom craftingHabBuildings.json:', error);
+            }
+        }
+
+        // Fall back to processed data from RefreshData pipeline
         const response = await fetch('../Data/crafting-hab-data.js');
         const text = await response.text();
         // Execute the script to load the global variable
         eval(text);
         // craftingHabData is now available as a global variable
         habData = window.craftingHabData || craftingHabData;
-        console.log('Hab data loaded from processed source:', habData);
+        console.log('✅ Hab data loaded from processed source:', habData);
     } catch (error) {
-        console.error('Error loading hab data:', error);
+        console.error('❌ Error loading hab data:', error);
     }
 }
 

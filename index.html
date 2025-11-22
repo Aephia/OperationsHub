@@ -15,6 +15,7 @@
     <div class="grid-overlay"></div>
 
     <header class="hero">
+        <button class="json-manager-btn top-right" id="openJsonManager">📁 JSON Manager</button>
         <div class="hero-content">
             <div class="hero-logo">
                 <img src="Images/channels4_profile.jpg" alt="Aephia Industries Logo" class="logo-image">
@@ -24,10 +25,6 @@
             <p class="hero-subtitle">
                 Tactical suite for Star Atlas fleet operations, resource management, and galactic exploration. Navigate the metaverse with precision.
             </p>
-            <div class="hero-actions">
-                <button class="launch-btn primary" data-href="GaliaViewer/index.html">Launch Galia Viewer</button>
-                <a class="secondary-link" href="#modules">Browse All Tools</a>
-            </div>
         </div>
     </header>
 
@@ -142,6 +139,72 @@
         <p>&copy; 2024 Aephia Industries | Star Atlas Operations Hub</p>
     </footer>
 
+    <!-- JSON Manager Modal -->
+    <div class="json-manager-modal" id="jsonManagerModal">
+        <div class="json-manager-content">
+            <div class="json-manager-header">
+                <h2>📁 JSON Data Manager</h2>
+                <span class="json-manager-close" id="closeJsonManager">&times;</span>
+            </div>
+            <div class="json-manager-body">
+                <p class="json-manager-description">
+                    Upload custom JSON files to override default data, or download existing files for backup/editing.
+                </p>
+
+                <!-- File List -->
+                <div class="json-file-list">
+                    <h3>Available JSON Files</h3>
+                    <div class="file-grid" id="fileGrid">
+                        <!-- Files will be populated here -->
+                    </div>
+                </div>
+
+                <!-- Upload Section -->
+                <div class="json-upload-section">
+                    <h3>Upload Custom JSON File</h3>
+                    <p class="upload-note">
+                        ⚠️ Uploading a file will override the existing file in your browser's storage. The original file in the JSON folder will not be modified.
+                    </p>
+
+                    <div class="upload-instructions">
+                        <h4>📋 Upload Instructions:</h4>
+                        <ul>
+                            <li><strong>File Format:</strong> Must be a valid JSON file (.json extension)</li>
+                            <li><strong>File Naming:</strong> Must match exactly one of the file names above (e.g., "recipes.json", "planets.json")</li>
+                            <li><strong>File Structure:</strong> Must match the expected schema for that file type</li>
+                            <li><strong>File Size:</strong> Limited by browser localStorage (~5-10MB depending on browser)</li>
+                            <li><strong>Validation:</strong> File will be validated before upload - invalid JSON will be rejected</li>
+                            <li><strong>Effect:</strong> Changes take effect after refreshing the page</li>
+                        </ul>
+                        <div class="tip-box">
+                            💡 <strong>Tip:</strong> Download the existing file first, make your changes, then upload the modified version with the same filename.
+                        </div>
+                    </div>
+
+                    <div class="upload-controls">
+                        <input type="file" id="jsonFileInput" accept=".json" style="display: none;">
+                        <button class="upload-btn" id="selectFileBtn">
+                            📤 Select JSON File
+                        </button>
+                        <span id="selectedFileName" class="selected-file-name"></span>
+                    </div>
+                    <div class="upload-status" id="uploadStatus"></div>
+                </div>
+
+                <!-- Reset Section -->
+                <div class="json-reset-section">
+                    <h3>Reset to Defaults</h3>
+                    <p class="reset-note">
+                        Clear all custom uploads and revert to original JSON files from the JSON folder.
+                    </p>
+                    <button class="reset-btn" id="resetAllBtn">
+                        🔄 Reset All Files to Default
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Help Modal -->
     <div class="help-modal" id="helpModal">
         <div class="help-modal-content">
@@ -153,6 +216,7 @@
     </div>
 
     <script src="Documentation/module-help-content.js"></script>
+    <script src="Utils/JsonManager.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             // Launch module buttons
@@ -198,6 +262,32 @@
             window.addEventListener('click', (event) => {
                 if (event.target === helpModal) {
                     helpModal.style.display = 'none';
+                }
+            });
+
+            // JSON Manager handlers
+            const jsonManagerModal = document.getElementById('jsonManagerModal');
+            const openJsonManagerBtn = document.getElementById('openJsonManager');
+            const closeJsonManagerBtn = document.getElementById('closeJsonManager');
+
+            if (openJsonManagerBtn) {
+                openJsonManagerBtn.addEventListener('click', () => {
+                    jsonManagerModal.style.display = 'flex';
+                    if (window.JsonManager) {
+                        window.JsonManager.populateFileList();
+                    }
+                });
+            }
+
+            if (closeJsonManagerBtn) {
+                closeJsonManagerBtn.addEventListener('click', () => {
+                    jsonManagerModal.style.display = 'none';
+                });
+            }
+
+            window.addEventListener('click', (event) => {
+                if (event.target === jsonManagerModal) {
+                    jsonManagerModal.style.display = 'none';
                 }
             });
         });
