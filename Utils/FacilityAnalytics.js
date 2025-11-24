@@ -139,13 +139,13 @@ class FacilityAnalytics {
                     <div class="stat-label">Total Build Time</div>
                     <div class="stat-value">${(totalTime / 60).toFixed(1)}h</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card ${validation.crewInsufficient ? 'invalid' : ''}">
                     <div class="stat-label">Total Crew</div>
-                    <div class="stat-value">${facilityStats.totalNeededCrew}/${facilityStats.totalCrewSlots}</div>
+                    <div class="stat-value">${facilityStats.totalNeededCrew}/${facilityStats.totalCrewSlots}${validation.crewInsufficient ? ' ⚠️' : ''}</div>
                 </div>
-                <div class="stat-card ${validation.powerInsufficient ? 'warning' : ''}">
+                <div class="stat-card ${validation.powerInsufficient ? 'invalid' : ''}">
                     <div class="stat-label">Net Power</div>
-                    <div class="stat-value">${validation.powerOutput - validation.powerConsumption}W</div>
+                    <div class="stat-value">${validation.powerOutput - validation.powerConsumption}W${validation.powerInsufficient ? ' ⚠️' : ''}</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-label">Storage Capacity</div>
@@ -343,14 +343,16 @@ class FacilityAnalytics {
         const ctx = document.getElementById('crewAllocationChart');
         if (!ctx) return;
 
+        const crewInsufficient = facilityStats.totalNeededCrew > facilityStats.totalCrewSlots;
+
         const data = {
             labels: buildings.map(b => b.name.substring(0, 20)),
             datasets: [
                 {
                     label: 'Crew Needed',
                     data: buildings.map(b => b.neededCrew || 0),
-                    backgroundColor: 'rgba(255, 152, 0, 0.7)',
-                    borderColor: 'rgba(255, 152, 0, 1)',
+                    backgroundColor: crewInsufficient ? 'rgba(244, 67, 54, 0.7)' : 'rgba(255, 152, 0, 0.7)',
+                    borderColor: crewInsufficient ? 'rgba(244, 67, 54, 1)' : 'rgba(255, 152, 0, 1)',
                     borderWidth: 2
                 },
                 {
@@ -394,7 +396,10 @@ class FacilityAnalytics {
             statsDiv.innerHTML = `
                 <div class="stat-row">Total Crew Needed: <strong>${facilityStats.totalNeededCrew}</strong></div>
                 <div class="stat-row">Total Crew Slots: <strong>${facilityStats.totalCrewSlots}</strong></div>
-                <div class="stat-row">Efficiency: <strong>${((facilityStats.totalNeededCrew / Math.max(facilityStats.totalCrewSlots, 1)) * 100).toFixed(1)}%</strong></div>
+                <div class="stat-row ${crewInsufficient ? 'negative' : ''}">
+                    Status: <strong>${crewInsufficient ? 'INSUFFICIENT ⚠️' : 'OK ✓'}</strong>
+                </div>
+                <div class="stat-row">Utilization: <strong>${((facilityStats.totalNeededCrew / Math.max(facilityStats.totalCrewSlots, 1)) * 100).toFixed(1)}%</strong></div>
             `;
         }
     }

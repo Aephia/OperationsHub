@@ -374,44 +374,14 @@ class ConstructionManager {
         return ConstructionUtils.getClaimStakePower(tier);
     }
 
-    // Validate facility plan for power and slot requirements - EXACT GaliaViewer
+    // Validate facility plan for power, slot, and crew requirements - Uses shared utility
     validateFacilityPlan() {
         if (!this.currentFacilityPlan) return { valid: true };
 
         const buildings = this.currentFacilityPlan.buildings;
         const claimStakeTier = this.currentFacilityPlan.claimStakeTier;
 
-        // Calculate total slots used
-        const totalSlotsUsed = buildings.reduce((sum, building) => sum + (building.slots || 0), 0);
-        const availableSlots = this.getClaimStakeSlots(claimStakeTier);
-
-        // Calculate power consumption and generation
-        const basePower = this.getClaimStakePower(claimStakeTier);
-        const buildingPowerOutput = buildings.reduce((sum, building) => sum + (building.power || 0), 0);
-        const totalPowerOutput = basePower + buildingPowerOutput;
-
-        // Find buildings that have power consumption (negative power)
-        const powerConsumption = buildings.reduce((sum, building) => {
-            if (building.resourceRate) {
-                Object.values(building.resourceRate).forEach(rate => {
-                    if (rate < 0) sum += Math.abs(rate) * 10; // Convert to power units
-                });
-            }
-            return sum;
-        }, 0);
-
-        const validation = {
-            valid: totalSlotsUsed <= availableSlots && totalPowerOutput >= powerConsumption,
-            slotsUsed: totalSlotsUsed,
-            availableSlots: availableSlots,
-            slotsExceeded: totalSlotsUsed > availableSlots,
-            powerOutput: totalPowerOutput,
-            powerConsumption: powerConsumption,
-            powerInsufficient: totalPowerOutput < powerConsumption,
-            basePower: basePower,
-            buildingPower: buildingPowerOutput
-        };
-
+        const validation = ConstructionUtils.validateFacilityPlan(buildings, claimStakeTier);
         this.currentFacilityPlan.validation = validation;
         return validation;
     }
@@ -564,7 +534,10 @@ class ConstructionManager {
             if (validation.powerInsufficient) {
                 errorMessage += `• Insufficient power: ${validation.powerOutput} available, ${validation.powerConsumption} required\n`;
             }
-            errorMessage += '\nPlease upgrade your claim stake tier or remove other buildings first.';
+            if (validation.crewInsufficient) {
+                errorMessage += `• Insufficient crew slots: ${validation.crewRequired} required, ${validation.crewSlots} available\n`;
+            }
+            errorMessage += '\nPlease upgrade your claim stake tier, add crew quarters, or remove other buildings first.';
 
             alert(errorMessage);
             return;
@@ -614,6 +587,7 @@ class ConstructionManager {
                     ⚠️ <strong>Validation Issues:</strong><br>
                     ${validation.slotsExceeded ? `• Slots exceeded: ${validation.slotsUsed}/${validation.availableSlots}<br>` : ''}
                     ${validation.powerInsufficient ? `• Power insufficient: ${validation.powerOutput}/${validation.powerConsumption}<br>` : ''}
+                    ${validation.crewInsufficient ? `• Crew insufficient: ${validation.crewRequired} required, ${validation.crewSlots} available<br>` : ''}
                 </div>
             `;
         } else {
@@ -633,7 +607,9 @@ class ConstructionManager {
                 <strong>Slots Used: ${validation.slotsUsed}/${validation.availableSlots}</strong>
                 ${validation.slotsExceeded ? ' <span style="color: #ff4444;">⚠️</span>' : ' <span style="color: #4CAF50;">✓</span>'}<br>
                 <strong>Power: ${validation.powerOutput} output, ${validation.powerConsumption} consumption</strong>
-                ${validation.powerInsufficient ? ' <span style="color: #ff4444;">⚠️</span>' : ' <span style="color: #4CAF50;">✓</span>'}
+                ${validation.powerInsufficient ? ' <span style="color: #ff4444;">⚠️</span>' : ' <span style="color: #4CAF50;">✓</span>'}<br>
+                <strong>Crew: ${validation.crewRequired || 0} required, ${validation.crewSlots || 0} available</strong>
+                ${validation.crewInsufficient ? ' <span style="color: #ff4444;">⚠️</span>' : ' <span style="color: #4CAF50;">✓</span>'}
             </div>
 
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px; margin-bottom: 15px;">
@@ -677,15 +653,6 @@ class ConstructionManager {
                     <div style="font-size: 11px;">• Crew Required: ${facilityStats.totalNeededCrew}</div>
                     <div style="font-size: 11px;">• Power Output: <span style="color: ${facilityStats.totalPower < 0 ? '#f44336' : 'inherit'}">${facilityStats.totalPower}</span></div>
                     <div style="font-size: 11px;">• Storage Capacity: ${facilityStats.totalStorage.toLocaleString()}</div>
-                </div>
-
-                <!-- Facility Features -->
-                <div style="background: #2a2a3e; padding: 10px; border-radius: 4px;">
-                    <strong>🏗️ Facility Features:</strong><br>
-                    <div style="font-size: 11px;">• Building Slots: ${facilityStats.totalSlots}</div>
-                    <div style="font-size: 11px;">• Comes with Stake: ${facilityStats.comesWithStake ? 'Yes' : 'No'}</div>
-                    <div style="font-size: 11px;">• Removable Buildings: ${facilityStats.removableBuildings}</div>
-                    ${facilityStats.enabledFeatures.length > 0 ? `<div style="font-size: 11px;">• Enables: ${facilityStats.enabledFeatures.slice(0, 3).join(', ')}${facilityStats.enabledFeatures.length > 3 ? '...' : ''}</div>` : ''}
                 </div>
 
                 <!-- Resource Production -->
@@ -859,6 +826,9 @@ class ConstructionManager {
             }
             if (validation.powerInsufficient) {
                 errorMessage += `• Insufficient power: ${validation.powerOutput} available, ${validation.powerConsumption} required\n`;
+            }
+            if (validation.crewInsufficient) {
+                errorMessage += `• Insufficient crew slots: ${validation.crewRequired} required, ${validation.crewSlots} available\n`;
             }
             errorMessage += '\nPlease fix these issues before constructing the facility.';
             alert(errorMessage);
@@ -1138,6 +1108,7 @@ class ConstructionManager {
                     <div style="font-size: 18px; font-weight: bold; margin-bottom: 10px;">⚠️ Validation Issues</div>
                     ${validation.slotsExceeded ? `<div>• Slots exceeded: ${validation.slotsUsed}/${validation.availableSlots}</div>` : ''}
                     ${validation.powerInsufficient ? `<div>• Power insufficient: ${validation.powerOutput}/${validation.powerConsumption}</div>` : ''}
+                    ${validation.crewInsufficient ? `<div>• Crew insufficient: ${validation.crewRequired} required, ${validation.crewSlots} available</div>` : ''}
                 </div>
             `}
 

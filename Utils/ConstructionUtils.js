@@ -133,7 +133,7 @@ class ConstructionUtils {
         });
     }
 
-    // Validate facility plan for power and slot requirements
+    // Validate facility plan for power, slot, and crew requirements
     static validateFacilityPlan(buildings, claimStakeTier) {
         if (!buildings || buildings.length === 0) {
             return { valid: true };
@@ -158,16 +158,27 @@ class ConstructionUtils {
             return sum;
         }, 0);
 
+        // Calculate crew slots and requirements
+        const totalCrewSlots = buildings.reduce((sum, building) => sum + (building.crewSlots || 0), 0);
+        const totalCrewRequired = buildings.reduce((sum, building) => sum + (building.neededCrew || 0), 0);
+
+        const slotsExceeded = totalSlotsUsed > availableSlots;
+        const powerInsufficient = totalPowerOutput < powerConsumption;
+        const crewInsufficient = totalCrewRequired > totalCrewSlots;
+
         const validation = {
-            valid: totalSlotsUsed <= availableSlots && totalPowerOutput >= powerConsumption,
+            valid: !slotsExceeded && !powerInsufficient && !crewInsufficient,
             slotsUsed: totalSlotsUsed,
             availableSlots: availableSlots,
-            slotsExceeded: totalSlotsUsed > availableSlots,
+            slotsExceeded: slotsExceeded,
             powerOutput: totalPowerOutput,
             powerConsumption: powerConsumption,
-            powerInsufficient: totalPowerOutput < powerConsumption,
+            powerInsufficient: powerInsufficient,
             basePower: basePower,
-            buildingPower: buildingPowerOutput
+            buildingPower: buildingPowerOutput,
+            crewSlots: totalCrewSlots,
+            crewRequired: totalCrewRequired,
+            crewInsufficient: crewInsufficient
         };
 
         return validation;
