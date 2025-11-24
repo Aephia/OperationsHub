@@ -215,9 +215,8 @@ class ConstructionUtils {
 
             // Crew and operations
             stats.totalCrewSlots += building.crewSlots || 0;
-            // Crew required is the max of neededCrew and crewSlots for each building
-            const crewRequired = Math.max(building.neededCrew || 0, building.crewSlots || 0);
-            stats.totalNeededCrew += crewRequired;
+            // Crew required is the neededCrew value (minimum crew to operate the building)
+            stats.totalNeededCrew += building.neededCrew || 0;
             stats.totalPower += building.power || 0;
             stats.totalStorage += building.storage || 0;
             stats.totalSlots += building.slots || 0;
