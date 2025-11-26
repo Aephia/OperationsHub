@@ -301,6 +301,63 @@ class ConstructionUtils {
         const url = `../RecipeExplorer/index.html?recipe=${encodeURIComponent(recipeId)}`;
         window.open(url, '_blank');
     }
+
+    // Filter buildings by selected tiers and types
+    static filterBuildingsByTiersAndTypes(buildings) {
+        const selectedTiers = [];
+        for (let i = 1; i <= 5; i++) {
+            const checkbox = document.getElementById(`tierFilter${i}`);
+            if (checkbox && checkbox.checked) {
+                selectedTiers.push(i);
+            }
+        }
+
+        // Get type filters
+        const extractorChecked = document.getElementById('typeFilterExtractor')?.checked ?? true;
+        const processorChecked = document.getElementById('typeFilterProcessor')?.checked ?? true;
+
+        // Filter by tiers first
+        let filtered = buildings;
+
+        // Apply tier filter if not all tiers are selected
+        if (selectedTiers.length > 0 && selectedTiers.length < 5) {
+            filtered = filtered.filter(building => {
+                const buildingTier = parseInt(building.tier) || 1;
+                return selectedTiers.includes(buildingTier);
+            });
+        }
+
+        // Apply type filters if not all types are selected
+        if (!extractorChecked || !processorChecked) {
+            filtered = filtered.filter(building => {
+                const isExtractor = building.resourceExtractionRate && Object.keys(building.resourceExtractionRate).length > 0;
+                const isProcessor = building.production && Object.keys(building.production).length > 0;
+
+                // If neither extractor nor processor, always include (hubs, storage, etc.)
+                if (!isExtractor && !isProcessor) {
+                    return true;
+                }
+
+                // Include if it matches selected types
+                if (extractorChecked && isExtractor) return true;
+                if (processorChecked && isProcessor) return true;
+
+                return false;
+            });
+        }
+
+        return filtered;
+    }
+
+    // Helper: Get building type for categorization
+    static getBuildingType(building) {
+        if (building.addedTags?.includes('central-hub')) return 'Hub';
+        if (building.addedTags?.includes('processing-hub')) return 'Processing';
+        if (building.addedTags?.includes('storage-hub')) return 'Storage';
+        if (building.resourceExtractionRate) return 'Extraction';
+        if (building.power && building.power > 0) return 'Power';
+        return 'Other';
+    }
 }
 
 // Export for use in other modules

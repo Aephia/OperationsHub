@@ -163,6 +163,44 @@ class ConstructionManager {
                             />
                         </div>
 
+                        <!-- Tier Filters -->
+                        <div style="margin-bottom: 15px; padding: 10px; background: #2a2a3e; border-radius: 6px;">
+                            <div style="font-size: 12px; color: #aaa; margin-bottom: 8px;">Filter by Tier:</div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;">
+                                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 12px; color: #ccc;">
+                                    <input type="checkbox" id="tierFilter1" checked onchange="window.constructionManager.applyTierFilters()" style="cursor: pointer;">
+                                    T1
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 12px; color: #ccc;">
+                                    <input type="checkbox" id="tierFilter2" checked onchange="window.constructionManager.applyTierFilters()" style="cursor: pointer;">
+                                    T2
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 12px; color: #ccc;">
+                                    <input type="checkbox" id="tierFilter3" checked onchange="window.constructionManager.applyTierFilters()" style="cursor: pointer;">
+                                    T3
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 12px; color: #ccc;">
+                                    <input type="checkbox" id="tierFilter4" checked onchange="window.constructionManager.applyTierFilters()" style="cursor: pointer;">
+                                    T4
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 12px; color: #ccc;">
+                                    <input type="checkbox" id="tierFilter5" checked onchange="window.constructionManager.applyTierFilters()" style="cursor: pointer;">
+                                    T5
+                                </label>
+                            </div>
+                            <div style="font-size: 12px; color: #aaa; margin-bottom: 8px;">Filter by Type:</div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 12px; color: #ccc;">
+                                    <input type="checkbox" id="typeFilterExtractor" checked onchange="window.constructionManager.applyTierFilters()" style="cursor: pointer;">
+                                    Extractors
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 12px; color: #ccc;">
+                                    <input type="checkbox" id="typeFilterProcessor" checked onchange="window.constructionManager.applyTierFilters()" style="cursor: pointer;">
+                                    Processors
+                                </label>
+                            </div>
+                        </div>
+
                         <div id="buildingsList" style="display: flex; flex-direction: column; gap: 10px; max-height: 800px; overflow-y: auto; padding-right: 10px;">
                             ${this.renderBuildingOptions(compatibleBuildings, system, planet)}
                         </div>
@@ -306,23 +344,29 @@ class ConstructionManager {
 
         const searchLower = searchTerm.toLowerCase().trim();
 
-        // If search is empty, show all buildings
-        if (!searchLower) {
-            this.displayFilteredBuildings(this.currentCompatibleBuildings);
-            return;
+        // Apply tier and type filters first using shared utility
+        let filtered = ConstructionUtils.filterBuildingsByTiersAndTypes(this.currentCompatibleBuildings);
+
+        // Then apply search filter if present
+        if (searchLower) {
+            filtered = filtered.filter(building => {
+                const nameMatch = building.name.toLowerCase().includes(searchLower);
+                const tierMatch = building.tier && building.tier.toString().includes(searchLower);
+                const typeMatch = ConstructionUtils.getBuildingType(building).toLowerCase().includes(searchLower);
+                const descMatch = building.description && building.description.toLowerCase().includes(searchLower);
+
+                return nameMatch || tierMatch || typeMatch || descMatch;
+            });
         }
 
-        // Filter buildings by name, tier, or type
-        const filtered = this.currentCompatibleBuildings.filter(building => {
-            const nameMatch = building.name.toLowerCase().includes(searchLower);
-            const tierMatch = building.tier && building.tier.toString().includes(searchLower);
-            const typeMatch = this.getBuildingType(building).toLowerCase().includes(searchLower);
-            const descMatch = building.description && building.description.toLowerCase().includes(searchLower);
-
-            return nameMatch || tierMatch || typeMatch || descMatch;
-        });
-
         this.displayFilteredBuildings(filtered);
+    }
+
+    // Apply tier filters to building list
+    applyTierFilters() {
+        const searchInput = document.getElementById('buildingSearchInput');
+        const searchTerm = searchInput ? searchInput.value : '';
+        this.filterBuildings(searchTerm);
     }
 
     // Display filtered buildings
@@ -350,18 +394,6 @@ class ConstructionManager {
         if (buildingCount) {
             buildingCount.textContent = `(${buildings.length}${buildings.length !== this.currentCompatibleBuildings.length ? ' / ' + this.currentCompatibleBuildings.length : ''})`;
         }
-    }
-
-    // Helper: Get building type for search
-    getBuildingType(building) {
-        if (building.addedTags?.includes('central-hub')) return 'Hub';
-        if (building.addedTags?.includes('processing-hub')) return 'Processing';
-        if (building.addedTags?.includes('storage-hub')) return 'Storage';
-        if (building.addedTags?.includes('extraction-hub')) return 'Extraction';
-        if (building.addedTags?.includes('farm-hub')) return 'Farm';
-        if (building.resourceExtractionRate) return 'Extractor';
-        if (building.power && building.power > 0) return 'Power';
-        return 'Other';
     }
 
     // Get available slots for claim stake tier - Uses shared utility
@@ -469,8 +501,23 @@ class ConstructionManager {
         }
 
         return buildings.map(building => {
-            const constructionCost = building.constructionCost || {};
-            const costEntries = Object.entries(constructionCost);
+            // Prepare crew, power, and storage info
+            const crewSlots = building.crewSlots || 0;
+            const neededCrew = building.neededCrew || 0;
+            const power = building.power || 0;
+            const storage = building.storage || 0;
+
+            const stats = [];
+            if (neededCrew > 0 || crewSlots > 0) {
+                stats.push(`👥 ${neededCrew}/${crewSlots}`);
+            }
+            if (power !== 0) {
+                const powerColor = power > 0 ? '#4CAF50' : '#f44336';
+                stats.push(`<span style="color: ${powerColor}">⚡ ${power > 0 ? '+' : ''}${power}</span>`);
+            }
+            if (storage > 0) {
+                stats.push(`📦 ${storage.toLocaleString()}`);
+            }
 
             return `
                 <div style="background: #333; padding: 15px; border-radius: 6px; border: 1px solid #555;">
@@ -478,12 +525,9 @@ class ConstructionManager {
                     <div style="font-size: 11px; color: #ccc; margin-bottom: 8px;">Tier ${building.tier} • ${building.constructionTime || 0} minutes</div>
                     <div style="font-size: 11px; margin-bottom: 10px;">${building.description || 'No description'}</div>
 
-                    ${costEntries.length > 0 ? `
-                        <div style="margin-bottom: 10px;">
-                            <div style="font-size: 11px; color: #aaa; margin-bottom: 4px;">Construction Cost:</div>
-                            ${costEntries.map(([resource, amount]) =>
-                                `<div style="font-size: 10px;">• ${resource}: ${amount}</div>`
-                            ).join('')}
+                    ${stats.length > 0 ? `
+                        <div style="margin-bottom: 10px; font-size: 11px; color: #ddd; display: flex; gap: 12px; flex-wrap: wrap;">
+                            ${stats.join(' • ')}
                         </div>
                     ` : ''}
 
