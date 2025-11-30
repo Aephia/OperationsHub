@@ -331,7 +331,8 @@ class ConstructionUtils {
         if (!extractorChecked || !processorChecked) {
             filtered = filtered.filter(building => {
                 const isExtractor = building.resourceExtractionRate && Object.keys(building.resourceExtractionRate).length > 0;
-                const isProcessor = building.production && Object.keys(building.production).length > 0;
+                const isProcessor = building.addedTags?.includes('processor') ||
+                                   building.description?.toLowerCase().includes('processor');
 
                 // If neither extractor nor processor, always include (hubs, storage, etc.)
                 if (!isExtractor && !isProcessor) {
@@ -357,6 +358,34 @@ class ConstructionUtils {
         if (building.resourceExtractionRate) return 'Extraction';
         if (building.power && building.power > 0) return 'Power';
         return 'Other';
+    }
+
+    // Get resource tier from resourcesData
+    static getResourceTier(resourceName) {
+        if (typeof resourcesData === 'undefined' || !resourcesData.resources) {
+            return null;
+        }
+        const resourceNameLower = resourceName.toLowerCase().replace(/\s+/g, '-');
+        const resource = resourcesData.resources.find(r =>
+            r.id === resourceNameLower ||
+            r.name.toLowerCase() === resourceName.toLowerCase()
+        );
+        return resource ? resource.tier : null;
+    }
+
+    // Format planet resources with tiers for display
+    static formatResourcesWithTiers(resources) {
+        if (!resources || resources.length === 0) {
+            return 'None';
+        }
+
+        return resources.map(r => {
+            const tier = this.getResourceTier(r.name);
+            if (tier) {
+                return `${r.name} (T${tier})`;
+            }
+            return r.name;
+        }).join(', ');
     }
 }
 

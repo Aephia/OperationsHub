@@ -140,7 +140,7 @@ class ConstructionManager {
                     </div>
                     <div>
                         <strong>Planet Type:</strong> ${planet.type || 'Unknown'} |
-                        <strong>Available Resources:</strong> ${planet.resources ? planet.resources.map(r => r.name).join(', ') : 'None'}
+                        <strong>Available Resources:</strong> ${ConstructionUtils.formatResourcesWithTiers(planet.resources)}
                     </div>
                 </div>
 

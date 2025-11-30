@@ -609,7 +609,7 @@ export class UIManager {
                 </div>
                 <div>
                     <strong>Planet Type:</strong> ${getPlanetTypeName(planet.type || 0)} |
-                    <strong>Available Resources:</strong> ${planet.resources ? planet.resources.map(r => r.name).join(', ') : 'None'}
+                    <strong>Available Resources:</strong> ${ConstructionUtils.formatResourcesWithTiers(planet.resources)}
                 </div>
             </div>
 
