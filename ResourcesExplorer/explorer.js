@@ -137,7 +137,10 @@ class ResourcesExplorer extends BaseExplorer {
     createResourceCard(resource) {
         const card = document.createElement('div');
         card.className = 'item-card';
-        card.onclick = () => this.showModal(resource);
+        card.onclick = () => {
+            if (window.spaceSounds) window.spaceSounds.click();
+            this.showModal(resource);
+        };
 
         const tierBadge = resource.tier ? `<span class="item-tier">Tier ${resource.tier}</span>` : '';
         const category = resource.category || 'unknown';

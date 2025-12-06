@@ -65,6 +65,9 @@ class RecipeAnalytics {
     }
 
     createRawMaterialModal(material, recipes) {
+        // Play popup open sound
+        if (window.spaceSounds) window.spaceSounds.openPopup();
+
         // Remove existing modal if present
         const existingModal = document.getElementById('rawMaterialModal');
         if (existingModal) {
@@ -131,11 +134,13 @@ class RecipeAnalytics {
 
         // Add event listeners
         modal.querySelector('.modal-close').addEventListener('click', () => {
+            if (window.spaceSounds) window.spaceSounds.closePopup();
             modal.remove();
         });
 
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
+                if (window.spaceSounds) window.spaceSounds.closePopup();
                 modal.remove();
             }
         });
@@ -146,6 +151,7 @@ class RecipeAnalytics {
                 const recipeId = card.getAttribute('data-recipe-id');
                 const recipe = this.allRecipes.find(r => r.id === recipeId);
                 if (recipe) {
+                    if (window.spaceSounds) window.spaceSounds.closePopup();
                     modal.remove(); // Close current modal
                     this.showRecipeDetails(recipe); // Show recipe details
                 }
@@ -155,6 +161,7 @@ class RecipeAnalytics {
         // Add escape key listener
         const escapeHandler = (e) => {
             if (e.key === 'Escape') {
+                if (window.spaceSounds) window.spaceSounds.closePopup();
                 modal.remove();
                 document.removeEventListener('keydown', escapeHandler);
             }
@@ -535,6 +542,9 @@ class RecipeAnalytics {
     }
 
     createRecipeModal(recipe) {
+        // Play popup open sound
+        if (window.spaceSounds) window.spaceSounds.openPopup();
+
         // Remove existing modal if present
         const existingModal = document.getElementById('recipeModal');
         if (existingModal) {
@@ -712,11 +722,13 @@ class RecipeAnalytics {
 
         // Add event listeners
         modal.querySelector('.modal-close').addEventListener('click', () => {
+            if (window.spaceSounds) window.spaceSounds.closePopup();
             modal.remove();
         });
 
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
+                if (window.spaceSounds) window.spaceSounds.closePopup();
                 modal.remove();
             }
         });
@@ -728,6 +740,7 @@ class RecipeAnalytics {
                 const recipeId = item.getAttribute('data-recipe-id');
                 const relatedRecipe = this.allRecipes.find(r => r.id === recipeId);
                 if (relatedRecipe) {
+                    if (window.spaceSounds) window.spaceSounds.closePopup();
                     modal.remove(); // Close current modal
                     this.showRecipeDetails(relatedRecipe); // Show new recipe
                 }
@@ -737,6 +750,7 @@ class RecipeAnalytics {
         // Add escape key listener
         const escapeHandler = (e) => {
             if (e.key === 'Escape') {
+                if (window.spaceSounds) window.spaceSounds.closePopup();
                 modal.remove();
                 document.removeEventListener('keydown', escapeHandler);
             }

@@ -1478,10 +1478,39 @@ a:hover, .view-link:hover {
 .clickable-resources-cell {
     cursor: pointer;
     position: relative;
+    text-align: center;
 }
 
-.clickable-resources-cell:hover {
-    background: rgba(0, 240, 255, 0.1);
+.clickable-resources-cell .clickable-value {
+    display: inline-block;
+    padding: 0.35rem 0.75rem;
+    background: rgba(0, 240, 255, 0.15);
+    border: 1px solid rgba(0, 240, 255, 0.4);
+    border-radius: 8px;
+    color: var(--accent-cyan);
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.clickable-resources-cell:hover .clickable-value {
+    background: rgba(0, 240, 255, 0.3);
+    border-color: var(--accent-cyan);
+    box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
+    transform: scale(1.05);
+}
+
+.clickable-resources-cell .click-hint {
+    display: block;
+    font-size: 0.65rem;
+    color: var(--accent-cyan);
+    opacity: 0.7;
+    margin-top: 0.25rem;
+    transition: opacity 0.2s ease;
+}
+
+.clickable-resources-cell:hover .click-hint {
+    opacity: 1;
 }
 
 .clickable-value {
@@ -1496,10 +1525,6 @@ a:hover, .view-link:hover {
     margin-left: 0.5rem;
     opacity: 0;
     transition: opacity 0.2s ease;
-}
-
-.clickable-resources-cell:hover .click-hint {
-    opacity: 1;
 }
 
 .filter-row input {
@@ -1618,10 +1643,39 @@ a:hover, .view-link:hover {
 .clickable-recipes-cell {
     cursor: pointer;
     position: relative;
+    text-align: center;
 }
 
-.clickable-recipes-cell:hover {
-    background: rgba(0, 240, 255, 0.1);
+.clickable-recipes-cell .clickable-value {
+    display: inline-block;
+    padding: 0.35rem 0.75rem;
+    background: rgba(0, 240, 255, 0.15);
+    border: 1px solid rgba(0, 240, 255, 0.4);
+    border-radius: 8px;
+    color: var(--accent-cyan);
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.clickable-recipes-cell:hover .clickable-value {
+    background: rgba(0, 240, 255, 0.3);
+    border-color: var(--accent-cyan);
+    box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
+    transform: scale(1.05);
+}
+
+.clickable-recipes-cell .click-hint {
+    display: block;
+    font-size: 0.65rem;
+    color: var(--accent-cyan);
+    opacity: 0.7;
+    margin-top: 0.25rem;
+    transition: opacity 0.2s ease;
+}
+
+.clickable-recipes-cell:hover .click-hint {
+    opacity: 1;
 }
 
 /* Recipe Modal */

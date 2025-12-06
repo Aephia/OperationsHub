@@ -218,24 +218,38 @@ class RegionMapApp {
 
         if (showConnectionsCheckbox) {
             showConnectionsCheckbox.addEventListener('change', (e) => {
+                // Play toggle sound
+                if (window.spaceSounds) {
+                    e.target.checked ? window.spaceSounds.select() : window.spaceSounds.deselect();
+                }
                 this.regionMap.setShowConnections(e.target.checked);
             });
         }
 
         if (showLabelsCheckbox) {
             showLabelsCheckbox.addEventListener('change', (e) => {
+                // Play toggle sound
+                if (window.spaceSounds) {
+                    e.target.checked ? window.spaceSounds.select() : window.spaceSounds.deselect();
+                }
                 this.regionMap.setShowLabels(e.target.checked);
             });
         }
 
         if (highlightConnectionsCheckbox) {
             highlightConnectionsCheckbox.addEventListener('change', (e) => {
+                // Play toggle sound
+                if (window.spaceSounds) {
+                    e.target.checked ? window.spaceSounds.select() : window.spaceSounds.deselect();
+                }
                 this.regionMap.setHighlightConnections(e.target.checked);
             });
         }
 
         if (resetViewButton) {
             resetViewButton.addEventListener('click', () => {
+                // Play click sound
+                if (window.spaceSounds) window.spaceSounds.click();
                 this.regionMap.resetView();
             });
         }
@@ -248,6 +262,9 @@ class RegionMapApp {
         // Faction selection
         factionButtons.forEach(btn => {
             btn.addEventListener('click', () => {
+                // Play selection sound
+                if (window.spaceSounds) window.spaceSounds.select();
+
                 // Remove active class from all buttons
                 factionButtons.forEach(b => b.classList.remove('active'));
                 // Add active class to clicked button
@@ -266,6 +283,9 @@ class RegionMapApp {
         // Reset conquest
         if (resetConquestButton) {
             resetConquestButton.addEventListener('click', () => {
+                // Play click sound
+                if (window.spaceSounds) window.spaceSounds.click();
+
                 this.conquestManager.resetAll();
                 this.regionMap.render();
                 // Update region details if one is selected

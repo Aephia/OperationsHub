@@ -184,6 +184,666 @@
             cursor: pointer;
             border: none;
         }
+
+        /* ========================================
+           Star Atlas Themed Construction Modal
+           ======================================== */
+
+        /* CSS Variables for Star Atlas theme */
+        :root {
+            --sa-bg-deep: #0a0a0f;
+            --sa-bg-space: #0d1117;
+            --sa-glass-bg: rgba(13, 17, 23, 0.85);
+            --sa-glass-border: rgba(0, 240, 255, 0.15);
+            --sa-accent-cyan: #00f0ff;
+            --sa-accent-purple: #a855f7;
+            --sa-accent-gold: #fbbf24;
+            --sa-accent-green: #10b981;
+            --sa-accent-red: #ef4444;
+            --sa-text-primary: #e2e8f0;
+            --sa-text-secondary: rgba(226, 232, 240, 0.7);
+            --sa-glow-soft: rgba(0, 240, 255, 0.15);
+            --sa-shadow-glow: 0 0 30px rgba(0, 240, 255, 0.1);
+        }
+
+        /* Construction Modal Overlay */
+        .construction-modal-overlay {
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+        }
+
+        /* Construction Modal Container */
+        .construction-modal {
+            background: linear-gradient(135deg, var(--sa-bg-deep) 0%, var(--sa-bg-space) 100%);
+            color: var(--sa-text-primary);
+            padding: 1.5rem;
+            border-radius: 16px;
+            border: 1px solid var(--sa-glass-border);
+            box-shadow: var(--sa-shadow-glow), 0 25px 50px rgba(0, 0, 0, 0.5);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        /* Modal Header */
+        .construction-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--sa-glass-border);
+        }
+
+        .construction-modal-title {
+            margin: 0;
+            color: var(--sa-accent-cyan);
+            font-size: 1.5rem;
+            text-shadow: 0 0 20px rgba(0, 240, 255, 0.5);
+        }
+
+        .construction-close-btn {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.3s ease;
+        }
+
+        .construction-close-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
+        }
+
+        /* Stake Info Section */
+        .construction-stake-info {
+            background: var(--sa-glass-bg);
+            padding: 1rem;
+            border-radius: 10px;
+            border: 1px solid var(--sa-glass-border);
+            margin-bottom: 1.5rem;
+        }
+
+        .construction-stake-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .construction-stake-select {
+            padding: 0.5rem 1rem;
+            background: rgba(0, 240, 255, 0.1);
+            color: var(--sa-text-primary);
+            border: 1px solid var(--sa-accent-cyan);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.3s ease;
+        }
+
+        .construction-stake-select:hover,
+        .construction-stake-select:focus {
+            background: rgba(0, 240, 255, 0.2);
+            box-shadow: 0 0 10px var(--sa-glow-soft);
+        }
+
+        /* Two Column Layout */
+        .construction-layout {
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .construction-buildings-panel {
+            flex: 0 0 35%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .construction-plan-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Section Titles */
+        .construction-section-title {
+            color: var(--sa-accent-gold);
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .construction-section-title .building-count {
+            color: var(--sa-text-secondary);
+            font-size: 0.875rem;
+        }
+
+        /* Search Input */
+        .construction-search-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--sa-glass-bg);
+            border: 2px solid var(--sa-glass-border);
+            border-radius: 8px;
+            color: var(--sa-text-primary);
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .construction-search-input:focus {
+            outline: none;
+            border-color: var(--sa-accent-cyan);
+            box-shadow: 0 0 15px var(--sa-glow-soft);
+        }
+
+        .construction-search-input::placeholder {
+            color: var(--sa-text-secondary);
+        }
+
+        /* Filters Section */
+        .construction-filters {
+            background: var(--sa-glass-bg);
+            padding: 0.75rem;
+            border-radius: 8px;
+            border: 1px solid var(--sa-glass-border);
+            margin-bottom: 1rem;
+        }
+
+        .construction-filter-label {
+            font-size: 0.75rem;
+            color: var(--sa-text-secondary);
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .construction-filter-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .construction-filter-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .construction-filter-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            cursor: pointer;
+            font-size: 0.75rem;
+            color: var(--sa-text-secondary);
+            transition: color 0.2s ease;
+        }
+
+        .construction-filter-checkbox:hover {
+            color: var(--sa-accent-cyan);
+        }
+
+        .construction-filter-checkbox input {
+            cursor: pointer;
+            accent-color: var(--sa-accent-cyan);
+        }
+
+        /* Buildings List */
+        .construction-buildings-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            max-height: 600px;
+            overflow-y: auto;
+            padding-right: 0.5rem;
+        }
+
+        .construction-buildings-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .construction-buildings-list::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+        }
+
+        .construction-buildings-list::-webkit-scrollbar-thumb {
+            background: var(--sa-accent-cyan);
+            border-radius: 3px;
+        }
+
+        /* Building Card */
+        .construction-building-card {
+            background: var(--sa-glass-bg);
+            padding: 1rem;
+            border-radius: 10px;
+            border: 1px solid var(--sa-glass-border);
+            transition: all 0.3s ease;
+        }
+
+        .construction-building-card:hover {
+            border-color: var(--sa-accent-cyan);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px var(--sa-glow-soft);
+        }
+
+        .construction-building-name {
+            margin: 0 0 0.5rem 0;
+            color: var(--sa-accent-cyan);
+            font-size: 1rem;
+        }
+
+        .construction-building-meta {
+            font-size: 0.75rem;
+            color: var(--sa-text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .construction-building-desc {
+            font-size: 0.75rem;
+            color: var(--sa-text-secondary);
+            margin-bottom: 0.75rem;
+            line-height: 1.4;
+        }
+
+        .construction-building-stats {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            font-size: 0.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--sa-text-secondary);
+        }
+
+        .construction-stat-positive {
+            color: var(--sa-accent-green);
+        }
+
+        .construction-stat-negative {
+            color: var(--sa-accent-red);
+        }
+
+        /* Building Action Buttons */
+        .construction-building-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .construction-btn {
+            border: none;
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: all 0.2s ease;
+        }
+
+        .construction-btn-add {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            flex: 1;
+        }
+
+        .construction-btn-add:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        }
+
+        .construction-btn-recipe {
+            background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%);
+            color: white;
+        }
+
+        .construction-btn-recipe:hover {
+            box-shadow: 0 4px 12px rgba(168, 85, 247, 0.4);
+        }
+
+        .construction-btn-details {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+        }
+
+        .construction-btn-details:hover {
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+        }
+
+        /* Facility Plan Panel */
+        .construction-facility-plan {
+            background: var(--sa-glass-bg);
+            padding: 1rem;
+            border-radius: 10px;
+            border: 1px solid var(--sa-glass-border);
+            max-height: 700px;
+            overflow-y: auto;
+        }
+
+        .construction-plan-title {
+            color: #3b82f6;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        /* Validation Display */
+        .construction-validation {
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+        }
+
+        .construction-validation-success {
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid var(--sa-accent-green);
+            color: var(--sa-accent-green);
+        }
+
+        .construction-validation-error {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid var(--sa-accent-red);
+            color: var(--sa-accent-red);
+        }
+
+        /* Plan Stats */
+        .construction-plan-stats {
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+            line-height: 1.6;
+        }
+
+        .construction-stat-ok {
+            color: var(--sa-accent-green);
+        }
+
+        .construction-stat-warn {
+            color: var(--sa-accent-red);
+        }
+
+        /* Selected Buildings Grid */
+        .construction-selected-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .construction-selected-card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 0.75rem;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            position: relative;
+            border: 1px solid transparent;
+        }
+
+        .construction-selected-card.stake-building {
+            border-color: var(--sa-accent-gold);
+        }
+
+        .construction-selected-card-name {
+            color: var(--sa-accent-cyan);
+            font-weight: bold;
+            margin-bottom: 0.35rem;
+        }
+
+        .construction-selected-card-meta {
+            color: var(--sa-text-secondary);
+            margin-bottom: 0.35rem;
+        }
+
+        .construction-selected-card-stats {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 0.5rem;
+        }
+
+        .construction-selected-card-remove {
+            position: absolute;
+            top: 0.35rem;
+            right: 0.35rem;
+            background: var(--sa-accent-red);
+            color: white;
+            border: none;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.7rem;
+        }
+
+        .construction-stake-badge {
+            color: var(--sa-accent-gold);
+            font-size: 0.7rem;
+            margin-top: 0.35rem;
+        }
+
+        /* Info Cards Grid */
+        .construction-info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 1rem;
+        }
+
+        .construction-info-card {
+            background: var(--sa-glass-bg);
+            padding: 0.75rem;
+            border-radius: 8px;
+            border: 1px solid var(--sa-glass-border);
+        }
+
+        .construction-info-card-title {
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            color: var(--sa-text-primary);
+        }
+
+        .construction-info-card-item {
+            font-size: 0.75rem;
+            color: var(--sa-text-secondary);
+            margin-bottom: 0.25rem;
+        }
+
+        /* Empty State */
+        .construction-empty-state {
+            text-align: center;
+            padding: 3rem 1.5rem;
+            color: var(--sa-text-secondary);
+        }
+
+        .construction-empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .construction-empty-state-text {
+            font-size: 1rem;
+        }
+
+        /* No Matches Message */
+        .construction-no-matches {
+            text-align: center;
+            padding: 1.5rem;
+            color: var(--sa-text-secondary);
+            background: var(--sa-glass-bg);
+            border-radius: 8px;
+            border: 1px solid var(--sa-glass-border);
+        }
+
+        .construction-no-matches h4 {
+            color: var(--sa-accent-gold);
+            margin-bottom: 0.75rem;
+        }
+
+        /* Action Buttons */
+        .construction-plan-actions {
+            margin-top: 1rem;
+            text-align: center;
+            display: flex;
+            justify-content: center;
+            gap: 0.75rem;
+        }
+
+        .construction-btn-clear {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            border: none;
+            padding: 0.6rem 1.25rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+        }
+
+        .construction-btn-clear:hover {
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+        }
+
+        .construction-btn-construct {
+            background: linear-gradient(135deg, var(--sa-accent-green) 0%, #059669 100%);
+            color: white;
+            border: none;
+            padding: 0.6rem 1.25rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+        }
+
+        .construction-btn-construct:hover {
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+        }
+
+        /* Building Details Modal */
+        .construction-details-modal {
+            background: linear-gradient(135deg, var(--sa-bg-deep) 0%, var(--sa-bg-space) 100%);
+            color: var(--sa-text-primary);
+            padding: 1.5rem;
+            border-radius: 16px;
+            border: 1px solid var(--sa-glass-border);
+            box-shadow: var(--sa-shadow-glow);
+        }
+
+        .construction-details-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--sa-glass-border);
+        }
+
+        .construction-details-title {
+            margin: 0;
+            color: var(--sa-accent-cyan);
+        }
+
+        .construction-details-desc {
+            color: var(--sa-text-secondary);
+            font-style: italic;
+            margin-bottom: 1.25rem;
+        }
+
+        .construction-details-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .construction-details-stat {
+            background: var(--sa-glass-bg);
+            padding: 0.75rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .construction-details-stat-label {
+            font-size: 0.75rem;
+            color: var(--sa-text-secondary);
+        }
+
+        .construction-details-stat-value {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: var(--sa-accent-cyan);
+        }
+
+        .construction-details-section {
+            margin-bottom: 1.25rem;
+        }
+
+        .construction-details-section-title {
+            color: var(--sa-accent-purple);
+            border-bottom: 1px solid var(--sa-glass-border);
+            padding-bottom: 0.35rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .construction-details-cost-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 0.75rem;
+        }
+
+        .construction-details-cost-item {
+            background: var(--sa-glass-bg);
+            padding: 0.5rem;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .construction-details-rate-positive {
+            color: var(--sa-accent-green);
+        }
+
+        .construction-details-rate-negative {
+            color: var(--sa-accent-red);
+        }
+
+        .construction-details-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .construction-details-tag {
+            padding: 0.25rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            color: white;
+        }
+
+        .construction-details-tag-green {
+            background: var(--sa-accent-green);
+        }
+
+        .construction-details-tag-red {
+            background: var(--sa-accent-red);
+        }
+
+        .construction-details-tag-gold {
+            background: var(--sa-accent-gold);
+            color: black;
+        }
+
+        .construction-details-tag-blue {
+            background: #3b82f6;
+        }
+
+        .construction-details-technical {
+            background: var(--sa-glass-bg);
+            padding: 1rem;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.75rem;
+        }
+
+        .construction-details-technical p {
+            margin: 0.35rem 0;
+        }
     </style>
 </head>
 <body>
@@ -369,6 +1029,7 @@
     <script src="../Utils/PlanetTypeUtils.js"></script>
     <script src="../Utils/ConstructionUtils.js"></script>
     <script src="../Utils/FacilityAnalytics.js"></script>
+    <script src="../SFX/sounds.js"></script>
 
     <!-- Load Data -->
     <script src="../Data/planet-data.js"></script>

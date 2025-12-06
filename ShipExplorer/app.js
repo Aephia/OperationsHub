@@ -376,6 +376,9 @@ class ShipExplorer {
     switchViewMode(mode) {
         this.viewMode = mode;
 
+        // Play tab switch sound
+        if (window.spaceSounds) window.spaceSounds.tabSwitch();
+
         // Update button states
         document.querySelectorAll('.view-mode-btn').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.mode === mode);
@@ -766,6 +769,9 @@ class ShipExplorer {
 
     switchTab(tabName) {
         this.currentTab = tabName;
+
+        // Play tab switch sound
+        if (window.spaceSounds) window.spaceSounds.tabSwitch();
 
         document.querySelectorAll('.nav-tab').forEach(tab => {
             tab.classList.toggle('active', tab.dataset.tab === tabName);
@@ -1726,6 +1732,9 @@ class ShipExplorer {
     }
 
     showResourceBreakdownModal(totals) {
+        // Play popup open sound
+        if (window.spaceSounds) window.spaceSounds.openPopup();
+
         if (this.activeResourceOverlay) {
             this.activeResourceOverlay.remove();
             this.activeResourceOverlay = null;
@@ -1829,6 +1838,7 @@ class ShipExplorer {
         this.activeResourceOverlay = overlay;
 
         const closeOverlay = () => {
+            if (window.spaceSounds) window.spaceSounds.closePopup();
             if (this.activeResourceOverlay) {
                 this.activeResourceOverlay.remove();
                 this.activeResourceOverlay = null;

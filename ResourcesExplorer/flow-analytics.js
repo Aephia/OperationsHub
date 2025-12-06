@@ -583,6 +583,9 @@ class ResourceFlowAnalytics {
     }
 
     showRecipeUsageModal(resourceName, recipes) {
+        // Play modal open sound
+        if (window.spaceSounds) window.spaceSounds.openPopup();
+
         // Remove existing modal if any
         const existingModal = document.getElementById('recipeUsageModal');
         if (existingModal) {
@@ -629,6 +632,9 @@ class ResourceFlowAnalytics {
     }
 
     showBuildingUsageModal(resourceName, buildings, type) {
+        // Play modal open sound
+        if (window.spaceSounds) window.spaceSounds.openPopup();
+
         // Remove existing modal if any
         const existingModal = document.getElementById('buildingUsageModal');
         if (existingModal) {

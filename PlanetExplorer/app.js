@@ -47,6 +47,9 @@ class PlanetApp extends BaseApp {
             button.addEventListener('click', async (e) => {
                 const subtab = e.target.dataset.subtab;
 
+                // Play tab switch sound
+                if (window.spaceSounds) window.spaceSounds.tabSwitch();
+
                 // Remove active class from all sub-tabs
                 document.querySelectorAll('.sub-nav-tab').forEach(btn => btn.classList.remove('active'));
                 document.querySelectorAll('.subtab-content').forEach(content => content.classList.remove('active'));

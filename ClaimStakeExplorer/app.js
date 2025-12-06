@@ -66,6 +66,9 @@ class ClaimStakeApp {
         const subNavButtons = document.querySelectorAll('.sub-nav-tab');
         subNavButtons.forEach(button => {
             button.addEventListener('click', async (e) => {
+                // Play sub-tab switch sound
+                if (window.spaceSounds) window.spaceSounds.tabSwitch();
+
                 const subtab = e.target.dataset.subtab;
 
                 // Remove active class from all sub-tabs
@@ -100,11 +103,13 @@ class ClaimStakeApp {
         // Modal events
         if (closeModal && modal) {
             closeModal.addEventListener('click', () => {
+                if (window.spaceSounds) window.spaceSounds.closePopup();
                 modal.style.display = 'none';
             });
 
             window.addEventListener('click', (e) => {
                 if (e.target === modal) {
+                    if (window.spaceSounds) window.spaceSounds.closePopup();
                     modal.style.display = 'none';
                 }
             });
@@ -123,6 +128,9 @@ class ClaimStakeApp {
     }
 
     async switchTab(tabName) {
+        // Play tab switch sound
+        if (window.spaceSounds) window.spaceSounds.tabSwitch();
+
         const navTabs = document.querySelectorAll('.nav-tab');
         const targetTabButton = document.querySelector(`[data-tab="${tabName}"]`);
         const targetTabContent = document.getElementById(`${tabName}Tab`);

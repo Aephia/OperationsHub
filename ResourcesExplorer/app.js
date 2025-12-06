@@ -46,6 +46,9 @@ class ResourcesApp extends BaseApp {
         const subNavButtons = document.querySelectorAll('.sub-nav-tab');
         subNavButtons.forEach(button => {
             button.addEventListener('click', async (e) => {
+                // Play tab switch sound
+                if (window.spaceSounds) window.spaceSounds.tabSwitch();
+
                 const subtab = e.target.dataset.subtab;
 
                 // Remove active class from all sub-tabs

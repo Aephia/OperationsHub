@@ -48,6 +48,9 @@ function setupTabs() {
 
     tabButtons.forEach(button => {
         button.addEventListener('click', () => {
+            // Play tab switch sound
+            if (window.spaceSounds) window.spaceSounds.tabSwitch();
+
             const tabName = button.dataset.tab;
 
             // Remove active class from all tabs
@@ -89,6 +92,9 @@ function renderHabs() {
     // Add click listeners
     document.querySelectorAll('.building-card').forEach(card => {
         card.addEventListener('click', () => {
+            // Play click sound
+            if (window.spaceSounds) window.spaceSounds.click();
+
             const buildingId = card.dataset.id;
             const buildingType = card.dataset.type;
             showBuildingDetails(buildingId, buildingType);
@@ -250,6 +256,9 @@ function renderStorageCalculator() {
     // Add click listeners
     storageCalculator.querySelectorAll('.building-card').forEach(card => {
         card.addEventListener('click', () => {
+            // Play click sound
+            if (window.spaceSounds) window.spaceSounds.click();
+
             const buildingId = card.dataset.id;
             showBuildingDetails(buildingId, 'storage');
         });
@@ -258,6 +267,9 @@ function renderStorageCalculator() {
 
 // Show building details in modal
 function showBuildingDetails(buildingId, type) {
+    // Play modal open sound
+    if (window.spaceSounds) window.spaceSounds.openPopup();
+
     let building;
     if (type === 'hab') {
         building = habData.habs.find(h => h.id === buildingId);
@@ -435,9 +447,13 @@ function setupModal() {
     const modal = document.getElementById('building-modal');
     const closeBtn = document.querySelector('.close');
 
-    closeBtn.onclick = () => modal.classList.remove('active');
+    closeBtn.onclick = () => {
+        if (window.spaceSounds) window.spaceSounds.closePopup();
+        modal.classList.remove('active');
+    };
     window.onclick = (event) => {
         if (event.target === modal) {
+            if (window.spaceSounds) window.spaceSounds.closePopup();
             modal.classList.remove('active');
         }
     };
@@ -445,6 +461,9 @@ function setupModal() {
 
 // Plan management
 function addToPlan(building, type) {
+    // Play success sound
+    if (window.spaceSounds) window.spaceSounds.success();
+
     const existing = buildPlan.find(item => item.building.id === building.id);
     if (existing) {
         existing.quantity++;

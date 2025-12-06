@@ -63,7 +63,10 @@ class RecipeOptimizer {
         }
 
         if (optimizeButton) {
-            optimizeButton.addEventListener('click', () => this.optimizePlacement());
+            optimizeButton.addEventListener('click', () => {
+                if (window.spaceSounds) window.spaceSounds.scan();
+                this.optimizePlacement();
+            });
         }
 
         // Add faction filter listeners
@@ -71,7 +74,10 @@ class RecipeOptimizer {
         factionCheckboxes.forEach(id => {
             const checkbox = document.getElementById(id);
             if (checkbox) {
-                checkbox.addEventListener('change', () => {
+                checkbox.addEventListener('change', (e) => {
+                    if (window.spaceSounds) {
+                        e.target.checked ? window.spaceSounds.select() : window.spaceSounds.deselect();
+                    }
                     // Re-optimize if a recipe is selected
                     if (this.selectedRecipe) {
                         this.optimizePlacement();
@@ -160,6 +166,7 @@ class RecipeOptimizer {
         // Add click handlers
         resultsContainer.querySelectorAll('.recipe-result-item').forEach(item => {
             item.addEventListener('click', (e) => {
+                if (window.spaceSounds) window.spaceSounds.click();
                 const recipeData = JSON.parse(decodeURIComponent(e.currentTarget.dataset.recipe));
                 this.selectRecipe(recipeData);
             });
@@ -167,6 +174,7 @@ class RecipeOptimizer {
     }
 
     selectRecipe(recipe) {
+        if (window.spaceSounds) window.spaceSounds.success();
         this.selectedRecipe = recipe;
         const searchInput = document.getElementById('recipeOptimizerSearch');
         const resultsContainer = document.getElementById('recipeSearchResults');

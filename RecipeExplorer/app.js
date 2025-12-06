@@ -277,6 +277,8 @@ class RecipeExplorerApp {
     }
 
     switchTab(tabName) {
+        // Play tab switch sound
+        if (window.spaceSounds) window.spaceSounds.tabSwitch();
 
         // Update tab buttons
         document.querySelectorAll('.nav-tab').forEach(tab => {

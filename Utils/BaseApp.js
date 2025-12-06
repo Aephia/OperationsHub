@@ -43,11 +43,13 @@ class BaseApp {
 
         if (closeModal && modal) {
             closeModal.addEventListener('click', () => {
+                if (window.spaceSounds) window.spaceSounds.closePopup();
                 modal.style.display = 'none';
             });
 
             window.addEventListener('click', (e) => {
                 if (e.target === modal) {
+                    if (window.spaceSounds) window.spaceSounds.closePopup();
                     modal.style.display = 'none';
                 }
             });
@@ -70,6 +72,9 @@ class BaseApp {
 
     switchTab(tabName) {
         console.log(`🔄 Switching to tab: ${tabName}`);
+
+        // Play tab switch sound
+        if (window.spaceSounds) window.spaceSounds.tabSwitch();
 
         const navTabs = document.querySelectorAll('.nav-tab');
         const targetTabButton = document.querySelector(`[data-tab="${tabName}"]`);

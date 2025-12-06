@@ -51,6 +51,10 @@ class BaseExplorer {
             checkbox.id = `${filterType}-${item}`;
             checkbox.value = item;
             checkbox.addEventListener('change', (e) => {
+                // Play filter sound
+                if (window.spaceSounds) {
+                    e.target.checked ? window.spaceSounds.select() : window.spaceSounds.deselect();
+                }
                 console.log(`🔄 ${filterType} checkbox changed: ${item} = ${e.target.checked}`);
                 this.handleFilterChange(filterType);
             });
@@ -194,6 +198,9 @@ class BaseExplorer {
             console.log('ℹ️ Modal not found - likely in test environment, skipping modal display');
             return;
         }
+
+        // Play modal open sound
+        if (window.spaceSounds) window.spaceSounds.openPopup();
 
         this.populateModal(item);
         modal.style.display = 'block';

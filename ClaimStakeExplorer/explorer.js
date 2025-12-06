@@ -62,7 +62,12 @@ class BuildingExplorer {
                 checkbox.type = 'checkbox';
                 checkbox.id = `tier-${tier}`;
                 checkbox.value = tier;
-                checkbox.addEventListener('change', () => this.handleTierFilter());
+                checkbox.addEventListener('change', (e) => {
+                    if (window.spaceSounds) {
+                        e.target.checked ? window.spaceSounds.select() : window.spaceSounds.deselect();
+                    }
+                    this.handleTierFilter();
+                });
 
                 const label = document.createElement('label');
                 label.htmlFor = `tier-${tier}`;
@@ -85,7 +90,12 @@ class BuildingExplorer {
             return;
         }
         propertyCheckboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', () => this.handlePropertyFilter());
+            checkbox.addEventListener('change', (e) => {
+                if (window.spaceSounds) {
+                    e.target.checked ? window.spaceSounds.select() : window.spaceSounds.deselect();
+                }
+                this.handlePropertyFilter();
+            });
         });
     }
 
@@ -96,7 +106,12 @@ class BuildingExplorer {
             return;
         }
         enablesCheckboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', () => this.handleEnablesFilter());
+            checkbox.addEventListener('change', (e) => {
+                if (window.spaceSounds) {
+                    e.target.checked ? window.spaceSounds.select() : window.spaceSounds.deselect();
+                }
+                this.handleEnablesFilter();
+            });
         });
     }
 
@@ -305,6 +320,8 @@ class BuildingExplorer {
 
         // Add click handler to show details
         card.addEventListener('click', () => {
+            // Play click sound
+            if (window.spaceSounds) window.spaceSounds.click();
             this.showBuildingDetails(building);
         });
 
@@ -312,6 +329,9 @@ class BuildingExplorer {
     }
 
     showBuildingDetails(building) {
+        // Play popup open sound
+        if (window.spaceSounds) window.spaceSounds.openPopup();
+
         const modal = document.getElementById('buildingModal');
         const modalTitle = document.getElementById('modalTitle');
         const modalContent = document.getElementById('modalContent');

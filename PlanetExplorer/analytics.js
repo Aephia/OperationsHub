@@ -343,6 +343,9 @@ class PlanetResourceAnalytics extends BaseAnalytics {
     showRegionLocationsPopup(resourceName, region) {
         const locations = this.getLocationsForRegion(resourceName, region);
 
+        // Play popup open sound
+        if (window.spaceSounds) window.spaceSounds.openPopup();
+
         // Remove any existing popup
         const existingPopup = document.querySelector('.region-locations-popup');
         if (existingPopup) {
@@ -376,12 +379,19 @@ class PlanetResourceAnalytics extends BaseAnalytics {
         document.body.appendChild(popup);
 
         // Add close handlers
-        popup.querySelector('.popup-close').addEventListener('click', () => popup.remove());
-        popup.querySelector('.popup-overlay').addEventListener('click', () => popup.remove());
+        popup.querySelector('.popup-close').addEventListener('click', () => {
+            if (window.spaceSounds) window.spaceSounds.closePopup();
+            popup.remove();
+        });
+        popup.querySelector('.popup-overlay').addEventListener('click', () => {
+            if (window.spaceSounds) window.spaceSounds.closePopup();
+            popup.remove();
+        });
 
         // Close on Escape key
         const handleEscape = (e) => {
             if (e.key === 'Escape') {
+                if (window.spaceSounds) window.spaceSounds.closePopup();
                 popup.remove();
                 document.removeEventListener('keydown', handleEscape);
             }

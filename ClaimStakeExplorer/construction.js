@@ -1,5 +1,6 @@
 // Construction Facility Manager for ClaimStake Explorer
 // Complete replication of GaliaViewer/ui.js building functionality (lines 576-1460)
+// Updated with Star Atlas UI Theme
 
 class ConstructionManager {
     constructor() {
@@ -27,18 +28,17 @@ class ConstructionManager {
         }
     }
 
-    // Render planet selection interface
+    // Render planet selection interface - Star Atlas Theme
     renderPlanetSelector() {
         const container = document.getElementById('constructionContent');
         if (!container) return;
 
         let html = `
-            <div style="background: #2a2a3e; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-                <h3 style="color: #4CAF50; margin-bottom: 15px;">🪐 Select Planet for Construction</h3>
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px; color: #ccc;">System:</label>
-                    <select id="systemSelect" onchange="window.constructionManager.onSystemChange()"
-                            style="width: 100%; padding: 8px; background: #1a1a2e; color: white; border: 1px solid #444; border-radius: 4px;">
+            <div class="construction-planet-selector">
+                <h3 class="construction-section-title">🪐 Select Planet for Construction</h3>
+                <div class="construction-form-group">
+                    <label class="construction-label">System:</label>
+                    <select id="systemSelect" onchange="window.constructionManager.onSystemChange()" class="construction-select">
                         <option value="">Select a system...</option>
         `;
 
@@ -51,10 +51,9 @@ class ConstructionManager {
         html += `
                     </select>
                 </div>
-                <div id="planetSelectContainer" style="display: none; margin-top: 15px;">
-                    <label style="display: block; margin-bottom: 5px; color: #ccc;">Planet:</label>
-                    <select id="planetSelect" onchange="window.constructionManager.onPlanetChange()"
-                            style="width: 100%; padding: 8px; background: #1a1a2e; color: white; border: 1px solid #444; border-radius: 4px;">
+                <div id="planetSelectContainer" class="construction-form-group" style="display: none;">
+                    <label class="construction-label">Planet:</label>
+                    <select id="planetSelect" onchange="window.constructionManager.onPlanetChange()" class="construction-select">
                         <option value="">Select a planet...</option>
                     </select>
                 </div>
@@ -67,6 +66,9 @@ class ConstructionManager {
 
     // Handle system selection change
     onSystemChange() {
+        // Play select sound
+        if (window.spaceSounds) window.spaceSounds.select();
+
         const systemIndex = document.getElementById('systemSelect').value;
         const planetContainer = document.getElementById('planetSelectContainer');
         const planetSelect = document.getElementById('planetSelect');
@@ -93,6 +95,9 @@ class ConstructionManager {
 
     // Handle planet selection change
     onPlanetChange() {
+        // Play select sound
+        if (window.spaceSounds) window.spaceSounds.select();
+
         const systemIndex = document.getElementById('systemSelect').value;
         const planetIndex = document.getElementById('planetSelect').value;
         if (!planetIndex || !systemIndex) return;
@@ -109,8 +114,11 @@ class ConstructionManager {
         this.showBuildingModal(system, planet, planetName);
     }
 
-    // Show building construction modal - EXACT GaliaViewer implementation
+    // Show building construction modal - Star Atlas Theme
     showBuildingModal(system, planet, planetName) {
+        // Play modal open sound
+        if (window.spaceSounds) window.spaceSounds.openPopup();
+
         const container = document.getElementById('buildingInterface');
         const compatibleBuildings = this.getCompatibleBuildings(planet, system);
 
@@ -120,17 +128,16 @@ class ConstructionManager {
         this.currentPlanet = planet;
 
         const modalHTML = `
-            <div style="background: #1a1a2e; color: white; padding: 20px; border-radius: 10px; border: 2px solid #444;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #444; padding-bottom: 10px;">
-                    <h2 style="margin: 0; color: #4CAF50;">🏗️ Build Facility - ${planetName}</h2>
+            <div class="construction-modal">
+                <div class="construction-modal-header">
+                    <h2 class="construction-modal-title">🏗️ Build Facility - ${planetName}</h2>
                 </div>
 
                 <!-- Claim Stake Selection -->
-                <div style="margin-bottom: 15px; padding: 10px; background: #2a2a3e; border-radius: 6px;">
-                    <div style="margin-bottom: 10px;">
+                <div class="construction-stake-info">
+                    <div class="construction-stake-row">
                         <strong>🏗️ Select Your Claim Stake Tier:</strong>
-                        <select id="claimStakeTier" onchange="window.constructionManager.updateCompatibleBuildings()"
-                                style="margin-left: 10px; padding: 4px 8px; background: #333; color: white; border: 1px solid #555; border-radius: 4px;">
+                        <select id="claimStakeTier" onchange="window.constructionManager.updateCompatibleBuildings()" class="construction-stake-select">
                             <option value="1">Tier 1 - Basic Stake</option>
                             <option value="2">Tier 2 - Advanced Stake</option>
                             <option value="3">Tier 3 - Professional Stake</option>
@@ -138,95 +145,91 @@ class ConstructionManager {
                             <option value="5">Tier 5 - Mega Stake</option>
                         </select>
                     </div>
-                    <div>
-                        <strong>Planet Type:</strong> ${planet.type || 'Unknown'} |
-                        <strong>Available Resources:</strong> ${ConstructionUtils.formatResourcesWithTiers(planet.resources)}
+                    <div class="construction-planet-info">
+                        <span><strong>Planet Type:</strong> ${planet.type || 'Unknown'}</span>
+                        <span class="construction-divider">|</span>
+                        <span><strong>Available Resources:</strong> ${ConstructionUtils.formatResourcesWithTiers(planet.resources)}</span>
                     </div>
                 </div>
 
                 <!-- Two-column layout -->
-                <div style="display: flex; gap: 20px;">
+                <div class="construction-layout">
                     <!-- Left Panel: Building List (30%) -->
-                    <div style="flex: 0 0 30%; display: flex; flex-direction: column;">
-                        <h3 style="color: #FF9800; margin-bottom: 10px;">Compatible Buildings <span id="buildingCount">(${compatibleBuildings.length})</span></h3>
+                    <div class="construction-buildings-panel">
+                        <h3 class="construction-panel-title">Compatible Buildings <span id="buildingCount">(${compatibleBuildings.length})</span></h3>
 
                         <!-- Search Bar -->
-                        <div style="margin-bottom: 15px;">
+                        <div class="construction-search-container">
                             <input
                                 type="text"
                                 id="buildingSearchInput"
                                 placeholder="🔍 Search buildings..."
-                                style="width: 100%; padding: 10px 15px; background: #2a2a3e; border: 2px solid #444; border-radius: 6px; color: #fff; font-size: 14px; transition: border-color 0.3s;"
+                                class="construction-search-input"
                                 oninput="window.constructionManager.filterBuildings(this.value)"
-                                onfocus="this.style.borderColor='#4CAF50'"
-                                onblur="this.style.borderColor='#444'"
                             />
                         </div>
 
                         <!-- Tier Filters -->
-                        <div style="margin-bottom: 15px; padding: 10px; background: #2a2a3e; border-radius: 6px;">
-                            <div style="font-size: 12px; color: #aaa; margin-bottom: 8px;">Filter by Tier:</div>
-                            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;">
-                                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 12px; color: #ccc;">
-                                    <input type="checkbox" id="tierFilter1" checked onchange="window.constructionManager.applyTierFilters()" style="cursor: pointer;">
+                        <div class="construction-filters">
+                            <div class="construction-filter-label">Filter by Tier:</div>
+                            <div class="construction-filter-group">
+                                <label class="construction-checkbox-label">
+                                    <input type="checkbox" id="tierFilter1" checked onchange="window.constructionManager.applyTierFilters()">
                                     T1
                                 </label>
-                                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 12px; color: #ccc;">
-                                    <input type="checkbox" id="tierFilter2" checked onchange="window.constructionManager.applyTierFilters()" style="cursor: pointer;">
+                                <label class="construction-checkbox-label">
+                                    <input type="checkbox" id="tierFilter2" checked onchange="window.constructionManager.applyTierFilters()">
                                     T2
                                 </label>
-                                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 12px; color: #ccc;">
-                                    <input type="checkbox" id="tierFilter3" checked onchange="window.constructionManager.applyTierFilters()" style="cursor: pointer;">
+                                <label class="construction-checkbox-label">
+                                    <input type="checkbox" id="tierFilter3" checked onchange="window.constructionManager.applyTierFilters()">
                                     T3
                                 </label>
-                                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 12px; color: #ccc;">
-                                    <input type="checkbox" id="tierFilter4" checked onchange="window.constructionManager.applyTierFilters()" style="cursor: pointer;">
+                                <label class="construction-checkbox-label">
+                                    <input type="checkbox" id="tierFilter4" checked onchange="window.constructionManager.applyTierFilters()">
                                     T4
                                 </label>
-                                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 12px; color: #ccc;">
-                                    <input type="checkbox" id="tierFilter5" checked onchange="window.constructionManager.applyTierFilters()" style="cursor: pointer;">
+                                <label class="construction-checkbox-label">
+                                    <input type="checkbox" id="tierFilter5" checked onchange="window.constructionManager.applyTierFilters()">
                                     T5
                                 </label>
                             </div>
-                            <div style="font-size: 12px; color: #aaa; margin-bottom: 8px;">Filter by Type:</div>
-                            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 12px; color: #ccc;">
-                                    <input type="checkbox" id="typeFilterExtractor" checked onchange="window.constructionManager.applyTierFilters()" style="cursor: pointer;">
+                            <div class="construction-filter-label">Filter by Type:</div>
+                            <div class="construction-filter-group">
+                                <label class="construction-checkbox-label">
+                                    <input type="checkbox" id="typeFilterExtractor" checked onchange="window.constructionManager.applyTierFilters()">
                                     Extractors
                                 </label>
-                                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 12px; color: #ccc;">
-                                    <input type="checkbox" id="typeFilterProcessor" checked onchange="window.constructionManager.applyTierFilters()" style="cursor: pointer;">
+                                <label class="construction-checkbox-label">
+                                    <input type="checkbox" id="typeFilterProcessor" checked onchange="window.constructionManager.applyTierFilters()">
                                     Processors
                                 </label>
                             </div>
                         </div>
 
-                        <div id="buildingsList" style="display: flex; flex-direction: column; gap: 10px; max-height: 800px; overflow-y: auto; padding-right: 10px;">
+                        <div id="buildingsList" class="construction-buildings-list">
                             ${this.renderBuildingOptions(compatibleBuildings, system, planet)}
                         </div>
                     </div>
 
                     <!-- Right Panel: Facility Plan Summary (70%) -->
-                    <div style="flex: 0 0 70%; display: flex; flex-direction: column;">
-                        <div id="facilityPlan" style="padding: 15px; background: #2a2a3e; border-radius: 6px; max-height: 800px; overflow-y: auto;">
-                            <h3 style="color: #2196F3; margin-bottom: 10px;">🏭 Facility Plan Summary</h3>
+                    <div class="construction-plan-panel">
+                        <div id="facilityPlan" class="construction-facility-plan">
+                            <h3 class="construction-plan-title">🏭 Facility Plan Summary</h3>
                             <div id="selectedBuildings">
-                                <div style="text-align: center; padding: 60px 20px; color: #666;">
-                                    <div style="font-size: 48px; margin-bottom: 15px;">👈</div>
-                                    <div style="font-size: 16px;">Select buildings to start planning</div>
+                                <div class="construction-empty-state">
+                                    <div class="construction-empty-icon">👈</div>
+                                    <div class="construction-empty-text">Select buildings to start planning</div>
                                 </div>
                             </div>
-                            <div id="facilityPlanActions" style="margin-top: 15px; text-align: center; display: none;">
-                                <button onclick="window.constructionManager.clearFacilityPlan()"
-                                        style="background: #ff4444; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-right: 10px;">
+                            <div id="facilityPlanActions" class="construction-plan-actions" style="display: none;">
+                                <button onclick="window.constructionManager.clearFacilityPlan()" class="construction-btn construction-btn-danger">
                                     Clear Plan
                                 </button>
-                                <button onclick="window.constructionManager.exportFacilityDiagram()"
-                                        style="background: #2196F3; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-right: 10px;">
+                                <button onclick="window.constructionManager.exportFacilityDiagram()" class="construction-btn construction-btn-secondary">
                                     📊 Export Diagram
                                 </button>
-                                <button onclick="window.constructionManager.constructFacility()"
-                                        style="background: #4CAF50; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+                                <button onclick="window.constructionManager.constructFacility()" class="construction-btn construction-btn-primary">
                                     🚀 Construct Facility
                                 </button>
                             </div>
@@ -289,8 +292,11 @@ class ConstructionManager {
         return ConstructionUtils.getCompatibleBuildings(planet, system, claimStakeTier);
     }
 
-    // Update compatible buildings when claim stake tier changes - EXACT GaliaViewer
+    // Update compatible buildings when claim stake tier changes - with sounds
     updateCompatibleBuildings() {
+        // Play select sound
+        if (window.spaceSounds) window.spaceSounds.select();
+
         if (!this.currentFacilityPlan) return;
 
         const claimStakeTier = parseInt(document.getElementById('claimStakeTier').value) || 1;
@@ -494,7 +500,7 @@ class ConstructionManager {
         return explanation;
     }
 
-    // Render building options - EXACT GaliaViewer
+    // Render building options - Star Atlas Theme
     renderBuildingOptions(buildings, system, planet) {
         if (buildings.length === 0) {
             return this.generateDetailedNoMatchesMessage(planet, system);
@@ -512,36 +518,33 @@ class ConstructionManager {
                 stats.push(`👥 ${neededCrew}/${crewSlots}`);
             }
             if (power !== 0) {
-                const powerColor = power > 0 ? '#4CAF50' : '#f44336';
-                stats.push(`<span style="color: ${powerColor}">⚡ ${power > 0 ? '+' : ''}${power}</span>`);
+                const powerClass = power > 0 ? 'stat-positive' : 'stat-negative';
+                stats.push(`<span class="${powerClass}">⚡ ${power > 0 ? '+' : ''}${power}</span>`);
             }
             if (storage > 0) {
                 stats.push(`📦 ${storage.toLocaleString()}`);
             }
 
             return `
-                <div style="background: #333; padding: 15px; border-radius: 6px; border: 1px solid #555;">
-                    <h4 style="margin: 0 0 8px 0; color: #4CAF50;">${building.name}</h4>
-                    <div style="font-size: 11px; color: #ccc; margin-bottom: 8px;">Tier ${building.tier} • ${building.constructionTime || 0} minutes</div>
-                    <div style="font-size: 11px; margin-bottom: 10px;">${building.description || 'No description'}</div>
+                <div class="construction-building-card">
+                    <h4 class="construction-building-name">${building.name}</h4>
+                    <div class="construction-building-meta">Tier ${building.tier} • ${building.constructionTime || 0} minutes</div>
+                    <div class="construction-building-desc">${building.description || 'No description'}</div>
 
                     ${stats.length > 0 ? `
-                        <div style="margin-bottom: 10px; font-size: 11px; color: #ddd; display: flex; gap: 12px; flex-wrap: wrap;">
+                        <div class="construction-building-stats">
                             ${stats.join(' • ')}
                         </div>
                     ` : ''}
 
-                    <div style="display: flex; gap: 5px; margin-top: 10px;">
-                        <button onclick="window.constructionManager.addBuildingToPlan('${building.id}')"
-                                style="background: #2196F3; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; flex: 1;">
+                    <div class="construction-building-actions">
+                        <button onclick="window.constructionManager.addBuildingToPlan('${building.id}')" class="construction-btn construction-btn-add">
                             ➕ Add to Plan
                         </button>
-                        <button onclick="window.constructionManager.openRecipeExplorer('${building.name}', ${building.tier})"
-                                style="background: #9C27B0; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; flex: 0 0 auto;">
+                        <button onclick="window.constructionManager.openRecipeExplorer('${building.name}', ${building.tier})" class="construction-btn construction-btn-recipe">
                             🧪 Recipe
                         </button>
-                        <button onclick="window.constructionManager.showBuildingDetails('${building.id}')"
-                                style="background: #FF9800; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; flex: 0 0 auto;">
+                        <button onclick="window.constructionManager.showBuildingDetails('${building.id}')" class="construction-btn construction-btn-details">
                             📋 Details
                         </button>
                     </div>
@@ -550,12 +553,15 @@ class ConstructionManager {
         }).join('');
     }
 
-    // Add building to facility plan - EXACT GaliaViewer with validation
+    // Add building to facility plan - with sounds
     addBuildingToPlan(buildingId) {
         if (!this.currentFacilityPlan) return;
 
         const building = window.rawBuildingData.buildings.find(b => b.id === buildingId);
         if (!building) return;
+
+        // Play click sound
+        if (window.spaceSounds) window.spaceSounds.click();
 
         // Check if building is compatible with current claim stake tier
         if (building.minimumTier > this.currentFacilityPlan.claimStakeTier) {
@@ -587,7 +593,8 @@ class ConstructionManager {
             return;
         }
 
-        // Building successfully added
+        // Building successfully added - play success sound
+        if (window.spaceSounds) window.spaceSounds.success();
         this.updateFacilityPlanDisplay();
     }
 
@@ -602,9 +609,9 @@ class ConstructionManager {
         if (this.currentFacilityPlan.buildings.length === 0) {
             // Show placeholder message
             selectedBuildings.innerHTML = `
-                <div style="text-align: center; padding: 60px 20px; color: #666;">
-                    <div style="font-size: 48px; margin-bottom: 15px;">👈</div>
-                    <div style="font-size: 16px;">Select buildings to start planning</div>
+                <div class="construction-empty-state">
+                    <div class="construction-empty-icon">👈</div>
+                    <div class="construction-empty-text">Select buildings to start planning</div>
                 </div>
             `;
             if (facilityPlanActions) facilityPlanActions.style.display = 'none';
@@ -623,11 +630,11 @@ class ConstructionManager {
         const validation = this.validateFacilityPlan();
         const totalTime = this.currentFacilityPlan.buildings.reduce((sum, b) => sum + (b.constructionTime || 0), 0);
 
-        // Validation status display
+        // Validation status display - Star Atlas Theme
         let validationDisplay = '';
         if (!validation.valid) {
             validationDisplay = `
-                <div style="background: #ff4444; padding: 8px; border-radius: 4px; margin-bottom: 10px; font-size: 12px;">
+                <div class="construction-validation construction-validation-error">
                     ⚠️ <strong>Validation Issues:</strong><br>
                     ${validation.slotsExceeded ? `• Slots exceeded: ${validation.slotsUsed}/${validation.availableSlots}<br>` : ''}
                     ${validation.powerInsufficient ? `• Power insufficient: ${validation.powerOutput}/${validation.powerConsumption}<br>` : ''}
@@ -636,7 +643,7 @@ class ConstructionManager {
             `;
         } else {
             validationDisplay = `
-                <div style="background: #4CAF50; padding: 8px; border-radius: 4px; margin-bottom: 10px; font-size: 12px;">
+                <div class="construction-validation construction-validation-success">
                     ✅ <strong>Facility plan is valid!</strong>
                 </div>
             `;
@@ -644,70 +651,69 @@ class ConstructionManager {
 
         selectedBuildings.innerHTML = `
             ${validationDisplay}
-            <div style="margin-bottom: 15px;">
+            <div class="construction-summary-stats">
                 <strong>Buildings Selected: ${this.currentFacilityPlan.buildings.length}</strong><br>
                 <strong>Total Construction Time: ${totalTime} minutes</strong><br>
                 <strong>Claim Stake: Tier ${this.currentFacilityPlan.claimStakeTier}</strong><br>
                 <strong>Slots Used: ${validation.slotsUsed}/${validation.availableSlots}</strong>
-                ${validation.slotsExceeded ? ' <span style="color: #ff4444;">⚠️</span>' : ' <span style="color: #4CAF50;">✓</span>'}<br>
+                ${validation.slotsExceeded ? ' <span class="stat-negative">⚠️</span>' : ' <span class="stat-positive">✓</span>'}<br>
                 <strong>Power: ${validation.powerOutput} output, ${validation.powerConsumption} consumption</strong>
-                ${validation.powerInsufficient ? ' <span style="color: #ff4444;">⚠️</span>' : ' <span style="color: #4CAF50;">✓</span>'}<br>
+                ${validation.powerInsufficient ? ' <span class="stat-negative">⚠️</span>' : ' <span class="stat-positive">✓</span>'}<br>
                 <strong>Crew: ${validation.crewRequired || 0} required, ${validation.crewSlots || 0} available</strong>
-                ${validation.crewInsufficient ? ' <span style="color: #ff4444;">⚠️</span>' : ' <span style="color: #4CAF50;">✓</span>'}
+                ${validation.crewInsufficient ? ' <span class="stat-negative">⚠️</span>' : ' <span class="stat-positive">✓</span>'}
             </div>
 
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px; margin-bottom: 15px;">
+            <div class="construction-selected-buildings">
                 ${this.currentFacilityPlan.buildings.map((building, index) => `
-                    <div style="background: #444; padding: 10px; border-radius: 4px; font-size: 11px; position: relative; ${building.comesWithStake ? 'border: 2px solid #FF9800;' : ''}">
+                    <div class="construction-selected-card ${building.comesWithStake ? 'comes-with-stake' : ''}">
                         ${!building.comesWithStake ? `
-                        <button onclick="window.constructionManager.removeBuildingFromPlan(${index})"
-                                style="background: #f44; color: white; border: none; padding: 2px 6px; border-radius: 2px; cursor: pointer; font-size: 10px; position: absolute; top: 5px; right: 5px;">
+                        <button onclick="window.constructionManager.removeBuildingFromPlan(${index})" class="construction-remove-btn">
                             ✕
                         </button>
                         ` : ''}
-                        <div style="margin-right: 25px;">
-                            <strong style="color: #4CAF50;">${building.name}</strong><br>
-                            <div style="color: #ccc; margin: 4px 0;">Tier ${building.tier} • ${building.constructionTime || 0} min</div>
-                            <div style="display: flex; gap: 10px; margin-top: 6px;">
+                        <div class="construction-selected-content">
+                            <strong class="construction-selected-name">${building.name}</strong><br>
+                            <div class="construction-selected-meta">Tier ${building.tier} • ${building.constructionTime || 0} min</div>
+                            <div class="construction-selected-stats">
                                 <span>👥 ${building.neededCrew || 0}/${building.crewSlots || 0}</span>
                                 <span>⚡ ${building.power || 0}</span>
                                 <span>📦 ${(building.storage || 0).toLocaleString()}</span>
                             </div>
-                            ${building.comesWithStake ? '<div style="color: #FF9800; font-size: 10px; margin-top: 4px;">📍 Included with Stake (Cannot Remove)</div>' : ''}
+                            ${building.comesWithStake ? '<div class="construction-stake-badge">📍 Included with Stake (Cannot Remove)</div>' : ''}
                         </div>
                     </div>
                 `).join('')}
             </div>
 
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px;">
+            <div class="construction-info-grid">
                 <!-- Recipe Ingredients Cost -->
                 ${Object.keys(facilityStats.totalRecipeCost).length > 0 ? `
-                <div style="background: #2a2a3e; padding: 10px; border-radius: 4px;">
+                <div class="construction-info-card">
                     <strong>🧪 Recipe Ingredients:</strong><br>
                     ${Object.entries(facilityStats.totalRecipeCost).map(([resource, amount]) =>
-                        `<div style="font-size: 11px;">• ${resource}: ${amount}</div>`
+                        `<div class="construction-info-item">• ${resource}: ${amount}</div>`
                     ).join('')}
                 </div>
                 ` : ''}
 
                 <!-- Crew & Operations -->
-                <div style="background: #2a2a3e; padding: 10px; border-radius: 4px;">
+                <div class="construction-info-card">
                     <strong>👥 Crew & Operations:</strong><br>
-                    <div style="font-size: 11px;">• Total Crew Slots: ${facilityStats.totalCrewSlots}</div>
-                    <div style="font-size: 11px;">• Crew Required: ${facilityStats.totalNeededCrew}</div>
-                    <div style="font-size: 11px;">• Power Output: <span style="color: ${facilityStats.totalPower < 0 ? '#f44336' : 'inherit'}">${facilityStats.totalPower}</span></div>
-                    <div style="font-size: 11px;">• Storage Capacity: ${facilityStats.totalStorage.toLocaleString()}</div>
+                    <div class="construction-info-item">• Total Crew Slots: ${facilityStats.totalCrewSlots}</div>
+                    <div class="construction-info-item">• Crew Required: ${facilityStats.totalNeededCrew}</div>
+                    <div class="construction-info-item">• Power Output: <span class="${facilityStats.totalPower < 0 ? 'stat-negative' : ''}">${facilityStats.totalPower}</span></div>
+                    <div class="construction-info-item">• Storage Capacity: ${facilityStats.totalStorage.toLocaleString()}</div>
                 </div>
 
                 <!-- Resource Production -->
                 ${Object.keys(facilityStats.resourceExtraction).length > 0 || Object.keys(facilityStats.resourceConsumption).length > 0 ? `
-                <div style="background: #2a2a3e; padding: 10px; border-radius: 4px;">
+                <div class="construction-info-card">
                     <strong>🔄 Resource Production:</strong><br>
                     ${Object.entries(facilityStats.resourceExtraction).map(([resource, rate]) =>
-                        `<div style="font-size: 11px; color: #4CAF50;">• ${resource}: +${rate.toFixed(3)}/hour</div>`
+                        `<div class="construction-info-item stat-positive">• ${resource}: +${rate.toFixed(3)}/hour</div>`
                     ).join('')}
                     ${Object.entries(facilityStats.resourceConsumption).map(([resource, rate]) =>
-                        `<div style="font-size: 11px; color: #f44336;">• ${resource}: -${rate.toFixed(3)}/hour</div>`
+                        `<div class="construction-info-item stat-negative">• ${resource}: -${rate.toFixed(3)}/hour</div>`
                     ).join('')}
                 </div>
                 ` : ''}
@@ -829,7 +835,7 @@ class ConstructionManager {
         return stats;
     }
 
-    // Remove building from plan - EXACT GaliaViewer
+    // Remove building from plan - with sounds
     removeBuildingFromPlan(index) {
         if (!this.currentFacilityPlan || index < 0 || index >= this.currentFacilityPlan.buildings.length) return;
 
@@ -841,21 +847,30 @@ class ConstructionManager {
             return;
         }
 
+        // Play deselect sound
+        if (window.spaceSounds) window.spaceSounds.deselect();
+
         this.currentFacilityPlan.buildings.splice(index, 1);
         this.updateFacilityPlanDisplay();
     }
 
-    // Clear facility plan - EXACT GaliaViewer
+    // Clear facility plan - with sounds
     clearFacilityPlan() {
         if (!this.currentFacilityPlan) return;
+
+        // Play click sound
+        if (window.spaceSounds) window.spaceSounds.click();
 
         // Only remove manually added buildings, keep the ones that come with stake
         this.currentFacilityPlan.buildings = this.currentFacilityPlan.buildings.filter(b => b.comesWithStake);
         this.updateFacilityPlanDisplay();
     }
 
-    // Construct facility (simulation) - EXACT GaliaViewer
+    // Construct facility (simulation) - with sounds
     constructFacility() {
+        // Play scan sound
+        if (window.spaceSounds) window.spaceSounds.scan();
+
         if (!this.currentFacilityPlan || this.currentFacilityPlan.buildings.length === 0) {
             alert('No buildings selected for construction!');
             return;
@@ -923,8 +938,11 @@ class ConstructionManager {
         }
     }
 
-    // Show detailed building information in a modal - EXACT GaliaViewer
+    // Show detailed building information in a modal - Star Atlas Theme
     showBuildingDetails(buildingId) {
+        // Play popup open sound
+        if (window.spaceSounds) window.spaceSounds.openPopup();
+
         const building = window.rawBuildingData.buildings.find(b => b.id === buildingId);
         if (!building) {
             console.error('Building not found:', buildingId);
