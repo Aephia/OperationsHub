@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -6,119 +6,189 @@
     <title>Aephia Industries - Star Atlas Operations</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
     <link rel="icon" type="image/jpeg" href="Images/channels4_profile.jpg">
 </head>
 <body>
-    <div class="orbital-glow"></div>
+    <!-- Animated Background Layers -->
+    <canvas id="starfield-canvas"></canvas>
+    <div class="nebula-bg"></div>
     <div class="grid-overlay"></div>
+    <div class="orbital-glow"></div>
+    <div id="mouse-spotlight"></div>
 
+    <!-- JSON Manager Button -->
+    <button class="json-manager-btn top-right" id="openJsonManager">
+        <span>JSON Manager</span>
+    </button>
+
+    <!-- Hero Section -->
     <header class="hero">
-        <button class="json-manager-btn top-right" id="openJsonManager">📁 JSON Manager</button>
         <div class="hero-content">
-            <div class="hero-logo">
-                <img src="Images/channels4_profile.jpg" alt="Aephia Industries Logo" class="logo-image">
+            <div class="hero-card">
+                <div class="hero-logo">
+                    <img src="Images/channels4_profile.jpg" alt="Aephia Industries Logo" class="logo-image">
+                </div>
+                <span class="hero-tag">Aephia Industries</span>
+                <h1 class="hero-title">Operations Hub</h1>
+                <p class="hero-subtitle">
+                    Tactical suite for Star Atlas fleet operations, resource management, and galactic exploration. Navigate the metaverse with precision.
+                </p>
             </div>
-            <span class="hero-tag">Aephia Industries</span>
-            <h1 class="hero-title">Operations Hub</h1>
-            <p class="hero-subtitle">
-                Tactical suite for Star Atlas fleet operations, resource management, and galactic exploration. Navigate the metaverse with precision.
-            </p>
         </div>
     </header>
 
+    <!-- Main Content -->
     <main class="main-content" id="modules">
+        <!-- Module Cards Grid -->
         <section class="deck">
-            <article class="module-card">
+            <article class="module-card" data-tilt>
+                <div class="card-glow"></div>
                 <div class="module-header">
                     <span class="module-label">Planet Intel</span>
                     <h2>Planet Explorer</h2>
                 </div>
                 <p>Surface atmosphere composition, orbital data, and resource tiers for any surveyed world. Build perfect extraction chains before you touch ground.</p>
-                <div class="module-meta">Mapping • Resources • Strategy</div>
-                <button class="launch-btn" data-href="PlanetExplorer/index.html">Launch Module</button>
+                <div class="module-meta">
+                    <span>Mapping</span>
+                    <span>Resources</span>
+                    <span>Strategy</span>
+                </div>
+                <button class="launch-btn" data-href="PlanetExplorer/index.html">
+                    <span>Launch Module</span>
+                </button>
                 <button class="help-btn" data-module="planetExplorer">Module Guide</button>
             </article>
 
-            <article class="module-card">
+            <article class="module-card" data-tilt>
+                <div class="card-glow"></div>
                 <div class="module-header">
                     <span class="module-label">Fleet Operations</span>
                     <h2>Ship Explorer</h2>
                 </div>
                 <p>Audit hull performance, compare manufacturer loadouts, and study configuration coverage to optimize every fleet deployment.</p>
-                <div class="module-meta">Fleet | Components | Analytics</div>
-                <button class="launch-btn" data-href="ShipExplorer/index.html">Launch Module</button>
+                <div class="module-meta">
+                    <span>Fleet</span>
+                    <span>Components</span>
+                    <span>Analytics</span>
+                </div>
+                <button class="launch-btn" data-href="ShipExplorer/index.html">
+                    <span>Launch Module</span>
+                </button>
                 <button class="help-btn" data-module="shipExplorer">Module Guide</button>
             </article>
 
-            <article class="module-card">
+            <article class="module-card" data-tilt>
+                <div class="card-glow"></div>
                 <div class="module-header">
                     <span class="module-label">Spatial Navigation</span>
                     <h2>Galia Viewer</h2>
                 </div>
                 <p>Immersive 3D holo-map with fleet telemetry, holographic overlays, and cinematic fly-throughs of the Galia Expanse.</p>
-                <div class="module-meta">3D Map • Fleet Overlay • Effects Suite</div>
-                <button class="launch-btn" data-href="GaliaViewer/index.html">Launch Viewer</button>
+                <div class="module-meta">
+                    <span>3D Map</span>
+                    <span>Fleet Overlay</span>
+                    <span>Effects Suite</span>
+                </div>
+                <button class="launch-btn" data-href="GaliaViewer/index.html">
+                    <span>Launch Viewer</span>
+                </button>
                 <button class="help-btn" data-module="galiaViewer">Module Guide</button>
             </article>
 
-            <article class="module-card">
+            <article class="module-card" data-tilt>
+                <div class="card-glow"></div>
                 <div class="module-header">
                     <span class="module-label">Manufacturing</span>
                     <h2>Recipe Explorer</h2>
                 </div>
                 <p>Decrypt crafting trees, optimize throughput, and highlight bottlenecks with visualized Star Atlas fabrication pipelines.</p>
-                <div class="module-meta">Crafting • Logistics • Throughput</div>
-                <button class="launch-btn" data-href="RecipeExplorer/index.html">Launch Module</button>
+                <div class="module-meta">
+                    <span>Crafting</span>
+                    <span>Logistics</span>
+                    <span>Throughput</span>
+                </div>
+                <button class="launch-btn" data-href="RecipeExplorer/index.html">
+                    <span>Launch Module</span>
+                </button>
                 <button class="help-btn" data-module="recipeExplorer">Module Guide</button>
             </article>
 
-            <article class="module-card">
+            <article class="module-card" data-tilt>
+                <div class="card-glow"></div>
                 <div class="module-header">
                     <span class="module-label">Industrial Planning</span>
                     <h2>ClaimStake Explorer</h2>
                 </div>
                 <p>Compare facility load-outs, calculate build costs, and lock in profitable claim stakes with tier-aware recommendations.</p>
-                <div class="module-meta">Construction • ROI • Automation</div>
-                <button class="launch-btn" data-href="ClaimStakeExplorer/index.html">Launch Module</button>
+                <div class="module-meta">
+                    <span>Construction</span>
+                    <span>ROI</span>
+                    <span>Automation</span>
+                </div>
+                <button class="launch-btn" data-href="ClaimStakeExplorer/index.html">
+                    <span>Launch Module</span>
+                </button>
                 <button class="help-btn" data-module="claimStakeExplorer">Module Guide</button>
             </article>
 
-            <article class="module-card">
+            <article class="module-card" data-tilt>
+                <div class="card-glow"></div>
                 <div class="module-header">
                     <span class="module-label">Commodity Index</span>
                     <h2>Resources Explorer</h2>
                 </div>
                 <p>Search, filter, and benchmark every resource in the Star Atlas economy. Track rarity, use cases, and conversion paths.</p>
-                <div class="module-meta">Commodities • Trading • Analytics</div>
-                <button class="launch-btn" data-href="ResourcesExplorer/index.html">Launch Module</button>
+                <div class="module-meta">
+                    <span>Commodities</span>
+                    <span>Trading</span>
+                    <span>Analytics</span>
+                </div>
+                <button class="launch-btn" data-href="ResourcesExplorer/index.html">
+                    <span>Launch Module</span>
+                </button>
                 <button class="help-btn" data-module="resourcesExplorer">Module Guide</button>
             </article>
 
-            <article class="module-card">
+            <article class="module-card" data-tilt>
+                <div class="card-glow"></div>
                 <div class="module-header">
                     <span class="module-label">Habitat Engineering</span>
                     <h2>Hub Explorer</h2>
                 </div>
                 <p>Plan habitat construction, compare crafting stations, and optimize storage capacity with comprehensive build planners.</p>
-                <div class="module-meta">Habitat • Crafting • Planning</div>
-                <button class="launch-btn" data-href="HubExplorer/index.html">Launch Module</button>
+                <div class="module-meta">
+                    <span>Habitat</span>
+                    <span>Crafting</span>
+                    <span>Planning</span>
+                </div>
+                <button class="launch-btn" data-href="HubExplorer/index.html">
+                    <span>Launch Module</span>
+                </button>
                 <button class="help-btn" data-module="hubExplorer">Module Guide</button>
             </article>
 
-            <article class="module-card">
+            <article class="module-card" data-tilt>
+                <div class="card-glow"></div>
                 <div class="module-header">
                     <span class="module-label">Regional Intelligence</span>
                     <h2>Region Map Explorer</h2>
                 </div>
                 <p>Interactive 2D map of all Galia regions. Click regions to view ownership status, border security, warp lane connections, and strategic distances.</p>
-                <div class="module-meta">2D Map • Region Status • Connections</div>
-                <button class="launch-btn" data-href="RegionMapExplorer/index.html">Launch Module</button>
+                <div class="module-meta">
+                    <span>2D Map</span>
+                    <span>Region Status</span>
+                    <span>Connections</span>
+                </div>
+                <button class="launch-btn" data-href="RegionMapExplorer/index.html">
+                    <span>Launch Module</span>
+                </button>
                 <button class="help-btn" data-module="regionMapExplorer">Module Guide</button>
             </article>
         </section>
 
+        <!-- Intel Strip -->
         <section class="intel-strip">
             <div class="intel-card">
                 <h3>Live Atlas Feed</h3>
@@ -135,6 +205,7 @@
         </section>
     </main>
 
+    <!-- Footer -->
     <footer class="main-footer">
         <p>&copy; 2024 Aephia Industries | Star Atlas Operations Hub</p>
     </footer>
@@ -143,7 +214,7 @@
     <div class="json-manager-modal" id="jsonManagerModal">
         <div class="json-manager-content">
             <div class="json-manager-header">
-                <h2>📁 JSON Data Manager</h2>
+                <h2>JSON Data Manager</h2>
                 <span class="json-manager-close" id="closeJsonManager">&times;</span>
             </div>
             <div class="json-manager-body">
@@ -163,28 +234,28 @@
                 <div class="json-upload-section">
                     <h3>Upload Custom JSON File</h3>
                     <p class="upload-note">
-                        ⚠️ Uploading a file will override the existing file in your browser's storage. The original file in the JSON folder will not be modified.
+                        Uploading a file will override the existing file in your browser's storage. The original file in the JSON folder will not be modified.
                     </p>
 
                     <div class="upload-instructions">
-                        <h4>📋 Upload Instructions:</h4>
+                        <h4>Upload Instructions:</h4>
                         <ul>
                             <li><strong>File Format:</strong> Must be a valid JSON file (.json extension)</li>
-                            <li><strong>File Naming:</strong> Must match exactly one of the file names above (e.g., "recipes.json", "planets.json")</li>
+                            <li><strong>File Naming:</strong> Must match exactly one of the file names above</li>
                             <li><strong>File Structure:</strong> Must match the expected schema for that file type</li>
-                            <li><strong>File Size:</strong> Limited by browser localStorage (~5-10MB depending on browser)</li>
-                            <li><strong>Validation:</strong> File will be validated before upload - invalid JSON will be rejected</li>
+                            <li><strong>File Size:</strong> Limited by browser localStorage (~5-10MB)</li>
+                            <li><strong>Validation:</strong> File will be validated before upload</li>
                             <li><strong>Effect:</strong> Changes take effect after refreshing the page</li>
                         </ul>
                         <div class="tip-box">
-                            💡 <strong>Tip:</strong> Download the existing file first, make your changes, then upload the modified version with the same filename.
+                            <strong>Tip:</strong> Download the existing file first, make your changes, then upload the modified version with the same filename.
                         </div>
                     </div>
 
                     <div class="upload-controls">
                         <input type="file" id="jsonFileInput" accept=".json" style="display: none;">
                         <button class="upload-btn" id="selectFileBtn">
-                            📤 Select JSON File
+                            Select JSON File
                         </button>
                         <span id="selectedFileName" class="selected-file-name"></span>
                     </div>
@@ -198,7 +269,7 @@
                         Clear all custom uploads and revert to original JSON files from the JSON folder.
                     </p>
                     <button class="reset-btn" id="resetAllBtn">
-                        🔄 Reset All Files to Default
+                        Reset All Files to Default
                     </button>
                 </div>
             </div>
@@ -215,16 +286,264 @@
         </div>
     </div>
 
+    <!-- Scripts -->
     <script src="Documentation/module-help-content.js"></script>
     <script src="Utils/JsonManager.js"></script>
     <script>
+        // ============================================
+        // ANIMATED STARFIELD BACKGROUND
+        // ============================================
+        class Starfield {
+            constructor() {
+                this.canvas = document.getElementById('starfield-canvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.stars = [];
+                this.shootingStars = [];
+                this.nebulaClouds = [];
+
+                this.resize();
+                this.init();
+                this.animate();
+
+                window.addEventListener('resize', () => this.resize());
+            }
+
+            resize() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+            }
+
+            init() {
+                // Create static stars with varying sizes and brightness
+                const starCount = Math.floor((this.canvas.width * this.canvas.height) / 3000);
+
+                for (let i = 0; i < starCount; i++) {
+                    this.stars.push({
+                        x: Math.random() * this.canvas.width,
+                        y: Math.random() * this.canvas.height,
+                        size: Math.random() * 2 + 0.5,
+                        brightness: Math.random(),
+                        twinkleSpeed: Math.random() * 0.02 + 0.005,
+                        twinkleOffset: Math.random() * Math.PI * 2,
+                        color: this.getStarColor()
+                    });
+                }
+
+                // Create nebula cloud particles
+                for (let i = 0; i < 5; i++) {
+                    this.nebulaClouds.push({
+                        x: Math.random() * this.canvas.width,
+                        y: Math.random() * this.canvas.height,
+                        radius: 200 + Math.random() * 300,
+                        color: i % 2 === 0 ? 'rgba(0, 240, 255, 0.02)' : 'rgba(168, 85, 247, 0.02)',
+                        speedX: (Math.random() - 0.5) * 0.1,
+                        speedY: (Math.random() - 0.5) * 0.1
+                    });
+                }
+            }
+
+            getStarColor() {
+                const colors = [
+                    'rgba(255, 255, 255, 1)',     // White
+                    'rgba(200, 220, 255, 1)',     // Blue-white
+                    'rgba(255, 240, 220, 1)',     // Warm white
+                    'rgba(180, 200, 255, 1)',     // Light blue
+                    'rgba(0, 240, 255, 0.8)'      // Cyan accent
+                ];
+                return colors[Math.floor(Math.random() * colors.length)];
+            }
+
+            createShootingStar() {
+                if (Math.random() < 0.002 && this.shootingStars.length < 3) {
+                    this.shootingStars.push({
+                        x: Math.random() * this.canvas.width,
+                        y: 0,
+                        length: 80 + Math.random() * 120,
+                        speed: 8 + Math.random() * 12,
+                        angle: Math.PI / 4 + (Math.random() - 0.5) * 0.3,
+                        opacity: 1
+                    });
+                }
+            }
+
+            animate() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+                const time = Date.now() * 0.001;
+
+                // Draw nebula clouds
+                this.nebulaClouds.forEach(cloud => {
+                    cloud.x += cloud.speedX;
+                    cloud.y += cloud.speedY;
+
+                    // Wrap around
+                    if (cloud.x < -cloud.radius) cloud.x = this.canvas.width + cloud.radius;
+                    if (cloud.x > this.canvas.width + cloud.radius) cloud.x = -cloud.radius;
+                    if (cloud.y < -cloud.radius) cloud.y = this.canvas.height + cloud.radius;
+                    if (cloud.y > this.canvas.height + cloud.radius) cloud.y = -cloud.radius;
+
+                    const gradient = this.ctx.createRadialGradient(
+                        cloud.x, cloud.y, 0,
+                        cloud.x, cloud.y, cloud.radius
+                    );
+                    gradient.addColorStop(0, cloud.color);
+                    gradient.addColorStop(1, 'transparent');
+
+                    this.ctx.fillStyle = gradient;
+                    this.ctx.fillRect(cloud.x - cloud.radius, cloud.y - cloud.radius, cloud.radius * 2, cloud.radius * 2);
+                });
+
+                // Draw stars with twinkling
+                this.stars.forEach(star => {
+                    const twinkle = Math.sin(time * star.twinkleSpeed * 10 + star.twinkleOffset);
+                    const brightness = 0.5 + twinkle * 0.5;
+                    const size = star.size * (0.8 + twinkle * 0.2);
+
+                    this.ctx.beginPath();
+                    this.ctx.arc(star.x, star.y, size, 0, Math.PI * 2);
+                    this.ctx.fillStyle = star.color.replace('1)', `${brightness})`);
+                    this.ctx.fill();
+
+                    // Add glow to brighter stars
+                    if (star.size > 1.5) {
+                        const glow = this.ctx.createRadialGradient(
+                            star.x, star.y, 0,
+                            star.x, star.y, size * 3
+                        );
+                        glow.addColorStop(0, star.color.replace('1)', `${brightness * 0.3})`));
+                        glow.addColorStop(1, 'transparent');
+                        this.ctx.fillStyle = glow;
+                        this.ctx.fillRect(star.x - size * 3, star.y - size * 3, size * 6, size * 6);
+                    }
+                });
+
+                // Create and animate shooting stars
+                this.createShootingStar();
+
+                this.shootingStars = this.shootingStars.filter(star => {
+                    star.x += Math.cos(star.angle) * star.speed;
+                    star.y += Math.sin(star.angle) * star.speed;
+                    star.opacity -= 0.01;
+
+                    if (star.opacity > 0) {
+                        const gradient = this.ctx.createLinearGradient(
+                            star.x, star.y,
+                            star.x - Math.cos(star.angle) * star.length,
+                            star.y - Math.sin(star.angle) * star.length
+                        );
+                        gradient.addColorStop(0, `rgba(255, 255, 255, ${star.opacity})`);
+                        gradient.addColorStop(0.3, `rgba(0, 240, 255, ${star.opacity * 0.5})`);
+                        gradient.addColorStop(1, 'transparent');
+
+                        this.ctx.strokeStyle = gradient;
+                        this.ctx.lineWidth = 2;
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(star.x, star.y);
+                        this.ctx.lineTo(
+                            star.x - Math.cos(star.angle) * star.length,
+                            star.y - Math.sin(star.angle) * star.length
+                        );
+                        this.ctx.stroke();
+
+                        return true;
+                    }
+                    return false;
+                });
+
+                requestAnimationFrame(() => this.animate());
+            }
+        }
+
+        // ============================================
+        // MOUSE SPOTLIGHT EFFECT
+        // ============================================
+        class MouseSpotlight {
+            constructor() {
+                this.spotlight = document.getElementById('mouse-spotlight');
+                this.mouseX = 0;
+                this.mouseY = 0;
+                this.spotlightX = 0;
+                this.spotlightY = 0;
+
+                document.addEventListener('mousemove', (e) => {
+                    this.mouseX = e.clientX;
+                    this.mouseY = e.clientY;
+                });
+
+                this.animate();
+            }
+
+            animate() {
+                // Smooth interpolation
+                this.spotlightX += (this.mouseX - this.spotlightX) * 0.1;
+                this.spotlightY += (this.mouseY - this.spotlightY) * 0.1;
+
+                this.spotlight.style.left = `${this.spotlightX}px`;
+                this.spotlight.style.top = `${this.spotlightY}px`;
+
+                requestAnimationFrame(() => this.animate());
+            }
+        }
+
+        // ============================================
+        // CARD TILT EFFECT
+        // ============================================
+        class CardTilt {
+            constructor() {
+                const cards = document.querySelectorAll('[data-tilt]');
+
+                cards.forEach(card => {
+                    const glow = card.querySelector('.card-glow');
+
+                    card.addEventListener('mousemove', (e) => {
+                        const rect = card.getBoundingClientRect();
+                        const x = e.clientX - rect.left;
+                        const y = e.clientY - rect.top;
+
+                        const centerX = rect.width / 2;
+                        const centerY = rect.height / 2;
+
+                        const rotateX = (y - centerY) / 20;
+                        const rotateY = (centerX - x) / 20;
+
+                        card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-12px)`;
+
+                        // Update glow position
+                        if (glow) {
+                            const percentX = (x / rect.width) * 100;
+                            const percentY = (y / rect.height) * 100;
+                            card.style.setProperty('--mouse-x', `${percentX}%`);
+                            card.style.setProperty('--mouse-y', `${percentY}%`);
+                        }
+                    });
+
+                    card.addEventListener('mouseleave', () => {
+                        card.style.transform = '';
+                    });
+                });
+            }
+        }
+
+        // ============================================
+        // INITIALIZE
+        // ============================================
         document.addEventListener('DOMContentLoaded', () => {
+            // Initialize effects
+            new Starfield();
+            new MouseSpotlight();
+            new CardTilt();
+
             // Launch module buttons
             document.querySelectorAll('.launch-btn[data-href]').forEach((button) => {
                 button.addEventListener('click', () => {
                     const href = button.getAttribute('data-href');
                     if (href) {
-                        window.location.href = href;
+                        // Add transition effect
+                        document.body.style.opacity = '0';
+                        document.body.style.transition = 'opacity 0.3s ease';
+                        setTimeout(() => {
+                            window.location.href = href;
+                        }, 300);
                     }
                 });
             });
@@ -235,7 +554,8 @@
             const closeHelpModal = document.getElementById('closeHelpModal');
 
             document.querySelectorAll('.help-btn[data-module]').forEach((button) => {
-                button.addEventListener('click', () => {
+                button.addEventListener('click', (e) => {
+                    e.stopPropagation();
                     const moduleKey = button.getAttribute('data-module');
                     const content = moduleHelpContent[moduleKey];
 
@@ -290,6 +610,9 @@
                     jsonManagerModal.style.display = 'none';
                 }
             });
+
+            // Fade in on load
+            document.body.style.opacity = '1';
         });
     </script>
 </body>

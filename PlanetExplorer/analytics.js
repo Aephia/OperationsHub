@@ -307,9 +307,9 @@ class PlanetResourceAnalytics extends BaseAnalytics {
                     </div>
                     <div class="regional-details">
                         <div class="region-section">
-                            <strong>Found in regions:</strong>
+                            <strong>Found in regions:</strong> <span class="region-hint">(click to see locations)</span>
                             <div class="region-tags">
-                                ${resource.regions.map(r => `<span class="region-tag present">${r}</span>`).join('')}
+                                ${this.getRegionsSortedByRichness(resource.name, resource.regions).map(r => `<span class="region-tag present clickable" data-resource="${resource.name}" data-region="${r.region}" title="Avg Richness: ${r.avgRichness.toFixed(2)}">${r.region}</span>`).join('')}
                             </div>
                         </div>
                         ${resource.missingRegions.length > 0 ? `
@@ -320,16 +320,101 @@ class PlanetResourceAnalytics extends BaseAnalytics {
                                 </div>
                             </div>
                         ` : ''}
-                        <div class="region-section">
-                            <div class="locations-header">Locations by region:</div>
-                            <div class="locations-compact">
-                                ${this.getRegionalResourceLocations(resource.name)}
-                            </div>
-                        </div>
                     </div>
                 </div>
             `).join('');
+
+            // Add click handlers for region tags
+            this.attachRegionTagHandlers();
         }
+    }
+
+    attachRegionTagHandlers() {
+        document.querySelectorAll('.region-tag.present.clickable').forEach(tag => {
+            tag.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const resourceName = tag.getAttribute('data-resource');
+                const region = tag.getAttribute('data-region');
+                this.showRegionLocationsPopup(resourceName, region);
+            });
+        });
+    }
+
+    showRegionLocationsPopup(resourceName, region) {
+        const locations = this.getLocationsForRegion(resourceName, region);
+
+        // Remove any existing popup
+        const existingPopup = document.querySelector('.region-locations-popup');
+        if (existingPopup) {
+            existingPopup.remove();
+        }
+
+        // Create popup
+        const popup = document.createElement('div');
+        popup.className = 'region-locations-popup';
+        popup.innerHTML = `
+            <div class="popup-overlay"></div>
+            <div class="popup-content">
+                <div class="popup-header">
+                    <h3>${resourceName} in ${region}</h3>
+                    <button class="popup-close">&times;</button>
+                </div>
+                <div class="popup-body">
+                    <div class="locations-list">
+                        ${locations.length > 0 ? locations.map(loc => `
+                            <div class="location-item">
+                                <span class="location-system">${loc.system}</span>
+                                <span class="location-planet">${loc.planet}</span>
+                                <span class="location-richness">Richness: ${loc.richness}/5</span>
+                            </div>
+                        `).join('') : '<p>No locations found</p>'}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(popup);
+
+        // Add close handlers
+        popup.querySelector('.popup-close').addEventListener('click', () => popup.remove());
+        popup.querySelector('.popup-overlay').addEventListener('click', () => popup.remove());
+
+        // Close on Escape key
+        const handleEscape = (e) => {
+            if (e.key === 'Escape') {
+                popup.remove();
+                document.removeEventListener('keydown', handleEscape);
+            }
+        };
+        document.addEventListener('keydown', handleEscape);
+    }
+
+    getLocationsForRegion(resourceName, region) {
+        const locations = this.resourceAnalytics.locationData.get(resourceName) || [];
+        return locations
+            .filter(loc => loc.region === region)
+            .sort((a, b) => {
+                if (b.richness !== a.richness) {
+                    return b.richness - a.richness;
+                }
+                return a.system.localeCompare(b.system);
+            });
+    }
+
+    getRegionsSortedByRichness(resourceName, regions) {
+        const locations = this.resourceAnalytics.locationData.get(resourceName) || [];
+
+        // Calculate average richness per region
+        const regionRichness = regions.map(region => {
+            const regionLocations = locations.filter(loc => loc.region === region);
+            const avgRichness = regionLocations.length > 0
+                ? regionLocations.reduce((sum, loc) => sum + loc.richness, 0) / regionLocations.length
+                : 0;
+            return { region, avgRichness };
+        });
+
+        // Sort by average richness (highest first)
+        return regionRichness.sort((a, b) => b.avgRichness - a.avgRichness);
     }
 
     getResourceLocations(resourceName, limit = 5) {
