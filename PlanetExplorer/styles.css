@@ -833,15 +833,8 @@ main {
 .resource-analysis-grid,
 .location-analysis-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 1rem;
-}
-
-/* Center tables in analytics sections */
-.location-analysis-grid {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
 }
 
 /* ============================================

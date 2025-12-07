@@ -71,25 +71,8 @@ class PlanetResourceAnalytics extends BaseAnalytics {
         const totalRichness = Array.from(resourceRichness.values()).flat().reduce((a, b) => a + b, 0);
         const averageRichness = totalRichness / Array.from(resourceRichness.values()).flat().length;
 
-        // Find scarcest resources (dynamic threshold based on data)
         console.log('📊 Total unique resources found:', resourceCounts.size);
         console.log('📊 Resource counts sample:', Array.from(resourceCounts.entries()).slice(0, 5));
-
-        // Calculate dynamic threshold for scarcest (bottom 20% of resources)
-        const sortedResourceCounts = Array.from(resourceCounts.entries()).sort((a, b) => a[1] - b[1]);
-        const scarcityThreshold = Math.max(5, Math.ceil(sortedResourceCounts.length * 0.2));
-
-        let scarcestResources = sortedResourceCounts
-            .filter(([name, count]) => count <= 10) // More lenient initial filter
-            .slice(0, Math.max(30, scarcityThreshold));
-
-        // If still empty, just take the 30 rarest
-        if (scarcestResources.length === 0) {
-            scarcestResources = sortedResourceCounts.slice(0, 30);
-        }
-
-        console.log('🔥 Scarcest resources found:', scarcestResources.length);
-        console.log('🔥 Scarcest resources:', scarcestResources);
 
         // Find highest quality resources (more lenient threshold)
         const qualityResources = Array.from(resourceRichness.entries())
@@ -144,7 +127,6 @@ class PlanetResourceAnalytics extends BaseAnalytics {
             .sort((a, b) => a.presentInRegions - b.presentInRegions); // Sort by most regionally limited first
 
         this.resourceAnalytics = {
-            scarcestResources,
             highestQualityResources,
             topLocations,
             totalResources,
@@ -161,7 +143,6 @@ class PlanetResourceAnalytics extends BaseAnalytics {
         const analytics = this.resourceAnalytics;
         if (!analytics) return;
 
-        document.getElementById('scarcestCount').textContent = analytics.scarcestResources.length;
         document.getElementById('averageRichness').textContent = analytics.averageRichness;
         document.getElementById('topSystemsCount').textContent = analytics.topLocations.length;
 
@@ -182,29 +163,6 @@ class PlanetResourceAnalytics extends BaseAnalytics {
 
         const analytics = this.resourceAnalytics;
         if (!analytics) return;
-
-        // Render scarcest resources
-        const scarcestContainer = document.getElementById('scarcestResources');
-        scarcestContainer.innerHTML = analytics.scarcestResources.map(([name, count]) => `
-            <div class="analysis-card scarce">
-                <div class="analysis-header">
-                    <h4>${name}</h4>
-                    <span class="rarity-badge ultra-rare">Ultra Rare</span>
-                </div>
-                <div class="analysis-stats">
-                    <div class="stat-item">
-                        <span class="stat-label">Total Locations:</span>
-                        <span class="stat-value">${count}</span>
-                    </div>
-                    <div class="all-locations-section">
-                        <div class="locations-header">All Locations:</div>
-                        <div class="locations-compact">
-                            ${this.getAllResourceLocations(name)}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `).join('');
 
         // Render highest quality resources
         const qualityContainer = document.getElementById('highestQuality');
