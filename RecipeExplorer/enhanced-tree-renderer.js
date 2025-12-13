@@ -7,9 +7,13 @@ class EnhancedTreeRenderer {
         this.zoomGroup = null;
         this.currentZoom = 1;
         this.currentPan = { x: 20, y: 20 };
-        this.nodeWidth = 220;
-        this.nodeHeight = 80;
-        this.nodeSpacing = { x: 280, y: 100 };
+        // Smooth zoom animation properties (like FleetBuilder)
+        this.targetZoom = 1;
+        this.targetPan = { x: 20, y: 20 };
+        this.zoomAnimationFrame = null;
+        this.nodeWidth = 180;
+        this.nodeHeight = 65;
+        this.nodeSpacing = { x: 220, y: 75 };
         // Connection highlighting properties
         this.connections = new Map(); // Map to store all connections
         this.selectedNode = null;
@@ -18,6 +22,9 @@ class EnhancedTreeRenderer {
         this.isDragging = false;
         this.dragStart = { x: 0, y: 0 };
         this.lastPan = { x: 20, y: 20 };
+        // View mode: 'tree' | 'aggregatedTree' | 'aggregatedTotals'
+        this.viewMode = 'aggregatedTree';
+        this.aggregatedData = null;
         // Don't build cache in constructor - app.js will call it with recipes
         this.setupContainer();
     }
@@ -100,12 +107,16 @@ class EnhancedTreeRenderer {
     createDefinitions() {
         const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
 
-        // Simplified node colors - subtle gradients
+        // FleetBuilder-style gradient definitions
         const gradients = [
-            { id: 'rawGradient', colors: ['#4a7c59', '#5a8a69'] },
-            { id: 'intermediateGradient', colors: ['#5a6ca3', '#6a7cb3'] },
-            { id: 'finalGradient', colors: ['#a37c4a', '#b38c5a'] },
-            { id: 'fluidGradient', colors: ['#4a7ca3', '#5a8cb3'] }
+            // Node gradient (craftable items - dark blue/purple)
+            { id: 'nodeGradient', colors: ['#1a1a3e', '#0d0d1a'] },
+            // Raw gradient (raw materials - gold/yellow)
+            { id: 'rawGradient', colors: ['#3d3d1a', '#1a1a0d'] },
+            // Legacy gradients mapped to FleetBuilder style
+            { id: 'intermediateGradient', colors: ['#1a1a3e', '#0d0d1a'] },
+            { id: 'finalGradient', colors: ['#1a1a3e', '#0d0d1a'] },
+            { id: 'fluidGradient', colors: ['#1a2a3e', '#0d1520'] }
         ];
 
         gradients.forEach(grad => {
@@ -113,39 +124,50 @@ class EnhancedTreeRenderer {
             gradient.setAttribute('id', grad.id);
             gradient.setAttribute('x1', '0%');
             gradient.setAttribute('y1', '0%');
-            gradient.setAttribute('x2', '100%');
-            gradient.setAttribute('y2', '0%');
+            gradient.setAttribute('x2', '0%');
+            gradient.setAttribute('y2', '100%');
 
             const stop1 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
             stop1.setAttribute('offset', '0%');
             stop1.setAttribute('stop-color', grad.colors[0]);
+            stop1.setAttribute('stop-opacity', '1');
 
             const stop2 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
             stop2.setAttribute('offset', '100%');
             stop2.setAttribute('stop-color', grad.colors[1]);
+            stop2.setAttribute('stop-opacity', '1');
 
             gradient.appendChild(stop1);
             gradient.appendChild(stop2);
             defs.appendChild(gradient);
         });
 
-        // Simple arrow marker for connections
+        // Arrow marker for connections (FleetBuilder style - cyan)
         const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
         marker.setAttribute('id', 'arrowhead');
-        marker.setAttribute('markerWidth', '8');
-        marker.setAttribute('markerHeight', '6');
-        marker.setAttribute('refX', '7');
-        marker.setAttribute('refY', '3');
+        marker.setAttribute('markerWidth', '10');
+        marker.setAttribute('markerHeight', '7');
+        marker.setAttribute('refX', '9');
+        marker.setAttribute('refY', '3.5');
         marker.setAttribute('orient', 'auto');
 
         const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-        polygon.setAttribute('points', '0 0, 8 3, 0 6');
-        polygon.setAttribute('fill', '#64ffda');
+        polygon.setAttribute('points', '0 0, 10 3.5, 0 7');
+        polygon.setAttribute('fill', '#00d4ff');
 
         marker.appendChild(polygon);
         defs.appendChild(marker);
 
         this.svg.appendChild(defs);
+    }
+
+    // Helper to check if a recipe represents a raw/extracted material
+    isRawMaterial(recipe) {
+        if (!recipe) return true;
+        if (recipe.type === 'raw') return true;
+        // Extraction recipes have empty inputs array
+        if (!recipe.inputs || recipe.inputs.length === 0) return true;
+        return false;
     }
 
     createZoomControls() {
@@ -157,6 +179,20 @@ class EnhancedTreeRenderer {
                 <button class="zoom-btn" id="zoomOut">🔍-</button>
                 <button class="zoom-btn" id="resetView">⌂</button>
                 <span class="zoom-level">${Math.round(this.currentZoom * 100)}%</span>
+            </div>
+            <div class="view-mode-toggle">
+                <label class="toggle-label">
+                    <input type="radio" name="viewMode" value="tree">
+                    <span>🌲 Full Tree</span>
+                </label>
+                <label class="toggle-label">
+                    <input type="radio" name="viewMode" value="aggregatedTree" checked>
+                    <span>🔗 Aggregated Tree</span>
+                </label>
+                <label class="toggle-label">
+                    <input type="radio" name="viewMode" value="aggregatedTotals">
+                    <span>📊 Totals List</span>
+                </label>
             </div>
         `;
 
@@ -171,19 +207,29 @@ class EnhancedTreeRenderer {
         controls.querySelector('#zoomIn').addEventListener('click', () => this.zoomIn());
         controls.querySelector('#zoomOut').addEventListener('click', () => this.zoomOut());
         controls.querySelector('#resetView').addEventListener('click', () => this.resetView());
+
+        // View mode toggle listeners
+        const viewModeRadios = controls.querySelectorAll('input[name="viewMode"]');
+        viewModeRadios.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                this.viewMode = e.target.value;
+                this.refreshCurrentView();
+            });
+        });
     }
 
     setupEventListeners() {
-        // Mouse wheel zoom
+        // Mouse wheel zoom with smooth animation (like FleetBuilder)
         this.container.addEventListener('wheel', (e) => {
             e.preventDefault();
             const rect = this.container.getBoundingClientRect();
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
 
-            const delta = e.deltaY;
-            const zoomFactor = delta < 0 ? 1.1 : 0.9;
-            this.zoomAtPoint(mouseX, mouseY, zoomFactor);
+            // Smaller zoom steps for smoother feel (like FleetBuilder)
+            const zoomIntensity = 0.08;
+            const delta = e.deltaY > 0 ? -zoomIntensity : zoomIntensity;
+            this.zoomToPoint(delta, mouseX, mouseY);
         });
 
         // Drag and drop functionality
@@ -226,6 +272,11 @@ class EnhancedTreeRenderer {
 
     startDrag(e) {
         this.isDragging = true;
+        // Cancel any ongoing zoom animation when panning starts
+        if (this.zoomAnimationFrame) {
+            cancelAnimationFrame(this.zoomAnimationFrame);
+            this.zoomAnimationFrame = null;
+        }
         this.dragStart.x = e.clientX;
         this.dragStart.y = e.clientY;
         this.lastPan.x = this.currentPan.x;
@@ -246,6 +297,9 @@ class EnhancedTreeRenderer {
 
         this.currentPan.x = this.lastPan.x + deltaX;
         this.currentPan.y = this.lastPan.y + deltaY;
+        // Keep target in sync during panning
+        this.targetPan.x = this.currentPan.x;
+        this.targetPan.y = this.currentPan.y;
 
         this.updateTransform();
         e.preventDefault();
@@ -263,38 +317,78 @@ class EnhancedTreeRenderer {
         e.preventDefault();
     }
 
-    zoomAtPoint(mouseX, mouseY, zoomFactor) {
-        const oldZoom = this.currentZoom;
-        this.currentZoom = Math.max(0.3, Math.min(3, this.currentZoom * zoomFactor));
+    // Smooth zoom to point (like FleetBuilder)
+    zoomToPoint(delta, mouseX, mouseY) {
+        const oldZoom = this.targetZoom;
+        this.targetZoom = Math.max(0.2, Math.min(4, this.targetZoom * (1 + delta)));
 
-        if (this.currentZoom !== oldZoom) {
-            // Adjust pan to zoom at mouse position
-            const zoomChange = this.currentZoom / oldZoom;
-            this.currentPan.x = mouseX - (mouseX - this.currentPan.x) * zoomChange;
-            this.currentPan.y = mouseY - (mouseY - this.currentPan.y) * zoomChange;
+        // Calculate zoom towards mouse position
+        const zoomRatio = this.targetZoom / oldZoom;
+
+        // Adjust pan so the point under the mouse stays fixed
+        this.targetPan.x = mouseX - (mouseX - this.targetPan.x) * zoomRatio;
+        this.targetPan.y = mouseY - (mouseY - this.targetPan.y) * zoomRatio;
+
+        this.updateZoomLevel();
+
+        // Start smooth animation
+        this.animateZoom();
+    }
+
+    // Smooth zoom animation (like FleetBuilder)
+    animateZoom() {
+        // Cancel any existing animation
+        if (this.zoomAnimationFrame) {
+            cancelAnimationFrame(this.zoomAnimationFrame);
+        }
+
+        const ease = 0.15; // Lower = smoother but slower
+
+        const animate = () => {
+            // Interpolate towards target
+            const zoomDiff = this.targetZoom - this.currentZoom;
+            const panXDiff = this.targetPan.x - this.currentPan.x;
+            const panYDiff = this.targetPan.y - this.currentPan.y;
+
+            this.currentZoom += zoomDiff * ease;
+            this.currentPan.x += panXDiff * ease;
+            this.currentPan.y += panYDiff * ease;
 
             this.updateTransform();
-            this.updateZoomLevel();
-        }
+
+            // Continue animating if not close enough to target
+            if (Math.abs(zoomDiff) > 0.001 || Math.abs(panXDiff) > 0.5 || Math.abs(panYDiff) > 0.5) {
+                this.zoomAnimationFrame = requestAnimationFrame(animate);
+            } else {
+                // Snap to final values
+                this.currentZoom = this.targetZoom;
+                this.currentPan.x = this.targetPan.x;
+                this.currentPan.y = this.targetPan.y;
+                this.updateTransform();
+                this.zoomAnimationFrame = null;
+            }
+        };
+
+        this.zoomAnimationFrame = requestAnimationFrame(animate);
     }
 
     zoomIn() {
-        const centerX = this.container.clientWidth / 2;
-        const centerY = this.container.clientHeight / 2;
-        this.zoomAtPoint(centerX, centerY, 1.2);
+        this.targetZoom = Math.max(0.2, Math.min(4, this.targetZoom * 1.2));
+        this.updateZoomLevel();
+        this.animateZoom();
     }
 
     zoomOut() {
-        const centerX = this.container.clientWidth / 2;
-        const centerY = this.container.clientHeight / 2;
-        this.zoomAtPoint(centerX, centerY, 0.8);
+        this.targetZoom = Math.max(0.2, Math.min(4, this.targetZoom * 0.8));
+        this.updateZoomLevel();
+        this.animateZoom();
     }
 
     resetView() {
-        this.currentZoom = 1;
-        this.currentPan = { x: 20, y: 20 };
-        this.updateTransform();
+        this.targetZoom = 1;
+        this.targetPan = { x: 20, y: 20 };
         this.updateZoomLevel();
+        this.animateZoom();
     }
 
     updateTransform() {
@@ -346,7 +440,17 @@ class EnhancedTreeRenderer {
 
         const children = [];
         if (recipe.inputs && recipe.inputs.length > 0) {
+            // Aggregate inputs with the same name to avoid duplicate branches
+            const aggregatedInputs = new Map();
             recipe.inputs.forEach(input => {
+                if (aggregatedInputs.has(input.name)) {
+                    aggregatedInputs.get(input.name).amount += (input.amount || 1);
+                } else {
+                    aggregatedInputs.set(input.name, { name: input.name, amount: input.amount || 1 });
+                }
+            });
+
+            aggregatedInputs.forEach(input => {
                 const inputRecipe = this.recipeCache.get(input.name);
                 if (inputRecipe) {
                     const childData = this.buildTreeData(inputRecipe, new Set(visited), depth + 1);
@@ -366,47 +470,80 @@ class EnhancedTreeRenderer {
     }
 
     calculateLayout(treeData) {
-        // Left-to-right horizontal layout
+        // Subtree-based left-to-right layout (like FleetBuilder)
+        // Each node is positioned based on its subtree, not just its level
         const layout = new Map();
-        const levels = new Map(); // Track nodes at each level
+        let currentY = 20; // Running Y position
+        let maxX = 0;
+        let maxY = 0;
 
-        // First pass: determine levels
-        const assignLevels = (node, level) => {
-            if (!levels.has(level)) {
-                levels.set(level, []);
+        // Calculate subtree height for a node (number of leaf nodes in its subtree)
+        const getSubtreeLeafCount = (node) => {
+            if (!node.children || node.children.length === 0) {
+                return 1;
             }
-            levels.get(level).push(node);
-            node.level = level;
-
-            node.children.forEach(child => {
-                assignLevels(child, level + 1);
-            });
+            return node.children.reduce((sum, child) => sum + getSubtreeLeafCount(child), 0);
         };
 
-        assignLevels(treeData, 0);
+        // Recursive layout: position node and all its children
+        // Returns the Y range used by this subtree [minY, maxY] and the layout key
+        let nodeCounter = 0;
+        const layoutNode = (node, depth, startY) => {
+            const x = depth * this.nodeSpacing.x + 20;
+            maxX = Math.max(maxX, x + this.nodeWidth);
+            const nodeKey = `node_${nodeCounter++}`;
 
-        // Second pass: calculate positions
-        const containerHeight = this.container.clientHeight || 600;
-        levels.forEach((nodesAtLevel, level) => {
-            const x = level * this.nodeSpacing.x;
-            const totalHeight = nodesAtLevel.length * this.nodeSpacing.y;
-            const startY = Math.max(20, (containerHeight - totalHeight) / 2);
-
-            nodesAtLevel.forEach((node, index) => {
-                const y = startY + (index * this.nodeSpacing.y);
-                layout.set(node.recipe.name, {
+            if (!node.children || node.children.length === 0) {
+                // Leaf node: place at startY
+                const y = startY;
+                const layoutData = {
                     x: x,
                     y: y,
-                    node: node
-                });
-            });
-        });
+                    node: node,
+                    childLayouts: []
+                };
+                layout.set(nodeKey, layoutData);
+                maxY = Math.max(maxY, y + this.nodeHeight);
+                return { minY: y, maxY: y + this.nodeHeight, centerY: y + this.nodeHeight / 2, key: nodeKey, layoutData };
+            }
 
-        // Update SVG dimensions to accommodate all levels with zoom
-        const maxLevel = Math.max(...levels.keys());
-        const totalWidth = (maxLevel + 1) * this.nodeSpacing.x + this.nodeWidth + 100;
-        const maxNodes = Math.max(...Array.from(levels.values()).map(nodes => nodes.length));
-        const totalHeight = Math.max(this.container.clientHeight || 600, maxNodes * this.nodeSpacing.y + 100);
+            // Internal node: first layout all children
+            let childY = startY;
+            const childRanges = [];
+
+            node.children.forEach((child, index) => {
+                const range = layoutNode(child, depth + 1, childY);
+                childRanges.push(range);
+                childY = range.maxY + 10; // Small gap between siblings
+            });
+
+            // Position this node at the center of its children
+            const firstChildCenter = childRanges[0].centerY;
+            const lastChildCenter = childRanges[childRanges.length - 1].centerY;
+            const centerY = (firstChildCenter + lastChildCenter) / 2;
+            const y = centerY - this.nodeHeight / 2;
+
+            const layoutData = {
+                x: x,
+                y: y,
+                node: node,
+                childLayouts: childRanges.map(r => r.layoutData)
+            };
+            layout.set(nodeKey, layoutData);
+
+            const minY = Math.min(y, childRanges[0].minY);
+            const maxYVal = Math.max(y + this.nodeHeight, childRanges[childRanges.length - 1].maxY);
+            maxY = Math.max(maxY, maxYVal);
+
+            return { minY: minY, maxY: maxYVal, centerY: centerY, key: nodeKey, layoutData };
+        };
+
+        // Start layout from root
+        layoutNode(treeData, 0, currentY);
+
+        // Update SVG dimensions
+        const totalWidth = maxX + 100;
+        const totalHeight = Math.max(this.container.clientHeight || 600, maxY + 50);
 
         this.svg.style.width = `${totalWidth}px`;
         this.svg.style.height = `${totalHeight}px`;
@@ -419,17 +556,19 @@ class EnhancedTreeRenderer {
         this.clearTree();
 
         // Render connections first (so they appear behind nodes)
-        layout.forEach((data, recipeName) => {
-            data.node.children.forEach(child => {
-                const childData = layout.get(child.recipe.name);
-                if (childData) {
-                    this.renderConnection(data, childData, child.inputAmount || 1);
-                }
-            });
+        layout.forEach((data, nodeKey) => {
+            // Use childLayouts to draw connections to children
+            if (data.childLayouts && data.childLayouts.length > 0) {
+                data.childLayouts.forEach((childLayout, index) => {
+                    const childNode = data.node.children[index];
+                    const amount = childNode ? (childNode.inputAmount || 1) : 1;
+                    this.renderConnection(data, childLayout, amount);
+                });
+            }
         });
 
         // Render nodes
-        layout.forEach((data, recipeName) => {
+        layout.forEach((data, nodeKey) => {
             this.renderNode(data.x, data.y, data.node);
         });
     }
@@ -447,7 +586,7 @@ class EnhancedTreeRenderer {
         const pathData = `M ${startX} ${startY} C ${startX + controlOffset} ${startY}, ${endX - controlOffset} ${endY}, ${endX} ${endY}`;
 
         line.setAttribute('d', pathData);
-        line.setAttribute('stroke', '#64ffda');
+        line.setAttribute('stroke', '#00d4ff');
         line.setAttribute('stroke-width', '1.5');
         line.setAttribute('fill', 'none');
         line.setAttribute('marker-end', 'url(#arrowhead)');
@@ -481,7 +620,7 @@ class EnhancedTreeRenderer {
             labelBg.setAttribute('cy', midY - 8);
             labelBg.setAttribute('r', '8');
             labelBg.setAttribute('fill', 'rgba(0, 0, 0, 0.7)');
-            labelBg.setAttribute('stroke', '#64ffda');
+            labelBg.setAttribute('stroke', '#00d4ff');
             labelBg.setAttribute('stroke-width', '1');
             labelBg.setAttribute('class', 'connection-label');
             labelBg.setAttribute('data-connection-id', connectionId);
@@ -490,7 +629,7 @@ class EnhancedTreeRenderer {
             text.setAttribute('x', midX);
             text.setAttribute('y', midY - 5);
             text.setAttribute('text-anchor', 'middle');
-            text.setAttribute('fill', '#64ffda');
+            text.setAttribute('fill', '#00d4ff');
             text.setAttribute('font-size', '10');
             text.setAttribute('font-weight', 'bold');
             text.setAttribute('class', 'connection-label');
@@ -504,70 +643,60 @@ class EnhancedTreeRenderer {
         this.mainGroup.appendChild(line);
     }
 
-    renderNode(x, y, nodeData) {
+    renderNode(x, y, nodeData, aggregatedQuantity = null) {
         const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         group.setAttribute('transform', `translate(${x}, ${y})`);
         group.setAttribute('class', 'recipe-node');
         group.setAttribute('data-recipe-name', nodeData.recipe.name);
 
         const recipe = nodeData.recipe;
-        const gradientId = this.getGradientId(recipe.type);
+        const isRaw = this.isRawMaterial(recipe);
 
-        // Simplified node background
+        // FleetBuilder-style node background with gradient
         const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
         rect.setAttribute('width', this.nodeWidth);
         rect.setAttribute('height', this.nodeHeight);
-        rect.setAttribute('rx', '8');
-        rect.setAttribute('ry', '8');
-        rect.setAttribute('fill', `url(#${gradientId})`);
-        rect.setAttribute('stroke', this.getNodeBorderColor(recipe.type));
+        rect.setAttribute('rx', '6');
+        rect.setAttribute('ry', '6');
+        rect.setAttribute('fill', isRaw ? 'url(#rawGradient)' : 'url(#nodeGradient)');
+        rect.setAttribute('stroke', isRaw ? '#ffd700' : '#00d4ff');
         rect.setAttribute('stroke-width', '1.5');
-        rect.setAttribute('opacity', '0.9');
         group.appendChild(rect);
 
-        // Recipe name (main title)
+        // Recipe name (centered, FleetBuilder style)
         const titleText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        titleText.setAttribute('x', '12');
-        titleText.setAttribute('y', '20');
-        titleText.setAttribute('fill', '#ffffff');
-        titleText.setAttribute('font-size', '13');
-        titleText.setAttribute('font-weight', '600');
-        // Truncate long names
-        const truncatedName = recipe.name.length > 25 ? recipe.name.substring(0, 22) + '...' : recipe.name;
+        titleText.setAttribute('x', this.nodeWidth / 2);
+        titleText.setAttribute('y', '16');
+        titleText.setAttribute('text-anchor', 'middle');
+        titleText.setAttribute('fill', '#e0e0ff');
+        titleText.setAttribute('font-size', '10');
+        titleText.setAttribute('font-weight', '500');
+        // Truncate long names for smaller nodes
+        const truncatedName = recipe.name.length > 20 ? recipe.name.substring(0, 17) + '...' : recipe.name;
         titleText.textContent = truncatedName;
         group.appendChild(titleText);
 
-        // Type icon in top right corner
-        const iconText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        iconText.setAttribute('x', this.nodeWidth - 18);
-        iconText.setAttribute('y', '20');
-        iconText.setAttribute('text-anchor', 'middle');
-        iconText.setAttribute('fill', '#64ffda');
-        iconText.setAttribute('font-size', '16');
-        iconText.textContent = this.getTypeIcon(recipe.type);
-        group.appendChild(iconText);
+        // Type indicator with quantity (FleetBuilder style)
+        const typeText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        typeText.setAttribute('x', this.nodeWidth / 2);
+        typeText.setAttribute('y', '32');
+        typeText.setAttribute('text-anchor', 'middle');
+        typeText.setAttribute('fill', isRaw ? '#ffd700' : '#00d4ff');
+        typeText.setAttribute('font-size', '9');
 
-        // Simplified info line
-        const infoText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        infoText.setAttribute('x', '12');
-        infoText.setAttribute('y', '40');
-        infoText.setAttribute('fill', 'rgba(255, 255, 255, 0.8)');
-        infoText.setAttribute('font-size', '11');
-        const inputCount = recipe.inputs ? recipe.inputs.length : 0;
-        infoText.textContent = `T${recipe.tier} • ${recipe.craftingTime}s • ${inputCount} inputs`;
-        group.appendChild(infoText);
+        const displayQty = aggregatedQuantity !== null ? aggregatedQuantity : (nodeData.inputAmount || 1);
+        typeText.textContent = `${isRaw ? '⛏️ RAW' : '🔧 CRAFT'} × ${displayQty}`;
+        group.appendChild(typeText);
 
-        // Category indicator (small bottom stripe)
-        if (recipe.category) {
-            const categoryLine = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-            categoryLine.setAttribute('x', '0');
-            categoryLine.setAttribute('y', this.nodeHeight - 3);
-            categoryLine.setAttribute('width', this.nodeWidth);
-            categoryLine.setAttribute('height', '3');
-            categoryLine.setAttribute('fill', this.getTypeBadgeColor(recipe.type));
-            categoryLine.setAttribute('rx', '0 0 8 8');
-            group.appendChild(categoryLine);
-        }
+        // Tier indicator (smaller, bottom)
+        const tierText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        tierText.setAttribute('x', this.nodeWidth / 2);
+        tierText.setAttribute('y', '46');
+        tierText.setAttribute('text-anchor', 'middle');
+        tierText.setAttribute('fill', '#666');
+        tierText.setAttribute('font-size', '8');
+        tierText.textContent = `T${recipe.tier || 1}`;
+        group.appendChild(tierText);
 
         // Stable hover and click interactions - no flickering
         group.style.cursor = 'pointer';
@@ -660,6 +789,28 @@ class EnhancedTreeRenderer {
             this.buildRecipeCache();
         }
 
+        // Store recipe IDs for view toggling
+        this.currentRecipeIds = recipeIds;
+
+        // Handle different view modes
+        if (this.viewMode === 'aggregatedTotals') {
+            this.renderAggregatedTotalsView(recipeIds);
+            return;
+        }
+
+        if (this.viewMode === 'aggregatedTree') {
+            this.renderAggregatedTreeView(recipeIds);
+            return;
+        }
+
+        // Default: Full tree view
+        // Show SVG and hide aggregated panel
+        this.svg.style.display = 'block';
+        const aggregatedPanel = this.container.querySelector('.aggregated-panel');
+        if (aggregatedPanel) {
+            aggregatedPanel.style.display = 'none';
+        }
+
         if (recipeIds.length === 0) {
             this.renderPlaceholder();
             return;
@@ -706,7 +857,7 @@ class EnhancedTreeRenderer {
         text.setAttribute('x', '300');
         text.setAttribute('y', '200');
         text.setAttribute('text-anchor', 'middle');
-        text.setAttribute('fill', '#64ffda');
+        text.setAttribute('fill', '#00d4ff');
         text.setAttribute('font-size', '24');
         text.textContent = '🌲 Select recipes to view dependency trees';
 
@@ -837,7 +988,7 @@ class EnhancedTreeRenderer {
         // Clear connection highlights
         const highlightedConnections = this.mainGroup.querySelectorAll('[data-highlighted="true"]');
         highlightedConnections.forEach(conn => {
-            conn.setAttribute('stroke', '#64ffda');
+            conn.setAttribute('stroke', '#00d4ff');
             conn.setAttribute('stroke-width', '1.5');
             conn.setAttribute('opacity', '0.7');
             conn.removeAttribute('data-highlighted');
@@ -848,10 +999,10 @@ class EnhancedTreeRenderer {
         highlightedLabels.forEach(label => {
             label.removeAttribute('data-highlighted'); // Remove highlighted attribute
             if (label.tagName === 'circle') {
-                label.setAttribute('stroke', '#64ffda');
+                label.setAttribute('stroke', '#00d4ff');
                 label.setAttribute('fill', 'rgba(0, 0, 0, 0.7)');
             } else if (label.tagName === 'text') {
-                label.setAttribute('fill', '#64ffda');
+                label.setAttribute('fill', '#00d4ff');
             }
         });
 
@@ -877,6 +1028,7 @@ class EnhancedTreeRenderer {
         console.log('✅ Connection highlighting: Implemented');
         console.log('✅ End-to-end path lighting: Working');
         console.log('✅ Shift+Click interaction: Available');
+        console.log('✅ Aggregated totals view: Implemented');
         console.log('🎉 Full-featured recipe tree successfully implemented!');
 
         // Test system initialization
@@ -898,5 +1050,523 @@ class EnhancedTreeRenderer {
         }
 
         return allGood;
+    }
+
+    // ============================================
+    // AGGREGATED TOTALS VIEW (like FleetBuilder)
+    // ============================================
+
+    // Store currently selected recipe IDs for refresh
+    currentRecipeIds = [];
+
+    // Refresh current view when toggling between view modes
+    refreshCurrentView() {
+        if (this.currentRecipeIds.length > 0) {
+            this.renderMultipleRecipes(this.currentRecipeIds);
+        }
+    }
+
+    // Calculate aggregated totals for selected recipes (like FleetBuilder)
+    calculateAggregatedTotals(recipeIds) {
+        const rawMaterials = new Map(); // name -> { quantity, recipe }
+        const processedComponents = new Map(); // name -> { quantity, recipe }
+        const allItems = new Map(); // name -> { quantity, recipe, depth, isRaw }
+
+        // Helper to check if a recipe represents a raw/extracted material
+        // Raw materials have type 'raw' OR have no inputs (extraction recipes like Iron Ore, Copper Ore)
+        const isRawMaterial = (recipe) => {
+            if (!recipe) return true; // No recipe found = raw material
+            if (recipe.type === 'raw') return true;
+            // Extraction recipes have empty inputs array
+            if (!recipe.inputs || recipe.inputs.length === 0) return true;
+            return false;
+        };
+
+        const processRecipe = (recipe, multiplier = 1, depth = 0, visited = new Set()) => {
+            if (!recipe || visited.has(recipe.name)) return;
+            visited.add(recipe.name);
+
+            // Process inputs recursively
+            if (recipe.inputs && recipe.inputs.length > 0) {
+                recipe.inputs.forEach(input => {
+                    const inputRecipe = this.recipeCache.get(input.name);
+                    const inputQuantity = (input.amount || 1) * multiplier;
+
+                    // Check if this is a raw material (including extraction recipes like Iron Ore)
+                    if (isRawMaterial(inputRecipe)) {
+                        // This is a raw material
+                        const existing = rawMaterials.get(input.name);
+                        if (existing) {
+                            existing.quantity += inputQuantity;
+                        } else {
+                            rawMaterials.set(input.name, {
+                                quantity: inputQuantity,
+                                name: input.name,
+                                recipe: inputRecipe, // May be null or extraction recipe
+                                depth: depth + 1
+                            });
+                        }
+
+                        // Track in all items
+                        const existingAll = allItems.get(input.name);
+                        if (existingAll) {
+                            existingAll.quantity += inputQuantity;
+                        } else {
+                            allItems.set(input.name, {
+                                quantity: inputQuantity,
+                                name: input.name,
+                                recipe: inputRecipe,
+                                depth: depth + 1,
+                                isRaw: true
+                            });
+                        }
+                        // Don't recurse into raw materials - they have no meaningful inputs
+                    } else {
+                        // This is a craftable item (processed/component)
+                        const existing = processedComponents.get(input.name);
+                        if (existing) {
+                            existing.quantity += inputQuantity;
+                        } else {
+                            processedComponents.set(input.name, {
+                                quantity: inputQuantity,
+                                recipe: inputRecipe,
+                                depth: depth + 1
+                            });
+                        }
+
+                        // Track in all items
+                        const existingAll = allItems.get(input.name);
+                        if (existingAll) {
+                            existingAll.quantity += inputQuantity;
+                        } else {
+                            allItems.set(input.name, {
+                                quantity: inputQuantity,
+                                recipe: inputRecipe,
+                                depth: depth + 1,
+                                isRaw: false
+                            });
+                        }
+
+                        // Recursively process this recipe's inputs
+                        processRecipe(inputRecipe, inputQuantity, depth + 1, new Set(visited));
+                    }
+                });
+            }
+        };
+
+        // Process each selected recipe
+        recipeIds.forEach(recipeId => {
+            const recipe = this.recipeCache.get(recipeId);
+            if (recipe) {
+                processRecipe(recipe, 1, 0, new Set());
+            }
+        });
+
+        return {
+            rawMaterials: Array.from(rawMaterials.values()).sort((a, b) => b.quantity - a.quantity),
+            processedComponents: Array.from(processedComponents.values()).sort((a, b) => b.quantity - a.quantity),
+            allItems: Array.from(allItems.values()).sort((a, b) => b.quantity - a.quantity),
+            totalRawCount: rawMaterials.size,
+            totalComponentCount: processedComponents.size,
+            totalRawQuantity: Array.from(rawMaterials.values()).reduce((sum, m) => sum + m.quantity, 0),
+            totalComponentQuantity: Array.from(processedComponents.values()).reduce((sum, c) => sum + c.quantity, 0)
+        };
+    }
+
+    // ============================================
+    // AGGREGATED TREE VIEW (FleetBuilder style)
+    // Shows each unique item once with total quantity
+    // ============================================
+    renderAggregatedTreeView(recipeIds) {
+        this.currentRecipeIds = recipeIds;
+
+        // Show SVG and hide aggregated panel
+        this.svg.style.display = 'block';
+        const aggregatedPanel = this.container.querySelector('.aggregated-panel');
+        if (aggregatedPanel) {
+            aggregatedPanel.style.display = 'none';
+        }
+
+        if (recipeIds.length === 0) {
+            this.renderPlaceholder();
+            return;
+        }
+
+        this.clearTree();
+
+        // Build aggregated tree data
+        const aggregatedMap = new Map(); // name -> { quantity, minDepth, maxDepth, isRaw, parents, recipe }
+        const parentChildRelations = [];
+
+        // Process each selected recipe
+        recipeIds.forEach(recipeId => {
+            const recipe = this.recipeCache.get(recipeId);
+            if (recipe) {
+                this.buildAggregatedTreeData(recipe, null, 0, aggregatedMap, parentChildRelations);
+            }
+        });
+
+        // Convert to array and sort by minDepth
+        const aggregatedNodes = Array.from(aggregatedMap.values())
+            .sort((a, b) => a.minDepth - b.minDepth);
+
+        // Group by minDepth for positioning
+        const byDepth = {};
+        aggregatedNodes.forEach(node => {
+            const depth = node.minDepth;
+            if (!byDepth[depth]) byDepth[depth] = [];
+            byDepth[depth].push(node);
+        });
+
+        const maxDepth = Math.max(...Object.keys(byDepth).map(Number), 0);
+        const maxNodesInLevel = Math.max(...Object.values(byDepth).map(arr => arr.length), 1);
+
+        // Calculate dimensions and node positions
+        const nodePositions = {};
+        const levelSpacing = this.nodeSpacing.x;
+        const nodeVerticalSpacing = this.nodeSpacing.y;
+
+        Object.entries(byDepth).forEach(([depth, nodes]) => {
+            const d = parseInt(depth);
+            const totalHeight = nodes.length * nodeVerticalSpacing;
+            const startY = Math.max(50, (maxNodesInLevel * nodeVerticalSpacing - totalHeight) / 2);
+
+            nodes.forEach((node, index) => {
+                const x = d * levelSpacing + 50;
+                const y = startY + index * nodeVerticalSpacing;
+                nodePositions[node.name] = { x, y, node };
+            });
+        });
+
+        // Draw connections (bezier curves like FleetBuilder)
+        parentChildRelations.forEach(relation => {
+            const parent = nodePositions[relation.parent];
+            const child = nodePositions[relation.child];
+
+            if (parent && child) {
+                const startX = parent.x + this.nodeWidth;
+                const startY = parent.y + this.nodeHeight / 2;
+                const endX = child.x;
+                const endY = child.y + this.nodeHeight / 2;
+                const midX = (startX + endX) / 2;
+
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', `M ${startX} ${startY} C ${midX} ${startY}, ${midX} ${endY}, ${endX} ${endY}`);
+                path.setAttribute('stroke', '#00d4ff');
+                path.setAttribute('stroke-width', '1.5');
+                path.setAttribute('fill', 'none');
+                path.setAttribute('opacity', '0.5');
+                path.setAttribute('marker-end', 'url(#arrowhead)');
+
+                this.mainGroup.appendChild(path);
+            }
+        });
+
+        // Draw nodes
+        Object.entries(nodePositions).forEach(([name, pos]) => {
+            const node = pos.node;
+            // Create a fake nodeData structure for renderNode
+            const nodeData = {
+                recipe: node.recipe || { name: node.name, tier: 1, type: node.isRaw ? 'raw' : 'intermediate' },
+                inputAmount: node.quantity
+            };
+
+            const group = this.renderAggregatedNode(pos.x, pos.y, nodeData, node.quantity, node.isRaw);
+            this.mainGroup.appendChild(group);
+        });
+
+        this.resetView();
+    }
+
+    // Build aggregated tree data structure (like FleetBuilder)
+    // multiplier: how many of this recipe we need to make
+    buildAggregatedTreeData(recipe, parentName, depth, aggregatedMap, parentChildRelations, multiplier = 1, visited = new Set()) {
+        if (!recipe) return;
+
+        const recipeName = recipe.name;
+
+        // Prevent infinite loops
+        if (visited.has(recipeName)) return;
+        visited.add(recipeName);
+
+        const isRaw = this.isRawMaterial(recipe);
+
+        // For root recipe (no parent), add to aggregatedMap
+        // For child recipes, they were already added by their parent with correct quantity
+        if (!parentName) {
+            if (!aggregatedMap.has(recipeName)) {
+                aggregatedMap.set(recipeName, {
+                    name: recipeName,
+                    quantity: multiplier,
+                    minDepth: depth,
+                    maxDepth: depth,
+                    isRaw: isRaw,
+                    parents: new Set(),
+                    recipe: recipe
+                });
+            } else {
+                const existing = aggregatedMap.get(recipeName);
+                existing.quantity += multiplier;
+                existing.minDepth = Math.min(existing.minDepth, depth);
+                existing.maxDepth = Math.max(existing.maxDepth, depth);
+            }
+        }
+
+        // Process inputs recursively (don't recurse into raw materials)
+        if (!isRaw && recipe.inputs && recipe.inputs.length > 0) {
+            recipe.inputs.forEach(input => {
+                const inputRecipe = this.recipeCache.get(input.name);
+                const inputIsRaw = this.isRawMaterial(inputRecipe);
+                const inputQuantity = (input.amount || 1) * multiplier;
+
+                // Create entry for input
+                const inputName = input.name;
+                if (!aggregatedMap.has(inputName)) {
+                    aggregatedMap.set(inputName, {
+                        name: inputName,
+                        quantity: inputQuantity,
+                        minDepth: depth + 1,
+                        maxDepth: depth + 1,
+                        isRaw: inputIsRaw,
+                        parents: new Set([recipeName]),
+                        recipe: inputRecipe
+                    });
+                } else {
+                    const existing = aggregatedMap.get(inputName);
+                    existing.quantity += inputQuantity;
+                    existing.minDepth = Math.min(existing.minDepth, depth + 1);
+                    existing.maxDepth = Math.max(existing.maxDepth, depth + 1);
+                    existing.parents.add(recipeName);
+                }
+
+                // Track parent-child relationship
+                const relationKey = `${recipeName}->${inputName}`;
+                if (!parentChildRelations.find(r => r.key === relationKey)) {
+                    parentChildRelations.push({
+                        key: relationKey,
+                        parent: recipeName,
+                        child: inputName
+                    });
+                }
+
+                // Recursively process inputs (if not raw) - pass the multiplied quantity
+                if (inputRecipe && !inputIsRaw) {
+                    this.buildAggregatedTreeData(inputRecipe, recipeName, depth + 1, aggregatedMap, parentChildRelations, inputQuantity, new Set(visited));
+                }
+            });
+        }
+    }
+
+    // Render a node for the aggregated tree view
+    renderAggregatedNode(x, y, nodeData, quantity, isRaw) {
+        const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        group.setAttribute('transform', `translate(${x}, ${y})`);
+        group.setAttribute('class', 'recipe-node');
+
+        const recipe = nodeData.recipe;
+        group.setAttribute('data-recipe-name', recipe?.name || nodeData.name);
+
+        // FleetBuilder-style node background
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('width', this.nodeWidth);
+        rect.setAttribute('height', this.nodeHeight);
+        rect.setAttribute('rx', '6');
+        rect.setAttribute('ry', '6');
+        rect.setAttribute('fill', isRaw ? 'url(#rawGradient)' : 'url(#nodeGradient)');
+        rect.setAttribute('stroke', isRaw ? '#ffd700' : '#00d4ff');
+        rect.setAttribute('stroke-width', '1.5');
+        group.appendChild(rect);
+
+        // Recipe name (centered)
+        const titleText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        titleText.setAttribute('x', this.nodeWidth / 2);
+        titleText.setAttribute('y', '16');
+        titleText.setAttribute('text-anchor', 'middle');
+        titleText.setAttribute('fill', '#e0e0ff');
+        titleText.setAttribute('font-size', '10');
+        titleText.setAttribute('font-weight', '500');
+        const name = recipe?.name || nodeData.name || 'Unknown';
+        const truncatedName = name.length > 20 ? name.substring(0, 17) + '...' : name;
+        titleText.textContent = truncatedName;
+        group.appendChild(titleText);
+
+        // Type indicator with quantity (FleetBuilder style)
+        const typeText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        typeText.setAttribute('x', this.nodeWidth / 2);
+        typeText.setAttribute('y', '32');
+        typeText.setAttribute('text-anchor', 'middle');
+        typeText.setAttribute('fill', isRaw ? '#ffd700' : '#00d4ff');
+        typeText.setAttribute('font-size', '9');
+        typeText.textContent = `${isRaw ? '⛏️ RAW' : '🔧 CRAFT'} × ${quantity}`;
+        group.appendChild(typeText);
+
+        // Tier indicator
+        const tierText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        tierText.setAttribute('x', this.nodeWidth / 2);
+        tierText.setAttribute('y', '46');
+        tierText.setAttribute('text-anchor', 'middle');
+        tierText.setAttribute('fill', '#666');
+        tierText.setAttribute('font-size', '8');
+        tierText.textContent = `T${recipe?.tier || 1}`;
+        group.appendChild(tierText);
+
+        // Click handler
+        group.style.cursor = 'pointer';
+        group.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (recipe) {
+                this.showNodeDetails(recipe);
+            }
+        });
+
+        return group;
+    }
+
+    // Render aggregated totals list view (like FleetBuilder)
+    renderAggregatedTotalsView(recipeIds) {
+        this.currentRecipeIds = recipeIds;
+
+        if (recipeIds.length === 0) {
+            this.renderPlaceholder();
+            return;
+        }
+
+        this.aggregatedData = this.calculateAggregatedTotals(recipeIds);
+
+        // Clear the SVG and render the aggregated panel instead
+        this.clearTree();
+
+        // Create an HTML overlay for the aggregated view (easier to style)
+        let aggregatedPanel = this.container.querySelector('.aggregated-panel');
+        if (!aggregatedPanel) {
+            aggregatedPanel = document.createElement('div');
+            aggregatedPanel.className = 'aggregated-panel';
+            this.container.appendChild(aggregatedPanel);
+        }
+        aggregatedPanel.style.display = 'block';
+
+        // Hide SVG when showing aggregated view
+        this.svg.style.display = 'none';
+
+        const { rawMaterials, processedComponents, totalRawCount, totalComponentCount, totalRawQuantity, totalComponentQuantity } = this.aggregatedData;
+
+        aggregatedPanel.innerHTML = `
+            <div class="aggregated-header">
+                <h3>📊 Aggregated Recipe Totals</h3>
+                <p class="aggregated-subtitle">Combined requirements for ${recipeIds.length} selected recipe${recipeIds.length > 1 ? 's' : ''}</p>
+            </div>
+
+            <div class="aggregated-stats">
+                <div class="agg-stat-card">
+                    <span class="agg-stat-value">${totalRawCount}</span>
+                    <span class="agg-stat-label">Raw Materials</span>
+                </div>
+                <div class="agg-stat-card">
+                    <span class="agg-stat-value">${totalComponentCount}</span>
+                    <span class="agg-stat-label">Components</span>
+                </div>
+                <div class="agg-stat-card">
+                    <span class="agg-stat-value">${totalRawQuantity.toLocaleString()}</span>
+                    <span class="agg-stat-label">Total Raw Qty</span>
+                </div>
+                <div class="agg-stat-card">
+                    <span class="agg-stat-value">${totalComponentQuantity.toLocaleString()}</span>
+                    <span class="agg-stat-label">Total Component Qty</span>
+                </div>
+            </div>
+
+            <div class="aggregated-sections">
+                <div class="agg-section">
+                    <h4>⛏️ Raw Materials (${rawMaterials.length})</h4>
+                    <div class="agg-items-grid">
+                        ${rawMaterials.map(mat => `
+                            <div class="agg-item raw">
+                                <span class="agg-item-icon">⛏️</span>
+                                <span class="agg-item-name">${mat.name}</span>
+                                <span class="agg-item-qty">×${mat.quantity.toLocaleString()}</span>
+                            </div>
+                        `).join('')}
+                        ${rawMaterials.length === 0 ? '<div class="agg-empty">No raw materials required</div>' : ''}
+                    </div>
+                </div>
+
+                <div class="agg-section">
+                    <h4>🔧 Processed Components (${processedComponents.length})</h4>
+                    <div class="agg-items-grid">
+                        ${processedComponents.map(comp => `
+                            <div class="agg-item component" data-recipe-id="${comp.recipe?.id || ''}">
+                                <span class="agg-item-icon">${this.getTypeIcon(comp.recipe?.type || 'intermediate')}</span>
+                                <span class="agg-item-name">${comp.recipe?.name || comp.name}</span>
+                                <span class="agg-item-tier">T${comp.recipe?.tier || 1}</span>
+                                <span class="agg-item-qty">×${comp.quantity.toLocaleString()}</span>
+                            </div>
+                        `).join('')}
+                        ${processedComponents.length === 0 ? '<div class="agg-empty">No processed components required</div>' : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Add click handlers for component items to show details
+        aggregatedPanel.querySelectorAll('.agg-item.component').forEach(item => {
+            item.style.cursor = 'pointer';
+            item.addEventListener('click', () => {
+                const recipeId = item.getAttribute('data-recipe-id');
+                if (recipeId) {
+                    const recipe = this.recipeCache.get(recipeId);
+                    if (recipe) {
+                        this.showNodeDetails(recipe);
+                    }
+                }
+            });
+        });
+    }
+
+    // Internal method to render tree view
+    renderMultipleRecipesInternal(recipeIds) {
+        // Show SVG and hide aggregated panel
+        this.svg.style.display = 'block';
+        const aggregatedPanel = this.container.querySelector('.aggregated-panel');
+        if (aggregatedPanel) {
+            aggregatedPanel.style.display = 'none';
+        }
+
+        if (recipeIds.length === 0) {
+            this.renderPlaceholder();
+            return;
+        }
+
+        if (recipeIds.length === 1) {
+            this.renderRecipeTree(recipeIds[0]);
+            return;
+        }
+
+        // For multiple recipes, create a combined view
+        this.clearTree();
+        let yOffset = 0;
+
+        recipeIds.forEach((recipeId, index) => {
+            const recipe = this.recipeCache.get(recipeId);
+            if (recipe) {
+                const treeData = this.buildTreeData(recipe, new Set());
+                const layout = this.calculateLayout(treeData);
+
+                // Adjust positions for multiple trees
+                layout.forEach((data, id) => {
+                    data.y += yOffset;
+                });
+
+                this.renderTree(layout);
+
+                // Calculate the height of this tree for spacing
+                let maxY = 0;
+                layout.forEach(data => {
+                    maxY = Math.max(maxY, data.y + this.nodeHeight);
+                });
+                yOffset = maxY + 100; // Add spacing between trees
+            }
+        });
+
+        this.resetView();
     }
 }
