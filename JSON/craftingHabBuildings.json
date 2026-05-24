@@ -2,40 +2,97 @@
   "habs": [
     {
       "id": "hab-t1",
-      "name": "Hab T1",
+      "name": "Crafting Hab Tier 1",
       "tier": 1,
-      "slots": 32,
+      "slots": 3,
       "description": "Tier 1 habitat module",
       "constructionTime": 1800,
-      "storage": 1000,
       "constructionCost": {
         "habitat-module": 1,
         "environmental-control": 1
-      }
+      },
+      "crew_slots": 0,
+      "crew_needed": 0,
+      "crafting_job_concurrency": 1,
+      "net_resource_production": {},
+      "construction_cost": {
+        "2242": 1,
+        "2257": 1
+      },
+      "construction_time": 1800,
+      "refund_amount": {
+        "2242": 0,
+        "2257": 0
+      },
+      "research_requirements": [],
+      "required_tags": [],
+      "added_tags": [
+        10
+      ],
+      "crafting_crew_count": 1,
+      "crafting_fee": 100,
+      "min_tier": "1",
+      "xp_value": 100,
+      "crafting_speed": 100,
+      "crafting_efficiency": 100,
+      "resource_storage": 1000,
+      "hub_value": 1,
+      "recipe_unlock": [],
+      "c4_numerical_id": 0,
+      "c4_status": "v1"
     },
     {
       "id": "hab-t2",
-      "name": "Hab T2",
+      "name": "Crafting Hab Tier 2",
       "tier": 2,
-      "slots": 243,
+      "slots": 8,
       "description": "Tier 2 habitat module",
       "constructionTime": 3600,
-      "storage": 2000,
       "constructionCost": {
         "hab-t1": 1,
         "habitat-module": 1,
         "environmental-control": 1,
         "safety-interlock": 1
-      }
+      },
+      "crew_slots": 0,
+      "crew_needed": 0,
+      "crafting_job_concurrency": 1,
+      "net_resource_production": {},
+      "construction_cost": {
+        "2242": 1,
+        "2257": 1,
+        "2303": 1
+      },
+      "construction_time": 3600,
+      "refund_amount": {
+        "2242": 0,
+        "2257": 0,
+        "2303": 0
+      },
+      "research_requirements": [],
+      "required_tags": [],
+      "added_tags": [
+        10
+      ],
+      "crafting_crew_count": 1,
+      "crafting_fee": 100,
+      "min_tier": "1",
+      "xp_value": 100,
+      "crafting_speed": 100,
+      "crafting_efficiency": 100,
+      "resource_storage": 2000,
+      "hub_value": 2,
+      "recipe_unlock": [],
+      "c4_numerical_id": 1,
+      "c4_status": "v1"
     },
     {
       "id": "hab-t3",
-      "name": "Hab T3",
+      "name": "Crafting Hab Tier 3",
       "tier": 3,
-      "slots": 1024,
+      "slots": 15,
       "description": "Tier 3 habitat module",
       "constructionTime": 7200,
-      "storage": 4000,
       "constructionCost": {
         "hab-t2": 1,
         "habitat-module": 1,
@@ -43,16 +100,50 @@
         "safety-interlock": 1,
         "life-support-coordination": 1,
         "drywater": 1
-      }
+      },
+      "crew_slots": 0,
+      "crew_needed": 0,
+      "crafting_job_concurrency": 1,
+      "net_resource_production": {},
+      "construction_cost": {
+        "316": 1,
+        "2242": 1,
+        "2257": 1,
+        "2269": 1,
+        "2303": 1
+      },
+      "construction_time": 7200,
+      "refund_amount": {
+        "316": 0,
+        "2242": 0,
+        "2257": 0,
+        "2269": 0,
+        "2303": 0
+      },
+      "research_requirements": [],
+      "required_tags": [],
+      "added_tags": [
+        10
+      ],
+      "crafting_crew_count": 1,
+      "crafting_fee": 100,
+      "min_tier": "1",
+      "xp_value": 100,
+      "crafting_speed": 100,
+      "crafting_efficiency": 100,
+      "resource_storage": 4000,
+      "hub_value": 3,
+      "recipe_unlock": [],
+      "c4_numerical_id": 2,
+      "c4_status": "v1"
     },
     {
       "id": "hab-t4",
-      "name": "Hab T4",
+      "name": "Crafting Hab Tier 4",
       "tier": 4,
-      "slots": 4096,
+      "slots": 25,
       "description": "Tier 4 habitat module",
       "constructionTime": 14400,
-      "storage": 8000,
       "constructionCost": {
         "hab-t3": 1,
         "habitat-module": 1,
@@ -61,16 +152,52 @@
         "life-support-coordination": 1,
         "structural-reinforcement-grid": 1,
         "drywater": 1
-      }
+      },
+      "crew_slots": 0,
+      "crew_needed": 0,
+      "crafting_job_concurrency": 1,
+      "net_resource_production": {},
+      "construction_cost": {
+        "316": 1,
+        "2242": 1,
+        "2257": 1,
+        "2269": 1,
+        "2303": 1,
+        "2320": 1
+      },
+      "construction_time": 14400,
+      "refund_amount": {
+        "316": 0,
+        "2242": 0,
+        "2257": 0,
+        "2269": 0,
+        "2303": 0,
+        "2320": 0
+      },
+      "research_requirements": [],
+      "required_tags": [],
+      "added_tags": [
+        10
+      ],
+      "crafting_crew_count": 1,
+      "crafting_fee": 100,
+      "min_tier": "1",
+      "xp_value": 100,
+      "crafting_speed": 100,
+      "crafting_efficiency": 100,
+      "resource_storage": 8000,
+      "hub_value": 4,
+      "recipe_unlock": [],
+      "c4_numerical_id": 3,
+      "c4_status": "v1"
     },
     {
       "id": "hab-t5",
-      "name": "Hab T5",
+      "name": "Crafting Hab Tier 5",
       "tier": 5,
-      "slots": 16384,
+      "slots": 40,
       "description": "Tier 5 habitat module",
       "constructionTime": 28800,
-      "storage": 16000,
       "constructionCost": {
         "hab-t4": 1,
         "habitat-module": 1,
@@ -79,100 +206,44 @@
         "life-support-coordination": 1,
         "structural-reinforcement-grid": 1,
         "drywater": 1
-      }
-    },
-    {
-      "id": "hab-landing-pad-xxs",
-      "name": "Hab Landing Pad XXS",
-      "tier": 1,
-      "slots": 5,
-      "description": "Landing pad for ships",
-      "constructionTime": 900,
-      "constructionCost": {
-        "structural-foundation": 1,
-        "docking-clamp": 1
-      }
-    },
-    {
-      "id": "hab-landing-pad-xs",
-      "name": "Hab Landing Pad XS",
-      "tier": 1,
-      "slots": 10,
-      "description": "Landing pad for ships",
-      "constructionTime": 1800,
-      "constructionCost": {
-        "hab-landing-pad-xxs": 1,
-        "structural-foundation": 1,
-        "docking-clamp": 1,
-        "safety-interlock": 1
-      }
-    },
-    {
-      "id": "hab-landing-pad-s",
-      "name": "Hab Landing Pad S",
-      "tier": 1,
-      "slots": 20,
-      "description": "Landing pad for ships",
-      "constructionTime": 3600,
-      "constructionCost": {
-        "hab-landing-pad-xs": 1,
-        "structural-foundation": 1,
-        "docking-clamp": 1,
-        "safety-interlock": 1,
-        "fuel-storage-tank": 1
-      }
-    },
-    {
-      "id": "hab-landing-pad-m",
-      "name": "Hab Landing Pad M",
-      "tier": 1,
-      "slots": 40,
-      "description": "Landing pad for ships",
-      "constructionTime": 7200,
-      "constructionCost": {
-        "hab-landing-pad-s": 1,
-        "structural-foundation": 1,
-        "docking-clamp": 1,
-        "safety-interlock": 1,
-        "fuel-storage-tank": 1,
-        "structural-reinforcement-grid": 1
-      }
-    },
-    {
-      "id": "hab-interior-paint",
-      "name": "Hab Interior Paint",
-      "tier": 1,
-      "slots": 2,
-      "description": "Decorative habitat enhancement",
-      "constructionTime": 300,
-      "constructionCost": {
-        "material-processor": 1,
-        "environmental-control": 1
-      }
-    },
-    {
-      "id": "hab-exterior-paint",
-      "name": "Hab Exterior Paint",
-      "tier": 1,
-      "slots": 2,
-      "description": "Decorative habitat enhancement",
-      "constructionTime": 300,
-      "constructionCost": {
-        "material-processor": 1,
-        "protective-layer": 1
-      }
-    },
-    {
-      "id": "hab-pet-house",
-      "name": "Hab Pet House",
-      "tier": 1,
-      "slots": 2,
-      "description": "Decorative habitat enhancement",
-      "constructionTime": 300,
-      "constructionCost": {
-        "habitat-module": 1,
-        "environmental-control": 1
-      }
+      },
+      "crew_slots": 0,
+      "crew_needed": 0,
+      "crafting_job_concurrency": 1,
+      "net_resource_production": {},
+      "construction_cost": {
+        "316": 1,
+        "2242": 1,
+        "2257": 1,
+        "2269": 1,
+        "2303": 1,
+        "2320": 1
+      },
+      "construction_time": 28800,
+      "refund_amount": {
+        "316": 0,
+        "2242": 0,
+        "2257": 0,
+        "2269": 0,
+        "2303": 0,
+        "2320": 0
+      },
+      "research_requirements": [],
+      "required_tags": [],
+      "added_tags": [
+        10
+      ],
+      "crafting_crew_count": 1,
+      "crafting_fee": 100,
+      "min_tier": "1",
+      "xp_value": 100,
+      "crafting_speed": 100,
+      "crafting_efficiency": 100,
+      "resource_storage": 16000,
+      "hub_value": 5,
+      "recipe_unlock": [],
+      "c4_numerical_id": 4,
+      "c4_status": "v1"
     }
   ],
   "craftingStations": [
@@ -181,20 +252,48 @@
       "name": "Hab Crafting Station XXS",
       "size": "XXS",
       "speedBonus": 1,
-      "slots": 8,
       "jobSlots": 1,
       "constructionTime": 900,
       "constructionCost": {
         "material-processor": 1,
         "industrial-control-matrix": 1
-      }
+      },
+      "slots": 8,
+      "crew_slots": 0,
+      "crew_needed": 0,
+      "crafting_job_concurrency": 1,
+      "net_resource_production": {},
+      "construction_cost": {
+        "2264": 1,
+        "2274": 1
+      },
+      "construction_time": 900,
+      "refund_amount": {
+        "2264": 0,
+        "2274": 0
+      },
+      "research_requirements": [],
+      "required_tags": [
+        10
+      ],
+      "added_tags": [],
+      "crafting_crew_count": 1,
+      "crafting_fee": 100,
+      "min_tier": "1",
+      "xp_value": 100,
+      "crafting_speed": 100,
+      "crafting_efficiency": 100,
+      "resource_storage": 0,
+      "hub_value": 0,
+      "recipe_unlock": [],
+      "c4_numerical_id": 12,
+      "c4_status": "v1"
     },
     {
       "id": "hab-crafting-station-xs",
       "name": "Hab Crafting Station XS",
       "size": "XS",
       "speedBonus": 1.25,
-      "slots": 64,
       "jobSlots": 2,
       "constructionTime": 1800,
       "constructionCost": {
@@ -202,14 +301,45 @@
         "material-processor": 1,
         "industrial-control-matrix": 1,
         "safety-interlock": 1
-      }
+      },
+      "slots": 64,
+      "crew_slots": 0,
+      "crew_needed": 0,
+      "crafting_job_concurrency": 2,
+      "net_resource_production": {},
+      "construction_cost": {
+        "2264": 1,
+        "2274": 1,
+        "2303": 1
+      },
+      "construction_time": 1800,
+      "refund_amount": {
+        "2264": 0,
+        "2274": 0,
+        "2303": 0
+      },
+      "research_requirements": [],
+      "required_tags": [
+        10
+      ],
+      "added_tags": [],
+      "crafting_crew_count": 1,
+      "crafting_fee": 100,
+      "min_tier": "1",
+      "xp_value": 100,
+      "crafting_speed": 125,
+      "crafting_efficiency": 100,
+      "resource_storage": 0,
+      "hub_value": 0,
+      "recipe_unlock": [],
+      "c4_numerical_id": 13,
+      "c4_status": "v1"
     },
     {
       "id": "hab-crafting-station-s",
       "name": "Hab Crafting Station S",
       "size": "S",
       "speedBonus": 1.5,
-      "slots": 216,
       "jobSlots": 3,
       "constructionTime": 3600,
       "constructionCost": {
@@ -218,14 +348,47 @@
         "industrial-control-matrix": 1,
         "safety-interlock": 1,
         "structural-foundation": 1
-      }
+      },
+      "slots": 216,
+      "crew_slots": 0,
+      "crew_needed": 0,
+      "crafting_job_concurrency": 3,
+      "net_resource_production": {},
+      "construction_cost": {
+        "2264": 1,
+        "2274": 1,
+        "2303": 1,
+        "2318": 1
+      },
+      "construction_time": 3600,
+      "refund_amount": {
+        "2264": 0,
+        "2274": 0,
+        "2303": 0,
+        "2318": 0
+      },
+      "research_requirements": [],
+      "required_tags": [
+        10
+      ],
+      "added_tags": [],
+      "crafting_crew_count": 1,
+      "crafting_fee": 100,
+      "min_tier": "1",
+      "xp_value": 100,
+      "crafting_speed": 150,
+      "crafting_efficiency": 100,
+      "resource_storage": 0,
+      "hub_value": 0,
+      "recipe_unlock": [],
+      "c4_numerical_id": 14,
+      "c4_status": "v1"
     },
     {
       "id": "hab-crafting-station-m",
       "name": "Hab Crafting Station M",
       "size": "M",
       "speedBonus": 2,
-      "slots": 512,
       "jobSlots": 5,
       "constructionTime": 7200,
       "constructionCost": {
@@ -235,7 +398,43 @@
         "safety-interlock": 1,
         "structural-foundation": 1,
         "structural-reinforcement-grid": 1
-      }
+      },
+      "slots": 512,
+      "crew_slots": 0,
+      "crew_needed": 0,
+      "crafting_job_concurrency": 5,
+      "net_resource_production": {},
+      "construction_cost": {
+        "2264": 1,
+        "2274": 1,
+        "2303": 1,
+        "2318": 1,
+        "2320": 1
+      },
+      "construction_time": 7200,
+      "refund_amount": {
+        "2264": 0,
+        "2274": 0,
+        "2303": 0,
+        "2318": 0,
+        "2320": 0
+      },
+      "research_requirements": [],
+      "required_tags": [
+        10
+      ],
+      "added_tags": [],
+      "crafting_crew_count": 1,
+      "crafting_fee": 100,
+      "min_tier": "1",
+      "xp_value": 100,
+      "crafting_speed": 200,
+      "crafting_efficiency": 100,
+      "resource_storage": 0,
+      "hub_value": 0,
+      "recipe_unlock": [],
+      "c4_numerical_id": 15,
+      "c4_status": "v1"
     }
   ],
   "cargoStorage": [
@@ -243,20 +442,38 @@
       "id": "hab-cargo-storage-t1",
       "name": "Hab Cargo Storage T1",
       "tier": 1,
-      "slots": 4,
       "storageBonus": 500,
       "jobSlotBonus": 0,
       "constructionTime": 1800,
       "constructionCost": {
         "cargo-container": 1,
         "structural-foundation": 1
-      }
+      },
+      "crew_slots": 0,
+      "crew_needed": 0,
+      "crafting_job_concurrency": 0,
+      "net_resource_production": {},
+      "refund_amount": {},
+      "research_requirements": [],
+      "required_tags": [
+        10
+      ],
+      "added_tags": [],
+      "crafting_crew_count": 0,
+      "crafting_fee": 0,
+      "min_tier": "1",
+      "xp_value": 0,
+      "crafting_speed": 0,
+      "crafting_efficiency": 0,
+      "hub_value": 0,
+      "recipe_unlock": [],
+      "c4_numerical_id": 16,
+      "c4_status": "v1"
     },
     {
       "id": "hab-cargo-storage-t2",
       "name": "Hab Cargo Storage T2",
       "tier": 2,
-      "slots": 32,
       "storageBonus": 1500,
       "jobSlotBonus": 1,
       "constructionTime": 3600,
@@ -265,13 +482,32 @@
         "cargo-container": 1,
         "structural-foundation": 1,
         "safety-interlock": 1
-      }
+      },
+      "crew_slots": 0,
+      "crew_needed": 0,
+      "crafting_job_concurrency": 0,
+      "net_resource_production": {},
+      "refund_amount": {},
+      "research_requirements": [],
+      "required_tags": [
+        10
+      ],
+      "added_tags": [],
+      "crafting_crew_count": 0,
+      "crafting_fee": 0,
+      "min_tier": "1",
+      "xp_value": 0,
+      "crafting_speed": 0,
+      "crafting_efficiency": 0,
+      "hub_value": 0,
+      "recipe_unlock": [],
+      "c4_numerical_id": 17,
+      "c4_status": "v1"
     },
     {
       "id": "hab-cargo-storage-t3",
       "name": "Hab Cargo Storage T3",
       "tier": 3,
-      "slots": 108,
       "storageBonus": 3000,
       "jobSlotBonus": 1,
       "constructionTime": 7200,
@@ -281,13 +517,32 @@
         "structural-foundation": 1,
         "safety-interlock": 1,
         "storage-coordination-system": 1
-      }
+      },
+      "crew_slots": 0,
+      "crew_needed": 0,
+      "crafting_job_concurrency": 0,
+      "net_resource_production": {},
+      "refund_amount": {},
+      "research_requirements": [],
+      "required_tags": [
+        10
+      ],
+      "added_tags": [],
+      "crafting_crew_count": 0,
+      "crafting_fee": 0,
+      "min_tier": "1",
+      "xp_value": 0,
+      "crafting_speed": 0,
+      "crafting_efficiency": 0,
+      "hub_value": 0,
+      "recipe_unlock": [],
+      "c4_numerical_id": 18,
+      "c4_status": "v1"
     },
     {
       "id": "hab-cargo-storage-t4",
       "name": "Hab Cargo Storage T4",
       "tier": 4,
-      "slots": 256,
       "storageBonus": 6000,
       "jobSlotBonus": 2,
       "constructionTime": 14400,
@@ -298,13 +553,32 @@
         "safety-interlock": 1,
         "storage-coordination-system": 1,
         "structural-reinforcement-grid": 1
-      }
+      },
+      "crew_slots": 0,
+      "crew_needed": 0,
+      "crafting_job_concurrency": 0,
+      "net_resource_production": {},
+      "refund_amount": {},
+      "research_requirements": [],
+      "required_tags": [
+        10
+      ],
+      "added_tags": [],
+      "crafting_crew_count": 0,
+      "crafting_fee": 0,
+      "min_tier": "1",
+      "xp_value": 0,
+      "crafting_speed": 0,
+      "crafting_efficiency": 0,
+      "hub_value": 0,
+      "recipe_unlock": [],
+      "c4_numerical_id": 19,
+      "c4_status": "v1"
     },
     {
       "id": "hab-cargo-storage-t5",
       "name": "Hab Cargo Storage T5",
       "tier": 5,
-      "slots": 500,
       "storageBonus": 12000,
       "jobSlotBonus": 3,
       "constructionTime": 28800,
@@ -316,7 +590,27 @@
         "storage-coordination-system": 1,
         "structural-reinforcement-grid": 1,
         "architectural-framework": 1
-      }
+      },
+      "crew_slots": 0,
+      "crew_needed": 0,
+      "crafting_job_concurrency": 0,
+      "net_resource_production": {},
+      "refund_amount": {},
+      "research_requirements": [],
+      "required_tags": [
+        10
+      ],
+      "added_tags": [],
+      "crafting_crew_count": 0,
+      "crafting_fee": 0,
+      "min_tier": "1",
+      "xp_value": 0,
+      "crafting_speed": 0,
+      "crafting_efficiency": 0,
+      "hub_value": 0,
+      "recipe_unlock": [],
+      "c4_numerical_id": 20,
+      "c4_status": "v1"
     }
   ]
 }

@@ -1,11 +1,11 @@
 {
-  "timestamp": "2025-11-20T03:04:39.593Z",
+  "timestamp": "2026-05-24T02:10:04.081Z",
   "summary": {
     "total": 10,
     "successful": 10,
     "failed": 0,
-    "withChanges": 2,
-    "withBreakingChanges": 0,
+    "withChanges": 3,
+    "withBreakingChanges": 1,
     "newFiles": 0
   },
   "details": [
@@ -98,14 +98,94 @@
       "outputFiles": [
         "crafting-hab-data.js"
       ],
-      "changed": false,
-      "breaking": false,
+      "changed": true,
+      "breaking": true,
+      "isNew": false,
       "validationWarning": null,
       "error": null,
       "diff": {
-        "breaking": [],
-        "additions": [],
-        "modifications": []
+        "breaking": [
+          "Removed keys from habs[0]: storage",
+          "Removed field: habs[0].storage",
+          "Removed keys from cargoStorage[0]: slots",
+          "Removed field: cargoStorage[0].slots"
+        ],
+        "additions": [
+          "Added field: habs[0].crew_slots (number)",
+          "Added field: habs[0].crew_needed (number)",
+          "Added field: habs[0].crafting_job_concurrency (number)",
+          "Added field: habs[0].net_resource_production (object)",
+          "Added field: habs[0].construction_cost (object)",
+          "Added field: habs[0].construction_cost.2242 (number)",
+          "Added field: habs[0].construction_cost.2257 (number)",
+          "Added field: habs[0].construction_time (number)",
+          "Added field: habs[0].refund_amount (object)",
+          "Added field: habs[0].refund_amount.2242 (number)",
+          "Added field: habs[0].refund_amount.2257 (number)",
+          "Added field: habs[0].research_requirements (array)",
+          "Added field: habs[0].required_tags (array)",
+          "Added field: habs[0].added_tags (array)",
+          "Added field: habs[0].crafting_crew_count (number)",
+          "Added field: habs[0].crafting_fee (number)",
+          "Added field: habs[0].min_tier (string)",
+          "Added field: habs[0].xp_value (number)",
+          "Added field: habs[0].crafting_speed (number)",
+          "Added field: habs[0].crafting_efficiency (number)",
+          "Added field: habs[0].resource_storage (number)",
+          "Added field: habs[0].hub_value (number)",
+          "Added field: habs[0].recipe_unlock (array)",
+          "Added field: habs[0].c4_numerical_id (number)",
+          "Added field: habs[0].c4_status (string)",
+          "Added field: craftingStations[0].crew_slots (number)",
+          "Added field: craftingStations[0].crew_needed (number)",
+          "Added field: craftingStations[0].crafting_job_concurrency (number)",
+          "Added field: craftingStations[0].net_resource_production (object)",
+          "Added field: craftingStations[0].construction_cost (object)",
+          "Added field: craftingStations[0].construction_cost.2264 (number)",
+          "Added field: craftingStations[0].construction_cost.2274 (number)",
+          "Added field: craftingStations[0].construction_time (number)",
+          "Added field: craftingStations[0].refund_amount (object)",
+          "Added field: craftingStations[0].refund_amount.2264 (number)",
+          "Added field: craftingStations[0].refund_amount.2274 (number)",
+          "Added field: craftingStations[0].research_requirements (array)",
+          "Added field: craftingStations[0].required_tags (array)",
+          "Added field: craftingStations[0].added_tags (array)",
+          "Added field: craftingStations[0].crafting_crew_count (number)",
+          "Added field: craftingStations[0].crafting_fee (number)",
+          "Added field: craftingStations[0].min_tier (string)",
+          "Added field: craftingStations[0].xp_value (number)",
+          "Added field: craftingStations[0].crafting_speed (number)",
+          "Added field: craftingStations[0].crafting_efficiency (number)",
+          "Added field: craftingStations[0].resource_storage (number)",
+          "Added field: craftingStations[0].hub_value (number)",
+          "Added field: craftingStations[0].recipe_unlock (array)",
+          "Added field: craftingStations[0].c4_numerical_id (number)",
+          "Added field: craftingStations[0].c4_status (string)",
+          "Added field: cargoStorage[0].crew_slots (number)",
+          "Added field: cargoStorage[0].crew_needed (number)",
+          "Added field: cargoStorage[0].crafting_job_concurrency (number)",
+          "Added field: cargoStorage[0].net_resource_production (object)",
+          "Added field: cargoStorage[0].refund_amount (object)",
+          "Added field: cargoStorage[0].research_requirements (array)",
+          "Added field: cargoStorage[0].required_tags (array)",
+          "Added field: cargoStorage[0].added_tags (array)",
+          "Added field: cargoStorage[0].crafting_crew_count (number)",
+          "Added field: cargoStorage[0].crafting_fee (number)",
+          "Added field: cargoStorage[0].min_tier (string)",
+          "Added field: cargoStorage[0].xp_value (number)",
+          "Added field: cargoStorage[0].crafting_speed (number)",
+          "Added field: cargoStorage[0].crafting_efficiency (number)",
+          "Added field: cargoStorage[0].hub_value (number)",
+          "Added field: cargoStorage[0].recipe_unlock (array)",
+          "Added field: cargoStorage[0].c4_numerical_id (number)",
+          "Added field: cargoStorage[0].c4_status (string)"
+        ],
+        "modifications": [
+          "Added keys to habs[0]: crew_slots, crew_needed, crafting_job_concurrency, net_resource_production, construction_cost, construction_time, refund_amount, research_requirements, required_tags, added_tags, crafting_crew_count, crafting_fee, min_tier, xp_value, crafting_speed, crafting_efficiency, resource_storage, hub_value, recipe_unlock, c4_numerical_id, c4_status",
+          "Added keys to craftingStations[0]: crew_slots, crew_needed, crafting_job_concurrency, net_resource_production, construction_cost, construction_time, refund_amount, research_requirements, required_tags, added_tags, crafting_crew_count, crafting_fee, min_tier, xp_value, crafting_speed, crafting_efficiency, resource_storage, hub_value, recipe_unlock, c4_numerical_id, c4_status",
+          "Added keys to cargoStorage[0]: crew_slots, crew_needed, crafting_job_concurrency, net_resource_production, refund_amount, research_requirements, required_tags, added_tags, crafting_crew_count, crafting_fee, min_tier, xp_value, crafting_speed, crafting_efficiency, hub_value, recipe_unlock, c4_numerical_id, c4_status"
+        ],
+        "isNew": false
       }
     },
     {
@@ -175,5 +255,17 @@
       }
     }
   ],
-  "alerts": []
+  "alerts": [
+    {
+      "level": "ERROR",
+      "file": "craftingHabBuildings.json",
+      "message": "Breaking schema changes detected in craftingHabBuildings.json",
+      "changes": [
+        "Removed keys from habs[0]: storage",
+        "Removed field: habs[0].storage",
+        "Removed keys from cargoStorage[0]: slots",
+        "Removed field: cargoStorage[0].slots"
+      ]
+    }
+  ]
 }

@@ -54,7 +54,7 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "name", "tier", "slots", "storageBonus", "jobSlotBonus"],
+        "required": ["id", "name", "tier", "storageBonus", "jobSlotBonus"],
         "properties": {
           "id": { "type": "string" },
           "name": { "type": "string" },
