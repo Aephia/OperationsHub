@@ -200,7 +200,7 @@ class TerritoryAnalytics {
                 <span class="filter-info" id="terrFilterInfo"></span>
             </div>
 
-            <div class="location-analysis-grid">
+            <div class="table-container">
                 <table class="location-table">
                     <thead>
                         <tr>

@@ -106,7 +106,7 @@ class ManufacturingAnalytics {
                 <span class="filter-info" id="mfgFilterInfo"></span>
             </div>
 
-            <div class="location-analysis-grid">
+            <div class="table-container">
                 <table class="location-table">
                     <thead>
                         <tr>
