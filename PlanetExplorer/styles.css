@@ -330,31 +330,21 @@ main {
     border-bottom: 1px solid var(--glass-border);
 }
 
-/* Search Input */
-.search-container {
+/* Filter Groups */
+.filter-group {
     margin-bottom: 1.25rem;
 }
 
-#searchInput {
-    width: 100%;
-    padding: 0.85rem 1rem;
-    font-family: 'Exo 2', sans-serif;
-    font-size: 0.9rem;
-    background: rgba(0, 0, 0, 0.4);
-    border: 1px solid var(--glass-border);
-    border-radius: 12px;
-    color: var(--text-primary);
-    transition: all 0.3s ease;
-}
-
-#searchInput:focus {
-    outline: none;
-    border-color: var(--accent-cyan);
-    box-shadow: 0 0 30px rgba(0, 240, 255, 0.2);
-}
-
-#searchInput::placeholder {
-    color: var(--text-muted);
+.filter-group-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent-cyan);
+    margin: 0 0 0.65rem 0;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--glass-border);
 }
 
 /* Checkbox Items */
@@ -362,6 +352,50 @@ main {
     display: flex;
     flex-direction: column;
     gap: 0.4rem;
+}
+
+/* Expandable collapsible groups (resources A-Z, systems by region + faction) */
+.collapsible-group {
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.collapsible-group-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--accent-cyan);
+    padding: 0.55rem 0.75rem;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+    transition: background 0.2s ease;
+}
+
+.collapsible-group-title::-webkit-details-marker {
+    display: none;
+}
+
+.collapsible-group-title::before {
+    content: '▸';
+    display: inline-block;
+    margin-right: 0.5rem;
+    transition: transform 0.2s ease;
+}
+
+.collapsible-group[open] > .collapsible-group-title::before {
+    transform: rotate(90deg);
+}
+
+.collapsible-group-title:hover {
+    background: rgba(0, 240, 255, 0.08);
+}
+
+.collapsible-group .checkbox-item {
+    margin-left: 0.5rem;
 }
 
 .checkbox-item {

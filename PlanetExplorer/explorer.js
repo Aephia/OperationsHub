@@ -25,32 +25,180 @@ class PlanetExplorer extends BaseExplorer {
     }
 
     populateFilters() {
-        this.populateSystemCheckboxes();
-        this.populateResourceCheckboxes();
+        this.populateFactionCheckboxes();
+        this.populatePlanetTypeCheckboxes();
+        // System + resource option lists are derived from the faction/planet-type
+        // selections so they shrink for easier selection.
+        this.refreshDependentLists();
     }
 
-    populateSystemCheckboxes() {
-        const sortedSystems = [...this.data].sort((a, b) => a.name.localeCompare(b.name));
-        this.createCheckboxFilter('systemCheckboxes', sortedSystems.map(s => s.key), 'system', (key) => {
-            const system = this.data.find(s => s.key === key);
-            return system ? system.name : key;
+    populateFactionCheckboxes() {
+        const factions = [...new Set(this.data.map(s => s.closestFaction).filter(Boolean))];
+        this.createCheckboxFilter('factionCheckboxes', factions, 'faction');
+    }
+
+    populatePlanetTypeCheckboxes() {
+        // Faction-agnostic categories (Gas Giant, Asteroid Belt, ...) present in the data
+        const categories = new Set();
+        this.data.forEach(system => {
+            (system.planets || []).forEach(planet => {
+                categories.add(getPlanetCategory(planet.type));
+            });
+        });
+        this.createCheckboxFilter('planetTypeCheckboxes', categories, 'planetType');
+    }
+
+    // Systems that satisfy the upstream faction + planet-type selections. Used to
+    // narrow the System and Resource option lists (faceted filtering).
+    getContextSystems() {
+        const factions = this.selectedFilters.get('faction');
+        const types = this.selectedFilters.get('planetType');
+        const factionActive = factions && factions.size > 0;
+        const typeActive = types && types.size > 0;
+
+        return this.data.filter(system => {
+            if (factionActive && !factions.has(system.closestFaction)) return false;
+            if (typeActive && !(system.planets || []).some(p => types.has(getPlanetCategory(p.type)))) {
+                return false;
+            }
+            return true;
         });
     }
 
-    populateResourceCheckboxes() {
-        this.createCheckboxFilter('resourceCheckboxes', this.allResources, 'resource');
+    // Planets in a system that match the selected planet types (ignores resource filter)
+    planetsMatchingType(system) {
+        const types = this.selectedFilters.get('planetType');
+        if (!types || types.size === 0) return system.planets || [];
+        return (system.planets || []).filter(p => types.has(getPlanetCategory(p.type)));
+    }
+
+    refreshDependentLists() {
+        const contextSystems = this.getContextSystems();
+        this.refreshSystemOptions(contextSystems);
+        this.refreshResourceOptions(contextSystems);
+    }
+
+    refreshSystemOptions(systems) {
+        // Group systems by region (first 3 chars of the name) + faction
+        const entries = systems.map(system => ({
+            value: system.key,
+            label: system.name,
+            group: `${(system.name || '').slice(0, 3)} - ${system.closestFaction || '???'}`
+        }));
+        this.renderGroupedCheckboxes('systemCheckboxes', 'system', entries);
+    }
+
+    refreshResourceOptions(systems) {
+        // Only resources found on planets that match the selected planet types
+        const names = new Set();
+        systems.forEach(system => {
+            this.planetsMatchingType(system).forEach(planet => {
+                (planet.resources || []).forEach(r => names.add(r.name));
+            });
+        });
+        const entries = Array.from(names).map(name => ({
+            value: name,
+            label: name,
+            group: (name[0] || '#').toUpperCase()
+        }));
+        this.renderGroupedCheckboxes('resourceCheckboxes', 'resource', entries);
+    }
+
+    // Render a list of checkboxes into collapsible <details> groups. Each entry is
+    // { value, label, group }. Preserves checked state for entries still present,
+    // prunes the stored selection, and auto-expands groups with an active selection.
+    renderGroupedCheckboxes(containerId, filterType, entries) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        const previouslyChecked = this.selectedFilters.get(filterType) || new Set();
+
+        const groups = new Map();
+        entries.forEach(entry => {
+            if (!groups.has(entry.group)) groups.set(entry.group, []);
+            groups.get(entry.group).push(entry);
+        });
+
+        container.innerHTML = '';
+        const stillChecked = new Set();
+
+        Array.from(groups.keys()).sort().forEach(groupKey => {
+            const groupEntries = groups.get(groupKey)
+                .sort((a, b) => a.label.localeCompare(b.label));
+
+            const details = document.createElement('details');
+            details.className = 'collapsible-group';
+
+            const summary = document.createElement('summary');
+            summary.className = 'collapsible-group-title';
+            summary.textContent = `${groupKey} (${groupEntries.length})`;
+            details.appendChild(summary);
+
+            let groupHasChecked = false;
+            groupEntries.forEach(({ value, label }) => {
+                const item = document.createElement('div');
+                item.className = 'checkbox-item';
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `${filterType}-${value}`;
+                checkbox.value = value;
+                if (previouslyChecked.has(value)) {
+                    checkbox.checked = true;
+                    stillChecked.add(value);
+                    groupHasChecked = true;
+                }
+                checkbox.addEventListener('change', (e) => {
+                    if (window.spaceSounds) {
+                        e.target.checked ? window.spaceSounds.select() : window.spaceSounds.deselect();
+                    }
+                    this.handleFilterChange(filterType);
+                });
+
+                const labelEl = document.createElement('label');
+                labelEl.htmlFor = `${filterType}-${value}`;
+                labelEl.textContent = label;
+
+                item.appendChild(checkbox);
+                item.appendChild(labelEl);
+                details.appendChild(item);
+            });
+
+            // Keep a group expanded if it contains an active selection
+            if (groupHasChecked) details.open = true;
+
+            container.appendChild(details);
+        });
+
+        this.selectedFilters.set(filterType, stillChecked);
+    }
+
+    // When an upstream (faction / planet type) filter changes, narrow the dependent
+    // System and Resource option lists before re-applying.
+    handleFilterChange(filterType) {
+        super.handleFilterChange(filterType);
+        if (filterType === 'faction' || filterType === 'planetType') {
+            this.refreshDependentLists();
+            this.applyFilters();
+        }
     }
 
 
+    hasActiveFilters() {
+        return this.selectedFilters.get('system')?.size > 0 ||
+               this.selectedFilters.get('resource')?.size > 0 ||
+               this.selectedFilters.get('faction')?.size > 0 ||
+               this.selectedFilters.get('planetType')?.size > 0;
+    }
+
     applyFilters() {
-        const hasActiveFilters = this.currentSearchTerm ||
-                                 this.selectedFilters.get('system')?.size > 0 ||
-                                 this.selectedFilters.get('resource')?.size > 0;
+        const hasActiveFilters = this.hasActiveFilters();
 
         console.log(`🔍 PlanetExplorer applyFilters:`, {
-            searchTerm: this.currentSearchTerm,
             systemFilters: this.selectedFilters.get('system')?.size || 0,
             resourceFilters: this.selectedFilters.get('resource')?.size || 0,
+            factionFilters: this.selectedFilters.get('faction')?.size || 0,
+            planetTypeFilters: this.selectedFilters.get('planetType')?.size || 0,
             hasActiveFilters
         });
 
@@ -66,37 +214,42 @@ class PlanetExplorer extends BaseExplorer {
         this.updateStats();
     }
 
-    matchesSearch(system, searchTerm) {
-        const systemMatch = system.name.toLowerCase().includes(searchTerm);
-        const planetMatch = system.planets && system.planets.some(planet =>
-            planet.name.toLowerCase().includes(searchTerm)
-        );
-        const resourceMatch = system.planets && system.planets.some(planet =>
-            planet.resources && planet.resources.some(resource =>
-                resource.name.toLowerCase().includes(searchTerm)
-            )
-        );
-        return systemMatch || planetMatch || resourceMatch;
-    }
-
     matchesFilter(system, filterType, selectedItems) {
         if (filterType === 'system') {
             return selectedItems.has(system.key);
-        } else if (filterType === 'resource') {
-            return system.planets && system.planets.some(planet =>
-                planet.resources && planet.resources.some(resource =>
-                    selectedItems.has(resource.name)
-                )
-            );
+        } else if (filterType === 'faction') {
+            return selectedItems.has(system.closestFaction);
+        } else if (filterType === 'resource' || filterType === 'planetType') {
+            // Planet-level filters must be satisfied by the SAME planet: a system
+            // only matches if it has a planet that meets every active planet-level
+            // filter (selected type AND containing a selected resource).
+            return this.getMatchingPlanets(system.planets).length > 0;
         }
         return true;
     }
 
+    // Returns planets that satisfy all active planet-level filters (planet type +
+    // resource). When neither filter is active, returns the planets unchanged.
+    getMatchingPlanets(planets) {
+        const selectedTypes = this.selectedFilters.get('planetType');
+        const selectedResources = this.selectedFilters.get('resource');
+        const typeActive = selectedTypes && selectedTypes.size > 0;
+        const resourceActive = selectedResources && selectedResources.size > 0;
+
+        return (planets || []).filter(planet => {
+            if (typeActive && !selectedTypes.has(getPlanetCategory(planet.type))) {
+                return false;
+            }
+            if (resourceActive && !(planet.resources || []).some(r => selectedResources.has(r.name))) {
+                return false;
+            }
+            return true;
+        });
+    }
+
 
     updateStats() {
-        const hasActiveFilters = this.currentSearchTerm ||
-                                 this.selectedFilters.get('system')?.size > 0 ||
-                                 this.selectedFilters.get('resource')?.size > 0;
+        const hasActiveFilters = this.hasActiveFilters();
 
         const dataToCount = hasActiveFilters ? this.filteredData : this.data;
         const totalSystems = dataToCount ? dataToCount.length : 0;
@@ -132,9 +285,7 @@ class PlanetExplorer extends BaseExplorer {
         grid.innerHTML = '';
 
         // Check if no filters are active - use the same logic as applyFilters()
-        const hasActiveFilters = this.currentSearchTerm ||
-                                 this.selectedFilters.get('system')?.size > 0 ||
-                                 this.selectedFilters.get('resource')?.size > 0;
+        const hasActiveFilters = this.hasActiveFilters();
 
         console.log(`🎨 PlanetExplorer renderSystems:`, {
             hasActiveFilters,
@@ -149,9 +300,10 @@ class PlanetExplorer extends BaseExplorer {
                 <div class="placeholder-content">
                     <div class="placeholder-icon">🔍</div>
                     <h3>Start Exploring</h3>
-                    <p>Use the search bar above or select systems/resources from the sidebars to begin exploring the galaxy.</p>
+                    <p>Select filters from the sidebars to begin exploring the galaxy.</p>
                     <div class="placeholder-tips">
-                        <div class="tip">💡 <strong>Search:</strong> Type any system, planet, or resource name</div>
+                        <div class="tip">⚔️ <strong>Faction:</strong> Filter systems by ONI, MUD, or UST</div>
+                        <div class="tip">🪐 <strong>Planet Type:</strong> Narrow to Gas Giants, Asteroid Belts, and more</div>
                         <div class="tip">⭐ <strong>Systems:</strong> Check boxes on the left to filter by specific systems</div>
                         <div class="tip">💎 <strong>Resources:</strong> Check boxes on the right to find systems with specific resources</div>
                     </div>
@@ -219,28 +371,17 @@ class PlanetExplorer extends BaseExplorer {
     }
 
     createPlanetsPreviewHTML(planets) {
-        return planets.map(planet => {
+        return this.getMatchingPlanets(planets).map(planet => {
             const resources = planet.resources || [];
             const planetTypeName = this.getPlanetTypeName(planet.type);
 
-            // Filter resources based on search term AND selected resources
+            // Narrow displayed resources to the selected resource filter (if any)
             let filteredResources = resources;
-
-            if (this.currentSearchTerm) {
-                filteredResources = filteredResources.filter(resource =>
-                    resource.name.toLowerCase().includes(this.currentSearchTerm)
-                );
-            }
-
-            // Use the new BaseExplorer filter system
             const selectedResources = this.selectedFilters.get('resource');
             if (selectedResources && selectedResources.size > 0) {
-                const originalCount = filteredResources.length;
                 filteredResources = filteredResources.filter(resource =>
                     selectedResources.has(resource.name)
                 );
-                console.log(`🎯 Planet ${planet.name}: ${originalCount} → ${filteredResources.length} resources after filtering:`,
-                    filteredResources.map(r => r.name));
             }
 
             // Show filtered resources with richness information
@@ -254,7 +395,7 @@ class PlanetExplorer extends BaseExplorer {
 
             // Show resource count based on what filters are active
             let resourceCountText = resources.length.toString();
-            if (this.currentSearchTerm || (selectedResources && selectedResources.size > 0)) {
+            if (selectedResources && selectedResources.size > 0) {
                 resourceCountText = `${filteredResources.length}/${resources.length}`;
             }
 
@@ -299,6 +440,7 @@ class PlanetExplorer extends BaseExplorer {
 
         const starTypeName = this.getStarTypeName(system.star?.type);
         const planetCount = system.planets ? system.planets.length : 0;
+        const shownPlanetCount = this.getMatchingPlanets(system.planets || []).length;
         const totalResources = system.planets ?
             system.planets.reduce((sum, planet) => sum + (planet.resources ? planet.resources.length : 0), 0) : 0;
 
@@ -335,7 +477,7 @@ class PlanetExplorer extends BaseExplorer {
                 </div>
             </div>
 
-            <h3>🪐 Planets in ${system.name} (${planetCount})</h3>
+            <h3>🪐 Planets in ${system.name} (${shownPlanetCount === planetCount ? planetCount : `${shownPlanetCount}/${planetCount}`})</h3>
             <div class="detailed-planets">
                 ${this.createDetailedPlanetsHTML(system.planets || [])}
             </div>
@@ -367,7 +509,7 @@ class PlanetExplorer extends BaseExplorer {
     }
 
     createDetailedPlanetsHTML(planets) {
-        return planets.map(planet => {
+        return this.getMatchingPlanets(planets).map(planet => {
             const resources = planet.resources || [];
             const planetTypeName = this.getPlanetTypeName(planet.type);
 
@@ -428,14 +570,5 @@ class PlanetExplorer extends BaseExplorer {
     getPlanetTypeName(type) {
         // Use shared utility from PlanetTypeUtils.js
         return getPlanetTypeName(type);
-    }
-
-    // Helper method for testing - filters systems by name
-    filterSystems(searchTerm) {
-        if (!searchTerm) return [];
-        const term = searchTerm.toLowerCase();
-        return this.data.filter(system =>
-            system.name.toLowerCase().includes(term)
-        );
     }
 }

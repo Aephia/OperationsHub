@@ -69,7 +69,56 @@ function getAllPlanetTypes() {
     };
 }
 
+// Planet categories, indexed by (type % 8). Faction is encoded by the type
+// range: 0-7 ONI, 8-15 MUD, 16-23 UST.
+const PLANET_CATEGORIES = [
+    'Terrestrial Planet',
+    'Volcanic Planet',
+    'Barren Planet',
+    'Asteroid Belt',
+    'Gas Giant',
+    'Ice Giant',
+    'Dark Planet',
+    'Oceanic Planet'
+];
+
+const PLANET_FACTIONS = ['ONI', 'MUD', 'UST'];
+
+/**
+ * Get the faction-agnostic category for a planet type (e.g. "Gas Giant").
+ * @param {number} type - The numeric planet type (0-23)
+ * @returns {string} The category name
+ */
+function getPlanetCategory(type) {
+    return PLANET_CATEGORIES[type % 8] || `Type ${type}`;
+}
+
+/**
+ * Get the faction encoded in a planet type.
+ * @param {number} type - The numeric planet type (0-23)
+ * @returns {string} ONI, MUD, or UST
+ */
+function getPlanetFaction(type) {
+    return PLANET_FACTIONS[Math.floor(type / 8)] || 'Unknown';
+}
+
+/**
+ * Get the ordered list of planet categories.
+ * @returns {string[]}
+ */
+function getPlanetCategories() {
+    return [...PLANET_CATEGORIES];
+}
+
 // Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { getPlanetTypeName, getAllPlanetTypes };
+    module.exports = {
+        getPlanetTypeName,
+        getAllPlanetTypes,
+        getPlanetCategory,
+        getPlanetFaction,
+        getPlanetCategories,
+        PLANET_CATEGORIES,
+        PLANET_FACTIONS
+    };
 }
