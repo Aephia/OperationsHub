@@ -385,6 +385,66 @@ main {
     gap: 0.5rem;
 }
 
+/* Collapsible ship-size groups */
+.collapsible-group {
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.collapsible-group-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--accent-cyan);
+    padding: 0.55rem 0.75rem;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+    transition: background 0.2s ease;
+}
+
+.collapsible-group-title::-webkit-details-marker {
+    display: none;
+}
+
+.collapsible-group-title::before {
+    content: '▸';
+    display: inline-block;
+    margin-right: 0.5rem;
+    transition: transform 0.2s ease;
+}
+
+.collapsible-group[open] > .collapsible-group-title::before {
+    transform: rotate(90deg);
+}
+
+.collapsible-group-title:hover {
+    background: rgba(0, 240, 255, 0.08);
+}
+
+.collapsible-group .checkbox-item {
+    margin-left: 0.5rem;
+}
+
+/* Nested ship subgroup (size > ship > configuration) */
+.collapsible-subgroup {
+    margin: 0.35rem 0.4rem 0.35rem 0.6rem;
+    border-color: rgba(168, 85, 247, 0.25);
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.collapsible-subgroup-title {
+    font-size: 0.72rem;
+    color: var(--accent-purple);
+}
+
+.collapsible-subgroup-title:hover {
+    background: rgba(168, 85, 247, 0.1);
+}
+
 .checkbox-item {
     display: flex;
     align-items: center;

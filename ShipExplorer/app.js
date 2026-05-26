@@ -468,25 +468,58 @@ class ShipExplorer {
             return;
         }
 
-        filtered.forEach(({ ship, index }) => {
-            const div = document.createElement('div');
-            div.className = 'checkbox-item';
+        // Group ships into collapsible sections by size tier
+        const SIZE_ORDER = ['XXS', 'XS', 'Small', 'Medium', 'Large', 'Capital', 'Commander', 'Class 8', 'Titan'];
+        const groups = new Map();
+        filtered.forEach(entry => {
+            const size = entry.ship?.sizeTier || 'Other';
+            if (!groups.has(size)) groups.set(size, []);
+            groups.get(size).push(entry);
+        });
 
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.id = `ship-${index}`;
-            checkbox.checked = this.selectedShips.has(index);
-            checkbox.addEventListener('change', () => {
-                this.toggleShip(index);
+        const orderedSizes = [
+            ...SIZE_ORDER.filter(s => groups.has(s)),
+            ...Array.from(groups.keys()).filter(s => !SIZE_ORDER.includes(s)).sort()
+        ];
+
+        orderedSizes.forEach(size => {
+            const entries = groups.get(size);
+
+            const details = document.createElement('details');
+            details.className = 'collapsible-group';
+
+            const summary = document.createElement('summary');
+            summary.className = 'collapsible-group-title';
+            summary.textContent = `${size} (${entries.length})`;
+            details.appendChild(summary);
+
+            let hasSelected = false;
+            entries.forEach(({ ship, index }) => {
+                const div = document.createElement('div');
+                div.className = 'checkbox-item';
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `ship-${index}`;
+                checkbox.checked = this.selectedShips.has(index);
+                if (checkbox.checked) hasSelected = true;
+                checkbox.addEventListener('change', () => {
+                    this.toggleShip(index);
+                });
+
+                const label = document.createElement('label');
+                label.htmlFor = `ship-${index}`;
+                label.textContent = this.getShipDisplayName(ship);
+
+                div.appendChild(checkbox);
+                div.appendChild(label);
+                details.appendChild(div);
             });
 
-            const label = document.createElement('label');
-            label.htmlFor = `ship-${index}`;
-            label.textContent = this.getShipDisplayName(ship);
+            // Expand groups while searching, or when they contain a selected ship
+            if (this.searchTerm || hasSelected) details.open = true;
 
-            div.appendChild(checkbox);
-            div.appendChild(label);
-            container.appendChild(div);
+            container.appendChild(details);
         });
     }
 
@@ -496,28 +529,26 @@ class ShipExplorer {
 
         container.innerHTML = '';
 
-        // Collect all configurations from all ships
-        const allConfigs = [];
+        // Collect matching configurations grouped by size tier -> ship
+        const SIZE_ORDER = ['XXS', 'XS', 'Small', 'Medium', 'Large', 'Capital', 'Commander', 'Class 8', 'Titan'];
+        const bySize = new Map(); // size -> Map(shipId -> { ship, configs: [] })
+
         this.ships.forEach(ship => {
-            if (!ship.configurations || !Array.isArray(ship.configurations)) return;
+            if (!Array.isArray(ship.configurations)) return;
 
-            ship.configurations.forEach(config => {
-                // Skip "Default" configurations
-                if (config.name && config.name.toLowerCase() === 'default') {
-                    return;
-                }
+            const matching = ship.configurations.filter(config =>
+                config.name &&
+                config.name.toLowerCase() !== 'default' &&
+                this.matchesConfigSearch(ship, config)
+            );
+            if (matching.length === 0) return;
 
-                if (this.matchesConfigSearch(ship, config)) {
-                    allConfigs.push({
-                        ship,
-                        config,
-                        configKey: `${ship.id}::${config.name}`
-                    });
-                }
-            });
+            const size = ship.sizeTier || 'Other';
+            if (!bySize.has(size)) bySize.set(size, new Map());
+            bySize.get(size).set(ship.id, { ship, configs: matching });
         });
 
-        if (allConfigs.length === 0) {
+        if (bySize.size === 0) {
             const empty = document.createElement('div');
             empty.className = 'empty-state';
             empty.textContent = 'No configurations match your search.';
@@ -525,38 +556,69 @@ class ShipExplorer {
             return;
         }
 
-        allConfigs.forEach(({ ship, config, configKey }) => {
-            const div = document.createElement('div');
-            div.className = 'checkbox-item config-item';
+        const orderedSizes = [
+            ...SIZE_ORDER.filter(s => bySize.has(s)),
+            ...Array.from(bySize.keys()).filter(s => !SIZE_ORDER.includes(s)).sort()
+        ];
 
-            const headerDiv = document.createElement('div');
-            headerDiv.className = 'checkbox-header';
+        orderedSizes.forEach(size => {
+            const ships = bySize.get(size);
+            const configCount = Array.from(ships.values()).reduce((n, e) => n + e.configs.length, 0);
 
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.id = `config-${configKey}`;
-            checkbox.checked = this.selectedConfigurations.has(configKey);
-            checkbox.addEventListener('change', () => {
-                this.toggleConfiguration(configKey, ship, config);
+            const sizeDetails = document.createElement('details');
+            sizeDetails.className = 'collapsible-group';
+
+            const sizeSummary = document.createElement('summary');
+            sizeSummary.className = 'collapsible-group-title';
+            sizeSummary.textContent = `${size} (${configCount})`;
+            sizeDetails.appendChild(sizeSummary);
+
+            let sizeHasSelected = false;
+
+            const shipEntries = Array.from(ships.values())
+                .sort((a, b) => (a.ship.name || '').localeCompare(b.ship.name || ''));
+
+            shipEntries.forEach(({ ship, configs }) => {
+                const shipDetails = document.createElement('details');
+                shipDetails.className = 'collapsible-group collapsible-subgroup';
+
+                const shipSummary = document.createElement('summary');
+                shipSummary.className = 'collapsible-group-title collapsible-subgroup-title';
+                shipSummary.textContent = `${ship.manufacturer || 'Unknown'} ${ship.name || 'Ship'} (${configs.length})`;
+                shipDetails.appendChild(shipSummary);
+
+                let shipHasSelected = false;
+
+                configs.forEach(config => {
+                    const configKey = `${ship.id}::${config.name}`;
+
+                    const div = document.createElement('div');
+                    div.className = 'checkbox-item';
+
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.id = `config-${configKey}`;
+                    checkbox.checked = this.selectedConfigurations.has(configKey);
+                    if (checkbox.checked) { shipHasSelected = true; sizeHasSelected = true; }
+                    checkbox.addEventListener('change', () => {
+                        this.toggleConfiguration(configKey, ship, config);
+                    });
+
+                    const label = document.createElement('label');
+                    label.htmlFor = `config-${configKey}`;
+                    label.textContent = config.name || 'Unnamed Configuration';
+
+                    div.appendChild(checkbox);
+                    div.appendChild(label);
+                    shipDetails.appendChild(div);
+                });
+
+                if (this.searchTerm || shipHasSelected) shipDetails.open = true;
+                sizeDetails.appendChild(shipDetails);
             });
 
-            const label = document.createElement('label');
-            label.htmlFor = `config-${configKey}`;
-            label.textContent = config.name || 'Unnamed Configuration';
-
-            headerDiv.appendChild(checkbox);
-            headerDiv.appendChild(label);
-            div.appendChild(headerDiv);
-
-            // Add ship label
-            const shipLabel = document.createElement('div');
-            shipLabel.className = 'config-ship-label';
-            shipLabel.textContent = `${ship.manufacturer || 'Unknown'} ${ship.name || 'Ship'}`;
-            div.appendChild(shipLabel);
-
-            // Don't add components list in sidebar - we show details in main area instead
-
-            container.appendChild(div);
+            if (this.searchTerm || sizeHasSelected) sizeDetails.open = true;
+            container.appendChild(sizeDetails);
         });
     }
 
