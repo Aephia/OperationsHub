@@ -17,8 +17,9 @@ class PlanetResourceAnalytics extends BaseAnalytics {
                 let systemResourceTotal = 0;
                 const systemUniqueResources = new Set(); // Track unique resources per system
 
-                // Extract region from system name (first 3 characters)
-                const region = system.name.substring(0, 3);
+                // Region is faction-specific: the same name prefix under a different
+                // faction is a different in-game region (e.g. ONI-003 vs UST-003).
+                const region = (system.closestFaction || '?') + '-' + system.name.substring(0, 3);
 
                 system.planets.forEach(planet => {
                     if (planet.resources) {
@@ -104,7 +105,7 @@ class PlanetResourceAnalytics extends BaseAnalytics {
         // Calculate total number of unique regions
         const allRegions = new Set();
         this.data.forEach(system => {
-            const region = system.name.substring(0, 3);
+            const region = (system.closestFaction || '?') + '-' + system.name.substring(0, 3);
             allRegions.add(region);
         });
         const totalRegions = allRegions.size;
