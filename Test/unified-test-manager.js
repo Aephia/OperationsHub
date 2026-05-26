@@ -69,12 +69,8 @@ class UnifiedTestManager {
         this.registerIfExists('enhancedDataLoaderTests', 'Enhanced DataLoader Tests');
         this.registerIfExists('enhancedDOMUtilsTests', 'Enhanced DOMUtils Tests');
         this.registerIfExists('enhancedBaseClassTests', 'Enhanced Base Class Tests');
-        this.registerIfExists('enhancedGaliaViewerTests', 'Enhanced GaliaViewer Tests');
         this.registerIfExists('enhancedErrorHandlingTests', 'Enhanced Error Handling Tests');
         this.registerIfExists('enhancedPerformanceTests', 'Enhanced Performance Tests');
-
-        // Galia Viewer test suites from galia-viewer-tests.js
-        this.registerGaliaViewerTests();
 
         // Hub Explorer test suites from hub-explorer-tests.js
         this.registerIfExists('hubExplorerTests', 'Hub Explorer Tests');
@@ -82,10 +78,6 @@ class UnifiedTestManager {
         // ClaimStake Enhanced test suites from claimstake-enhanced-tests.js
         this.registerIfExists('claimStakeConstructionTests', 'ClaimStake Construction Tests');
         this.registerIfExists('claimStakeAnalyticsTests', 'ClaimStake Analytics Tests');
-
-        // GaliaViewer Enhanced test suites from galiaviewer-enhanced-tests.js
-        this.registerIfExists('galiaFleetTests', 'GaliaViewer Fleet Tests');
-        this.registerIfExists('galiaSearchTests', 'GaliaViewer Search Tests');
 
         // Explorer Analytics test suites from explorer-analytics-tests.js
         this.registerIfExists('planetAnalyticsTests', 'Planet Explorer Analytics Tests');
@@ -103,21 +95,9 @@ class UnifiedTestManager {
         }
     }
 
-    registerGaliaViewerTests() {
-        // Check for Galia Viewer test function
-        if (typeof window.runGaliaViewerTests === 'function') {
-            this.testSuites.set('galiaViewerTests', {
-                name: 'Galia Viewer Tests',
-                runner: { run: window.runGaliaViewerTests },
-                category: 'galia'
-            });
-        }
-    }
-
     getCategoryFromName(name) {
         if (name.includes('hub') || name.includes('Hub')) return 'hub';
         if (name.includes('enhanced')) return 'enhanced';
-        if (name.includes('galia') || name.includes('Galia')) return 'galia';
         if (name.includes('performance') || name.includes('Performance')) return 'performance';
         if (name.includes('error') || name.includes('Error')) return 'error';
         if (name.includes('integration') || name.includes('Integration')) return 'integration';
@@ -240,10 +220,6 @@ class UnifiedTestManager {
         await this.runTestsByCategory('ui');
     }
 
-    async runGaliaTests() {
-        await this.runTestsByCategory('galia');
-    }
-
     // Individual test runners
     async runDataLoaderTests() {
         await this.runSpecificTest('dataLoaderTests');
@@ -271,10 +247,6 @@ class UnifiedTestManager {
 
     async runIntegrationTests() {
         await this.runSpecificTest('integrationTests');
-    }
-
-    async runGaliaViewerTests() {
-        await this.runSpecificTest('galiaViewerTests');
     }
 
     // Enhanced test runners

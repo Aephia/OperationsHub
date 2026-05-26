@@ -14,39 +14,28 @@
    - DOMUtils comprehensive tests
    - BaseClass advanced tests
 
-3. **galia-viewer-tests.js** (802 lines) - 3D visualization tests
-   - Scene management and rendering
-   - Camera and controls
-   - Star/planet rendering
-   - Performance and error handling
-
-4. **galiaviewer-enhanced-tests.js** (359 lines) - Fleet and search tests
-   - Fleet data loading and visualization
-   - Ship model management
-   - Search functionality (stars & planets)
-
-5. **hub-explorer-tests.js** (308 lines) - Hub construction tests
+3. **hub-explorer-tests.js** (308 lines) - Hub construction tests
    - Habitat tier progression
    - Crafting station efficiency
    - Cargo storage capacity
    - Construction validation
 
-6. **claimstake-enhanced-tests.js** (319 lines) - Construction & analytics
+4. **claimstake-enhanced-tests.js** (319 lines) - Construction & analytics
    - Facility construction validation
    - Slot and power limit enforcement
    - Analytics and efficiency scoring
 
-7. **explorer-analytics-tests.js** (530 lines) - Analytics for explorers
+5. **explorer-analytics-tests.js** (530 lines) - Analytics for explorers
    - Planet Explorer analytics (11 tests)
    - Recipe Explorer analytics (10 tests)
    - Resources Explorer analytics (10 tests)
 
-8. **unified-test-manager.js** (312 lines) - Test coordination
+6. **unified-test-manager.js** (312 lines) - Test coordination
    - Auto-discovery of test suites
    - Coordinated test execution
    - Results aggregation
 
-9. **ship-explorer-tests.js** (NEW) - Ship Explorer tests
+7. **ship-explorer-tests.js** (NEW) - Ship Explorer tests
    - Ship data loading and configuration
    - Component management
    - Config calculator and modified stats
@@ -60,7 +49,6 @@
 
 ### Redundancies Identified
 - Some overlap between `test.js` and `enhanced-tests.js` for Resources/DataLoader
-- `galiaviewer-enhanced-tests.js` could be merged with `galia-viewer-tests.js`
 - Some analytics tests in multiple files
 
 ## Proposed Structure (Future Enhancement)
@@ -81,11 +69,6 @@ Test/
 │   ├── resources-explorer-tests.js
 │   ├── ship-explorer-tests.js
 │   └── hub-explorer-tests.js
-│
-├── visualization/
-│   ├── galia-viewer-core-tests.js
-│   ├── galia-fleet-tests.js
-│   └── galia-search-tests.js
 │
 ├── analytics/
 │   ├── planet-analytics-tests.js
@@ -148,11 +131,6 @@ Test/
 - Resources Explorer: 15 tests
 - **Ship Explorer: 22 tests** ⭐ NEW
 - Hub Explorer: 10 tests
-
-#### Visualization (41 tests)
-- Galia Viewer Core: 17 tests
-- Fleet Management: 12 tests
-- Search Functionality: 12 tests
 
 #### Analytics (41 tests)
 - Planet Analytics: 11 tests

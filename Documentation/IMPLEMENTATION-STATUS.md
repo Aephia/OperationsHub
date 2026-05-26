@@ -225,26 +225,6 @@ OperationsHub is a comprehensive economic analysis and planning platform for Sta
 
 ---
 
-### 7. 🎨 Galia Viewer (3D Visualization)
-**Status:** LIVE & PRODUCTION READY
-**Location:** `/GaliaViewer/`
-
-**Features:**
-- Interactive 3D star map
-- Planet and star visualization
-- Fleet ship models (Armstrong Imp, BYOS Packlite, Ogrika Jod Asteris, Tufa Spirit)
-- Camera controls (orbit, pan, zoom)
-- Configurable effects and performance settings
-- Search functionality
-- Fleet data visualization
-
-**Files:**
-- `index.html`, `app.js`, `styles.css`
-- Three.js integration
-- FBX model loading with LODs
-
----
-
 ## 🛠️ Core Infrastructure
 
 ### Utils Directory
@@ -342,7 +322,6 @@ node Test/test-recipes.js
 - ✅ [README.md](../README.md) - GitHub repository README (Latest)
 - ✅ [USER-GUIDE.md](USER-GUIDE.md) - Complete user manual
 - ✅ [CROSS-EXPLORER-ANALYTICS-GUIDE.md](CROSS-EXPLORER-ANALYTICS-GUIDE.md) - Implementation guide
-- ✅ [GaliaViewer-README.md](GaliaViewer-README.md) - 3D viewer docs
 - ✅ [IMPLEMENTATION-STATUS.md](IMPLEMENTATION-STATUS.md) - This file
 
 **Reference:**

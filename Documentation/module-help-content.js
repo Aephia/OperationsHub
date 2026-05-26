@@ -377,46 +377,5 @@ const moduleHelpContent = {
                 `
             }
         ]
-    },
-
-    galiaViewer: {
-        title: '🌌 Galia Viewer Guide',
-        sections: [
-            {
-                heading: 'Overview',
-                content: 'The Galia Viewer provides an immersive 3D holographic visualization of the Galia Expanse. Explore star systems in three dimensions with fleet telemetry overlays, cinematic camera controls, and customizable visual effects.'
-            },
-            {
-                heading: 'Navigation & Controls',
-                content: `
-                    <ul>
-                        <li><strong>Camera Movement:</strong> Click and drag to rotate view, scroll to zoom in/out</li>
-                        <li><strong>System Selection:</strong> Click any star system to focus camera and display information</li>
-                        <li><strong>Auto-Rotation:</strong> Toggle automatic camera rotation for cinematic viewing</li>
-                        <li><strong>Reset View:</strong> Return camera to default position and zoom level</li>
-                    </ul>
-                `
-            },
-            {
-                heading: 'Visual Overlays',
-                content: `
-                    <p><strong>Faction Territories:</strong> Color-coded star systems by controlling faction (MUD/ONI/UST/Neutral).</p>
-                    <p><strong>Connection Lines:</strong> Visualize warp lane networks in 3D space.</p>
-                    <p><strong>Fleet Markers:</strong> Optional overlay showing fleet positions and movement vectors.</p>
-                    <p><strong>Effects Suite:</strong> Customize bloom, glow, and holographic effects for different viewing preferences.</p>
-                `
-            },
-            {
-                heading: 'Pro Tips',
-                content: `
-                    <ul>
-                        <li>Use 3D view to understand spatial relationships between systems that aren't obvious in 2D</li>
-                        <li>Enable fleet overlay when planning multi-system operations to visualize distances</li>
-                        <li>Toggle effects for different purposes: high effects for presentation, low for data analysis</li>
-                        <li>Use auto-rotation during briefings to showcase territorial control</li>
-                    </ul>
-                `
-            }
-        ]
     }
 };

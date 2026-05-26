@@ -956,96 +956,6 @@ dataLoaderTests.test('DataLoader should provide correct empty data structures', 
 });
 
 // =============================================================================
-// GALIA VIEWER TESTS
-// =============================================================================
-
-// Import Galia Viewer tests
-let galiaViewerTests = null;
-
-// Load Galia Viewer tests asynchronously
-const loadGaliaViewerTests = async () => {
-    try {
-        console.log('🔍 Checking for Galia Viewer tests...');
-        console.log('window.runGaliaViewerTests type:', typeof window.runGaliaViewerTests);
-
-        // Check if runGaliaViewerTests is already available globally
-        if (typeof window.runGaliaViewerTests === 'function') {
-            galiaViewerTests = new TestRunner('Galia Viewer Tests');
-
-            galiaViewerTests.test('Galia Viewer test suite should run successfully', async () => {
-                try {
-                    const results = await window.runGaliaViewerTests();
-                    assertExists(results, 'Should return test results');
-                    assert(Array.isArray(results), 'Results should be an array');
-
-                    const passedTests = results.filter(r => r.status === 'PASS').length;
-                    const totalTests = results.length;
-
-                    console.log(`✓ Galia Viewer tests completed with ${passedTests}/${totalTests} tests passing`);
-
-                    if (totalTests === 0) {
-                        throw new Error('No tests were executed');
-                    }
-                } catch (error) {
-                    console.error('Galia Viewer tests failed:', error.message);
-                    throw error;
-                }
-            });
-        } else {
-            console.log('⚠️ Galia Viewer tests not loaded yet, attempting dynamic load...');
-            // Try to dynamically load the script
-            await new Promise((resolve, reject) => {
-                const script = document.createElement('script');
-                script.src = 'galia-viewer-tests.js';
-                script.onload = () => {
-                    console.log('✅ Galia Viewer tests script loaded');
-                    resolve();
-                };
-                script.onerror = (error) => {
-                    console.log('❌ Failed to load Galia Viewer tests script:', error);
-                    reject(error);
-                };
-                document.head.appendChild(script);
-            });
-
-            console.log('window.runGaliaViewerTests type after loading:', typeof window.runGaliaViewerTests);
-
-            if (typeof window.runGaliaViewerTests === 'function') {
-                galiaViewerTests = new TestRunner('Galia Viewer Tests');
-
-                galiaViewerTests.test('Galia Viewer test suite should run successfully', async () => {
-                    try {
-                        const results = await window.runGaliaViewerTests();
-                        assertExists(results, 'Should return test results');
-                        assert(Array.isArray(results), 'Results should be an array');
-
-                        const passedTests = results.filter(r => r.status === 'PASS').length;
-                        const totalTests = results.length;
-
-                        console.log(`✓ Galia Viewer tests completed with ${passedTests}/${totalTests} tests passing`);
-
-                        if (totalTests === 0) {
-                            throw new Error('No tests were executed');
-                        }
-                    } catch (error) {
-                        console.error('Galia Viewer tests failed:', error.message);
-                        throw error;
-                    }
-                });
-            } else {
-                throw new Error('runGaliaViewerTests function not available after loading script');
-            }
-        }
-    } catch (error) {
-        console.log('⚠️ Galia Viewer tests not available:', error.message);
-        galiaViewerTests = new TestRunner('Galia Viewer Tests');
-        galiaViewerTests.test('Galia Viewer tests availability check', () => {
-            console.log('⚠️ Galia Viewer test module could not be loaded');
-        });
-    }
-};
-
-// =============================================================================
 // RESOURCES EXPLORER TESTS
 // =============================================================================
 
@@ -1621,16 +1531,7 @@ class UnifiedTestRunner {
         console.log('🚀 Starting Unified Explorer Test Suite\n');
         console.log('=' .repeat(80));
 
-        // Load Galia Viewer tests if not already loaded
-        if (!galiaViewerTests) {
-            await loadGaliaViewerTests();
-        }
-
-        // Add Galia Viewer tests to suites if available
         const suitesToRun = [...this.suites];
-        if (galiaViewerTests) {
-            suitesToRun.push(galiaViewerTests);
-        }
 
         for (const suite of suitesToRun) {
             await suite.run();
@@ -1710,28 +1611,11 @@ if (typeof window !== 'undefined') {
     window.runUITests = () => uiTests.run();
     window.runPerformanceTests = () => performanceTests.run();
     window.runErrorHandlingTests = () => errorHandlingTests.run();
-    window.runGaliaViewerTests = async () => {
-        if (!galiaViewerTests) {
-            await loadGaliaViewerTests();
-        }
-        if (galiaViewerTests) {
-            return await galiaViewerTests.run();
-        } else {
-            console.log('⚠️ Galia Viewer tests not available');
-        }
-    };
 
     // Convenience function to run specific test categories
     window.runCoreTests = () => testRunner.runSpecific(['DataLoader Tests', 'Base Class Tests', 'Integration Tests']);
     window.runExplorerTests = async () => {
-        // Load Galia Viewer tests first
-        if (!galiaViewerTests) {
-            await loadGaliaViewerTests();
-        }
         const suiteNames = ['Recipe Explorer Tests', 'ClaimStake Explorer Tests', 'Planet Explorer Tests', 'Resources Explorer Tests'];
-        if (galiaViewerTests) {
-            suiteNames.push('Galia Viewer Tests');
-        }
         return testRunner.runSpecific(suiteNames);
     };
     window.runQualityTests = () => testRunner.runSpecific(['UI/UX Tests', 'Performance Tests', 'Error Handling Tests']);
@@ -1747,7 +1631,7 @@ if (typeof window !== 'undefined') {
         console.log('  • runCoreTests() - Run core infrastructure tests');
         console.log('  • runExplorerTests() - Run all explorer tests');
         console.log('  • runQualityTests() - Run UI, performance, and error handling tests');
-        console.log('  • Individual suite runners: runDataLoaderTests(), runPlanetTests(), runGaliaViewerTests(), etc.');
+        console.log('  • Individual suite runners: runDataLoaderTests(), runPlanetTests(), etc.');
         console.log('🚀 Ready to test! Run runAllTests() to begin.');
     });
 }

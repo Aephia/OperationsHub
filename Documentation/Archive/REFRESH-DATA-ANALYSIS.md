@@ -18,7 +18,7 @@ The RefreshData system successfully processes 5 out of 11 JSON files in the JSON
 |------------|-------------|----------------|---------|--------|
 | `recipes.json` | `recipes-data.js` | `rawRecipeData` | ClaimStake, Planet, Recipe | ✅ Working |
 | `buildings.json` | `buildings-data.js` | `rawBuildingData` | ClaimStake, Planet | ✅ Working |
-| `planets.json` | `planet-data.js` | `planetData` | Planet, GaliaViewer | ✅ Working |
+| `planets.json` | `planet-data.js` | `planetData` | Planet | ✅ Working |
 | `resources.json` | `resources-data.js` | `resourcesData` | Multiple apps | ✅ Working |
 | `Ships/*.json` (67 files) | `ships-data.js` + `ships-data.json` | `rawShipData` | Ship Explorer | ✅ Working |
 

@@ -1,5 +1,5 @@
 // Shared Construction Utilities
-// Common functions for facility construction used by GaliaViewer and ClaimStakeExplorer
+// Common functions for facility construction used by ClaimStakeExplorer
 
 class ConstructionUtils {
     // Get available slots for claim stake tier

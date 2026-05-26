@@ -125,19 +125,6 @@ Compare ships, analyze configurations, and plan fleets
 
 ---
 
-### 7. 🎨 **Galia Viewer** (3D Visualization)
-Interactive 3D visualization of star systems and fleet positions
-
-**Features:**
-- Interactive 3D star map
-- Fleet ship models with LODs
-- Camera controls (orbit, pan, zoom)
-- Search and navigation
-
-**Use Case:** Visualizing spatial relationships and fleet deployments
-
----
-
 ## 🔬 Analytics Features
 
 ### Cross-Explorer Analytics Engine
@@ -222,7 +209,6 @@ OperationsHub/
 ├── ClaimStakeExplorer/                 # Building & facility planning
 ├── HubExplorer/                        # Space hub construction
 ├── ShipExplorer/                       # Ship comparison & fleet
-├── GaliaViewer/                        # 3D visualization
 │
 ├── Utils/
 │   ├── CrossExplorerAnalytics.js      # Analytics engine

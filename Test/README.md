@@ -9,11 +9,9 @@
 - **`index.html`** - Main test runner interface
 - **`test.js`** - Core test suite (13 suites, 42 tests)
 - **`enhanced-tests.js`** - Enhanced comprehensive tests (7 suites, 18 tests)
-- **`galia-viewer-tests.js`** - 3D viewer tests (6 suites, 17 tests)
 - **`ship-explorer-tests.js`** - Ship Explorer comprehensive tests (1 suite, 22 tests) ⭐ NEW
 - **`hub-explorer-tests.js`** - Hub construction & planning tests (1 suite, 27 tests)
 - **`claimstake-enhanced-tests.js`** - Construction & analytics tests (2 suites, 25 tests)
-- **`galiaviewer-enhanced-tests.js`** - Fleet & search tests (2 suites, 24 tests)
 - **`explorer-analytics-tests.js`** - Analytics for Planet/Recipe/Resources (3 suites, 41 tests)
 - **`unified-test-manager.js`** - Test coordination system
 - **`TESTPLAN.md`** - Test restructuring and improvement plan
@@ -22,12 +20,11 @@
 - **35 test suites** covering all major components
 - **216 individual tests** with comprehensive error handling
 - **Auto-discovery** and coordination of all test files
-- **100% feature coverage** for all 7 explorer apps (Planet, Recipe, ClaimStake, Resources, Hub, Ship, Galia)
+- **100% feature coverage** for all 6 explorer apps (Planet, Recipe, ClaimStake, Resources, Hub, Ship)
 
 ## 🧪 Test Categories
 - **Core Infrastructure** - DataLoader, Base Classes, Integration
 - **Explorer Components** - Recipe, ClaimStake, Planet, Resources, Hub, **Ship** ⭐
-- **3D Visualization** - Galia Viewer scene management, fleet, search
 - **Performance & Quality** - Large datasets, error handling, UI/UX
 - **Analytics** - Cross-explorer analytics, efficiency metrics, resource analysis
 
@@ -56,12 +53,6 @@
 - Analytics and efficiency scoring
 - Resource production/consumption tracking
 - ROI calculations and configuration comparison
-
-### GaliaViewer Enhanced Tests (24 tests)
-- Fleet data loading and visualization
-- Ship model scaling and positioning
-- Search functionality (stars & planets)
-- Camera focus and result highlighting
 
 ### Explorer Analytics Tests (41 tests)
 **Planet Explorer Analytics (11 tests)**

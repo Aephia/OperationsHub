@@ -261,40 +261,6 @@ Then open browser to: `http://localhost:8000`
 
 ---
 
-### 7. 🎨 Galia Viewer (3D Visualization)
-**URL:** `/GaliaViewer/index.html`
-
-**Purpose:** 3D visualization of star systems and fleet positions
-
-**Features:**
-- **3D Scene:**
-  - Interactive 3D star map
-  - Planet and star visualization
-  - Fleet ship models (Armstrong Imp, BYOS Packlite, Ogrika Jod Asteris, Tufa Spirit)
-  - Camera controls (orbit, pan, zoom)
-  - Configurable effects and performance settings
-
-- **Fleet Management:**
-  - Fleet data visualization
-  - Ship model loading (FBX with textures and LODs)
-  - Ship scaling and positioning
-  - Fleet statistics
-
-- **Search:**
-  - Search stars and planets
-  - Camera focus on results
-  - Result highlighting
-  - Quick navigation
-
-**How to Use:**
-1. Open Galia Viewer
-2. Use mouse to rotate/pan/zoom the 3D scene
-3. Click on stars/planets for information
-4. Use search to find specific locations
-5. Toggle WebGL effects in config.js if needed
-
----
-
 ## 🔬 Analytics Features
 
 ### Cross-Explorer Analytics
@@ -437,7 +403,6 @@ All analytics use the **CrossExplorerAnalytics** engine which combines data from
 - Modern browser (Chrome, Edge, Firefox recommended)
 - JavaScript enabled
 - Local storage enabled (for saved configurations)
-- Canvas support (for Galia Viewer 3D)
 
 ### File Structure
 ```
@@ -451,7 +416,6 @@ Siphawaal.xyz/
 ├── ClaimStakeExplorer/         # Building & facility planning
 ├── HubExplorer/                # Space hub construction
 ├── ShipExplorer/               # Ship comparison & fleet
-├── GaliaViewer/                # 3D visualization
 │
 ├── Utils/
 │   ├── CrossExplorerAnalytics.js  # Analytics engine
@@ -503,7 +467,6 @@ Siphawaal.xyz/
 - **CROSS-EXPLORER-ANALYTICS-GUIDE.md** - Detailed analytics guide
 - **ANALYTICS-OVERVIEW.md** - Analytics system architecture
 - **IMPLEMENTATION-STATUS.md** - Current feature status
-- **GaliaViewer-README.md** - 3D viewer documentation
 - **Test/TESTPLAN.md** - Test suite structure
 
 ---
@@ -577,7 +540,7 @@ Siphawaal.xyz/
 
 **Last Updated:** 2025-10-13
 **Version:** 2.0
-**Explorers:** 7 (Planet, Recipe, Resources, ClaimStake, Hub, Ship, Galia)
+**Explorers:** 6 (Planet, Recipe, Resources, ClaimStake, Hub, Ship)
 **Analytics:** 6 major features
 **Test Coverage:** 216 tests across 35 suites
 

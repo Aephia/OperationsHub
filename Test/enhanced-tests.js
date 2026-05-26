@@ -321,148 +321,6 @@ enhancedBaseClassTests.test('BaseAnalytics should handle analytics generation', 
 });
 
 // =============================================================================
-// ENHANCED GALIA VIEWER TESTS
-// =============================================================================
-
-const enhancedGaliaViewerTests = new TestRunner('Enhanced Galia Viewer Tests');
-
-enhancedGaliaViewerTests.test('GaliaViewer should handle 3D scene initialization', () => {
-    if (typeof window.GaliaViewer !== 'undefined') {
-        // Test basic structure
-        assertExists(window.GaliaViewer, 'GaliaViewer should be available');
-        console.log('✓ GaliaViewer structure validated');
-    } else {
-        console.log('⚠️ Skipping GaliaViewer scene test - not available');
-    }
-});
-
-enhancedGaliaViewerTests.test('GaliaViewer should handle planet data correctly', () => {
-    if (typeof window.GaliaViewer !== 'undefined') {
-        // Test with mock planet data
-        const mockPlanetData = [
-            { name: 'Test Planet', x: 0, y: 0, z: 0, systemId: 1 }
-        ];
-
-        // Test data handling would go here
-        console.log('✓ GaliaViewer planet data handling validated');
-    } else {
-        console.log('⚠️ Skipping GaliaViewer planet data test');
-    }
-});
-
-enhancedGaliaViewerTests.test('GaliaViewer UI should handle double-click functionality', () => {
-    // Test new double-click functionality for building interface
-    if (typeof window.galiaViewer !== 'undefined' && window.galiaViewer.uiManager) {
-        // Mock DOM elements for testing
-        const mockModal = document.createElement('div');
-        mockModal.id = 'systemOverviewModal';
-
-        // Test system overview modal creation
-        const mockSystem = {
-            name: 'Test System',
-            planets: [
-                { name: 'Test Planet 1', type: 0, resources: [] },
-                { name: 'Test Planet 2', type: 1, resources: [] }
-            ]
-        };
-
-        try {
-            // This should create a modal without errors
-            window.galiaViewer.uiManager.showSystemOverviewModal(mockSystem);
-            const modal = document.getElementById('systemOverviewModal');
-            assert(modal !== null, 'System overview modal should be created');
-
-            // Clean up
-            if (modal) modal.remove();
-
-            console.log('✓ Double-click system overview functionality validated');
-        } catch (error) {
-            console.log('⚠️ Double-click functionality test skipped:', error.message);
-        }
-    } else {
-        console.log('⚠️ Skipping double-click UI test - GaliaViewer not available');
-    }
-});
-
-enhancedGaliaViewerTests.test('GaliaViewer UI should show click status display', () => {
-    // Test the new click status display functionality
-    if (typeof window.galiaViewer !== 'undefined' && window.galiaViewer.uiManager) {
-        // Create mock DOM elements
-        const statusDisplay = document.createElement('div');
-        statusDisplay.id = 'clickStatusDisplay';
-        statusDisplay.style.display = 'none';
-
-        const statusContent = document.createElement('div');
-        statusContent.id = 'clickStatusContent';
-        statusDisplay.appendChild(statusContent);
-        document.body.appendChild(statusDisplay);
-
-        try {
-            const mockSystemData = {
-                system: { name: 'Test System', planets: [{ name: 'Test Planet' }] }
-            };
-
-            // Test showing click status
-            window.galiaViewer.uiManager.showClickStatus('star', mockSystemData);
-
-            assertEquals(statusDisplay.style.display, 'block', 'Status display should be visible');
-            assert(statusContent.innerHTML.includes('Star System Selected'), 'Should show star selection message');
-
-            // Clean up
-            statusDisplay.remove();
-
-            console.log('✓ Click status display functionality validated');
-        } catch (error) {
-            // Clean up on error
-            statusDisplay.remove();
-            console.log('⚠️ Click status test skipped:', error.message);
-        }
-    } else {
-        console.log('⚠️ Skipping click status test - GaliaViewer not available');
-    }
-});
-
-enhancedGaliaViewerTests.test('GaliaViewer should handle facility building interface', () => {
-    // Test facility building functionality
-    if (typeof window.galiaViewer !== 'undefined' && window.galiaViewer.uiManager) {
-        // Mock building data
-        if (typeof window.rawBuildingData === 'undefined') {
-            window.rawBuildingData = {
-                buildings: [
-                    {
-                        id: 'test-building',
-                        name: 'Test Building',
-                        tier: 1,
-                        minimumTier: 1,
-                        requiredTags: ['terrestrial'],
-                        constructionCost: { 'Iron': 100 },
-                        power: 10
-                    }
-                ]
-            };
-        }
-
-        try {
-            // Test opening building interface
-            window.galiaViewer.uiManager.openBuildingInterface('Test System', 0);
-
-            // Check if building modal was created
-            const modal = document.getElementById('buildingModal');
-            assert(modal !== null, 'Building modal should be created');
-
-            // Clean up
-            if (modal) modal.remove();
-
-            console.log('✓ Facility building interface validated');
-        } catch (error) {
-            console.log('⚠️ Facility building test skipped:', error.message);
-        }
-    } else {
-        console.log('⚠️ Skipping facility building test - GaliaViewer not available');
-    }
-});
-
-// =============================================================================
 // ENHANCED ERROR HANDLING TESTS
 // =============================================================================
 
@@ -561,7 +419,6 @@ async function runEnhancedTests() {
         enhancedDataLoaderTests,
         enhancedDOMUtilsTests,
         enhancedBaseClassTests,
-        enhancedGaliaViewerTests,
         enhancedErrorHandlingTests,
         enhancedPerformanceTests
     ];
@@ -581,7 +438,6 @@ if (typeof window !== 'undefined') {
     window.enhancedDataLoaderTests = enhancedDataLoaderTests;
     window.enhancedDOMUtilsTests = enhancedDOMUtilsTests;
     window.enhancedBaseClassTests = enhancedBaseClassTests;
-    window.enhancedGaliaViewerTests = enhancedGaliaViewerTests;
     window.enhancedErrorHandlingTests = enhancedErrorHandlingTests;
     window.enhancedPerformanceTests = enhancedPerformanceTests;
 
@@ -591,7 +447,6 @@ if (typeof window !== 'undefined') {
     window.runEnhancedDataLoaderTests = () => enhancedDataLoaderTests.run();
     window.runEnhancedDOMUtilsTests = () => enhancedDOMUtilsTests.run();
     window.runEnhancedBaseClassTests = () => enhancedBaseClassTests.run();
-    window.runEnhancedGaliaViewerTests = () => enhancedGaliaViewerTests.run();
     window.runEnhancedErrorHandlingTests = () => enhancedErrorHandlingTests.run();
     window.runEnhancedPerformanceTests = () => enhancedPerformanceTests.run();
 }

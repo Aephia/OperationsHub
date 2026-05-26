@@ -208,10 +208,6 @@
                 💎 Resources Explorer Tests
             </button>
 
-            <button class="test-button individual" onclick="runGaliaViewerTestsUI()">
-                🚀 Galia Viewer Tests
-            </button>
-
             <button class="test-button individual" onclick="runShipExplorerTestsUI()">
                 🚢 Ship Explorer Tests
             </button>
@@ -272,14 +268,6 @@
                 📊 ClaimStake Analytics Tests
             </button>
 
-            <button class="test-button individual" onclick="runGaliaFleetTests()">
-                🚢 GaliaViewer Fleet Tests
-            </button>
-
-            <button class="test-button individual" onclick="runGaliaSearchTests()">
-                🔍 GaliaViewer Search Tests
-            </button>
-
             <div class="section-title">Explorer Analytics Tests</div>
 
             <button class="test-button individual" onclick="runPlanetAnalyticsTests()">
@@ -305,7 +293,6 @@
             📊 Test suite includes comprehensive coverage of:<br>
             &nbsp;&nbsp;• Data loading and processing<br>
             &nbsp;&nbsp;• UI components and interactions<br>
-            &nbsp;&nbsp;• 3D visualization features (including Galia Viewer)<br>
             &nbsp;&nbsp;• Performance and error handling<br>
             &nbsp;&nbsp;• Cross-component integration<br><br>
             💡 Tip: Check browser console for detailed output during test execution.
@@ -338,36 +325,20 @@
     <script src="../ResourcesExplorer/analytics.js?v=20250926"></script>
     <script src="../ResourcesExplorer/app.js?v=20250926"></script>
 
-    <!-- Import map for three.js so example modules can resolve the bare specifier 'three' -->
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.module.js"
-        }
-    }
-    </script>
-
     <!-- Load the unified test suite with cache busting -->
     <script src="test.js?v=20250926"></script>
 
     <!-- Load enhanced tests -->
     <script src="enhanced-tests.js"></script>
 
-    <!-- Load Galia Viewer tests (depends on test.js) -->
-    <script src="galia-viewer-tests.js"></script>
-
     <!-- Load new test files -->
     <script src="hub-explorer-tests.js"></script>
     <script src="claimstake-enhanced-tests.js"></script>
-    <script src="galiaviewer-enhanced-tests.js"></script>
     <script src="explorer-analytics-tests.js"></script>
     <script src="ship-explorer-tests.js"></script>
 
     <!-- Load unified test manager -->
     <script src="unified-test-manager.js"></script>
-
-    <!-- Load three.js (ES modules) and Galia Viewer core -->
-    <script type="module" src="../GaliaViewer/core.js"></script>
 
     <script>
         // Console output redirection
@@ -475,10 +446,6 @@
             await runTestWithStatus('runResourcesTests', 'Resources Explorer Tests');
         }
 
-        async function runGaliaViewerTestsUI() {
-            await runTestWithStatus('runGaliaViewerTests', 'Galia Viewer Tests');
-        }
-
         async function runUITestsUI() {
             await runTestWithStatus('runUITests', 'UI/UX Tests');
         }
@@ -532,14 +499,6 @@
 
         async function runClaimStakeAnalyticsTests() {
             if (window.claimStakeAnalyticsTests) await window.claimStakeAnalyticsTests.run();
-        }
-
-        async function runGaliaFleetTests() {
-            if (window.galiaFleetTests) await window.galiaFleetTests.run();
-        }
-
-        async function runGaliaSearchTests() {
-            if (window.galiaSearchTests) await window.galiaSearchTests.run();
         }
 
         // Explorer analytics test functions

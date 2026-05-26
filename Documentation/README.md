@@ -32,13 +32,6 @@
 - Testing checklist
 - Known issues and next steps
 
-### [GaliaViewer-README.md](GaliaViewer-README.md)
-**3D visualization system documentation**
-- Galia Viewer features
-- Configuration options
-- Performance settings
-- WebGL effects
-
 ---
 
 ## 🔄 Data Pipeline Documentation
@@ -131,9 +124,6 @@ Some explorers have their own documentation in their folders:
 
 **For Status Updates:**
 → Check [IMPLEMENTATION-STATUS.md](IMPLEMENTATION-STATUS.md)
-
-**For 3D Viewer:**
-→ See [GaliaViewer-README.md](GaliaViewer-README.md)
 
 ---
 
