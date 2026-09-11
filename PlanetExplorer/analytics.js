@@ -252,10 +252,6 @@ class PlanetResourceAnalytics extends BaseAnalytics {
                             <span class="stat-value">${resource.presentInRegions} / ${resource.totalRegions} regions</span>
                         </div>
                         <div class="stat-item">
-                            <span class="stat-label">Missing From:</span>
-                            <span class="stat-value">${resource.missingFromRegions} region(s)</span>
-                        </div>
-                        <div class="stat-item">
                             <span class="stat-label">Total Locations:</span>
                             <span class="stat-value">${resource.totalLocations}</span>
                         </div>
@@ -271,14 +267,6 @@ class PlanetResourceAnalytics extends BaseAnalytics {
                                 ${this.getRegionsSortedByRichness(resource.name, resource.regions).map(r => `<span class="region-tag present clickable" data-resource="${resource.name}" data-region="${r.region}" title="Avg Richness: ${r.avgRichness.toFixed(2)}">${r.region}</span>`).join('')}
                             </div>
                         </div>
-                        ${resource.missingRegions.length > 0 ? `
-                            <div class="region-section">
-                                <strong>Missing from regions:</strong>
-                                <div class="region-tags">
-                                    ${resource.missingRegions.map(r => `<span class="region-tag missing">${r}</span>`).join('')}
-                                </div>
-                            </div>
-                        ` : ''}
                     </div>
                 </div>
             `).join('');
