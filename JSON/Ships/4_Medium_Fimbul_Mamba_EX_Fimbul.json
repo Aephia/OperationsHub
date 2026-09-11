@@ -9,11 +9,11 @@
     "cargo_capacity": 17341,
     "fuel_capacity": 14929,
     "ammo_capacity": 4988,
-    "asteroid_mining_food_rate": 0.38,
-    "asteroid_mining_ammo_rate": 0.15,
-    "asteroid_mining_rate": 9.212,
-    "subwarp_speed": 0.0049,
-    "warp_speed": 0.1,
+    "asteroid_mining_food_rate": 0.009897,
+    "asteroid_mining_ammo_rate": 0.003907,
+    "asteroid_mining_rate": 0.2399,
+    "subwarp_speed": 0.001617,
+    "warp_speed": 0.033,
     "max_warp_distance": 6.6,
     "warp_cool_down": 240,
     "warp_fuel_consumption": 443.56,
@@ -26,7 +26,7 @@
     "passenger_capacity": 3,
     "respawnTime": 182,
     "ship_size": 62,
-    "warp_lane_speed": 1,
+    "warp_lane_speed": 0.1,
     "warp_lane_fee": 65,
     "warp_spool_time": 19,
     "loading_rate": 173.4,
@@ -46,6 +46,7 @@
     "loot_rate": 173.4,
     "ship_size_value": 238000,
     "lp_value\r": 9650,
+    "xp_value": 120,
     "damage_kinetic": 0,
     "damage_energy": 0,
     "damage_emp": 0,
@@ -81,7 +82,9 @@
     {
       "name": "Default",
       "components": {
-        "Ship Component": {},
+        "Ship Component": {
+          "Mining Rig": []
+        },
         "Ship Module": {},
         "Ship Weapons": {},
         "Countermeasures": {},
@@ -126,7 +129,8 @@
           ],
           "Drone Port": [
             115191
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -209,7 +213,8 @@
           ],
           "Drone Port": [
             115192
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -292,7 +297,8 @@
           ],
           "Drone Port": [
             115193
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -375,7 +381,8 @@
           ],
           "Drone Port": [
             115194
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -458,7 +465,8 @@
           ],
           "Drone Port": [
             115195
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -521,7 +529,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Drone Port": []
+          "Drone Port": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -566,7 +575,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Drone Port": []
+          "Drone Port": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -626,7 +636,8 @@
           "Missile Bay": [],
           "Drone Port": [
             115195
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -670,7 +681,8 @@
           ],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Drone Port": []
+          "Drone Port": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -715,7 +727,8 @@
           ],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Drone Port": []
+          "Drone Port": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -783,7 +796,8 @@
           "Missile Bay": [],
           "Drone Port": [
             115195
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -833,7 +847,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Drone Port": []
+          "Drone Port": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -889,7 +904,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Drone Port": []
+          "Drone Port": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -960,7 +976,8 @@
           "Missile Bay": [],
           "Drone Port": [
             115195
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -1015,7 +1032,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Drone Port": []
+          "Drone Port": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -1058,7 +1076,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Drone Port": []
+          "Drone Port": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -1125,7 +1144,8 @@
           "Missile Bay": [],
           "Drone Port": [
             115195
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -1180,7 +1200,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Drone Port": []
+          "Drone Port": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -1244,7 +1265,8 @@
           ],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Drone Port": []
+          "Drone Port": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -1312,7 +1334,8 @@
           "Missile Bay": [],
           "Drone Port": [
             115195
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -1362,7 +1385,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Drone Port": []
+          "Drone Port": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -1428,7 +1452,8 @@
           "Missile Bay": [],
           "Drone Port": [
             115193
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -1492,7 +1517,8 @@
           "Missile Bay": [],
           "Drone Port": [
             115195
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -1544,7 +1570,8 @@
           ],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Drone Port": []
+          "Drone Port": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -1602,7 +1629,8 @@
           ],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Drone Port": []
+          "Drone Port": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -1670,7 +1698,8 @@
           "Missile Bay": [],
           "Drone Port": [
             115195
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -1735,7 +1764,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Drone Port": []
+          "Drone Port": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -1801,7 +1831,8 @@
           "Missile Bay": [
             115083
           ],
-          "Drone Port": []
+          "Drone Port": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -1892,7 +1923,8 @@
           ],
           "Drone Port": [
             115195
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -1961,7 +1993,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Drone Port": []
+          "Drone Port": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -2027,7 +2060,8 @@
           "Missile Bay": [
             115083
           ],
-          "Drone Port": []
+          "Drone Port": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -2116,7 +2150,8 @@
           ],
           "Drone Port": [
             115195
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -2187,7 +2222,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Drone Port": []
+          "Drone Port": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -2257,7 +2293,8 @@
           "Missile Bay": [
             115083
           ],
-          "Drone Port": []
+          "Drone Port": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -2359,7 +2396,8 @@
           ],
           "Drone Port": [
             115195
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -2443,7 +2481,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Drone Port": []
+          "Drone Port": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -2513,7 +2552,8 @@
           "Missile Bay": [
             115083
           ],
-          "Drone Port": []
+          "Drone Port": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -2615,7 +2655,8 @@
           ],
           "Drone Port": [
             115195
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -2699,7 +2740,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Drone Port": []
+          "Drone Port": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -2769,7 +2811,8 @@
           "Missile Bay": [
             115083
           ],
-          "Drone Port": []
+          "Drone Port": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -2871,7 +2914,8 @@
           ],
           "Drone Port": [
             115195
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -2955,7 +2999,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Drone Port": []
+          "Drone Port": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -3025,7 +3070,8 @@
           "Missile Bay": [
             115083
           ],
-          "Drone Port": []
+          "Drone Port": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -3127,7 +3173,8 @@
           ],
           "Drone Port": [
             115195
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -3211,7 +3258,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Drone Port": []
+          "Drone Port": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -3281,7 +3329,8 @@
           "Missile Bay": [
             115083
           ],
-          "Drone Port": []
+          "Drone Port": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -3383,7 +3432,8 @@
           ],
           "Drone Port": [
             115195
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [

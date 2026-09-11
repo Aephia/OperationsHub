@@ -3,11 +3,15 @@
     {
       "id": "fuel",
       "name": "Fuel",
-      "category": "raw",
+      "category": "processed",
       "tier": 1,
-      "description": "Fuel - Tier 1 raw",
+      "description": "Fuel - Tier 1 processed R4 resource",
       "stackSize": 100,
       "baseValue": 10,
+      "planet_types": [],
+      "faction": null,
+      "body_extractable": false,
+      "acquisition_source": "crafting",
       "c4_status": "v1"
     },
     {
@@ -18,6 +22,10 @@
       "description": "Magmaroot - Tier 1 raw",
       "stackSize": 100,
       "baseValue": 10,
+      "planet_types": [
+        "volcanic"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -28,6 +36,10 @@
       "description": "Pyroclast Energen - Tier 1 raw",
       "stackSize": 100,
       "baseValue": 10,
+      "planet_types": [
+        "volcanic"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -38,6 +50,10 @@
       "description": "Blazing Snapdragon - Tier 2 raw",
       "stackSize": 100,
       "baseValue": 20,
+      "planet_types": [
+        "volcanic"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -48,6 +64,10 @@
       "description": "Tidal Kelp - Tier 1 raw",
       "stackSize": 100,
       "baseValue": 10,
+      "planet_types": [
+        "oceanic"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -58,6 +78,10 @@
       "description": "Bioluminous Algae - Tier 2 raw",
       "stackSize": 100,
       "baseValue": 20,
+      "planet_types": [
+        "oceanic"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -68,6 +92,10 @@
       "description": "Shadowmoss - Tier 1 raw",
       "stackSize": 100,
       "baseValue": 10,
+      "planet_types": [
+        "dark"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -78,6 +106,10 @@
       "description": "Spectral Lichen - Tier 2 raw",
       "stackSize": 100,
       "baseValue": 20,
+      "planet_types": [
+        "dark"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -88,6 +120,10 @@
       "description": "Ironshell Cactus - Tier 1 raw",
       "stackSize": 100,
       "baseValue": 10,
+      "planet_types": [
+        "barren"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -98,6 +134,10 @@
       "description": "Bastion Agave - Tier 2 raw",
       "stackSize": 100,
       "baseValue": 20,
+      "planet_types": [
+        "barren"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -108,6 +148,10 @@
       "description": "Swiftvine - Tier 2 raw",
       "stackSize": 100,
       "baseValue": 20,
+      "planet_types": [
+        "terrestrial"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -118,6 +162,10 @@
       "description": "Electric Fern - Tier 2 raw",
       "stackSize": 100,
       "baseValue": 20,
+      "planet_types": [
+        "terrestrial"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -128,6 +176,10 @@
       "description": "Temporal Flux Orchid - Tier 2 raw",
       "stackSize": 100,
       "baseValue": 20,
+      "planet_types": [
+        "terrestrial"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -138,6 +190,10 @@
       "description": "Frostcore Bryophyte - Tier 3 raw",
       "stackSize": 100,
       "baseValue": 30,
+      "planet_types": [
+        "ice-giant"
+      ],
+      "faction": "MUD",
       "c4_status": "v1"
     },
     {
@@ -148,6 +204,10 @@
       "description": "Mind Shade Fungus - Tier 3 raw",
       "stackSize": 100,
       "baseValue": 30,
+      "planet_types": [
+        "dark"
+      ],
+      "faction": "ONI",
       "c4_status": "v1"
     },
     {
@@ -158,6 +218,10 @@
       "description": "Aegis Barrier Cactus - Tier 3 raw",
       "stackSize": 100,
       "baseValue": 30,
+      "planet_types": [
+        "barren"
+      ],
+      "faction": "USTUR",
       "c4_status": "v1"
     },
     {
@@ -342,10 +406,10 @@
     },
     {
       "id": "alpha-strike-serum",
-      "name": "Alpha Strike Serum",
+      "name": "Berserker Serum",
       "category": "component",
       "tier": 2,
-      "description": "Alpha Strike Serum - Tier 2 component",
+      "description": "Berserker Serum - Tier 2 component",
       "stackSize": 100,
       "baseValue": 20,
       "c4_status": "v1"
@@ -372,10 +436,10 @@
     },
     {
       "id": "mineral-metabolizer",
-      "name": "Mineral Metabolizer",
+      "name": "Cryo-Metabolic Stimulant",
       "category": "component",
       "tier": 3,
-      "description": "Mineral Metabolizer - Tier 3 component",
+      "description": "Cryo-Metabolic Stimulant - Tier 3 component",
       "stackSize": 100,
       "baseValue": 30,
       "c4_status": "v1"
@@ -408,6 +472,10 @@
       "description": "Abyssal Energy Crystals - Tier 4 raw",
       "stackSize": 100,
       "baseValue": 40,
+      "planet_types": [
+        "oceanic"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -418,6 +486,11 @@
       "description": "Aluminum Ore - Tier 2 raw",
       "stackSize": 100,
       "baseValue": 20,
+      "planet_types": [
+        "barren",
+        "ice-giant"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -428,6 +501,12 @@
       "description": "Arco - Tier 1 raw",
       "stackSize": 100,
       "baseValue": 10,
+      "planet_types": [
+        "terrestrial",
+        "barren",
+        "gas-giant"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -438,6 +517,12 @@
       "description": "Argon - Tier 2 raw",
       "stackSize": 100,
       "baseValue": 20,
+      "planet_types": [
+        "dark",
+        "ice-giant",
+        "gas-giant"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -448,6 +533,10 @@
       "description": "Bathysphere Pearls - Tier 3 raw",
       "stackSize": 100,
       "baseValue": 30,
+      "planet_types": [
+        "oceanic"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -458,6 +547,11 @@
       "description": "Beryllium Crystals - Tier 5 raw",
       "stackSize": 100,
       "baseValue": 50,
+      "planet_types": [
+        "dark",
+        "ice-giant"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -468,6 +562,11 @@
       "description": "Biomass - Tier 1 raw",
       "stackSize": 100,
       "baseValue": 10,
+      "planet_types": [
+        "terrestrial",
+        "oceanic"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -478,6 +577,11 @@
       "description": "Boron Ore - Tier 2 raw",
       "stackSize": 100,
       "baseValue": 20,
+      "planet_types": [
+        "barren",
+        "gas-giant"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -488,6 +592,11 @@
       "description": "Carbon - Tier 1 raw",
       "stackSize": 100,
       "baseValue": 10,
+      "planet_types": [
+        "volcanic",
+        "dark"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -498,6 +607,12 @@
       "description": "Chromite Ore - Tier 1 raw",
       "stackSize": 100,
       "baseValue": 10,
+      "planet_types": [
+        "oceanic",
+        "dark",
+        "ice-giant"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -508,6 +623,11 @@
       "description": "Copper Ore - Tier 1 raw",
       "stackSize": 100,
       "baseValue": 10,
+      "planet_types": [
+        "terrestrial",
+        "oceanic"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -518,16 +638,26 @@
       "description": "Cryo Formation Crystals - Tier 3 raw",
       "stackSize": 100,
       "baseValue": 30,
+      "planet_types": [
+        "ice-giant"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
       "id": "diamond",
       "name": "Diamond",
       "category": "raw",
-      "tier": 3,
-      "description": "Diamond - Tier 3 raw",
+      "tier": 2,
+      "description": "Diamond - Tier 2 raw",
       "stackSize": 100,
-      "baseValue": 30,
+      "baseValue": 20,
+      "planet_types": [
+        "volcanic",
+        "barren",
+        "dark"
+      ],
+      "faction": "MUD",
       "c4_status": "v1"
     },
     {
@@ -538,6 +668,10 @@
       "description": "Dodiline Crystals - Tier 4 raw",
       "stackSize": 100,
       "baseValue": 40,
+      "planet_types": [
+        "volcanic"
+      ],
+      "faction": "USTUR",
       "c4_status": "v1"
     },
     {
@@ -548,6 +682,11 @@
       "description": "Drywater - Tier 3 raw",
       "stackSize": 100,
       "baseValue": 30,
+      "planet_types": [
+        "barren",
+        "ice-giant"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -558,6 +697,10 @@
       "description": "Dysprosium Ore - Tier 4 raw",
       "stackSize": 100,
       "baseValue": 40,
+      "planet_types": [
+        "terrestrial"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -568,6 +711,10 @@
       "description": "Emerald Crystals - Tier 3 raw",
       "stackSize": 100,
       "baseValue": 30,
+      "planet_types": [
+        "dark"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -578,6 +725,12 @@
       "description": "Fluorine Gas - Tier 2 raw",
       "stackSize": 100,
       "baseValue": 20,
+      "planet_types": [
+        "volcanic",
+        "ice-giant",
+        "gas-giant"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -588,6 +741,10 @@
       "description": "Fusion Catalyst Deposits - Tier 5 raw",
       "stackSize": 100,
       "baseValue": 50,
+      "planet_types": [
+        "dark"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -598,6 +755,10 @@
       "description": "Garnet Crystals - Tier 2 raw",
       "stackSize": 100,
       "baseValue": 20,
+      "planet_types": [
+        "ice-giant"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -608,16 +769,25 @@
       "description": "Germanium Ore - Tier 4 raw",
       "stackSize": 100,
       "baseValue": 40,
+      "planet_types": [
+        "ice-giant",
+        "gas-giant"
+      ],
+      "faction": "USTUR",
       "c4_status": "v1"
     },
     {
       "id": "gold-ore",
       "name": "Gold Ore",
       "category": "raw",
-      "tier": 3,
-      "description": "Gold Ore - Tier 3 raw",
+      "tier": 2,
+      "description": "Gold Ore - Tier 2 raw",
       "stackSize": 100,
-      "baseValue": 30,
+      "baseValue": 20,
+      "planet_types": [
+        "terrestrial"
+      ],
+      "faction": "ONI",
       "c4_status": "v1"
     },
     {
@@ -628,16 +798,25 @@
       "description": "Hafnium Ore - Tier 2 raw",
       "stackSize": 100,
       "baseValue": 20,
+      "planet_types": [
+        "barren",
+        "ice-giant"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
       "id": "hicenium-crystals",
       "name": "Hicenium Crystals",
       "category": "raw",
-      "tier": 4,
-      "description": "Hicenium Crystals - Tier 4 raw",
+      "tier": 2,
+      "description": "Hicenium Crystals - Tier 2 raw",
       "stackSize": 100,
-      "baseValue": 40,
+      "baseValue": 20,
+      "planet_types": [
+        "ice-giant"
+      ],
+      "faction": "MUD",
       "c4_status": "v1"
     },
     {
@@ -648,26 +827,40 @@
       "description": "Hydrogen - Tier 1 raw",
       "stackSize": 100,
       "baseValue": 10,
+      "planet_types": [
+        "oceanic",
+        "ice-giant",
+        "gas-giant"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
       "id": "ink",
       "name": "Ink",
-      "category": "raw",
+      "category": "component",
       "tier": 1,
-      "description": "Ink - Tier 1 raw",
+      "description": "Ink - externally earned component used by C4",
       "stackSize": 100,
       "baseValue": 10,
+      "planet_types": [],
+      "faction": null,
+      "body_extractable": false,
+      "acquisition_source": "external_game",
       "c4_status": "v1"
     },
     {
       "id": "iridium-ore",
       "name": "Iridium Ore",
       "category": "raw",
-      "tier": 4,
-      "description": "Iridium Ore - Tier 4 raw",
+      "tier": 2,
+      "description": "Iridium Ore - Tier 2 raw",
       "stackSize": 100,
-      "baseValue": 40,
+      "baseValue": 20,
+      "planet_types": [
+        "volcanic"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -678,16 +871,25 @@
       "description": "Iron Ore - Tier 1 raw",
       "stackSize": 100,
       "baseValue": 10,
+      "planet_types": [
+        "terrestrial",
+        "barren"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
       "id": "jasphorus-crystals",
       "name": "Jasphorus Crystals",
       "category": "raw",
-      "tier": 5,
-      "description": "Jasphorus Crystals - Tier 5 raw",
+      "tier": 2,
+      "description": "Jasphorus Crystals - Tier 2 raw",
       "stackSize": 100,
-      "baseValue": 50,
+      "baseValue": 20,
+      "planet_types": [
+        "barren"
+      ],
+      "faction": "ONI",
       "c4_status": "v1"
     },
     {
@@ -698,6 +900,11 @@
       "description": "Krypton - Tier 1 raw",
       "stackSize": 100,
       "baseValue": 10,
+      "planet_types": [
+        "ice-giant",
+        "gas-giant"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -708,6 +915,11 @@
       "description": "Lithium Ore - Tier 2 raw",
       "stackSize": 100,
       "baseValue": 20,
+      "planet_types": [
+        "barren",
+        "dark"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -718,6 +930,10 @@
       "description": "Living Metal Symbionts - Tier 5 raw",
       "stackSize": 100,
       "baseValue": 50,
+      "planet_types": [
+        "dark"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -728,6 +944,12 @@
       "description": "Lumanite - Tier 1 raw",
       "stackSize": 100,
       "baseValue": 10,
+      "planet_types": [
+        "volcanic",
+        "dark",
+        "ice-giant"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -738,6 +960,10 @@
       "description": "Lunar Echo Crystals - Tier 5 raw",
       "stackSize": 100,
       "baseValue": 50,
+      "planet_types": [
+        "oceanic"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -748,6 +974,11 @@
       "description": "Manganese Ore - Tier 2 raw",
       "stackSize": 100,
       "baseValue": 20,
+      "planet_types": [
+        "volcanic",
+        "gas-giant"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -758,6 +989,12 @@
       "description": "Methane - Tier 2 raw",
       "stackSize": 100,
       "baseValue": 20,
+      "planet_types": [
+        "dark",
+        "ice-giant",
+        "gas-giant"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -768,6 +1005,10 @@
       "description": "Nanosil - Tier 3 raw",
       "stackSize": 100,
       "baseValue": 30,
+      "planet_types": [
+        "dark"
+      ],
+      "faction": "USTUR",
       "c4_status": "v1"
     },
     {
@@ -778,6 +1019,10 @@
       "description": "Neodymium Ore - Tier 1 raw",
       "stackSize": 100,
       "baseValue": 10,
+      "planet_types": [
+        "volcanic"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -788,6 +1033,11 @@
       "description": "Neon - Tier 3 raw",
       "stackSize": 100,
       "baseValue": 30,
+      "planet_types": [
+        "dark",
+        "gas-giant"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -798,6 +1048,10 @@
       "description": "Neural Coral Compounds - Tier 3 raw",
       "stackSize": 100,
       "baseValue": 30,
+      "planet_types": [
+        "oceanic"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -808,6 +1062,12 @@
       "description": "Nitrogen - Tier 1 raw",
       "stackSize": 100,
       "baseValue": 10,
+      "planet_types": [
+        "terrestrial",
+        "ice-giant",
+        "gas-giant"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -818,6 +1078,10 @@
       "description": "Osmium Ore - Tier 1 raw",
       "stackSize": 100,
       "baseValue": 10,
+      "planet_types": [
+        "dark"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -828,6 +1092,12 @@
       "description": "Oxygen - Tier 2 raw",
       "stackSize": 100,
       "baseValue": 20,
+      "planet_types": [
+        "terrestrial",
+        "oceanic",
+        "ice-giant"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -838,6 +1108,10 @@
       "description": "Palladium Ore - Tier 3 raw",
       "stackSize": 100,
       "baseValue": 30,
+      "planet_types": [
+        "volcanic"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -848,16 +1122,25 @@
       "description": "Peridot Crystals - Tier 2 raw",
       "stackSize": 100,
       "baseValue": 20,
+      "planet_types": [
+        "volcanic",
+        "ice-giant"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
       "id": "phase-shift-crystals",
       "name": "Phase Shift Crystals",
       "category": "raw",
-      "tier": 3,
-      "description": "Phase Shift Crystals - Tier 3 raw",
+      "tier": 2,
+      "description": "Phase Shift Crystals - Tier 2 raw",
       "stackSize": 100,
-      "baseValue": 30,
+      "baseValue": 20,
+      "planet_types": [
+        "oceanic"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -868,6 +1151,10 @@
       "description": "Plasma Containment Minerals - Tier 3 raw",
       "stackSize": 100,
       "baseValue": 30,
+      "planet_types": [
+        "volcanic"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -878,6 +1165,10 @@
       "description": "Platinum Ore - Tier 3 raw",
       "stackSize": 100,
       "baseValue": 30,
+      "planet_types": [
+        "volcanic"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -888,6 +1179,10 @@
       "description": "Quantum Computational Substrate - Tier 4 raw",
       "stackSize": 100,
       "baseValue": 40,
+      "planet_types": [
+        "dark"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -898,6 +1193,11 @@
       "description": "Quantum Particle - Tier 5 raw",
       "stackSize": 100,
       "baseValue": 50,
+      "planet_types": [
+        "dark",
+        "ice-giant"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -908,26 +1208,40 @@
       "description": "Quartz Crystals - Tier 1 raw",
       "stackSize": 100,
       "baseValue": 10,
+      "planet_types": [
+        "terrestrial",
+        "oceanic",
+        "ice-giant"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
       "id": "raw-chisenic",
       "name": "Raw Chisenic",
       "category": "raw",
-      "tier": 3,
-      "description": "Raw Chisenic - Tier 3 raw",
+      "tier": 2,
+      "description": "Raw Chisenic - Tier 2 raw",
       "stackSize": 100,
-      "baseValue": 30,
+      "baseValue": 20,
+      "planet_types": [
+        "dark"
+      ],
+      "faction": "ONI",
       "c4_status": "v1"
     },
     {
       "id": "resonium-ore",
       "name": "Resonium Ore",
       "category": "raw",
-      "tier": 5,
-      "description": "Resonium Ore - Tier 5 raw",
+      "tier": 2,
+      "description": "Resonium Ore - Tier 2 raw",
       "stackSize": 100,
-      "baseValue": 50,
+      "baseValue": 20,
+      "planet_types": [
+        "barren"
+      ],
+      "faction": "MUD",
       "c4_status": "v1"
     },
     {
@@ -938,6 +1252,12 @@
       "description": "Rhenium Ore - Tier 1 raw",
       "stackSize": 100,
       "baseValue": 10,
+      "planet_types": [
+        "volcanic",
+        "barren",
+        "gas-giant"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -948,6 +1268,10 @@
       "description": "Rhodium Ore - Tier 4 raw",
       "stackSize": 100,
       "baseValue": 40,
+      "planet_types": [
+        "volcanic"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -958,6 +1282,12 @@
       "description": "Rochinol - Tier 2 raw",
       "stackSize": 100,
       "baseValue": 20,
+      "planet_types": [
+        "volcanic",
+        "ice-giant",
+        "gas-giant"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -968,6 +1298,12 @@
       "description": "Ruby Crystals - Tier 2 raw",
       "stackSize": 100,
       "baseValue": 20,
+      "planet_types": [
+        "barren",
+        "dark",
+        "ice-giant"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -978,6 +1314,10 @@
       "description": "Sapphire Crystals - Tier 3 raw",
       "stackSize": 100,
       "baseValue": 30,
+      "planet_types": [
+        "ice-giant"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -988,6 +1328,10 @@
       "description": "Scandium Ore - Tier 2 raw",
       "stackSize": 100,
       "baseValue": 20,
+      "planet_types": [
+        "gas-giant"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -998,6 +1342,11 @@
       "description": "Silica - Tier 1 raw",
       "stackSize": 100,
       "baseValue": 10,
+      "planet_types": [
+        "terrestrial",
+        "volcanic"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -1008,6 +1357,11 @@
       "description": "Silicon Crystal - Tier 1 raw",
       "stackSize": 100,
       "baseValue": 10,
+      "planet_types": [
+        "oceanic",
+        "ice-giant"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -1018,6 +1372,12 @@
       "description": "Silver Ore - Tier 2 raw",
       "stackSize": 100,
       "baseValue": 20,
+      "planet_types": [
+        "barren",
+        "dark",
+        "gas-giant"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -1028,6 +1388,12 @@
       "description": "Sodium Crystals - Tier 1 raw",
       "stackSize": 100,
       "baseValue": 10,
+      "planet_types": [
+        "volcanic",
+        "barren",
+        "gas-giant"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -1038,6 +1404,10 @@
       "description": "Strontium Crystals - Tier 5 raw",
       "stackSize": 100,
       "baseValue": 50,
+      "planet_types": [
+        "gas-giant"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -1048,16 +1418,26 @@
       "description": "Tantalum Ore - Tier 1 raw",
       "stackSize": 100,
       "baseValue": 10,
+      "planet_types": [
+        "volcanic",
+        "barren",
+        "dark"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
       "id": "tenon-gas",
       "name": "Tenon Gas",
       "category": "raw",
-      "tier": 3,
-      "description": "Tenon Gas - Tier 3 raw",
+      "tier": 2,
+      "description": "Tenon Gas - Tier 2 raw",
       "stackSize": 100,
-      "baseValue": 30,
+      "baseValue": 20,
+      "planet_types": [
+        "gas-giant"
+      ],
+      "faction": "MUD",
       "c4_status": "v1"
     },
     {
@@ -1068,6 +1448,12 @@
       "description": "Thermal Regulator Stone - Tier 1 raw",
       "stackSize": 100,
       "baseValue": 10,
+      "planet_types": [
+        "terrestrial",
+        "volcanic",
+        "barren"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -1078,16 +1464,26 @@
       "description": "Thermodyne - Tier 2 raw",
       "stackSize": 100,
       "baseValue": 20,
+      "planet_types": [
+        "volcanic",
+        "oceanic"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
       "id": "thermoplastic-resin",
       "name": "Thermoplastic Resin",
       "category": "raw",
-      "tier": 3,
-      "description": "Thermoplastic Resin - Tier 3 raw",
+      "tier": 2,
+      "description": "Thermoplastic Resin - Tier 2 raw",
       "stackSize": 100,
-      "baseValue": 30,
+      "baseValue": 20,
+      "planet_types": [
+        "terrestrial",
+        "volcanic"
+      ],
+      "faction": "ONI",
       "c4_status": "v1"
     },
     {
@@ -1098,6 +1494,11 @@
       "description": "Tin Ore - Tier 1 raw",
       "stackSize": 100,
       "baseValue": 10,
+      "planet_types": [
+        "terrestrial",
+        "oceanic"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -1108,6 +1509,11 @@
       "description": "Titanium Ore - Tier 3 raw",
       "stackSize": 100,
       "baseValue": 30,
+      "planet_types": [
+        "terrestrial",
+        "gas-giant"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -1118,6 +1524,12 @@
       "description": "Topaz Crystals - Tier 2 raw",
       "stackSize": 100,
       "baseValue": 20,
+      "planet_types": [
+        "barren",
+        "dark",
+        "ice-giant"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -1128,6 +1540,11 @@
       "description": "Tritium Ore - Tier 1 raw",
       "stackSize": 100,
       "baseValue": 10,
+      "planet_types": [
+        "oceanic",
+        "ice-giant"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -1138,6 +1555,10 @@
       "description": "Tungsten Ore - Tier 3 raw",
       "stackSize": 100,
       "baseValue": 30,
+      "planet_types": [
+        "barren"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -1148,6 +1569,10 @@
       "description": "Vanadium Ore - Tier 3 raw",
       "stackSize": 100,
       "baseValue": 30,
+      "planet_types": [
+        "barren"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -1158,6 +1583,10 @@
       "description": "Viscovite Crystals - Tier 3 raw",
       "stackSize": 100,
       "baseValue": 30,
+      "planet_types": [
+        "dark"
+      ],
+      "faction": "USTUR",
       "c4_status": "v1"
     },
     {
@@ -1168,6 +1597,12 @@
       "description": "Xenon - Tier 2 raw",
       "stackSize": 100,
       "baseValue": 20,
+      "planet_types": [
+        "dark",
+        "ice-giant",
+        "gas-giant"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -1178,6 +1613,10 @@
       "description": "Zinc Ore - Tier 1 raw",
       "stackSize": 100,
       "baseValue": 10,
+      "planet_types": [
+        "terrestrial"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -1188,6 +1627,10 @@
       "description": "Zirconium Ore - Tier 4 raw",
       "stackSize": 100,
       "baseValue": 40,
+      "planet_types": [
+        "ice-giant"
+      ],
+      "faction": null,
       "c4_status": "v1"
     },
     {
@@ -1222,10 +1665,10 @@
     },
     {
       "id": "chisenic-processor",
-      "name": "Chisenic Processor",
+      "name": "Silicon Processor",
       "category": "component",
       "tier": 3,
-      "description": "Chisenic Processor - Tier 3 component",
+      "description": "Silicon Processor - Tier 3 component",
       "stackSize": 100,
       "baseValue": 30,
       "c4_status": "v1"
@@ -1288,16 +1731,6 @@
       "description": "Silver - Tier 2 component",
       "stackSize": 100,
       "baseValue": 20,
-      "c4_status": "v1"
-    },
-    {
-      "id": "advanced-weapon-core",
-      "name": "Advanced Weapon Core",
-      "category": "advanced",
-      "tier": 4,
-      "description": "Advanced Weapon Core - Tier 4 advanced",
-      "stackSize": 100,
-      "baseValue": 40,
       "c4_status": "v1"
     },
     {
@@ -1368,16 +1801,6 @@
       "description": "Aluminum - Tier 2 component",
       "stackSize": 100,
       "baseValue": 20,
-      "c4_status": "v1"
-    },
-    {
-      "id": "ammo-control-core",
-      "name": "Ammo Control Core",
-      "category": "component",
-      "tier": 3,
-      "description": "Ammo Control Core - Tier 3 component",
-      "stackSize": 100,
-      "baseValue": 30,
       "c4_status": "v1"
     },
     {
@@ -1468,16 +1891,6 @@
       "description": "Beam Emitter - Tier 2 component",
       "stackSize": 100,
       "baseValue": 20,
-      "c4_status": "v1"
-    },
-    {
-      "id": "beam-interface-core",
-      "name": "Beam Interface Core",
-      "category": "component",
-      "tier": 3,
-      "description": "Beam Interface Core - Tier 3 component",
-      "stackSize": 100,
-      "baseValue": 30,
       "c4_status": "v1"
     },
     {
@@ -1642,7 +2055,7 @@
     },
     {
       "id": "gold",
-      "name": "Gold",
+      "name": "Conductive Alloy",
       "category": "component",
       "tier": 3,
       "description": "Gold - Tier 3 component",
@@ -1668,16 +2081,6 @@
       "description": "Climate Controller - Tier 2 component",
       "stackSize": 100,
       "baseValue": 20,
-      "c4_status": "v1"
-    },
-    {
-      "id": "command-module",
-      "name": "Command Module",
-      "category": "processed",
-      "tier": 1,
-      "description": "Command Module - Tier 1 processed",
-      "stackSize": 100,
-      "baseValue": 10,
       "c4_status": "v1"
     },
     {
@@ -1731,16 +2134,6 @@
       "c4_status": "v1"
     },
     {
-      "id": "control-interface",
-      "name": "Control Interface",
-      "category": "processed",
-      "tier": 1,
-      "description": "Control Interface - Tier 1 processed",
-      "stackSize": 100,
-      "baseValue": 10,
-      "c4_status": "v1"
-    },
-    {
       "id": "control-system-core",
       "name": "Control System Core",
       "category": "advanced",
@@ -1762,10 +2155,10 @@
     },
     {
       "id": "dodiline-matrix",
-      "name": "Dodiline Matrix",
+      "name": "Abyssal Matrix",
       "category": "advanced",
       "tier": 4,
-      "description": "Dodiline Matrix - Tier 4 advanced",
+      "description": "Abyssal Matrix - Tier 4 advanced",
       "stackSize": 100,
       "baseValue": 40,
       "c4_status": "v1"
@@ -1778,26 +2171,6 @@
       "description": "EM Quantum Core - Tier 4 advanced",
       "stackSize": 100,
       "baseValue": 40,
-      "c4_status": "v1"
-    },
-    {
-      "id": "coolant-circulator",
-      "name": "Coolant Circulator",
-      "category": "component",
-      "tier": 2,
-      "description": "Coolant Circulator - Tier 2 component",
-      "stackSize": 100,
-      "baseValue": 20,
-      "c4_status": "v1"
-    },
-    {
-      "id": "cooling-network-hub",
-      "name": "Cooling Network Hub",
-      "category": "component",
-      "tier": 3,
-      "description": "Cooling Network Hub - Tier 3 component",
-      "stackSize": 100,
-      "baseValue": 30,
       "c4_status": "v1"
     },
     {
@@ -1821,21 +2194,11 @@
       "c4_status": "v1"
     },
     {
-      "id": "coordination-matrix",
-      "name": "Coordination Matrix",
-      "category": "component",
-      "tier": 3,
-      "description": "Coordination Matrix - Tier 3 component",
-      "stackSize": 100,
-      "baseValue": 30,
-      "c4_status": "v1"
-    },
-    {
       "id": "gold-contacts",
-      "name": "Gold Contacts",
+      "name": "Conductive Contacts",
       "category": "component",
       "tier": 3,
-      "description": "Gold Contacts - Tier 3 component",
+      "description": "Conductive Contacts - Tier 3 component",
       "stackSize": 100,
       "baseValue": 30,
       "c4_status": "v1"
@@ -1971,16 +2334,6 @@
       "c4_status": "v1"
     },
     {
-      "id": "defense-command-node",
-      "name": "Defense Command Node",
-      "category": "component",
-      "tier": 3,
-      "description": "Defense Command Node - Tier 3 component",
-      "stackSize": 100,
-      "baseValue": 30,
-      "c4_status": "v1"
-    },
-    {
       "id": "neon-buffer",
       "name": "Neon Buffer",
       "category": "component",
@@ -2001,16 +2354,6 @@
       "c4_status": "v1"
     },
     {
-      "id": "defense-coordination-core",
-      "name": "Defense Coordination Core",
-      "category": "advanced",
-      "tier": 4,
-      "description": "Defense Coordination Core - Tier 4 advanced",
-      "stackSize": 100,
-      "baseValue": 40,
-      "c4_status": "v1"
-    },
-    {
       "id": "iridium-armor-plating",
       "name": "Iridium Armor Plating",
       "category": "advanced",
@@ -2018,16 +2361,6 @@
       "description": "Iridium Armor Plating - Tier 4 advanced",
       "stackSize": 100,
       "baseValue": 40,
-      "c4_status": "v1"
-    },
-    {
-      "id": "defense-integration-core",
-      "name": "Defense Integration Core",
-      "category": "component",
-      "tier": 3,
-      "description": "Defense Integration Core - Tier 3 component",
-      "stackSize": 100,
-      "baseValue": 30,
       "c4_status": "v1"
     },
     {
@@ -2048,16 +2381,6 @@
       "description": "Deployment Interface - Tier 3 component",
       "stackSize": 100,
       "baseValue": 30,
-      "c4_status": "v1"
-    },
-    {
-      "id": "dimensional-stabilizer",
-      "name": "Dimensional Stabilizer",
-      "category": "processed",
-      "tier": 1,
-      "description": "Dimensional Stabilizer - Tier 1 processed",
-      "stackSize": 100,
-      "baseValue": 10,
       "c4_status": "v1"
     },
     {
@@ -2092,10 +2415,10 @@
     },
     {
       "id": "jasphorus-propulsion-core",
-      "name": "Jasphorus Propulsion Core",
+      "name": "Quantum Propulsion Core",
       "category": "advanced",
       "tier": 5,
-      "description": "Jasphorus Propulsion Core - Tier 5 advanced",
+      "description": "Quantum Propulsion Core - Tier 5 advanced",
       "stackSize": 100,
       "baseValue": 50,
       "c4_status": "v1"
@@ -2136,26 +2459,6 @@
       "category": "component",
       "tier": 2,
       "description": "Electromagnet - Tier 2 component",
-      "stackSize": 100,
-      "baseValue": 20,
-      "c4_status": "v1"
-    },
-    {
-      "id": "magnet",
-      "name": "Magnet",
-      "category": "component",
-      "tier": 2,
-      "description": "Magnet - Tier 2 component",
-      "stackSize": 100,
-      "baseValue": 20,
-      "c4_status": "v1"
-    },
-    {
-      "id": "electromagnetic-barrier",
-      "name": "Electromagnetic Barrier",
-      "category": "component",
-      "tier": 2,
-      "description": "Electromagnetic Barrier - Tier 2 component",
       "stackSize": 100,
       "baseValue": 20,
       "c4_status": "v1"
@@ -2218,26 +2521,6 @@
       "description": "Platinum - Tier 3 component",
       "stackSize": 100,
       "baseValue": 30,
-      "c4_status": "v1"
-    },
-    {
-      "id": "emergency-matrix-core",
-      "name": "Emergency Matrix Core",
-      "category": "component",
-      "tier": 3,
-      "description": "Emergency Matrix Core - Tier 3 component",
-      "stackSize": 100,
-      "baseValue": 30,
-      "c4_status": "v1"
-    },
-    {
-      "id": "emergency-suppressant",
-      "name": "Emergency Suppressant",
-      "category": "component",
-      "tier": 2,
-      "description": "Emergency Suppressant - Tier 2 component",
-      "stackSize": 100,
-      "baseValue": 20,
       "c4_status": "v1"
     },
     {
@@ -2471,16 +2754,6 @@
       "c4_status": "v1"
     },
     {
-      "id": "field-harmonizer",
-      "name": "Field Harmonizer",
-      "category": "processed",
-      "tier": 1,
-      "description": "Field Harmonizer - Tier 1 processed",
-      "stackSize": 100,
-      "baseValue": 10,
-      "c4_status": "v1"
-    },
-    {
       "id": "field-stabilizer",
       "name": "Field Stabilizer",
       "category": "component",
@@ -2541,16 +2814,6 @@
       "c4_status": "v1"
     },
     {
-      "id": "flare-control-core",
-      "name": "Flare Control Core",
-      "category": "component",
-      "tier": 3,
-      "description": "Flare Control Core - Tier 3 component",
-      "stackSize": 100,
-      "baseValue": 30,
-      "c4_status": "v1"
-    },
-    {
       "id": "flow-controller",
       "name": "Flow Controller",
       "category": "processed",
@@ -2601,16 +2864,6 @@
       "c4_status": "v1"
     },
     {
-      "id": "fuel-atomizer",
-      "name": "Fuel Atomizer",
-      "category": "component",
-      "tier": 2,
-      "description": "Fuel Atomizer - Tier 2 component",
-      "stackSize": 100,
-      "baseValue": 20,
-      "c4_status": "v1"
-    },
-    {
       "id": "fuel-control-core",
       "name": "Fuel Control Core",
       "category": "component",
@@ -2618,16 +2871,6 @@
       "description": "Fuel Control Core - Tier 3 component",
       "stackSize": 100,
       "baseValue": 30,
-      "c4_status": "v1"
-    },
-    {
-      "id": "fuel-injector",
-      "name": "Fuel Injector",
-      "category": "processed",
-      "tier": 1,
-      "description": "Fuel Injector - Tier 1 processed",
-      "stackSize": 100,
-      "baseValue": 10,
       "c4_status": "v1"
     },
     {
@@ -2692,22 +2935,12 @@
     },
     {
       "id": "germanium-ingot",
-      "name": "Germanium Ingot",
+      "name": "Semiconductor Ingot",
       "category": "advanced",
       "tier": 4,
-      "description": "Germanium Ingot - Tier 4 advanced",
+      "description": "Semiconductor Ingot - Tier 4 advanced",
       "stackSize": 100,
       "baseValue": 40,
-      "c4_status": "v1"
-    },
-    {
-      "id": "grid-controller",
-      "name": "Grid Controller",
-      "category": "component",
-      "tier": 2,
-      "description": "Grid Controller - Tier 2 component",
-      "stackSize": 100,
-      "baseValue": 20,
       "c4_status": "v1"
     },
     {
@@ -2716,16 +2949,6 @@
       "category": "processed",
       "tier": 1,
       "description": "Ground Plate - Tier 1 processed",
-      "stackSize": 100,
-      "baseValue": 10,
-      "c4_status": "v1"
-    },
-    {
-      "id": "guidance-processor",
-      "name": "Guidance Processor",
-      "category": "processed",
-      "tier": 1,
-      "description": "Guidance Processor - Tier 1 processed",
       "stackSize": 100,
       "baseValue": 10,
       "c4_status": "v1"
@@ -2802,10 +3025,10 @@
     },
     {
       "id": "hicenium-lattice",
-      "name": "Hicenium Lattice",
+      "name": "Reinforced Lattice",
       "category": "advanced",
       "tier": 4,
-      "description": "Hicenium Lattice - Tier 4 advanced",
+      "description": "Reinforced Lattice - Tier 4 advanced",
       "stackSize": 100,
       "baseValue": 40,
       "c4_status": "v1"
@@ -2831,16 +3054,6 @@
       "c4_status": "v1"
     },
     {
-      "id": "ignition-core",
-      "name": "Ignition Core",
-      "category": "component",
-      "tier": 2,
-      "description": "Ignition Core - Tier 2 component",
-      "stackSize": 100,
-      "baseValue": 20,
-      "c4_status": "v1"
-    },
-    {
       "id": "impact-charges",
       "name": "Impact Charges",
       "category": "processed",
@@ -2861,31 +3074,11 @@
       "c4_status": "v1"
     },
     {
-      "id": "industrial-processor",
-      "name": "Industrial Processor",
-      "category": "processed",
-      "tier": 1,
-      "description": "Industrial Processor - Tier 1 processed",
-      "stackSize": 100,
-      "baseValue": 10,
-      "c4_status": "v1"
-    },
-    {
       "id": "inert-gas-canisters",
       "name": "Inert Gas Canisters",
       "category": "component",
       "tier": 2,
       "description": "Inert Gas Canisters - Tier 2 component",
-      "stackSize": 100,
-      "baseValue": 20,
-      "c4_status": "v1"
-    },
-    {
-      "id": "injection-controller",
-      "name": "Injection Controller",
-      "category": "component",
-      "tier": 2,
-      "description": "Injection Controller - Tier 2 component",
       "stackSize": 100,
       "baseValue": 20,
       "c4_status": "v1"
@@ -2898,26 +3091,6 @@
       "description": "Insulation Material - Tier 1 processed",
       "stackSize": 100,
       "baseValue": 10,
-      "c4_status": "v1"
-    },
-    {
-      "id": "interference-shield",
-      "name": "Interference Shield",
-      "category": "component",
-      "tier": 2,
-      "description": "Interference Shield - Tier 2 component",
-      "stackSize": 100,
-      "baseValue": 20,
-      "c4_status": "v1"
-    },
-    {
-      "id": "interlock-mechanism",
-      "name": "Interlock Mechanism",
-      "category": "component",
-      "tier": 2,
-      "description": "Interlock Mechanism - Tier 2 component",
-      "stackSize": 100,
-      "baseValue": 20,
       "c4_status": "v1"
     },
     {
@@ -3091,16 +3264,6 @@
       "c4_status": "v1"
     },
     {
-      "id": "launch-rails",
-      "name": "Launch Rails",
-      "category": "processed",
-      "tier": 1,
-      "description": "Launch Rails - Tier 1 processed",
-      "stackSize": 100,
-      "baseValue": 10,
-      "c4_status": "v1"
-    },
-    {
       "id": "life-support-hub",
       "name": "Life Support Hub",
       "category": "component",
@@ -3108,16 +3271,6 @@
       "description": "Life Support Hub - Tier 3 component",
       "stackSize": 100,
       "baseValue": 30,
-      "c4_status": "v1"
-    },
-    {
-      "id": "lifting-mechanism",
-      "name": "Lifting Mechanism",
-      "category": "processed",
-      "tier": 1,
-      "description": "Lifting Mechanism - Tier 1 processed",
-      "stackSize": 100,
-      "baseValue": 10,
       "c4_status": "v1"
     },
     {
@@ -3151,16 +3304,6 @@
       "c4_status": "v1"
     },
     {
-      "id": "magnetic-accelerator",
-      "name": "Magnetic Accelerator",
-      "category": "processed",
-      "tier": 1,
-      "description": "Magnetic Accelerator - Tier 1 processed",
-      "stackSize": 100,
-      "baseValue": 10,
-      "c4_status": "v1"
-    },
-    {
       "id": "tantalum",
       "name": "Tantalum",
       "category": "processed",
@@ -3168,16 +3311,6 @@
       "description": "Tantalum - Tier 1 processed",
       "stackSize": 100,
       "baseValue": 10,
-      "c4_status": "v1"
-    },
-    {
-      "id": "magnetic-gripper",
-      "name": "Magnetic Gripper",
-      "category": "component",
-      "tier": 2,
-      "description": "Magnetic Gripper - Tier 2 component",
-      "stackSize": 100,
-      "baseValue": 20,
       "c4_status": "v1"
     },
     {
@@ -3211,16 +3344,6 @@
       "c4_status": "v1"
     },
     {
-      "id": "medical-nanites",
-      "name": "Medical Nanites",
-      "category": "component",
-      "tier": 2,
-      "description": "Medical Nanites - Tier 2 component",
-      "stackSize": 100,
-      "baseValue": 20,
-      "c4_status": "v1"
-    },
-    {
       "id": "mega-framework-core",
       "name": "Mega Framework Core",
       "category": "advanced",
@@ -3238,26 +3361,6 @@
       "description": "Zirconium Framework - Tier 4 advanced",
       "stackSize": 100,
       "baseValue": 40,
-      "c4_status": "v1"
-    },
-    {
-      "id": "mine-control-core",
-      "name": "Mine Control Core",
-      "category": "component",
-      "tier": 3,
-      "description": "Mine Control Core - Tier 3 component",
-      "stackSize": 100,
-      "baseValue": 30,
-      "c4_status": "v1"
-    },
-    {
-      "id": "mining-interface",
-      "name": "Mining Interface",
-      "category": "processed",
-      "tier": 1,
-      "description": "Mining Interface - Tier 1 processed",
-      "stackSize": 100,
-      "baseValue": 10,
       "c4_status": "v1"
     },
     {
@@ -3381,16 +3484,6 @@
       "c4_status": "v1"
     },
     {
-      "id": "power-distribution-hub",
-      "name": "Power Distribution Hub",
-      "category": "component",
-      "tier": 2,
-      "description": "Power Distribution Hub - Tier 2 component",
-      "stackSize": 100,
-      "baseValue": 20,
-      "c4_status": "v1"
-    },
-    {
       "id": "power-management-core",
       "name": "Power Management Core",
       "category": "advanced",
@@ -3398,16 +3491,6 @@
       "description": "Power Management Core - Tier 4 advanced",
       "stackSize": 100,
       "baseValue": 40,
-      "c4_status": "v1"
-    },
-    {
-      "id": "power-router",
-      "name": "Power Router",
-      "category": "component",
-      "tier": 2,
-      "description": "Power Router - Tier 2 component",
-      "stackSize": 100,
-      "baseValue": 20,
       "c4_status": "v1"
     },
     {
@@ -3446,16 +3529,6 @@
       "category": "processed",
       "tier": 1,
       "description": "Pressure Wave Generator - Tier 1 processed",
-      "stackSize": 100,
-      "baseValue": 10,
-      "c4_status": "v1"
-    },
-    {
-      "id": "processing-chamber",
-      "name": "Processing Chamber",
-      "category": "processed",
-      "tier": 1,
-      "description": "Processing Chamber - Tier 1 processed",
       "stackSize": 100,
       "baseValue": 10,
       "c4_status": "v1"
@@ -3541,16 +3614,6 @@
       "c4_status": "v1"
     },
     {
-      "id": "proximity-detector",
-      "name": "Proximity Detector",
-      "category": "processed",
-      "tier": 1,
-      "description": "Proximity Detector - Tier 1 processed",
-      "stackSize": 100,
-      "baseValue": 10,
-      "c4_status": "v1"
-    },
-    {
       "id": "pulse-generator",
       "name": "Pulse Generator",
       "category": "processed",
@@ -3591,41 +3654,11 @@
       "c4_status": "v1"
     },
     {
-      "id": "radiation-blocker",
-      "name": "Radiation Blocker",
-      "category": "processed",
-      "tier": 1,
-      "description": "Radiation Blocker - Tier 1 processed",
-      "stackSize": 100,
-      "baseValue": 10,
-      "c4_status": "v1"
-    },
-    {
-      "id": "rapid-cycle-timer",
-      "name": "Rapid Cycle Timer",
-      "category": "processed",
-      "tier": 1,
-      "description": "Rapid Cycle Timer - Tier 1 processed",
-      "stackSize": 100,
-      "baseValue": 10,
-      "c4_status": "v1"
-    },
-    {
       "id": "reactive-coating",
       "name": "Reactive Coating",
       "category": "component",
       "tier": 2,
       "description": "Reactive Coating - Tier 2 component",
-      "stackSize": 100,
-      "baseValue": 20,
-      "c4_status": "v1"
-    },
-    {
-      "id": "reinforcement-lattice",
-      "name": "Reinforcement Lattice",
-      "category": "component",
-      "tier": 2,
-      "description": "Reinforcement Lattice - Tier 2 component",
       "stackSize": 100,
       "baseValue": 20,
       "c4_status": "v1"
@@ -3641,16 +3674,6 @@
       "c4_status": "v1"
     },
     {
-      "id": "repair-protocol",
-      "name": "Repair Protocol",
-      "category": "processed",
-      "tier": 1,
-      "description": "Repair Protocol - Tier 1 processed",
-      "stackSize": 100,
-      "baseValue": 10,
-      "c4_status": "v1"
-    },
-    {
       "id": "replication-catalyst",
       "name": "Replication Catalyst",
       "category": "processed",
@@ -3661,28 +3684,8 @@
       "c4_status": "v1"
     },
     {
-      "id": "resin-sealant",
-      "name": "Resin Sealant",
-      "category": "component",
-      "tier": 2,
-      "description": "Resin Sealant - Tier 2 component",
-      "stackSize": 100,
-      "baseValue": 20,
-      "c4_status": "v1"
-    },
-    {
-      "id": "resistive-coils",
-      "name": "Resistive Coils",
-      "category": "processed",
-      "tier": 1,
-      "description": "Resistive Coils - Tier 1 processed",
-      "stackSize": 100,
-      "baseValue": 10,
-      "c4_status": "v1"
-    },
-    {
       "id": "resonium",
-      "name": "Resonium",
+      "name": "Lunar Resonator",
       "category": "advanced",
       "tier": 5,
       "description": "Resonium - Tier 5 advanced",
@@ -3692,20 +3695,20 @@
     },
     {
       "id": "resonium-kinetic-core",
-      "name": "Resonium Kinetic Core",
+      "name": "Kinetic Resonator Core",
       "category": "advanced",
       "tier": 5,
-      "description": "Resonium Kinetic Core - Tier 5 advanced",
+      "description": "Kinetic Resonator Core - Tier 5 advanced",
       "stackSize": 100,
       "baseValue": 50,
       "c4_status": "v1"
     },
     {
       "id": "resonium-utility-matrix",
-      "name": "Resonium Utility Matrix",
+      "name": "Harmonic Utility Matrix",
       "category": "advanced",
       "tier": 5,
-      "description": "Resonium Utility Matrix - Tier 5 advanced",
+      "description": "Harmonic Utility Matrix - Tier 5 advanced",
       "stackSize": 100,
       "baseValue": 50,
       "c4_status": "v1"
@@ -3731,16 +3734,6 @@
       "c4_status": "v1"
     },
     {
-      "id": "safety-buffer",
-      "name": "Safety Buffer",
-      "category": "component",
-      "tier": 2,
-      "description": "Safety Buffer - Tier 2 component",
-      "stackSize": 100,
-      "baseValue": 20,
-      "c4_status": "v1"
-    },
-    {
       "id": "safety-shutoff",
       "name": "Safety Shutoff",
       "category": "component",
@@ -3758,16 +3751,6 @@
       "description": "Scaling Interface - Tier 3 component",
       "stackSize": 100,
       "baseValue": 30,
-      "c4_status": "v1"
-    },
-    {
-      "id": "scatter-pattern-generator",
-      "name": "Scatter Pattern Generator",
-      "category": "component",
-      "tier": 2,
-      "description": "Scatter Pattern Generator - Tier 2 component",
-      "stackSize": 100,
-      "baseValue": 20,
       "c4_status": "v1"
     },
     {
@@ -3811,16 +3794,6 @@
       "c4_status": "v1"
     },
     {
-      "id": "shield-framework",
-      "name": "Shield Framework",
-      "category": "processed",
-      "tier": 1,
-      "description": "Shield Framework - Tier 1 processed",
-      "stackSize": 100,
-      "baseValue": 10,
-      "c4_status": "v1"
-    },
-    {
       "id": "shield-generator",
       "name": "Shield Generator",
       "category": "processed",
@@ -3831,61 +3804,11 @@
       "c4_status": "v1"
     },
     {
-      "id": "signal-amplifier-array",
-      "name": "Signal Amplifier Array",
-      "category": "component",
-      "tier": 2,
-      "description": "Signal Amplifier Array - Tier 2 component",
-      "stackSize": 100,
-      "baseValue": 20,
-      "c4_status": "v1"
-    },
-    {
       "id": "signal-booster",
       "name": "Signal Booster",
       "category": "component",
       "tier": 2,
       "description": "Signal Booster - Tier 2 component",
-      "stackSize": 100,
-      "baseValue": 20,
-      "c4_status": "v1"
-    },
-    {
-      "id": "signal-coupling",
-      "name": "Signal Coupling",
-      "category": "component",
-      "tier": 2,
-      "description": "Signal Coupling - Tier 2 component",
-      "stackSize": 100,
-      "baseValue": 20,
-      "c4_status": "v1"
-    },
-    {
-      "id": "signal-recorder",
-      "name": "Signal Recorder",
-      "category": "processed",
-      "tier": 1,
-      "description": "Signal Recorder - Tier 1 processed",
-      "stackSize": 100,
-      "baseValue": 10,
-      "c4_status": "v1"
-    },
-    {
-      "id": "spray-nozzles",
-      "name": "Spray Nozzles",
-      "category": "processed",
-      "tier": 1,
-      "description": "Spray Nozzles - Tier 1 processed",
-      "stackSize": 100,
-      "baseValue": 10,
-      "c4_status": "v1"
-    },
-    {
-      "id": "stabilization-field",
-      "name": "Stabilization Field",
-      "category": "component",
-      "tier": 2,
-      "description": "Stabilization Field - Tier 2 component",
       "stackSize": 100,
       "baseValue": 20,
       "c4_status": "v1"
@@ -3921,16 +3844,6 @@
       "c4_status": "v1"
     },
     {
-      "id": "storage-matrix",
-      "name": "Storage Matrix",
-      "category": "processed",
-      "tier": 1,
-      "description": "Storage Matrix - Tier 1 processed",
-      "stackSize": 100,
-      "baseValue": 10,
-      "c4_status": "v1"
-    },
-    {
       "id": "storage-platform-core",
       "name": "Storage Platform Core",
       "category": "advanced",
@@ -3958,16 +3871,6 @@
       "description": "Strontium Weapon Core - Tier 5 advanced",
       "stackSize": 100,
       "baseValue": 50,
-      "c4_status": "v1"
-    },
-    {
-      "id": "structural-anchor",
-      "name": "Structural Anchor",
-      "category": "component",
-      "tier": 2,
-      "description": "Structural Anchor - Tier 2 component",
-      "stackSize": 100,
-      "baseValue": 20,
       "c4_status": "v1"
     },
     {
@@ -4021,26 +3924,6 @@
       "c4_status": "v1"
     },
     {
-      "id": "subspace-coils",
-      "name": "Subspace Coils",
-      "category": "processed",
-      "tier": 1,
-      "description": "Subspace Coils - Tier 1 processed",
-      "stackSize": 100,
-      "baseValue": 10,
-      "c4_status": "v1"
-    },
-    {
-      "id": "subwarp-drive-matrix",
-      "name": "Subwarp Drive Matrix",
-      "category": "processed",
-      "tier": 1,
-      "description": "Subwarp Drive Matrix - Tier 1 processed",
-      "stackSize": 100,
-      "baseValue": 10,
-      "c4_status": "v1"
-    },
-    {
       "id": "suppression-hub-core",
       "name": "Suppression Hub Core",
       "category": "component",
@@ -4068,16 +3951,6 @@
       "description": "Targeting Array - Tier 1 processed",
       "stackSize": 100,
       "baseValue": 10,
-      "c4_status": "v1"
-    },
-    {
-      "id": "temperature-regulator",
-      "name": "Temperature Regulator",
-      "category": "component",
-      "tier": 2,
-      "description": "Temperature Regulator - Tier 2 component",
-      "stackSize": 100,
-      "baseValue": 20,
       "c4_status": "v1"
     },
     {
@@ -4131,16 +4004,6 @@
       "c4_status": "v1"
     },
     {
-      "id": "thermal-tracker",
-      "name": "Thermal Tracker",
-      "category": "processed",
-      "tier": 1,
-      "description": "Thermal Tracker - Tier 1 processed",
-      "stackSize": 100,
-      "baseValue": 10,
-      "c4_status": "v1"
-    },
-    {
       "id": "thermal-transfer-matrix",
       "name": "Thermal Transfer Matrix",
       "category": "processed",
@@ -4148,26 +4011,6 @@
       "description": "Thermal Transfer Matrix - Tier 1 processed",
       "stackSize": 100,
       "baseValue": 10,
-      "c4_status": "v1"
-    },
-    {
-      "id": "thrust-chamber",
-      "name": "Thrust Chamber",
-      "category": "processed",
-      "tier": 1,
-      "description": "Thrust Chamber - Tier 1 processed",
-      "stackSize": 100,
-      "baseValue": 10,
-      "c4_status": "v1"
-    },
-    {
-      "id": "thrust-modulator",
-      "name": "Thrust Modulator",
-      "category": "component",
-      "tier": 2,
-      "description": "Thrust Modulator - Tier 2 component",
-      "stackSize": 100,
-      "baseValue": 20,
       "c4_status": "v1"
     },
     {
@@ -4251,16 +4094,6 @@
       "c4_status": "v1"
     },
     {
-      "id": "utility-interface",
-      "name": "Utility Interface",
-      "category": "processed",
-      "tier": 1,
-      "description": "Utility Interface - Tier 1 processed",
-      "stackSize": 100,
-      "baseValue": 10,
-      "c4_status": "v1"
-    },
-    {
       "id": "vanadium",
       "name": "Vanadium",
       "category": "component",
@@ -4271,16 +4104,6 @@
       "c4_status": "v1"
     },
     {
-      "id": "vector-controller",
-      "name": "Vector Controller",
-      "category": "component",
-      "tier": 2,
-      "description": "Vector Controller - Tier 2 component",
-      "stackSize": 100,
-      "baseValue": 20,
-      "c4_status": "v1"
-    },
-    {
       "id": "voltage-regulator",
       "name": "Voltage Regulator",
       "category": "component",
@@ -4288,16 +4111,6 @@
       "description": "Voltage Regulator - Tier 2 component",
       "stackSize": 100,
       "baseValue": 20,
-      "c4_status": "v1"
-    },
-    {
-      "id": "warp-coils",
-      "name": "Warp Coils",
-      "category": "processed",
-      "tier": 1,
-      "description": "Warp Coils - Tier 1 processed",
-      "stackSize": 100,
-      "baseValue": 10,
       "c4_status": "v1"
     },
     {
@@ -4318,26 +4131,6 @@
       "description": "Weapon Amplifier - Tier 4 advanced",
       "stackSize": 100,
       "baseValue": 40,
-      "c4_status": "v1"
-    },
-    {
-      "id": "weapon-catalyst",
-      "name": "Weapon Catalyst",
-      "category": "component",
-      "tier": 2,
-      "description": "Weapon Catalyst - Tier 2 component",
-      "stackSize": 100,
-      "baseValue": 20,
-      "c4_status": "v1"
-    },
-    {
-      "id": "weapon-frame",
-      "name": "Weapon Frame",
-      "category": "component",
-      "tier": 2,
-      "description": "Weapon Frame - Tier 2 component",
-      "stackSize": 100,
-      "baseValue": 20,
       "c4_status": "v1"
     },
     {
@@ -35719,6 +35512,196 @@
       "stackSize": 100,
       "baseValue": 10,
       "c4_status": "v1"
+    },
+    {
+      "id": "kinetic-charge-stim",
+      "name": "Kinetic Charge Stim",
+      "category": "component",
+      "tier": 3,
+      "description": "Kinetic Charge Stim - Tier 3 component",
+      "stackSize": 100,
+      "baseValue": 30,
+      "c4_status": "v1-add"
+    },
+    {
+      "id": "voltaic-stim",
+      "name": "Voltaic Stim",
+      "category": "component",
+      "tier": 2,
+      "description": "Voltaic Stim - Tier 2 component",
+      "stackSize": 100,
+      "baseValue": 20,
+      "c4_status": "v1-add"
+    },
+    {
+      "id": "faraday-pulse-stim",
+      "name": "Faraday Pulse Stim",
+      "category": "component",
+      "tier": 2,
+      "description": "Faraday Pulse Stim - Tier 2 component",
+      "stackSize": 100,
+      "baseValue": 20,
+      "c4_status": "v1-add"
+    },
+    {
+      "id": "cryo-spore-charge",
+      "name": "Cryo-Spore Charge",
+      "category": "component",
+      "tier": 3,
+      "description": "Cryo-Spore Charge - Tier 3 component",
+      "stackSize": 100,
+      "baseValue": 30,
+      "c4_status": "v1-add"
+    },
+    {
+      "id": "concussion-stim",
+      "name": "Concussion Stim",
+      "category": "component",
+      "tier": 2,
+      "description": "Concussion Stim - Tier 2 component",
+      "stackSize": 100,
+      "baseValue": 20,
+      "c4_status": "v1-add"
+    },
+    {
+      "id": "gray-goo-vial",
+      "name": "Gray-Goo Vial",
+      "category": "component",
+      "tier": 3,
+      "description": "Gray-Goo Vial - Tier 3 component",
+      "stackSize": 100,
+      "baseValue": 30,
+      "c4_status": "v1-add"
+    },
+    {
+      "id": "pyroclast-charge",
+      "name": "Pyroclast Charge",
+      "category": "component",
+      "tier": 2,
+      "description": "Pyroclast Charge - Tier 2 component",
+      "stackSize": 100,
+      "baseValue": 20,
+      "c4_status": "v1-add"
+    },
+    {
+      "id": "flare-dispenser-stim",
+      "name": "Flare Dispenser Stim",
+      "category": "component",
+      "tier": 2,
+      "description": "Flare Dispenser Stim - Tier 2 component",
+      "stackSize": 100,
+      "baseValue": 20,
+      "c4_status": "v1-add"
+    },
+    {
+      "id": "capacitor-bleed-stim",
+      "name": "Capacitor Bleed Stim",
+      "category": "component",
+      "tier": 2,
+      "description": "Capacitor Bleed Stim - Tier 2 component",
+      "stackSize": 100,
+      "baseValue": 20,
+      "c4_status": "v1-add"
+    },
+    {
+      "id": "faraday-cage-stim",
+      "name": "Faraday Cage Stim",
+      "category": "component",
+      "tier": 2,
+      "description": "Faraday Cage Stim - Tier 2 component",
+      "stackSize": 100,
+      "baseValue": 20,
+      "c4_status": "v1-add"
+    },
+    {
+      "id": "thermal-plating-stim",
+      "name": "Thermal Plating Stim",
+      "category": "component",
+      "tier": 1,
+      "description": "Thermal Plating Stim - Tier 1 component",
+      "stackSize": 100,
+      "baseValue": 10,
+      "c4_status": "v1-add"
+    },
+    {
+      "id": "rem-damper-stim",
+      "name": "REM Damper Stim",
+      "category": "component",
+      "tier": 1,
+      "description": "REM Damper Stim - Tier 1 component",
+      "stackSize": 100,
+      "baseValue": 10,
+      "c4_status": "v1-add"
+    },
+    {
+      "id": "nanobot-gel-stim",
+      "name": "Nanobot Gel Stim",
+      "category": "component",
+      "tier": 2,
+      "description": "Nanobot Gel Stim - Tier 2 component",
+      "stackSize": 100,
+      "baseValue": 20,
+      "c4_status": "v1-add"
+    },
+    {
+      "id": "suppressant-foam-stim",
+      "name": "Suppressant Foam Stim",
+      "category": "component",
+      "tier": 1,
+      "description": "Suppressant Foam Stim - Tier 1 component",
+      "stackSize": 100,
+      "baseValue": 10,
+      "c4_status": "v1-add"
+    },
+    {
+      "id": "marksman-stim",
+      "name": "Marksman Stim",
+      "category": "component",
+      "tier": 2,
+      "description": "Marksman Stim - Tier 2 component",
+      "stackSize": 100,
+      "baseValue": 20,
+      "c4_status": "v1-add"
+    },
+    {
+      "id": "bore-sight-stim",
+      "name": "Bore-Sight Stim",
+      "category": "component",
+      "tier": 2,
+      "description": "Bore-Sight Stim - Tier 2 component",
+      "stackSize": 100,
+      "baseValue": 20,
+      "c4_status": "v1-add"
+    },
+    {
+      "id": "killer-instinct-stim",
+      "name": "Killer Instinct Stim",
+      "category": "component",
+      "tier": 3,
+      "description": "Killer Instinct Stim - Tier 3 component",
+      "stackSize": 100,
+      "baseValue": 30,
+      "c4_status": "v1-add"
+    },
+    {
+      "id": "overkill-stim",
+      "name": "Overkill Stim",
+      "category": "component",
+      "tier": 3,
+      "description": "Overkill Stim - Tier 3 component",
+      "stackSize": 100,
+      "baseValue": 30,
+      "c4_status": "v1-add"
+    },
+    {
+      "id": "ghost-veil-stim",
+      "name": "Ghost Veil Stim",
+      "category": "component",
+      "tier": 2,
+      "description": "Ghost Veil Stim - Tier 2 component",
+      "stackSize": 100,
+      "baseValue": 20,
+      "c4_status": "v1-add"
     }
   ],
   "categories": {

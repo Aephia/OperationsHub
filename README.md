@@ -52,7 +52,7 @@ Discover and analyze 3,901 planets across all star systems
 ---
 
 ### 2. 🧪 **Recipe Explorer**
-Explore 247 manufacturing recipes and production chains
+Explore 5,251 manufacturing recipes and production chains
 
 **Features:**
 - Filter by category (Infrastructure, Processing, Ship Components)
@@ -131,9 +131,9 @@ Compare ships, analyze configurations, and plan fleets
 
 All analytics are powered by the **CrossExplorerAnalytics** engine, combining data from:
 - 3,901 planets
-- 247 recipes
-- 93 resources
-- 100+ buildings
+- 5,251 recipes
+- 93 resource types
+- 1,620 buildings
 - 67 ships with configurations
 
 ### Available Analytics:
@@ -182,10 +182,20 @@ Enterprise-grade data validation and processing pipeline that transforms raw JSO
 
 **Usage:**
 ```bash
+# 1. Split a SAGE uber-export into the per-dataset sources under JSON/
+#    (refuses to write if the component tree does not cover every ship configuration)
+node RefreshData/split-uber-export.js "C:\Users\khawa\Desktop\StarAtlas\uber-export-latest.json"
+
+# 2. Validate and regenerate Data/*.js
 npm run refresh
 # or
 cd RefreshData && node refresh-data.js
 ```
+
+The refresh's "breaking changes" alert compares element `[0]` of each list, so a re-ordered
+export reads as removed fields; check the field set across all entries before treating it as real.
+The export also carries sections nothing here consumes yet (`missions`, `researchGateMap`,
+`cargoTypes`, ...); the split script lists them at the end of its run.
 
 **Output:**
 - Validated data files in `Data/` directory
@@ -215,9 +225,9 @@ OperationsHub/
 │   └── DataLoader.js                  # Data loading system
 │
 ├── Data/                               # Processed data files
-│   ├── recipes-data.js                 # 247 recipes (4.7 MB)
-│   ├── buildings-data.js               # 100+ buildings (2.4 MB)
-│   ├── planet-data.js                  # 3,901 planets (14 MB)
+│   ├── recipes-data.js                 # 5,251 recipes (5.1 MB)
+│   ├── buildings-data.js               # 1,620 buildings (2.1 MB)
+│   ├── planet-data.js                  # 3,901 planets (7.4 MB)
 │   ├── resources-data.js               # 93 resources (864 KB)
 │   ├── ships-data.js + .json           # 67 ships (12 MB each)
 │   ├── crafting-hab-data.js            # Hub buildings
@@ -228,6 +238,7 @@ OperationsHub/
 │
 ├── JSON/                               # Raw JSON source files
 ├── RefreshData/                        # Data processing pipeline
+│   ├── split-uber-export.js            # uber-export -> JSON/ sources (run first)
 │   ├── refresh-data.js                 # Enhanced v2.1
 │   ├── validation.js                   # Schema validator
 │   ├── change-detection.js             # Change tracker
@@ -331,7 +342,7 @@ node Test/test-recipes.js
 - Canvas support (for 3D viewer)
 
 ### Data Sources
-- Star Atlas game data (October 2025)
+- Star Atlas game data: SAGE uber-export of 2026-09-11 (5,251 recipes, 1,620 buildings, 3,901 planets with lore names, 3,756 ship components)
 - Manually curated component formulas
 - Community-validated recipes
 
@@ -436,7 +447,7 @@ MIT License - see [LICENSE](LICENSE) file for details
 
 ---
 
-**Last Updated:** November 19, 2025
+**Last Updated:** September 10, 2026 (data refresh from the 2026-09-11 uber-export)
 **Version:** 2.1
 **Status:** Production Ready 🚀
 

@@ -9,11 +9,11 @@
     "cargo_capacity": 156019,
     "fuel_capacity": 64594,
     "ammo_capacity": 8750,
-    "asteroid_mining_food_rate": 1.883,
-    "asteroid_mining_ammo_rate": 0.238,
-    "asteroid_mining_rate": 21.758,
-    "subwarp_speed": 0.0035,
-    "warp_speed": 0.1,
+    "asteroid_mining_food_rate": 0.064194,
+    "asteroid_mining_ammo_rate": 0.008114,
+    "asteroid_mining_rate": 0.741755,
+    "subwarp_speed": 0.001155,
+    "warp_speed": 0.033,
     "max_warp_distance": 11.5,
     "warp_cool_down": 300,
     "warp_fuel_consumption": 1114.29,
@@ -26,7 +26,7 @@
     "passenger_capacity": 15,
     "respawnTime": 209,
     "ship_size": 118,
-    "warp_lane_speed": 0.7,
+    "warp_lane_speed": 0.07,
     "warp_lane_fee": 125,
     "warp_spool_time": 30,
     "loading_rate": 2340.3,
@@ -46,6 +46,7 @@
     "loot_rate": 1560.2,
     "ship_size_value": 1675000,
     "lp_value\r": 31500,
+    "xp_value": 300,
     "damage_kinetic": 0,
     "damage_energy": 0,
     "damage_emp": 0,
@@ -81,7 +82,9 @@
     {
       "name": "Default",
       "components": {
-        "Ship Component": {},
+        "Ship Component": {
+          "Mining Rig": []
+        },
         "Ship Module": {},
         "Ship Weapons": {},
         "Countermeasures": {},
@@ -123,7 +126,8 @@
           "Missile Bay": [
             115075,
             115075
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [
@@ -207,7 +211,8 @@
           "Missile Bay": [
             115076,
             115076
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [
@@ -291,7 +296,8 @@
           "Missile Bay": [
             115077,
             115077
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [
@@ -375,7 +381,8 @@
           "Missile Bay": [
             115078,
             115078
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [
@@ -459,7 +466,8 @@
           "Missile Bay": [
             115079,
             115079
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [
@@ -524,7 +532,8 @@
           ],
           "Tractor Beam": [],
           "Hull Reinforcement": [],
-          "Missile Bay": []
+          "Missile Bay": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [],
@@ -566,7 +575,8 @@
           ],
           "Tractor Beam": [],
           "Hull Reinforcement": [],
-          "Missile Bay": []
+          "Missile Bay": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [],
@@ -618,7 +628,8 @@
           "Hull Reinforcement": [
             114761
           ],
-          "Missile Bay": []
+          "Missile Bay": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [],
@@ -656,7 +667,8 @@
             114647
           ],
           "Hull Reinforcement": [],
-          "Missile Bay": []
+          "Missile Bay": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [],
@@ -698,7 +710,8 @@
             114649
           ],
           "Hull Reinforcement": [],
-          "Missile Bay": []
+          "Missile Bay": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [
@@ -760,7 +773,8 @@
           "Hull Reinforcement": [
             114761
           ],
-          "Missile Bay": []
+          "Missile Bay": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [
@@ -806,7 +820,8 @@
           "Scanner Array": [],
           "Tractor Beam": [],
           "Hull Reinforcement": [],
-          "Missile Bay": []
+          "Missile Bay": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [],
@@ -860,7 +875,8 @@
           "Scanner Array": [],
           "Tractor Beam": [],
           "Hull Reinforcement": [],
-          "Missile Bay": []
+          "Missile Bay": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [],
@@ -924,7 +940,8 @@
           "Hull Reinforcement": [
             114761
           ],
-          "Missile Bay": []
+          "Missile Bay": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [],
@@ -974,7 +991,8 @@
           "Scanner Array": [],
           "Tractor Beam": [],
           "Hull Reinforcement": [],
-          "Missile Bay": []
+          "Missile Bay": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [],
@@ -1014,7 +1032,8 @@
           "Scanner Array": [],
           "Tractor Beam": [],
           "Hull Reinforcement": [],
-          "Missile Bay": []
+          "Missile Bay": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [],
@@ -1075,7 +1094,8 @@
           "Hull Reinforcement": [
             114761
           ],
-          "Missile Bay": []
+          "Missile Bay": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [],
@@ -1126,7 +1146,8 @@
           "Scanner Array": [],
           "Tractor Beam": [],
           "Hull Reinforcement": [],
-          "Missile Bay": []
+          "Missile Bay": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [
@@ -1189,7 +1210,8 @@
             114649
           ],
           "Hull Reinforcement": [],
-          "Missile Bay": []
+          "Missile Bay": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [],
@@ -1251,7 +1273,8 @@
           "Hull Reinforcement": [
             114761
           ],
-          "Missile Bay": []
+          "Missile Bay": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [],
@@ -1297,7 +1320,8 @@
           "Scanner Array": [],
           "Tractor Beam": [],
           "Hull Reinforcement": [],
-          "Missile Bay": []
+          "Missile Bay": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [
@@ -1358,7 +1382,8 @@
           "Hull Reinforcement": [
             114759
           ],
-          "Missile Bay": []
+          "Missile Bay": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [
@@ -1416,7 +1441,8 @@
           "Hull Reinforcement": [
             114761
           ],
-          "Missile Bay": []
+          "Missile Bay": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [
@@ -1464,7 +1490,8 @@
             114647
           ],
           "Hull Reinforcement": [],
-          "Missile Bay": []
+          "Missile Bay": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [
@@ -1519,7 +1546,8 @@
             114649
           ],
           "Hull Reinforcement": [],
-          "Missile Bay": []
+          "Missile Bay": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [
@@ -1581,7 +1609,8 @@
           "Hull Reinforcement": [
             114761
           ],
-          "Missile Bay": []
+          "Missile Bay": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [
@@ -1649,7 +1678,8 @@
           "Scanner Array": [],
           "Tractor Beam": [],
           "Hull Reinforcement": [],
-          "Missile Bay": []
+          "Missile Bay": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [
@@ -1732,7 +1762,8 @@
           "Missile Bay": [
             115077,
             115077
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [
@@ -1842,7 +1873,8 @@
           "Missile Bay": [
             115079,
             115079
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [],
@@ -1927,7 +1959,8 @@
           "Scanner Array": [],
           "Tractor Beam": [],
           "Hull Reinforcement": [],
-          "Missile Bay": []
+          "Missile Bay": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [
@@ -2004,7 +2037,8 @@
           "Missile Bay": [
             115077,
             115077
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [],
@@ -2095,7 +2129,8 @@
           "Missile Bay": [
             115079,
             115079
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [],
@@ -2169,7 +2204,8 @@
           "Scanner Array": [],
           "Tractor Beam": [],
           "Hull Reinforcement": [],
-          "Missile Bay": []
+          "Missile Bay": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [
@@ -2246,7 +2282,8 @@
           "Missile Bay": [
             115077,
             115077
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [
@@ -2350,7 +2387,8 @@
           "Missile Bay": [
             115079,
             115079
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [
@@ -2437,7 +2475,8 @@
           "Scanner Array": [],
           "Tractor Beam": [],
           "Hull Reinforcement": [],
-          "Missile Bay": []
+          "Missile Bay": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [
@@ -2520,7 +2559,8 @@
           "Missile Bay": [
             115077,
             115077
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [
@@ -2633,7 +2673,8 @@
           "Missile Bay": [
             115079,
             115079
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [
@@ -2729,7 +2770,8 @@
           "Scanner Array": [],
           "Tractor Beam": [],
           "Hull Reinforcement": [],
-          "Missile Bay": []
+          "Missile Bay": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [
@@ -2812,7 +2854,8 @@
           "Missile Bay": [
             115077,
             115077
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [
@@ -2925,7 +2968,8 @@
           "Missile Bay": [
             115079,
             115079
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [
@@ -3021,7 +3065,8 @@
           "Scanner Array": [],
           "Tractor Beam": [],
           "Hull Reinforcement": [],
-          "Missile Bay": []
+          "Missile Bay": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [
@@ -3104,7 +3149,8 @@
           "Missile Bay": [
             115077,
             115077
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [
@@ -3217,7 +3263,8 @@
           "Missile Bay": [
             115079,
             115079
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [
@@ -3313,7 +3360,8 @@
           "Scanner Array": [],
           "Tractor Beam": [],
           "Hull Reinforcement": [],
-          "Missile Bay": []
+          "Missile Bay": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [
@@ -3395,7 +3443,8 @@
           "Missile Bay": [
             115077,
             115077
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [
@@ -3507,7 +3556,8 @@
           "Missile Bay": [
             115079,
             115079
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Cargo Module": [

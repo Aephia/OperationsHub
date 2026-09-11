@@ -9,11 +9,11 @@
     "cargo_capacity": 59228,
     "fuel_capacity": 58135,
     "ammo_capacity": 9563,
-    "asteroid_mining_food_rate": 1.98,
-    "asteroid_mining_ammo_rate": 0.252,
-    "asteroid_mining_rate": 29.67,
-    "subwarp_speed": 0.0041,
-    "warp_speed": 0.1,
+    "asteroid_mining_food_rate": 0.049501,
+    "asteroid_mining_ammo_rate": 0.006301,
+    "asteroid_mining_rate": 0.741755,
+    "subwarp_speed": 0.001353,
+    "warp_speed": 0.033,
     "max_warp_distance": 8.5,
     "warp_cool_down": 300,
     "warp_fuel_consumption": 1414.29,
@@ -26,7 +26,7 @@
     "passenger_capacity": 11,
     "respawnTime": 293,
     "ship_size": 92,
-    "warp_lane_speed": 1,
+    "warp_lane_speed": 0.1,
     "warp_lane_fee": 98,
     "warp_spool_time": 27,
     "loading_rate": 710.7,
@@ -46,6 +46,7 @@
     "loot_rate": 592.3,
     "ship_size_value": 932000,
     "lp_value\r": 23500,
+    "xp_value": 300,
     "damage_kinetic": 0,
     "damage_energy": 0,
     "damage_emp": 0,
@@ -81,7 +82,9 @@
     {
       "name": "Default",
       "components": {
-        "Ship Component": {},
+        "Ship Component": {
+          "Mining Rig": []
+        },
         "Ship Module": {},
         "Ship Weapons": {},
         "Countermeasures": {},
@@ -123,7 +126,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -200,7 +204,8 @@
           "Bomb Bay": [
             115149,
             115149
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -277,7 +282,8 @@
           "Bomb Bay": [
             115150,
             115150
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -354,7 +360,8 @@
           "Bomb Bay": [
             115151,
             115151
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -431,7 +438,8 @@
           "Bomb Bay": [
             115152,
             115152
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -492,7 +500,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -534,7 +543,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -586,7 +596,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -624,7 +635,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -666,7 +678,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -728,7 +741,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -774,7 +788,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -834,7 +849,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -904,7 +920,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -960,7 +977,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -1000,7 +1018,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -1061,7 +1080,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -1112,7 +1132,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -1176,7 +1197,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -1238,7 +1260,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -1284,7 +1307,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -1348,7 +1372,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -1406,7 +1431,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -1454,7 +1480,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -1512,7 +1539,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -1574,7 +1602,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -1634,7 +1663,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -1696,7 +1726,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -1776,7 +1807,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -1836,7 +1868,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -1906,7 +1939,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -1998,7 +2032,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -2076,7 +2111,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -2146,7 +2182,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -2244,7 +2281,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -2328,7 +2366,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -2398,7 +2437,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -2496,7 +2536,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -2580,7 +2621,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -2650,7 +2692,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -2748,7 +2791,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -2832,7 +2876,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -2902,7 +2947,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -3000,7 +3046,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -3084,7 +3131,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -3154,7 +3202,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -3252,7 +3301,8 @@
           "Bomb Bay": [
             115148,
             115148
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Ammo Module": [

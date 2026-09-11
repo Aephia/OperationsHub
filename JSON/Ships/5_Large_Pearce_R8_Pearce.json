@@ -9,11 +9,11 @@
     "cargo_capacity": 91823,
     "fuel_capacity": 94407,
     "ammo_capacity": 12500,
-    "asteroid_mining_food_rate": 1.483,
-    "asteroid_mining_ammo_rate": 0.252,
-    "asteroid_mining_rate": 21.857,
-    "subwarp_speed": 0.0047,
-    "warp_speed": 0.1,
+    "asteroid_mining_food_rate": 0.050329,
+    "asteroid_mining_ammo_rate": 0.008553,
+    "asteroid_mining_rate": 0.741755,
+    "subwarp_speed": 0.001551,
+    "warp_speed": 0.033,
     "max_warp_distance": 10,
     "warp_cool_down": 300,
     "warp_fuel_consumption": 900,
@@ -26,7 +26,7 @@
     "passenger_capacity": 9,
     "respawnTime": 222,
     "ship_size": 110,
-    "warp_lane_speed": 0.8,
+    "warp_lane_speed": 0.08,
     "warp_lane_fee": 115,
     "warp_spool_time": 26,
     "loading_rate": 1377.3,
@@ -46,6 +46,7 @@
     "loot_rate": 918.2,
     "ship_size_value": 1025000,
     "lp_value\r": 20850,
+    "xp_value": 300,
     "damage_kinetic": 0,
     "damage_energy": 0,
     "damage_emp": 0,
@@ -81,7 +82,9 @@
     {
       "name": "Default",
       "components": {
-        "Ship Component": {},
+        "Ship Component": {
+          "Mining Rig": []
+        },
         "Ship Module": {},
         "Ship Weapons": {},
         "Countermeasures": {},
@@ -133,7 +136,8 @@
           ],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -230,7 +234,8 @@
           ],
           "Refuel Rig": [
             114868
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -327,7 +332,8 @@
           ],
           "Refuel Rig": [
             114869
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -424,7 +430,8 @@
           ],
           "Refuel Rig": [
             114870
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -521,7 +528,8 @@
           ],
           "Refuel Rig": [
             114871
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -595,7 +603,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [],
@@ -645,7 +654,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [],
@@ -710,7 +720,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [],
@@ -759,7 +770,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [],
@@ -809,7 +821,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [],
@@ -884,7 +897,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [],
@@ -943,7 +957,8 @@
           ],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [],
@@ -1007,7 +1022,8 @@
           ],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [],
@@ -1083,7 +1099,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [],
@@ -1143,7 +1160,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [],
@@ -1191,7 +1209,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [],
@@ -1265,7 +1284,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [],
@@ -1327,7 +1347,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -1397,7 +1418,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -1472,7 +1494,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -1529,7 +1552,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -1601,7 +1625,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [],
@@ -1672,7 +1697,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [],
@@ -1731,7 +1757,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -1795,7 +1822,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [],
@@ -1870,7 +1898,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [],
@@ -1942,7 +1971,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -2023,7 +2053,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -2134,7 +2165,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [],
@@ -2218,7 +2250,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -2305,7 +2338,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [],
@@ -2414,7 +2448,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [],
@@ -2504,7 +2539,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -2591,7 +2627,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -2714,7 +2751,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -2818,7 +2856,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -2905,7 +2944,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -3028,7 +3068,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -3132,7 +3173,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -3215,7 +3257,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -3331,7 +3374,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -3428,7 +3472,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -3515,7 +3560,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -3638,7 +3684,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -3742,7 +3789,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -3829,7 +3877,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -3952,7 +4001,8 @@
           "Repair Rig": [],
           "Refuel Rig": [
             114867
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [

@@ -10,10 +10,10 @@
     "fuel_capacity": 237344,
     "ammo_capacity": 2790,
     "asteroid_mining_food_rate": 5.297,
-    "asteroid_mining_ammo_rate": 0.0026,
+    "asteroid_mining_ammo_rate": 0,
     "asteroid_mining_rate": 183.477,
-    "subwarp_speed": 0.0039,
-    "warp_speed": 0.1,
+    "subwarp_speed": 0.001287,
+    "warp_speed": 0.033,
     "max_warp_distance": 11.25,
     "warp_cool_down": 420,
     "warp_fuel_consumption": 5035.43,
@@ -26,7 +26,7 @@
     "passenger_capacity": 37,
     "respawnTime": 334,
     "ship_size": 185,
-    "warp_lane_speed": 0.7,
+    "warp_lane_speed": 0.07,
     "warp_lane_fee": 195,
     "warp_spool_time": 38,
     "loading_rate": 6290.6,
@@ -46,6 +46,7 @@
     "loot_rate": 5242.2,
     "ship_size_value": 5925000,
     "lp_value\r": 141000,
+    "xp_value": 800,
     "damage_kinetic": 0,
     "damage_energy": 0,
     "damage_emp": 0,
@@ -81,7 +82,9 @@
     {
       "name": "Default",
       "components": {
-        "Ship Component": {},
+        "Ship Component": {
+          "Mining Rig": []
+        },
         "Ship Module": {},
         "Ship Weapons": {},
         "Countermeasures": {},

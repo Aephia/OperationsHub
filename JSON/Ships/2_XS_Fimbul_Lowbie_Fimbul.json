@@ -9,11 +9,11 @@
     "cargo_capacity": 1965,
     "fuel_capacity": 1390,
     "ammo_capacity": 570,
-    "asteroid_mining_food_rate": 0.067,
-    "asteroid_mining_ammo_rate": 0.036,
-    "asteroid_mining_rate": 0.743,
-    "subwarp_speed": 0.0061,
-    "warp_speed": 0.1,
+    "asteroid_mining_food_rate": 0.00335,
+    "asteroid_mining_ammo_rate": 0.0018,
+    "asteroid_mining_rate": 0.03715,
+    "subwarp_speed": 0.002013,
+    "warp_speed": 0.033,
     "max_warp_distance": 4.1,
     "warp_cool_down": 120,
     "warp_fuel_consumption": 40.6,
@@ -26,7 +26,7 @@
     "passenger_capacity": 1,
     "respawnTime": 89,
     "ship_size": 25,
-    "warp_lane_speed": 1,
+    "warp_lane_speed": 0.1,
     "warp_lane_fee": 22,
     "warp_spool_time": 10,
     "loading_rate": 39.3,
@@ -46,6 +46,7 @@
     "loot_rate": 19.7,
     "ship_size_value": 47000,
     "lp_value\r": 2050,
+    "xp_value": 25,
     "damage_kinetic": 0,
     "damage_energy": 0,
     "damage_emp": 0,
@@ -81,7 +82,9 @@
     {
       "name": "Default",
       "components": {
-        "Ship Component": {},
+        "Ship Component": {
+          "Mining Rig": []
+        },
         "Ship Module": {},
         "Ship Weapons": {},
         "Countermeasures": {},
@@ -120,7 +123,8 @@
           ],
           "Hull Reinforcement": [
             114739
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -176,7 +180,8 @@
           ],
           "Hull Reinforcement": [
             114740
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -232,7 +237,8 @@
           ],
           "Hull Reinforcement": [
             114741
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -288,7 +294,8 @@
           ],
           "Hull Reinforcement": [
             114742
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -344,7 +351,8 @@
           ],
           "Hull Reinforcement": [
             114743
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -384,7 +392,8 @@
             114574
           ],
           "Tractor Beam": [],
-          "Hull Reinforcement": []
+          "Hull Reinforcement": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [],
@@ -419,7 +428,8 @@
             114576
           ],
           "Tractor Beam": [],
-          "Hull Reinforcement": []
+          "Hull Reinforcement": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [],
@@ -464,7 +474,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [
             114743
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [],
@@ -495,7 +506,8 @@
           "Tractor Beam": [
             114629
           ],
-          "Hull Reinforcement": []
+          "Hull Reinforcement": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [],
@@ -530,7 +542,8 @@
           "Tractor Beam": [
             114631
           ],
-          "Hull Reinforcement": []
+          "Hull Reinforcement": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [],
@@ -581,7 +594,8 @@
           ],
           "Hull Reinforcement": [
             114743
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [],
@@ -616,7 +630,8 @@
           "Heat Sink": [],
           "Scanner Array": [],
           "Tractor Beam": [],
-          "Hull Reinforcement": []
+          "Hull Reinforcement": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [],
@@ -657,7 +672,8 @@
           ],
           "Scanner Array": [],
           "Tractor Beam": [],
-          "Hull Reinforcement": []
+          "Hull Reinforcement": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [],
@@ -708,7 +724,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [
             114743
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [],
@@ -745,7 +762,8 @@
           "Heat Sink": [],
           "Scanner Array": [],
           "Tractor Beam": [],
-          "Hull Reinforcement": []
+          "Hull Reinforcement": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [],
@@ -778,7 +796,8 @@
           ],
           "Scanner Array": [],
           "Tractor Beam": [],
-          "Hull Reinforcement": []
+          "Hull Reinforcement": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [],
@@ -828,7 +847,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [
             114743
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [],
@@ -868,7 +888,8 @@
           "Heat Sink": [],
           "Scanner Array": [],
           "Tractor Beam": [],
-          "Hull Reinforcement": []
+          "Hull Reinforcement": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -917,7 +938,8 @@
           "Tractor Beam": [
             114631
           ],
-          "Hull Reinforcement": []
+          "Hull Reinforcement": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -968,7 +990,8 @@
           ],
           "Hull Reinforcement": [
             114743
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -1003,7 +1026,8 @@
           "Heat Sink": [],
           "Scanner Array": [],
           "Tractor Beam": [],
-          "Hull Reinforcement": []
+          "Hull Reinforcement": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -1052,7 +1076,8 @@
           ],
           "Hull Reinforcement": [
             114741
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [],
@@ -1099,7 +1124,8 @@
           ],
           "Hull Reinforcement": [
             114743
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [],
@@ -1136,7 +1162,8 @@
           "Tractor Beam": [
             114629
           ],
-          "Hull Reinforcement": []
+          "Hull Reinforcement": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -1179,7 +1206,8 @@
           "Tractor Beam": [
             114631
           ],
-          "Hull Reinforcement": []
+          "Hull Reinforcement": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [],
@@ -1230,7 +1258,8 @@
           ],
           "Hull Reinforcement": [
             114743
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [],
@@ -1273,7 +1302,8 @@
           "Heat Sink": [],
           "Scanner Array": [],
           "Tractor Beam": [],
-          "Hull Reinforcement": []
+          "Hull Reinforcement": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -1320,7 +1350,8 @@
           ],
           "Scanner Array": [],
           "Tractor Beam": [],
-          "Hull Reinforcement": []
+          "Hull Reinforcement": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -1379,7 +1410,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [
             114743
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [],
@@ -1420,7 +1452,8 @@
           "Heat Sink": [],
           "Scanner Array": [],
           "Tractor Beam": [],
-          "Hull Reinforcement": []
+          "Hull Reinforcement": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -1472,7 +1505,8 @@
           ],
           "Scanner Array": [],
           "Tractor Beam": [],
-          "Hull Reinforcement": []
+          "Hull Reinforcement": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [],
@@ -1536,7 +1570,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [
             114743
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [],
@@ -1586,7 +1621,8 @@
           "Heat Sink": [],
           "Scanner Array": [],
           "Tractor Beam": [],
-          "Hull Reinforcement": []
+          "Hull Reinforcement": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -1638,7 +1674,8 @@
           ],
           "Scanner Array": [],
           "Tractor Beam": [],
-          "Hull Reinforcement": []
+          "Hull Reinforcement": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -1706,7 +1743,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [
             114743
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -1760,7 +1798,8 @@
           "Heat Sink": [],
           "Scanner Array": [],
           "Tractor Beam": [],
-          "Hull Reinforcement": []
+          "Hull Reinforcement": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -1812,7 +1851,8 @@
           ],
           "Scanner Array": [],
           "Tractor Beam": [],
-          "Hull Reinforcement": []
+          "Hull Reinforcement": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -1880,7 +1920,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [
             114743
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -1934,7 +1975,8 @@
           "Heat Sink": [],
           "Scanner Array": [],
           "Tractor Beam": [],
-          "Hull Reinforcement": []
+          "Hull Reinforcement": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -1986,7 +2028,8 @@
           ],
           "Scanner Array": [],
           "Tractor Beam": [],
-          "Hull Reinforcement": []
+          "Hull Reinforcement": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -2054,7 +2097,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [
             114743
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -2108,7 +2152,8 @@
           "Heat Sink": [],
           "Scanner Array": [],
           "Tractor Beam": [],
-          "Hull Reinforcement": []
+          "Hull Reinforcement": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -2160,7 +2205,8 @@
           ],
           "Scanner Array": [],
           "Tractor Beam": [],
-          "Hull Reinforcement": []
+          "Hull Reinforcement": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -2228,7 +2274,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [
             114743
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -2282,7 +2329,8 @@
           "Heat Sink": [],
           "Scanner Array": [],
           "Tractor Beam": [],
-          "Hull Reinforcement": []
+          "Hull Reinforcement": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -2334,7 +2382,8 @@
           ],
           "Scanner Array": [],
           "Tractor Beam": [],
-          "Hull Reinforcement": []
+          "Hull Reinforcement": [],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
@@ -2402,7 +2451,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [
             114743
-          ]
+          ],
+          "Mining Rig": []
         },
         "Ship Module": {
           "Fuel Module": [
