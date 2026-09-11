@@ -190,6 +190,9 @@ node RefreshData/split-uber-export.js "C:\Users\khawa\Desktop\StarAtlas\uber-exp
 npm run refresh
 # or
 cd RefreshData && node refresh-data.js
+
+# 3. (optional) PDF report of the dataset and what changed since the previous import
+python RefreshData/data-report.py      # -> Documentation/DATA-REPORT-<date>.pdf (needs Chrome or Edge)
 ```
 
 The refresh's "breaking changes" alert compares element `[0]` of each list, so a re-ordered
