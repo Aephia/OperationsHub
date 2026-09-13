@@ -116,6 +116,9 @@ Compare ships, analyze configurations, and plan fleets
 - Multi-ship side-by-side comparison (67 ships available)
 - Real-time stat calculations with component modifiers
 - 40+ tracked stats (cargo, combat, travel, mining, scanning, repair)
+- Stat search above the Stat column, and a **Changed only** filter for stats the selected configurations change
+- Hover (or tab to) the ⓘ next to any stat for what it means and its unit, e.g. *Cargo Capacity - The amount
+  of cargo this ship can hold. Unit: CU* (descriptions from the SAGE export, `JSON/stat-descriptions.json`)
 - **Analytics Tab:**
   - Fleet construction costs per configuration
   - Resource efficiency rankings (cargo haulers, combat ships, etc.)
@@ -200,6 +203,16 @@ export reads as removed fields; check the field set across all entries before tr
 The export also carries sections nothing here consumes yet (`missions`, `researchGateMap`,
 `cargoTypes`, ...); the split script lists them at the end of its run.
 
+The split also writes `JSON/stat-descriptions.json` (Ship Explorer's stat tooltips) from
+`shipConfigurations.statDescriptions`. Ship Explorer loads it directly, no `npm run refresh` needed.
+A malformed section keeps the previous file and warns instead of failing the import. To regenerate
+only that file, or pull it from the live SAGE Editor Suite (same 78 descriptions as of 2026-09-13):
+
+```bash
+node RefreshData/stat-descriptions.js "C:\Users\khawa\Desktop\StarAtlas\uber-export-latest.json"
+node RefreshData/stat-descriptions.js --ses
+```
+
 **Output:**
 - Validated data files in `Data/` directory
 - Validation report: `Data/REFRESH-REPORT.json`
@@ -242,6 +255,7 @@ OperationsHub/
 ├── JSON/                               # Raw JSON source files
 ├── RefreshData/                        # Data processing pipeline
 │   ├── split-uber-export.js            # uber-export -> JSON/ sources (run first)
+│   ├── stat-descriptions.js            # -> JSON/stat-descriptions.json (called by the split)
 │   ├── refresh-data.js                 # Enhanced v2.1
 │   ├── validation.js                   # Schema validator
 │   ├── change-detection.js             # Change tracker

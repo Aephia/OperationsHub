@@ -251,7 +251,12 @@ Then open browser to: `http://localhost:8000`
 1. Open Ship Explorer
 2. **Explorer Tab:** Click "+ Add Ship" to compare ships
 3. Select configuration for each ship (dropdown)
-4. View modified stats in real-time
+4. View modified stats in real-time - type in **Search stats...** above the Stat column to
+   show only matching stats (e.g. `cargo`, `fuel capacity`; every word must match), and tick
+   **Changed only** next to "Stat" to hide every stat that none of the selected configurations
+   change. The two combine.
+   Hover the ⓘ next to a stat (or tab to it) to see what it means and its unit, e.g.
+   *Cargo Capacity - The amount of cargo this ship can hold. Unit: CU*
 5. Use search to filter stats
 6. **Analytics Tab:** Switch to see fleet data
 7. Review construction costs per configuration

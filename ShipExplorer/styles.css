@@ -597,6 +597,128 @@ main {
     margin-top: 0.5rem;
 }
 
+.changed-only-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.4rem;
+    font-family: 'Exo 2', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 400;
+    letter-spacing: normal;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+.changed-only-toggle input {
+    accent-color: var(--accent-cyan);
+    cursor: pointer;
+}
+
+.comparison-table th.stat-search-cell {
+    min-width: 190px;
+}
+
+.stat-search-cell input {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-family: 'Exo 2', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 400;
+    letter-spacing: normal;
+}
+
+.stat-search-cell input:focus {
+    outline: none;
+    border-color: var(--accent-cyan);
+    box-shadow: 0 0 12px rgba(0, 240, 255, 0.2);
+}
+
+.stat-search-cell input::placeholder {
+    color: var(--text-muted);
+}
+
+.comparison-table td.stat-name-cell {
+    cursor: help;
+    white-space: nowrap;
+}
+
+.stat-info {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 15px;
+    height: 15px;
+    margin-left: 0.4rem;
+    border: 1px solid var(--glass-border);
+    border-radius: 50%;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 0.65rem;
+    font-style: italic;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--text-muted);
+    vertical-align: middle;
+    transition: all 0.2s ease;
+}
+
+/* Drawn by CSS so the glyph is not part of the stat name's text (copy/paste, search, screen readers) */
+.stat-info::before {
+    content: 'i';
+}
+
+.stat-name-cell:hover .stat-info,
+.stat-info:focus {
+    outline: none;
+    color: var(--accent-cyan);
+    border-color: var(--accent-cyan);
+    box-shadow: 0 0 8px rgba(0, 240, 255, 0.35);
+}
+
+.stat-description-tooltip {
+    position: fixed;
+    z-index: 1000;
+    max-width: 320px;
+    padding: 0.7rem 0.9rem;
+    background: rgba(10, 15, 30, 0.97);
+    border: 1px solid var(--accent-cyan);
+    border-radius: 10px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.6), 0 0 16px rgba(0, 240, 255, 0.15);
+    font-family: 'Exo 2', sans-serif;
+    pointer-events: none;
+}
+
+.stat-description-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+    color: var(--accent-cyan);
+    margin-bottom: 0.3rem;
+}
+
+.stat-description-text {
+    font-size: 0.85rem;
+    line-height: 1.45;
+    color: var(--text-primary);
+}
+
+.stat-description-unit {
+    margin-top: 0.4rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.comparison-table td.stat-empty-row {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
 .config-select {
     width: 100%;
     padding: 0.5rem;

@@ -73,6 +73,9 @@ const moduleHelpContent = {
                         <li><strong>Search & Filter:</strong> Find specific ships or configurations by name</li>
                         <li><strong>Ship Selection:</strong> Check ships from the sidebar to add them to the comparison table</li>
                         <li><strong>Comparison Table:</strong> Side-by-side attribute comparison including hull stats, cargo capacity, and component slots</li>
+                        <li><strong>Stat Search:</strong> Type above the Stat column (e.g. "cargo", "fuel") to show only matching stats</li>
+                        <li><strong>Changed Only:</strong> Tick the box next to "Stat" to show only the stats your selected configurations change</li>
+                        <li><strong>Stat Descriptions:</strong> Hover the (i) next to a stat to see what it means and its unit</li>
                     </ul>
                 `
             },

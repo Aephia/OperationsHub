@@ -16,6 +16,9 @@
  *
  *   node RefreshData/split-uber-export.js <export> --check
  *
+ * Also writes stat-descriptions.json (Ship Explorer's stat tooltips) from
+ * shipConfigurations.statDescriptions - see stat-descriptions.js.
+ *
  * Only datasets the explorers consume are written. The export also carries
  * sections nothing here reads yet (missions, researchGateMap, cargoTypes, ...);
  * they are listed at the end of the run so a new consumer knows they exist.
@@ -23,6 +26,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { writeStatDescriptions } = require('./stat-descriptions');
 
 const ROOT_DIR = path.resolve(__dirname, '..');
 const args = process.argv.slice(2);
@@ -120,6 +124,14 @@ for (const key of shipKeys) {
 console.log(`wrote Ships/ (${shipKeys.length} ships)`);
 const orphans = fs.readdirSync(path.join(OUT_DIR, 'Ships')).filter((f) => f.endsWith('.json') && !shipKeys.includes(f.replace(/\.json$/, '')));
 if (orphans.length) console.warn(`⚠️  Ships/ has ${orphans.length} file(s) not in this export (stale?): ${orphans.join(', ')}`);
+
+// Ship Explorer stat tooltips. Optional: a bad section keeps the previous file rather than failing the import.
+try {
+    const exportDate = uber.meta && uber.meta.exportDate ? String(uber.meta.exportDate).slice(0, 10) : 'unknown date';
+    writeStatDescriptions(sc.statDescriptions, `SAGE uber-export ${exportDate}`, OUT_DIR);
+} catch (error) {
+    console.warn(`⚠️  stat-descriptions.json not updated: ${error.message}`);
+}
 
 const consumed = new Set(['meta', 'mapData', 'shipConfigurations', 'shipStats', 'recipes', 'resources', 'claimStakeBuildings', 'craftingHabs']);
 const unused = Object.keys(uber).filter((k) => !consumed.has(k));

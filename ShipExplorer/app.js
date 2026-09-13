@@ -10,6 +10,8 @@ class ShipExplorer {
         this.selectedShips = new Set();
         this.selectedConfigurations = new Set(); // Set of "shipId::configName" strings
         this.configSelections = [{}, {}, {}, {}]; // keyed by shipId
+        this.statSearchTerm = ''; // filters the comparison table's stat rows by name
+        this.showChangedStatsOnly = false;
         this.currentTab = 'explorer';
         this.viewMode = 'ships'; // 'ships' or 'configurations'
         this.searchTerm = '';
@@ -27,6 +29,7 @@ class ShipExplorer {
         this.analyticsPageSize = 50;
 
         this.componentDataLoaded = false;
+        this.statDescriptions = {}; // stat key -> description text, from JSON/stat-descriptions.json
         this.shipMap = new Map();
         this.componentsById = {};
         this.componentAttributes = {};
@@ -63,12 +66,103 @@ class ShipExplorer {
         console.log('[ShipExplorer] Initialising...');
         await this.loadShips();
         this.setupEventListeners();
+        this.setupStatDescriptionTooltip();
         this.renderCheckboxes();
         this.renderComparison();
         this.updateStats();
 
         // Load component data asynchronously; re-render once modifiers become available.
         this.loadComponentData();
+        this.loadStatDescriptions();
+    }
+
+    // Stat descriptions are optional: without them the table renders exactly as before.
+    async loadStatDescriptions() {
+        try {
+            const data = await this.fetchJsonOrThrow('../JSON/stat-descriptions.json', 'stat descriptions');
+            const descriptions = data?.descriptions;
+            if (!descriptions || typeof descriptions !== 'object') {
+                throw new Error('file has no descriptions object');
+            }
+            this.statDescriptions = descriptions;
+            const covered = this.statDefinitions.filter(stat => typeof descriptions[stat.key] === 'string').length;
+            console.log(`[ShipExplorer] Stat descriptions loaded: ${covered}/${this.statDefinitions.length} stats covered`);
+            if (this.viewMode === 'ships') this.renderComparison();
+        } catch (error) {
+            console.warn('[ShipExplorer] Stat descriptions unavailable, stat tooltips disabled:', error.message);
+        }
+    }
+
+    // One shared tooltip, driven by delegation so it survives every table re-render.
+    setupStatDescriptionTooltip() {
+        const wrapper = document.getElementById('comparisonTableWrapper');
+        if (!wrapper) return;
+
+        const tooltip = document.createElement('div');
+        tooltip.className = 'stat-description-tooltip';
+        tooltip.setAttribute('role', 'tooltip');
+        tooltip.id = 'statDescriptionTooltip';
+        tooltip.hidden = true;
+        document.body.appendChild(tooltip);
+        this.statDescriptionTooltip = tooltip;
+
+        const show = (target) => {
+            const text = this.statDescriptions[target.dataset.statKey];
+            if (typeof text !== 'string') return;
+
+            // "The amount of cargo this ship can hold. Unit: CU" -> description + unit line
+            const unitMatch = text.match(/^(.*?)\s*Unit:\s*(.+)$/);
+            tooltip.replaceChildren();
+            const title = document.createElement('div');
+            title.className = 'stat-description-title';
+            title.textContent = target.dataset.statLabel || '';
+            const body = document.createElement('div');
+            body.className = 'stat-description-text';
+            body.textContent = unitMatch ? unitMatch[1] : text;
+            tooltip.append(title, body);
+            if (unitMatch) {
+                const unit = document.createElement('div');
+                unit.className = 'stat-description-unit';
+                unit.textContent = `Unit: ${unitMatch[2]}`;
+                tooltip.append(unit);
+            }
+
+            // Below the stat name (above it near the bottom edge), so the hovered row's own values stay visible
+            tooltip.hidden = false;
+            const anchor = target.getBoundingClientRect();
+            const box = tooltip.getBoundingClientRect();
+            const left = Math.min(anchor.left + 8, window.innerWidth - box.width - 10);
+            const below = anchor.bottom + 6;
+            const top = below + box.height <= window.innerHeight - 10 ? below : anchor.top - box.height - 6;
+            tooltip.style.left = `${Math.max(left, 10)}px`;
+            tooltip.style.top = `${Math.max(top, 10)}px`;
+        };
+        let shownFor = null;
+        const hide = () => { tooltip.hidden = true; };
+        const targetOf = (event) => event.target.closest?.('[data-stat-key].stat-name-cell');
+
+        // mousemove, not just mouseover: after a scroll hides the tooltip, the next nudge brings it back
+        wrapper.addEventListener('mousemove', (event) => {
+            const target = targetOf(event);
+            if (target && (tooltip.hidden || shownFor !== target)) {
+                shownFor = target;
+                show(target);
+            }
+        });
+        wrapper.addEventListener('mouseout', (event) => {
+            const target = targetOf(event);
+            if (target && !target.contains(event.relatedTarget)) {
+                shownFor = null;
+                hide();
+            }
+        });
+        wrapper.addEventListener('focusin', (event) => {
+            const target = targetOf(event);
+            if (target) show(target);
+        });
+        wrapper.addEventListener('focusout', hide);
+        wrapper.addEventListener('scroll', hide, true);
+        window.addEventListener('scroll', hide, { passive: true });
     }
 
     async loadShips() {
@@ -864,13 +958,21 @@ class ShipExplorer {
 
         let html = '<table class="comparison-table">';
         html += '<thead>';
-        html += '<tr><th>Stat</th>';
+        html += `<tr><th class="stat-header">Stat
+            <label class="changed-only-toggle" title="Hide stats that no selected configuration changes">
+                <input type="checkbox" id="changedOnlyToggle"${this.showChangedStatsOnly ? ' checked' : ''}>
+                Changed only
+            </label>
+        </th>`;
         selectedShipData.forEach(ship => {
             html += `<th colspan="5">${this.getShipDisplayName(ship)}</th>`;
         });
         html += '</tr>';
 
-        html += '<tr><th></th>';
+        html += `<tr><th class="stat-search-cell">
+            <input type="search" id="statSearchInput" value="${this.escapeAttribute(this.statSearchTerm)}"
+                   placeholder="Search stats..." autocomplete="off">
+        </th>`;
         selectedShipData.forEach((ship, shipIdx) => {
             html += '<th>Base</th>';
             for (let configIdx = 0; configIdx < 4; configIdx++) {
@@ -881,6 +983,7 @@ class ShipExplorer {
         html += '</tr>';
         html += '</thead><tbody>';
 
+        let renderedRows = 0;
         this.statDefinitions.forEach(stat => {
             const shipRows = [];
             let bestCell = null;
@@ -925,11 +1028,25 @@ class ShipExplorer {
                 shipRows.push(rowEntry);
             });
 
+            if (this.showChangedStatsOnly) {
+                const changed = shipRows.some(entry => entry.cells.some(cell =>
+                    cell.type === 'value' && this.isStatValueChanged(entry.baseValue, cell.value)
+                ));
+                if (!changed) return;
+            }
+            renderedRows++;
+
             if (bestCell) {
                 bestCell.isBest = true;
             }
 
-            html += `<tr><td>${stat.label}</td>`;
+            const hasDescription = typeof this.statDescriptions[stat.key] === 'string';
+            const labelCell = hasDescription
+                ? `<td class="stat-name-cell" data-stat-key="${this.escapeAttribute(stat.key)}" data-stat-label="${this.escapeAttribute(stat.label)}">
+                        ${stat.label}<span class="stat-info" tabindex="0" aria-describedby="statDescriptionTooltip" aria-label="What is ${this.escapeAttribute(stat.label)}?"></span>
+                   </td>`
+                : `<td>${stat.label}</td>`;
+            html += `<tr data-stat-search="${this.escapeAttribute(`${stat.label} ${stat.key.replace(/_/g, ' ')}`.toLowerCase())}">${labelCell}`;
 
             shipRows.forEach(entry => {
                 html += `<td class="stat-value">${this.formatStatValue(entry.baseValue)}</td>`;
@@ -971,8 +1088,41 @@ class ShipExplorer {
             html += '</tr>';
         });
 
+        // Shown by applyStatSearch when no stat row is visible
+        let emptyMessage = '';
+        if (renderedRows === 0) {
+            const anyConfigSelected = selectedShipData.some(ship =>
+                this.configSelections.some(selection => selection[ship.id])
+            );
+            emptyMessage = anyConfigSelected
+                ? 'None of the selected configurations change any stat.'
+                : 'Select a configuration to see which stats it changes.';
+        }
+        html += `<tr class="stat-message-row" data-empty-message="${this.escapeAttribute(emptyMessage)}" hidden>
+            <td class="stat-empty-row" colspan="${1 + selectedShipData.length * 5}"></td>
+        </tr>`;
+
         html += '</tbody></table>';
+        if (this.statDescriptionTooltip) this.statDescriptionTooltip.hidden = true;
         wrapper.innerHTML = html;
+        this.applyStatSearch(wrapper);
+
+        const changedOnlyToggle = wrapper.querySelector('#changedOnlyToggle');
+        if (changedOnlyToggle) {
+            changedOnlyToggle.addEventListener('change', (event) => {
+                this.showChangedStatsOnly = event.target.checked;
+                this.renderComparison();
+            });
+        }
+
+        // Filter rows in place rather than re-rendering, so the search box keeps focus while typing
+        const statSearchInput = wrapper.querySelector('#statSearchInput');
+        if (statSearchInput) {
+            statSearchInput.addEventListener('input', (event) => {
+                this.statSearchTerm = event.target.value;
+                this.applyStatSearch(wrapper);
+            });
+        }
 
         wrapper.querySelectorAll('.config-select').forEach(select => {
             select.addEventListener('change', (event) => {
@@ -1007,6 +1157,34 @@ class ShipExplorer {
         return `<select class="config-select" data-ship="${ship.id}" data-config="${configIdx}" data-ship-index="${shipIdx}">
             ${options.join('')}
         </select>`;
+    }
+
+    // Hides stat rows whose name doesn't contain every search word, and explains an empty table.
+    applyStatSearch(wrapper) {
+        const words = (this.statSearchTerm || '').toLowerCase().split(/\s+/).filter(Boolean);
+        const rows = wrapper.querySelectorAll('tr[data-stat-search]');
+        let visible = 0;
+
+        rows.forEach(row => {
+            const match = words.every(word => row.dataset.statSearch.includes(word));
+            row.hidden = !match;
+            if (match) visible++;
+        });
+
+        const messageRow = wrapper.querySelector('.stat-message-row');
+        if (!messageRow) return;
+        const message = rows.length === 0
+            ? messageRow.dataset.emptyMessage
+            : `No ${this.showChangedStatsOnly ? 'changed ' : ''}stats match "${this.statSearchTerm.trim()}".`;
+        messageRow.querySelector('td').textContent = message;
+        messageRow.hidden = visible > 0;
+    }
+
+    isStatValueChanged(baseValue, modifiedValue) {
+        const baseMissing = baseValue === null || baseValue === undefined || Number.isNaN(baseValue);
+        const modifiedMissing = modifiedValue === null || modifiedValue === undefined || Number.isNaN(modifiedValue);
+        if (baseMissing || modifiedMissing) return baseMissing !== modifiedMissing;
+        return Math.abs(modifiedValue - baseValue) > 1e-9;
     }
 
 
