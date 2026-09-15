@@ -7,10 +7,25 @@ class PlanetExplorer extends BaseExplorer {
 
         // Now initialize properly
         this.initialize();
+        this.setupSystemSearch();
+    }
+
+    // Live finder above the Star Systems list: matches every word against the
+    // legacy SAGE code (004-MUD-KING-01), the lore name and the faction. Only the
+    // checkbox list re-renders, so the input keeps focus and selections survive.
+    setupSystemSearch() {
+        const input = document.getElementById('systemSearch');
+        if (!input) return;
+        this.systemSearchTerm = '';
+        input.addEventListener('input', (e) => {
+            this.systemSearchTerm = e.target.value;
+            this.refreshSystemOptions(this.getContextSystems());
+        });
     }
 
     extractMetadata() {
         this.allResources.clear();
+        this.systemByKey = new Map(this.data.map(system => [system.key, system]));
         this.data.forEach(system => {
             if (system.planets) {
                 system.planets.forEach(planet => {
@@ -79,13 +94,17 @@ class PlanetExplorer extends BaseExplorer {
     }
 
     refreshSystemOptions(systems) {
-        // Group systems by region (first 3 chars of the name) + faction
+        // Group systems by region number (first 3 chars of the legacy SAGE code,
+        // e.g. 004-MUD-KING-01 -> "004 - MUD"). Falls back to the lore name when
+        // a system has no code.
         const entries = systems.map(system => ({
             value: system.key,
             label: system.name,
-            group: `${(system.name || '').slice(0, 3)} - ${system.closestFaction || '???'}`
+            code: system.code || null,
+            keywords: `${system.code || ''} ${system.name || ''} ${system.closestFaction || ''}`.toLowerCase(),
+            group: `${(system.code || system.name || '').slice(0, 3)} - ${system.closestFaction || '???'}`
         }));
-        this.renderGroupedCheckboxes('systemCheckboxes', 'system', entries);
+        this.renderGroupedCheckboxes('systemCheckboxes', 'system', entries, this.systemSearchTerm || '');
     }
 
     refreshResourceOptions(systems) {
@@ -105,26 +124,45 @@ class PlanetExplorer extends BaseExplorer {
     }
 
     // Render a list of checkboxes into collapsible <details> groups. Each entry is
-    // { value, label, group }. Preserves checked state for entries still present,
-    // prunes the stored selection, and auto-expands groups with an active selection.
-    renderGroupedCheckboxes(containerId, filterType, entries) {
+    // { value, label, group, code?, keywords? }. Preserves checked state for entries
+    // still present, prunes the stored selection, and auto-expands groups with an
+    // active selection. `searchTerm` hides entries whose keywords (or label) do not
+    // contain every word; hidden entries keep their checked state.
+    renderGroupedCheckboxes(containerId, filterType, entries, searchTerm = '') {
         const container = document.getElementById(containerId);
         if (!container) return;
 
         const previouslyChecked = this.selectedFilters.get(filterType) || new Set();
 
-        const groups = new Map();
+        // Selection is pruned against ALL entries, never against the search subset.
+        const stillChecked = new Set();
         entries.forEach(entry => {
+            if (previouslyChecked.has(entry.value)) stillChecked.add(entry.value);
+        });
+
+        const words = searchTerm.toLowerCase().split(/\s+/).filter(Boolean);
+        const visible = words.length === 0 ? entries : entries.filter(entry => {
+            const haystack = entry.keywords || entry.label.toLowerCase();
+            return words.every(word => haystack.includes(word));
+        });
+
+        const groups = new Map();
+        visible.forEach(entry => {
             if (!groups.has(entry.group)) groups.set(entry.group, []);
             groups.get(entry.group).push(entry);
         });
 
         container.innerHTML = '';
-        const stillChecked = new Set();
+        if (visible.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'no-matches';
+            empty.textContent = words.length ? `No matches for "${searchTerm.trim()}"` : 'Nothing to show';
+            container.appendChild(empty);
+        }
 
         Array.from(groups.keys()).sort().forEach(groupKey => {
             const groupEntries = groups.get(groupKey)
-                .sort((a, b) => a.label.localeCompare(b.label));
+                .sort((a, b) => (a.code || a.label).localeCompare(b.code || b.label));
 
             const details = document.createElement('details');
             details.className = 'collapsible-group';
@@ -135,7 +173,7 @@ class PlanetExplorer extends BaseExplorer {
             details.appendChild(summary);
 
             let groupHasChecked = false;
-            groupEntries.forEach(({ value, label }) => {
+            groupEntries.forEach(({ value, label, code }) => {
                 const item = document.createElement('div');
                 item.className = 'checkbox-item';
 
@@ -143,9 +181,8 @@ class PlanetExplorer extends BaseExplorer {
                 checkbox.type = 'checkbox';
                 checkbox.id = `${filterType}-${value}`;
                 checkbox.value = value;
-                if (previouslyChecked.has(value)) {
+                if (stillChecked.has(value)) {
                     checkbox.checked = true;
-                    stillChecked.add(value);
                     groupHasChecked = true;
                 }
                 checkbox.addEventListener('change', (e) => {
@@ -157,15 +194,23 @@ class PlanetExplorer extends BaseExplorer {
 
                 const labelEl = document.createElement('label');
                 labelEl.htmlFor = `${filterType}-${value}`;
-                labelEl.textContent = label;
+                if (code) {
+                    const codeEl = document.createElement('span');
+                    codeEl.className = 'system-code';
+                    codeEl.textContent = code;
+                    labelEl.appendChild(codeEl);
+                    labelEl.appendChild(document.createTextNode(label));
+                } else {
+                    labelEl.textContent = label;
+                }
 
                 item.appendChild(checkbox);
                 item.appendChild(labelEl);
                 details.appendChild(item);
             });
 
-            // Keep a group expanded if it contains an active selection
-            if (groupHasChecked) details.open = true;
+            // Keep a group expanded if it contains an active selection or a search hit
+            if (groupHasChecked || words.length > 0) details.open = true;
 
             container.appendChild(details);
         });
@@ -344,7 +389,7 @@ class PlanetExplorer extends BaseExplorer {
 
         card.innerHTML = `
             <div class="system-header">
-                <div class="system-name">${system.name}</div>
+                <div class="system-name">${system.name}${system.code ? ` <span class="system-code">${system.code}</span>` : ''}</div>
                 <div class="star-type">${starTypeName}</div>
             </div>
             <div class="system-info">
@@ -401,7 +446,7 @@ class PlanetExplorer extends BaseExplorer {
 
             planetDiv.innerHTML = `
                 <div class="planet-header-info">
-                    <div class="planet-name">🪐 ${planet.name}</div>
+                    <div class="planet-name">🪐 ${planet.name}${planet.code ? ` <span class="system-code">${planet.code}</span>` : ''}</div>
                     <div class="planet-type">${planetTypeName}</div>
                     <div class="planet-meta">
                         Orbit: ${planet.orbit?.toFixed(2) || 'N/A'} |
@@ -444,8 +489,14 @@ class PlanetExplorer extends BaseExplorer {
         const totalResources = system.planets ?
             system.planets.reduce((sum, planet) => sum + (planet.resources ? planet.resources.length : 0), 0) : 0;
 
+        const linkLabel = (key) => {
+            const target = this.systemByKey?.get(key);
+            if (!target) return key;
+            return target.code ? `${target.code} · ${target.name}` : target.name;
+        };
+
         modalContent.innerHTML = `
-            <h2>🌟 ${system.name}</h2>
+            <h2>🌟 ${system.name}${system.code ? ` <span class="system-code">${system.code}</span>` : ''}</h2>
 
             <div class="system-details">
                 <div class="system-overview">
@@ -457,6 +508,8 @@ class PlanetExplorer extends BaseExplorer {
                         <div class="info-item">Total Resources: ${totalResources}</div>
                         <div class="info-item">Faction: ${system.closestFaction || 'Unknown'}</div>
                         <div class="info-item">Strategic Score: ${system.strategicScore}</div>
+                        <div class="info-item">SAGE Code: ${system.code || 'Unknown'}</div>
+                        <div class="info-item">Region: ${system.regionCode || system.regionId || 'Unknown'}</div>
                         <div class="info-item">System Key: ${system.key}</div>
                         <div class="info-item">Main Planet: ${system.mainPlanet || 'Unknown'}</div>
                     </div>
@@ -471,7 +524,7 @@ class PlanetExplorer extends BaseExplorer {
                     ${system.links && system.links.length > 0 ? `
                         <h4>Connected Systems (${system.links.length})</h4>
                         <div class="system-links">
-                            ${system.links.map(link => `<span class="link-tag">${link}</span>`).join('')}
+                            ${system.links.map(link => `<span class="link-tag">${linkLabel(link)}</span>`).join('')}
                         </div>
                     ` : ''}
                 </div>
@@ -491,7 +544,7 @@ class PlanetExplorer extends BaseExplorer {
         const modalContent = document.getElementById('modalContent');
 
         modalContent.innerHTML = `
-            <h2>${planet.name}</h2>
+            <h2>${planet.name}${planet.code ? ` <span class="system-code">${planet.code}</span>` : ''}</h2>
             <div class="system-info">
                 <div class="info-item">Type: ${this.getPlanetTypeName(planet.type)}</div>
                 <div class="info-item">Orbit: ${planet.orbit?.toFixed(2) || 'Unknown'}</div>
@@ -516,7 +569,7 @@ class PlanetExplorer extends BaseExplorer {
             return `
                 <div class="detailed-planet-card">
                     <div class="planet-header">
-                        <h4>🪐 ${planet.name}</h4>
+                        <h4>🪐 ${planet.name}${planet.code ? ` <span class="system-code">${planet.code}</span>` : ''}</h4>
                         <span class="planet-type-badge">${planetTypeName}</span>
                     </div>
 

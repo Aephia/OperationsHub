@@ -85,7 +85,7 @@ class TerritoryAnalytics {
             contestedSystems: territories.filter(t => t.contested).length || 0,
             totalValue: territories.reduce((sum, t) => sum + t.territoryValue, 0),
             averageValue: territories.reduce((sum, t) => sum + t.territoryValue, 0) / territories.length,
-            keyRegions: [...new Set(territories.map(t => t.system.substring(0, 3)))].slice(0, 5)
+            keyRegions: [...new Set(territories.map(t => (t.systemCode || t.system).substring(0, 3)))].slice(0, 5)
         })).sort((a, b) => b.totalValue - a.totalValue);
     }
 
@@ -373,7 +373,7 @@ class TerritoryAnalytics {
             return `
                 <tr>
                     <td class="rank-cell">${rank}</td>
-                    <td>${this.escapeHtml(system.system)}</td>
+                    <td>${this.escapeHtml(system.system)}${system.systemCode ? ` <span class="system-code">${this.escapeHtml(system.systemCode)}</span>` : ''}</td>
                     <td class="number-cell">${system.territoryValue.toFixed(1)}</td>
                     <td class="faction-cell">
                         ${faction !== '—' ? `<span class="faction-badge-mini faction-${faction.toLowerCase()}">${faction}</span>` : '—'}
@@ -426,7 +426,7 @@ class TerritoryAnalytics {
 
         this.filteredSystems = this.allSystems.filter(system => {
             if (column === 'system' && value) {
-                return system.system.toLowerCase().includes(value);
+                return `${system.system} ${system.systemCode || ''}`.toLowerCase().includes(value);
             }
             if (column === 'value' && value) {
                 const min = parseFloat(value);
@@ -511,7 +511,7 @@ class TerritoryAnalytics {
             <div class="recipe-modal">
                 <div class="recipe-modal-header">
                     <div>
-                        <h2>${this.escapeHtml(system.system)}</h2>
+                        <h2>${this.escapeHtml(system.system)}${system.systemCode ? ` <span class="system-code">${this.escapeHtml(system.systemCode)}</span>` : ''}</h2>
                         <p class="modal-subtitle">System Resource Overview</p>
                     </div>
                     <button class="modal-close-btn" aria-label="Close">&times;</button>

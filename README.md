@@ -43,7 +43,11 @@ Discover and analyze 3,901 planets across all star systems
 
 **Features:**
 - Filter by faction (MUD, ONI, USTUR) and planet type
-- View detailed planet resources with tier badges
+- Star Systems list grouped by region number, each entry showing the SAGE code and the lore name
+  (`004-MUD-KING-01 Verzan`), with a finder box above it that matches every word against code,
+  name and faction (`004 king`, `verzan`, `css oni`)
+- View detailed planet resources with tier badges; system and planet details show both the lore
+  name and the legacy code (`Romaria 004-MUD-KING-01-P1`), and connected systems are named
 - **Manufacturing Tab:** Top manufacturing planets by self-sufficiency score
 - **Territory Tab:** Strategic system analysis and faction dominance
 
@@ -200,6 +204,15 @@ python RefreshData/data-report.py      # -> Documentation/DATA-REPORT-<date>.pdf
 
 The refresh's "breaking changes" alert compares element `[0]` of each list, so a re-ordered
 export reads as removed fields; check the field set across all entries before treating it as real.
+
+**Legacy system codes.** The 2026-09-11 export renamed every system and planet to a lore name
+(`004-MUD-KING-01` -> `Verzan`, `...-P1` -> `Romaria`) and every region likewise (`R-MUD-004`).
+System keys and region ids are stable, so `RefreshData/legacy-system-codes.js` rebuilds the codes
+from the last code-named snapshot (git `27137dd^:JSON/planets.json` by default) into
+`JSON/system-codes.json` and `Data/system-codes-data.js`; Planet Explorer attaches them at load
+(`system.code`, `system.regionCode`, `planet.code`) and uses them for grouping, search and analytics
+regions. It is a frozen reference, not part of `npm run refresh`: re-run it only if the snapshot
+changes, and it refuses to write when any current system or region would be left without a code.
 The export also carries sections nothing here consumes yet (`missions`, `researchGateMap`,
 `cargoTypes`, ...); the split script lists them at the end of its run.
 
@@ -250,12 +263,14 @@ OperationsHub/
 │   ├── ship-formulas-data.js           # Ship formulas (5.6 MB)
 │   ├── ship-components-data.js         # Ship components (8.2 MB)
 │   ├── resource-tier-data.js           # Resource tier analysis
+│   ├── system-codes-data.js            # Legacy SAGE system/region codes (see Data Pipeline)
 │   └── REFRESH-REPORT.json             # Validation report
 │
 ├── JSON/                               # Raw JSON source files
 ├── RefreshData/                        # Data processing pipeline
 │   ├── split-uber-export.js            # uber-export -> JSON/ sources (run first)
 │   ├── stat-descriptions.js            # -> JSON/stat-descriptions.json (called by the split)
+│   ├── legacy-system-codes.js          # -> JSON/system-codes.json + Data/system-codes-data.js
 │   ├── refresh-data.js                 # Enhanced v2.1
 │   ├── validation.js                   # Schema validator
 │   ├── change-detection.js             # Change tracker
@@ -360,6 +375,7 @@ node Test/test-recipes.js
 
 ### Data Sources
 - Star Atlas game data: SAGE uber-export of 2026-09-11 (5,251 recipes, 1,620 buildings, 3,901 planets with lore names, 3,756 ship components)
+- Legacy SAGE system codes (`004-MUD-KING-01`) recovered from the May 2026 export, keyed by system key
 - Manually curated component formulas
 - Community-validated recipes
 

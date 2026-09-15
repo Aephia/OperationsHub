@@ -829,6 +829,7 @@ class CrossExplorerAnalytics {
 
             return {
                 system: system.name,
+                systemCode: system.code || null,
                 faction: system.closestFaction,
                 strategicScore: system.strategicScore || 0,
                 planetCount: system.planets.length,

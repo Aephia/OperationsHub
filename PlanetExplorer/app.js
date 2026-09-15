@@ -8,11 +8,32 @@ class PlanetApp extends BaseApp {
         try {
             const planetDataResult = await DataLoader.loadExplorerData('planet');
             this.data = planetDataResult.mapData;
+            this.attachLegacyCodes(this.data);
             console.log(`✅ Loaded ${this.data.length} star systems using DataLoader`);
         } catch (error) {
             console.error('💥 Error loading planet data:', error);
             this.data = [];
         }
+    }
+
+    // The 2026-09-11 export replaced the SAGE codes (004-MUD-KING-01, ...-P3) with
+    // lore names. Re-attach them from Data/system-codes-data.js (keyed by the stable
+    // system key) so systems can still be found and grouped by number.
+    attachLegacyCodes(systems) {
+        const codes = window.systemCodesData || {};
+        const systemCodes = codes.systems || {};
+        const regionCodes = codes.regions || {};
+        let matched = 0;
+        systems.forEach(system => {
+            const code = systemCodes[system.key] || null;
+            if (code) matched++;
+            system.code = code;
+            system.regionCode = regionCodes[system.regionId] || null;
+            (system.planets || []).forEach((planet, i) => {
+                planet.code = code ? `${code}-P${i + 1}` : null;
+            });
+        });
+        console.log(`🔢 Legacy system codes attached: ${matched}/${systems.length}`);
     }
 
     initializeModules() {

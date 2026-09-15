@@ -347,6 +347,53 @@ main {
     border-bottom: 1px solid var(--glass-border);
 }
 
+/* System finder above the Star Systems list */
+.search-container {
+    margin-bottom: 0.75rem;
+}
+
+.search-container input {
+    width: 100%;
+    padding: 0.65rem 0.9rem;
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.4);
+    color: var(--text-primary);
+    font-family: 'Exo 2', sans-serif;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+}
+
+.search-container input:focus {
+    outline: none;
+    border-color: var(--accent-cyan);
+    box-shadow: 0 0 20px rgba(0, 240, 255, 0.2);
+}
+
+.search-container input::placeholder {
+    color: var(--text-muted);
+}
+
+.checkbox-container .no-matches {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    padding: 0.4rem 0.2rem;
+}
+
+/* Legacy SAGE code shown next to a lore name */
+.system-code {
+    display: inline-block;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    color: var(--accent-cyan);
+    opacity: 0.9;
+}
+
+.checkbox-item .system-code {
+    margin-right: 0.4rem;
+}
+
 /* Checkbox Items */
 .checkbox-container {
     display: flex;
