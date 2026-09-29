@@ -1,6 +1,28 @@
 // Unified Data Loader for all Explorer applications
 class DataLoader {
     /**
+     * Recipe release status = `c4_status` in the SAGE export.
+     *   v1     = live on-chain today (the only recipes a player can craft right now)
+     *   v1-add = made in the game editor, not yet published
+     *   v2     = design intent for a future version (every ship, weapon, missile and countermeasure recipe)
+     * Kept as data only: the team confirmed 2026-09-28 that the release will be v2, so every explorer
+     * counts all statuses (a v1-only default was built and reverted the same day).
+     */
+    static RECIPE_STATUS = {
+        'v1':     { label: 'Live',  title: 'Live on-chain today (c4_status v1)' },
+        'v1-add': { label: 'Draft', title: 'Made in the editor, not yet published (c4_status v1-add)' },
+        'v2':     { label: 'v2',    title: 'Design intent for a future version (c4_status v2)' }
+    };
+
+    static recipeStatus(recipe) {
+        return recipe?.status || recipe?.rawData?.c4_status || recipe?.c4_status || 'unknown';
+    }
+
+    static isLiveRecipe(recipe) {
+        return DataLoader.recipeStatus(recipe) === 'v1';
+    }
+
+    /**
      * Load data for a specific explorer type
      * @param {string} explorerType - 'recipe', 'claimstake', or 'planet'
      * @param {string} basePath - Path to data directory (default: '../Data/')
@@ -276,6 +298,8 @@ class DataLoader {
                 planetTypes: recipe.planetTypes || [],  // Add planet types
                 factions: recipe.factions || [],  // Add factions
                 productionSteps: recipe.productionSteps || 1,  // Add production steps
+                status: recipe.c4_status || 'unknown',  // v1 live, v1-add editor draft, v2 design intent
+                isLive: recipe.c4_status === 'v1',
                 category: category,
                 description: recipe.description || '',
                 rawData: recipe

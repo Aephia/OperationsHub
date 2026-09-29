@@ -137,7 +137,7 @@ const moduleHelpContent = {
                     <p><strong>Most Complex Recipes:</strong> Identifies recipes requiring the most ingredients or processing steps.</p>
                     <p><strong>Longest Build Times:</strong> Shows which items take the most time to manufacture.</p>
                     <p><strong>Tier Distribution:</strong> Breaks down recipes by tier level for production planning.</p>
-                    <p><strong>Ingredient Usage:</strong> Identifies which resources are most frequently used across all recipes.</p>
+                    <p><strong>Ingredient Usage:</strong> Identifies which resources are most frequently used across all recipes (every release status, since the release will be v2). Both lists show every raw, processed and component resource, 50 per page, with a search box beside each heading that filters by name and keeps the overall rank.</p>
                 `
             },
             {

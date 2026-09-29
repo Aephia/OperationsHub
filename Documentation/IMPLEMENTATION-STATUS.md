@@ -73,8 +73,12 @@ OperationsHub is a comprehensive economic analysis and planning platform for Sta
   - Recipe complexity analysis
   - Tier distribution
   - Category breakdown
-  - Resource bottleneck identification
+  - Resource bottleneck identification (ingredient usage counts)
   - Construction time analysis
+  - Counts all recipes regardless of `c4_status` (the release will be v2; a v1-only default was built and
+    reverted on 2026-09-28)
+  - Raw Materials and Processed & Components list every resource, 50 per page (2026-09-28; was top 50),
+    each with a name search beside its heading
 
 **Files:**
 - `index.html`, `app.js`, `styles.css`

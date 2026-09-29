@@ -301,6 +301,61 @@ recipeAnalyticsTests.test('Should identify bottleneck resources', async () => {
     assertGreaterThan(bottlenecks.length, 0, 'Should identify bottleneck resources');
 });
 
+recipeAnalyticsTests.test('Every recipe carries a release status (c4_status v1 / v1-add / v2)', async () => {
+    const response = await fetch('../JSON/recipes.json');
+    const data = await response.json();
+
+    const allowed = new Set(['v1', 'v1-add', 'v2']);
+    const bad = data.recipes.filter(recipe => !allowed.has(recipe.c4_status));
+    assertArrayLength(bad, 0, `Recipes with an unknown c4_status: ${bad.slice(0, 3).map(r => r.outputId).join(', ')}`);
+
+    const live = data.recipes.filter(recipe => recipe.c4_status === 'v1').length;
+    assertGreaterThan(live, 0, 'There should be live (v1) recipes');
+    assertGreaterThan(data.recipes.length, live, 'There should be unreleased (v1-add / v2) recipes too');
+});
+
+recipeAnalyticsTests.test('Live-only ingredient usage never exceeds all-status usage', async () => {
+    const response = await fetch('../JSON/recipes.json');
+    const data = await response.json();
+
+    const count = (filter) => {
+        const usage = {};
+        data.recipes.filter(filter).forEach(recipe => {
+            const seen = new Set();
+            recipe.ingredients?.forEach(ingredient => {
+                const name = ingredient.name || ingredient.ingredientName;
+                if (name && !seen.has(name)) {
+                    seen.add(name);
+                    usage[name] = (usage[name] || 0) + 1;
+                }
+            });
+        });
+        return usage;
+    };
+    const all = count(() => true);
+    const live = count(recipe => recipe.c4_status === 'v1');
+
+    Object.entries(live).forEach(([name, n]) => {
+        assert(n <= all[name], `${name}: live count ${n} exceeds all-status count ${all[name]}`);
+    });
+    const topAll = Object.entries(all).sort((a, b) => b[1] - a[1])[0];
+    assertExists(topAll, 'There should be a most-used ingredient');
+    assert((live[topAll[0]] || 0) <= topAll[1], 'Top all-status ingredient must not gain uses when unreleased recipes are hidden');
+});
+
+recipeAnalyticsTests.test('DataLoader keeps the release status on processed recipes', async () => {
+    const processed = DataLoader.processRecipeData(rawRecipeData);
+    const recipes = processed.categories.flatMap(category => category.recipes);
+    assertEquals(recipes.length, rawRecipeData.recipes.length, 'Processed recipe count must match the raw count');
+
+    const missing = recipes.filter(recipe => !['v1', 'v1-add', 'v2'].includes(recipe.status));
+    assertArrayLength(missing, 0, 'Every processed recipe should carry status');
+
+    const liveCount = recipes.filter(recipe => DataLoader.isLiveRecipe(recipe)).length;
+    const rawLive = rawRecipeData.recipes.filter(recipe => recipe.c4_status === 'v1').length;
+    assertEquals(liveCount, rawLive, 'isLiveRecipe must count exactly the v1 recipes');
+});
+
 recipeAnalyticsTests.test('Should calculate average construction time by tier', async () => {
     const response = await fetch('../JSON/recipes.json');
     const data = await response.json();

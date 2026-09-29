@@ -61,7 +61,10 @@ Explore 5,251 manufacturing recipes and production chains
 **Features:**
 - Filter by category (Infrastructure, Processing, Ship Components)
 - Tier-based filtering (T1-T5)
-- **Analytics Tab:** Recipe complexity and dependency analysis
+- **Analytics Tab:** Recipe complexity and ingredient-usage rankings over all 5,251 recipes
+  (every `c4_status`: the release will be v2, so the design-intent recipes count). Raw Materials and
+  Processed & Components each list every resource, 50 per page, with a name search beside the
+  heading that keeps the global rank
 - **Manufacturing Chain:** Visualize full production chains
 
 **Use Case:** Planning production strategies and identifying supply chain bottlenecks

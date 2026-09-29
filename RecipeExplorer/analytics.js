@@ -1,4 +1,6 @@
 class RecipeAnalytics {
+    static PAGE_SIZE = 50;
+
     constructor(data) {
         this.data = data;
         this.allRecipes = [];
@@ -215,23 +217,10 @@ class RecipeAnalytics {
             };
         });
 
-        // Sort by usage count and limit to top 50
-        rawMaterials.sort((a, b) => b.usedInRecipes - a.usedInRecipes);
-        const top50RawMaterials = rawMaterials.slice(0, 50);
+        // Sort by usage count; every raw material is listed, 50 per page
+        rawMaterials.sort((a, b) => b.usedInRecipes - a.usedInRecipes || a.resource.localeCompare(b.resource));
 
-        const container = document.getElementById('rawMaterials');
-        if (!container) return;
-
-        container.innerHTML = '';
-
-        if (top50RawMaterials.length === 0) {
-            container.innerHTML = '<p class="empty-state">No raw materials found</p>';
-            return;
-        }
-
-        const maxUsage = top50RawMaterials[0]?.usedInRecipes || 1;
-
-        top50RawMaterials.forEach((material, index) => {
+        this.renderPaged('rawMaterials', rawMaterials, 'No raw materials found', (material, index, maxUsage) => {
             const item = document.createElement('div');
             item.className = 'raw-material-card';
 
@@ -240,7 +229,7 @@ class RecipeAnalytics {
 
             item.innerHTML = `
                 <div class="material-header">
-                    <h4>#${index + 1} ${material.resource}</h4>
+                    <h4>#${material.rank} ${material.resource}</h4>
                     <span class="tier-badge" style="background: ${tierColor}; color: #000;">T${material.tier}</span>
                 </div>
                 <div class="material-stat">
@@ -260,7 +249,109 @@ class RecipeAnalytics {
             // Add cursor pointer style
             item.style.cursor = 'pointer';
 
-            container.appendChild(item);
+            return item;
+        });
+    }
+
+    /**
+     * Wire the section's search box (id = containerId + 'Search') to filter its list by resource name.
+     */
+    bindSearch(containerId) {
+        const input = document.getElementById(containerId + 'Search');
+        if (!input || input.dataset.bound === '1') return;
+        input.dataset.bound = '1';
+        input.addEventListener('input', () => {
+            this.searches[containerId] = input.value;
+            this.pages[containerId] = 1;
+            const saved = this.pagedLists[containerId];
+            if (saved) this.renderPaged(containerId, saved.items, saved.emptyText, saved.buildCard);
+        });
+    }
+
+    escapeHtml(text) {
+        return String(text).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+    }
+
+    /**
+     * Render a full ranked list into a card grid, 50 cards per page, with a pager after the grid.
+     * buildCard(item, globalIndex, maxUsage) returns the card element. Page state is kept per
+     * container so a re-render (scope toggle) can reset it.
+     */
+    renderPaged(containerId, items, emptyText, buildCard) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        this.pages = this.pages || {};
+        this.pagedLists = this.pagedLists || {};
+        this.searches = this.searches || {};
+        this.pagedLists[containerId] = { items, emptyText, buildCard };
+        this.bindSearch(containerId);
+
+        // Rank on the FULL list so #N survives searching and paging
+        const allItems = items;
+        allItems.forEach((item, i) => { item.rank = i + 1; });
+        const query = (this.searches[containerId] || '').trim().toLowerCase();
+        if (query) {
+            items = allItems.filter(item => item.resource.toLowerCase().includes(query));
+        }
+
+        const pageSize = RecipeAnalytics.PAGE_SIZE;
+        const pageCount = Math.max(1, Math.ceil(items.length / pageSize));
+        const page = Math.min(Math.max(this.pages[containerId] || 1, 1), pageCount);
+        this.pages[containerId] = page;
+
+        let pager = document.getElementById(containerId + 'Pager');
+        if (!pager) {
+            pager = document.createElement('div');
+            pager.id = containerId + 'Pager';
+            pager.className = 'pager';
+            container.insertAdjacentElement('afterend', pager);
+        }
+
+        container.innerHTML = '';
+        if (items.length === 0) {
+            container.innerHTML = `<p class="empty-state">${query ? `No matches for "${this.escapeHtml(query)}"` : emptyText}</p>`;
+            pager.innerHTML = '';
+            return;
+        }
+
+        const maxUsage = allItems[0]?.usedInRecipes || 1;
+        const start = (page - 1) * pageSize;
+        const end = Math.min(start + pageSize, items.length);
+        items.slice(start, end).forEach((item, i) => {
+            container.appendChild(buildCard(item, start + i, maxUsage));
+        });
+
+        const button = (label, target, extraClass = '') => {
+            const disabled = target < 1 || target > pageCount || target === page;
+            return `<button type="button" class="pager-btn ${extraClass}" data-page="${target}"${disabled ? ' disabled' : ''}>${label}</button>`;
+        };
+        // Windowed page numbers: first, last, and two either side of the current page
+        const shown = new Set([1, pageCount]);
+        for (let p = page - 2; p <= page + 2; p++) {
+            if (p >= 1 && p <= pageCount) shown.add(p);
+        }
+        let numbers = '';
+        let previous = 0;
+        [...shown].sort((a, b) => a - b).forEach(p => {
+            if (p - previous > 1) numbers += '<span class="pager-gap">&hellip;</span>';
+            numbers += button(p, p, p === page ? 'active' : '');
+            previous = p;
+        });
+        const scopeText = query ? ` matching "${this.escapeHtml(query)}" (of ${allItems.length})` : '';
+        pager.innerHTML = `
+            <span class="pager-info">Showing ${start + 1}-${end} of ${items.length}${scopeText}</span>
+            ${pageCount > 1 ? `<span class="pager-buttons">${button('Prev', page - 1)}${numbers}${button('Next', page + 1)}</span>` : ''}
+        `;
+        pager.querySelectorAll('.pager-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (window.spaceSounds && window.spaceSounds.click) window.spaceSounds.click();
+                this.pages[containerId] = Number(btn.dataset.page);
+                const saved = this.pagedLists[containerId];
+                this.renderPaged(containerId, saved.items, saved.emptyText, saved.buildCard);
+                const section = container.closest('.analytics-section');
+                if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
         });
     }
 
@@ -303,23 +394,10 @@ class RecipeAnalytics {
             };
         });
 
-        // Sort by usage count and limit to top 50
-        materials.sort((a, b) => b.usedInRecipes - a.usedInRecipes);
-        const top50Materials = materials.slice(0, 50);
+        // Sort by usage count; every processed material and component is listed, 50 per page
+        materials.sort((a, b) => b.usedInRecipes - a.usedInRecipes || a.resource.localeCompare(b.resource));
 
-        const container = document.getElementById('processedComponents');
-        if (!container) return;
-
-        container.innerHTML = '';
-
-        if (top50Materials.length === 0) {
-            container.innerHTML = '<p class="empty-state">No processed materials or components found</p>';
-            return;
-        }
-
-        const maxUsage = top50Materials[0]?.usedInRecipes || 1;
-
-        top50Materials.forEach((material, index) => {
+        this.renderPaged('processedComponents', materials, 'No processed materials or components found', (material, index, maxUsage) => {
             const item = document.createElement('div');
             item.className = 'raw-material-card';
 
@@ -330,7 +408,7 @@ class RecipeAnalytics {
 
             item.innerHTML = `
                 <div class="material-header">
-                    <h4>#${index + 1} ${categoryIcon} ${material.resource}</h4>
+                    <h4>#${material.rank} ${categoryIcon} ${material.resource}</h4>
                     <span class="tier-badge" style="background: ${tierColor}; color: #000;">T${material.tier}</span>
                 </div>
                 <div class="material-stat">
@@ -354,7 +432,7 @@ class RecipeAnalytics {
             // Add cursor pointer style
             item.style.cursor = 'pointer';
 
-            container.appendChild(item);
+            return item;
         });
     }
 
