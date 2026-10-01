@@ -1,1264 +1,796 @@
-// Construction Facility Manager for ClaimStake Explorer
-// Complete replication of GaliaViewer/ui.js building functionality (lines 576-1460)
-// Updated with Star Atlas UI Theme
+// construction.js - the Stake Builder (2026-09-30). Pick a planet, pick the stake tier you will buy, place buildings on
+// an isometric hex pad (Blender-rendered tiles, Images/stake/), watch slots / power / crew, read the bill of materials
+// and the production ledger, then play the construction sequence. Replaces the 2025 GaliaViewer port.
+//
+// Rules the data does not state (owner-confirmed, see the star-atlas-sage-research skill):
+//   - a stake is bought per tier and holds tier-N buildings only; the export's "-tN" upgrade-path tags are ignored
+//   - asteroid belts cannot hold a stake (no central hub exists for them)
+//   - a processor's on-chain placement tag is its INPUT's cargo id: every input must be a deposit on the planet;
+//     an input made by another building in the plan is shown as an unverified "chain"
+// Slots per tier come from claimStakeDefinitions (65 / 487 / 2,049 / 6,251 / 15,553). Power is the signed sum of
+// every building's power (the central hub supplies +100 at T1). Crew: neededCrew must fit in crewSlots.
+(function () {
+    'use strict';
 
-class ConstructionManager {
-    constructor() {
-        this.currentFacilityPlan = null;
-        this.systems = [];
-    }
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const slug = n => String(n || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const num = (v, d) => (typeof v === 'number' ? v.toLocaleString(undefined, { maximumFractionDigits: d == null ? 3 : d }) : '0');
+    const T = window.StakeTiles;
+    const kindOf = T.kindOf, KIND_LABEL = T.KIND_LABEL, KIND_GROUP = T.KIND_GROUP;
 
-    // Initialize construction tab with planet data
-    async initializeWithPlanetData() {
-        if (typeof window.planetData !== 'undefined' && window.planetData.mapData) {
-            this.systems = window.planetData.mapData;
-            console.log('✅ Loaded', this.systems.length, 'systems for construction');
-            this.renderPlanetSelector();
-        } else {
-            console.warn('⚠️ Planet data not available, loading...');
-            const script = document.createElement('script');
-            script.src = '../Data/planet-data.js';
-            script.onload = () => {
-                if (window.planetData && window.planetData.mapData) {
-                    this.systems = window.planetData.mapData;
-                    this.renderPlanetSelector();
+    const CAT_TAG = ['terrestrial-planet', 'volcanic-planet', 'barren-planet', 'asteroid-belt', 'gas-giant-planet', 'ice-giant-planet', 'dark-planet', 'oceanic-planet'];
+    const CAT_NAME = ['Terrestrial', 'Volcanic', 'Barren', 'Asteroid Belt', 'Gas Giant', 'Ice Giant', 'Dark', 'Oceanic'];
+    const CAT_COLOR = ['#3fae79', '#e2512b', '#b7a58a', '#9a9a9a', '#d99a4e', '#7fd0ff', '#6b70b8', '#2f8cff'];
+    const FACTION = ['oni', 'mud', 'ustur'];
+    const FACTION_LABEL = { oni: 'ONI', mud: 'MUD', ustur: 'USTUR' };
+    const HUB_FOR = {
+        'enables-extractors': 'extraction_hub', 'enables-processors': 'processing_hub', 'storage-hub': 'storage_hub',
+        'enables-storage-modules': 'storage_hub', 'enables-organic-extractors': 'farm_hub', 'enables-plant-extractors': 'farm_hub',
+        'enables-biomass-extractor': 'farm_hub', 'enables-food-processor': 'farm_hub'
+    };
+    // What a building of each kind ENABLES on a per-tier stake. The export only puts the enables-* tags on the
+    // tier-1 hubs (its upgrade-path model); a stake bought at tier N holds tier-N hubs, so the grants follow the kind.
+    const KIND_GRANTS = {
+        central_hub: ['enables-processing-hub', 'enables-storage-hub', 'enables-extraction-hub', 'enables-farm-hub', 'enables-crew-quarters', 'enables-power-plant'],
+        cultivation_hub: ['enables-processing-hub', 'enables-storage-hub', 'enables-extraction-hub', 'enables-farm-hub', 'enables-crew-quarters', 'enables-power-plant'],
+        extraction_hub: ['enables-extractors'], processing_hub: ['enables-processors'], storage_hub: ['storage-hub', 'enables-storage-modules'],
+        farm_hub: ['enables-organic-extractors', 'enables-biomass-extractor', 'enables-food-processor', 'enables-plant-extractors']
+    };
+    const PARENT_HUB = { extractor: 'extraction_hub', processor: 'processing_hub', storage_module: 'storage_hub', farm: 'farm_hub' };
+    const HUB_CELL = { extraction_hub: [1, -1], processing_hub: [-1, 1], storage_hub: [1, 0], farm_hub: [-1, 0], power_plant: [0, -1], crew_quarters: [0, 1] };
+    const GROUPS = [['all', 'All'], ['hubs', 'Hubs'], ['extractors', 'Extractors'], ['processors', 'Processors'], ['farms', 'Farms'], ['support', 'Support']];
+    const BUILD_RANK = { central_hub: 0, cultivation_hub: 0, power_plant: 1, crew_quarters: 1, extraction_hub: 2, processing_hub: 2, storage_hub: 2, farm_hub: 2 };
+    const STORE_KEY = 'csx.stakePlan';
+
+    // ---- pad geometry (pointy-top axial hexes, squashed by the tile camera's elevation)
+    const R = 54, RINGS = 3, SQRT3 = Math.sqrt(3);
+    const SQ = T.squash();
+    const STAGE_W = 700, STAGE_H = 420, CX = STAGE_W / 2, CY = 250;
+    const toScreen = (q, r) => [CX + R * SQRT3 * (q + r / 2), CY + R * 1.5 * r * SQ];
+    const SPIRAL = (() => {
+        const cells = [[0, 0]];
+        const dirs = [[1, 0], [0, 1], [-1, 1], [-1, 0], [0, -1], [1, -1]];
+        for (let n = 1; n <= RINGS; n++) {
+            let q = 0, r = -n;
+            for (let side = 0; side < 6; side++) {
+                for (let i = 0; i < n; i++) { cells.push([q, r]); q += dirs[side][0]; r += dirs[side][1]; }
+            }
+        }
+        return cells;
+    })();
+    const hexPoints = (cx, cy) => { const pts = []; for (let i = 0; i < 6; i++) { const a = Math.PI / 180 * (60 * i - 30); pts.push((cx + R * Math.cos(a)).toFixed(1) + ',' + (cy + R * Math.sin(a) * SQ).toFixed(1)); } return pts.join(' '); };
+
+    // ---- data
+    const StakeData = {
+        ready: false,
+        init() {
+            if (this.ready) return;
+            this.buildings = (window.rawBuildingData && window.rawBuildingData.buildings) || [];
+            const defs = (window.rawBuildingData && window.rawBuildingData.claimStakeDefinitions) || [];
+            this.slots = { standard: {}, cultivation: {} };
+            defs.forEach(d => { const k = d.id.startsWith('cultivation') ? 'cultivation' : 'standard'; this.slots[k][d.tier] = d.slots; });
+            [1, 2, 3, 4, 5].forEach(t => { this.slots.standard[t] = this.slots.standard[t] || [65, 487, 2049, 6251, 15553][t - 1]; this.slots.cultivation[t] = this.slots.cultivation[t] || this.slots.standard[t]; });
+            this.res = new Map(((window.resourcesData && window.resourcesData.resources) || []).map(r => [r.id, r]));
+            this.systems = ((window.planetData && window.planetData.mapData) || []).filter(s => s.planets && s.planets.length);
+            this.maxRich = new Map();
+            this.planets = [];
+            this.systems.forEach(s => s.planets.forEach((p, i) => {
+                (p.resources || []).forEach(r => { const k = slug(r.name); if ((this.maxRich.get(k) || 0) < r.richness) this.maxRich.set(k, r.richness); });
+                this.planets.push({ key: s.key + ':' + i, system: s, planet: p, index: i, cat: p.type % 8, faction: FACTION[Math.floor(p.type / 8)] || 'oni', deposits: (p.resources || []).length });
+            }));
+            this.ready = true;
+        },
+        resName(id) { if (!this.ready) this.init(); const r = this.res.get(id); return r ? r.name : id.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()); },
+        resTier(id) { if (!this.ready) this.init(); const r = this.res.get(id); return r ? r.tier : null; },
+        resCat(id) { if (!this.ready) this.init(); const r = this.res.get(id); return r ? r.category : ''; },
+        inputs(b) { return Object.entries(b.resourceRate || {}).filter(([, v]) => v < 0).map(([k]) => k); },
+        outputs(b) { return Object.entries(b.resourceRate || {}).filter(([, v]) => v > 0).map(([k]) => k).concat(Object.keys(b.resourceExtractionRate || {})); }
+    };
+    window.StakeData = StakeData;
+
+    // ---- the builder
+    class StakeBuilder {
+        constructor(root) {
+            this.root = root;
+            this.plan = null;              // { key, system, planet, index, tier, kind, items: [{uid, b, cell}] }
+            this.uid = 0;
+            this.filters = { q: '', factions: new Set(), cats: new Set() };
+            this.cat = { q: '', group: 'all' };
+            this.listLimit = 60;
+            this.sequence = null;
+            StakeData.init();
+            this.renderShell();
+            this.bind();
+            this.renderPlanetList();
+            this.restore();
+            this.renderAll();
+            T.ready.then(() => this.renderPad());
+        }
+
+        // ------------------------------------------------------------------ shell
+        renderShell() {
+            this.root.innerHTML = `
+            <div class="sb">
+                <aside class="sb-side">
+                    <div class="sb-side-head"><h3>Planet</h3><span class="sb-count" id="sbPlanetCount"></span></div>
+                    <input type="text" id="sbSearch" class="sb-input" placeholder="System or planet name" autocomplete="off">
+                    <div class="chips" id="sbFactions">${FACTION.map(f => `<button type="button" class="chip f-${f}" data-f="${f}">${FACTION_LABEL[f]}</button>`).join('')}</div>
+                    <div class="chips" id="sbCats">${CAT_NAME.map((n, i) => i === 3 ? '' : `<button type="button" class="chip" data-c="${i}" style="--c:${CAT_COLOR[i]}"><i></i>${n}</button>`).join('')}</div>
+                    <div class="sb-planets" id="sbPlanets"></div>
+                </aside>
+                <section class="sb-main">
+                    <div class="sb-top">
+                        <div class="sb-planet-card" id="sbPlanetCard"></div>
+                        <div class="sb-stake" id="sbStake"></div>
+                        <div class="sb-gauges" id="sbGauges"></div>
+                    </div>
+                    <div class="sb-pad-wrap" id="sbPadWrap">
+                        <div class="sb-pad-bar">
+                            <div class="sb-pad-title"><b id="sbPadTitle">Stake pad</b><span id="sbPadSub"></span></div>
+                            <div class="sb-pad-actions">
+                                <button type="button" class="sb-btn" data-act="construct" title="Play the construction sequence">&#x25B6; Construct facility</button>
+                                <button type="button" class="sb-btn ghost" data-act="export">Export PNG</button>
+                                <button type="button" class="sb-btn ghost danger" data-act="clear">Clear</button>
+                            </div>
+                        </div>
+                        <div class="sb-stage-box" id="sbStageBox">
+                            <div class="sb-stage" id="sbStage" style="width:${STAGE_W}px;height:${STAGE_H}px">
+                                <svg class="sb-grid" viewBox="0 0 ${STAGE_W} ${STAGE_H}" width="${STAGE_W}" height="${STAGE_H}" aria-hidden="true">${SPIRAL.map(([q, r]) => { const [x, y] = toScreen(q, r); return `<polygon class="cell" data-q="${q}" data-r="${r}" points="${hexPoints(x, y)}"/>`; }).join('')}</svg>
+                                <svg class="sb-flow" viewBox="0 0 ${STAGE_W} ${STAGE_H}" width="${STAGE_W}" height="${STAGE_H}" aria-hidden="true"></svg>
+                                <div class="sb-tiles" id="sbTiles"></div>
+                                <div class="sb-empty" id="sbEmpty"><b>Pick a planet</b><span>The pad opens on any planet that can hold a claim stake.</span></div>
+                            </div>
+                            <div class="sb-build-strip" id="sbStrip" hidden></div>
+                        </div>
+                        <div class="sb-legend">
+                            <span><i style="--c:#4fd8ff"></i>hub</span><span><i style="--c:#ff9a3c"></i>extractor</span><span><i style="--c:#b48cff"></i>processor</span><span><i style="--c:#ffd36b"></i>storage</span><span><i style="--c:#7ee8a4"></i>farm</span><span class="flowkey"><svg width="34" height="10"><path d="M1 5 H33" class="flow"/></svg>resource chain</span>
+                        </div>
+                    </div>
+                    <div class="sb-charts" id="sbCharts"></div>
+                </section>
+                <aside class="sb-cat">
+                    <div class="sb-side-head"><h3>Catalogue</h3><span class="sb-count" id="sbCatCount"></span></div>
+                    <input type="text" id="sbCatSearch" class="sb-input" placeholder="Search buildings" autocomplete="off">
+                    <div class="chips" id="sbGroups">${GROUPS.map(([k, n]) => `<button type="button" class="chip${k === 'all' ? ' on' : ''}" data-g="${k}">${n}</button>`).join('')}</div>
+                    <div class="sb-cat-list" id="sbCatList"></div>
+                </aside>
+            </div>
+            <div class="sb-tip" id="sbTip" hidden></div>
+            <div class="sb-toast" id="sbToast" hidden></div>`;
+            this.$ = id => this.root.querySelector('#' + id) || document.getElementById(id);
+        }
+
+        bind() {
+            const root = this.root;
+            const snd = (n) => { if (window.spaceSounds && window.spaceSounds[n]) window.spaceSounds[n](); };
+            this.$('sbSearch').addEventListener('input', e => { this.filters.q = e.target.value.trim().toLowerCase(); this.listLimit = 60; this.renderPlanetList(); });
+            this.$('sbFactions').addEventListener('click', e => { const c = e.target.closest('[data-f]'); if (!c) return; const f = c.dataset.f; this.filters.factions.has(f) ? this.filters.factions.delete(f) : this.filters.factions.add(f); c.classList.toggle('on'); snd('select'); this.listLimit = 60; this.renderPlanetList(); });
+            this.$('sbCats').addEventListener('click', e => { const c = e.target.closest('[data-c]'); if (!c) return; const k = +c.dataset.c; this.filters.cats.has(k) ? this.filters.cats.delete(k) : this.filters.cats.add(k); c.classList.toggle('on'); snd('select'); this.listLimit = 60; this.renderPlanetList(); });
+            this.$('sbPlanets').addEventListener('click', e => {
+                const more = e.target.closest('[data-more]'); if (more) { this.listLimit += 120; this.renderPlanetList(); return; }
+                const row = e.target.closest('[data-key]'); if (!row || row.classList.contains('belt')) return;
+                snd('click'); this.selectPlanet(row.dataset.key);
+            });
+            this.$('sbStake').addEventListener('click', e => {
+                const t = e.target.closest('[data-tier]'); if (t) { snd('select'); this.setTier(+t.dataset.tier); return; }
+                const k = e.target.closest('[data-kind]'); if (k) { snd('select'); this.setKind(k.dataset.kind); }
+            });
+            this.$('sbCatSearch').addEventListener('input', e => { this.cat.q = e.target.value.trim().toLowerCase(); this.renderCatalogue(); });
+            this.$('sbGroups').addEventListener('click', e => { const c = e.target.closest('[data-g]'); if (!c) return; this.cat.group = c.dataset.g; this.$('sbGroups').querySelectorAll('.chip').forEach(x => x.classList.toggle('on', x === c)); snd('select'); this.renderCatalogue(); });
+            const list = this.$('sbCatList');
+            list.addEventListener('click', e => {
+                const add = e.target.closest('[data-add]'); if (add) { e.stopPropagation(); this.addBuilding(add.dataset.add, true); return; }
+                const card = e.target.closest('[data-id]'); if (card) this.showTip(card.dataset.id, e.clientX, e.clientY, null);
+            });
+            list.addEventListener('mouseover', e => { const card = e.target.closest('[data-id]'); this.hotDeposits(card ? this.byId(card.dataset.id) : null); });
+            list.addEventListener('mouseleave', () => this.hotDeposits(null));
+            this.$('sbTiles').addEventListener('click', e => { const t = e.target.closest('[data-uid]'); if (!t) return; snd('click'); const it = this.plan.items.find(i => i.uid === +t.dataset.uid); if (it) this.showTip(it.b.id, e.clientX, e.clientY, it); });
+            root.querySelector('.sb-pad-actions').addEventListener('click', e => {
+                const b = e.target.closest('[data-act]'); if (!b) return;
+                ({ construct: () => this.construct(), export: () => this.exportPNG(), clear: () => this.clear() })[b.dataset.act]();
+            });
+            const tip = this.$('sbTip');
+            tip.addEventListener('click', e => {
+                const a = e.target.closest('[data-tip]'); if (!a) return;
+                if (a.dataset.tip === 'close') this.hideTip();
+                else if (a.dataset.tip === 'add') { this.addBuilding(a.dataset.id, true); this.hideTip(); }
+                else if (a.dataset.tip === 'remove') { this.removeItem(+a.dataset.uid); this.hideTip(); }
+                else if (a.dataset.tip === 'recipe') { if (window.ConstructionUtils) ConstructionUtils.openRecipeExplorer(a.dataset.name, +a.dataset.tier); }
+            });
+            document.addEventListener('keydown', e => { if (e.key === 'Escape') { this.hideTip(); this.stopSequence(); } });
+            document.addEventListener('click', e => { if (!tip.hidden && !tip.contains(e.target) && !e.target.closest('[data-id],[data-uid]')) this.hideTip(); });
+            document.addEventListener('visibilitychange', () => { this.$('sbStage').classList.toggle('paused', document.hidden); });
+            const fit = () => { const box = this.$('sbStageBox'); const s = Math.min(1, (box.clientWidth - 8) / STAGE_W); this.$('sbStage').style.transform = `scale(${s})`; box.style.height = Math.round(STAGE_H * s) + 'px'; };
+            this.fit = fit;
+            window.addEventListener('resize', fit);
+            fit();
+        }
+
+        byId(id) { return StakeData.buildings.find(b => b.id === id); }
+
+        // --------------------------------------------------------------- planets
+        filteredPlanets() {
+            const f = this.filters;
+            return StakeData.planets.filter(p => {
+                if (f.factions.size && !f.factions.has(p.faction)) return false;
+                if (f.cats.size && !f.cats.has(p.cat)) return false;
+                if (f.q) { const s = p.system; if (!(String(p.planet.name || '').toLowerCase().includes(f.q) || String(s.name || '').toLowerCase().includes(f.q) || String(s.key || '').toLowerCase().includes(f.q))) return false; }
+                return true;
+            });
+        }
+
+        renderPlanetList() {
+            const all = this.filteredPlanets();
+            const shown = all.slice(0, this.listLimit);
+            const cur = this.plan && this.plan.key;
+            this.$('sbPlanetCount').textContent = `${all.length.toLocaleString()} of ${StakeData.planets.length.toLocaleString()}`;
+            this.$('sbPlanets').innerHTML = shown.map(p => {
+                const belt = p.cat === 3;
+                return `<button type="button" class="sb-prow${belt ? ' belt' : ''}${p.key === cur ? ' on' : ''}" data-key="${esc(p.key)}" ${belt ? 'title="Asteroid belts cannot hold a claim stake (no central hub exists for them)"' : ''}>
+                    <i class="pdot" style="--c:${CAT_COLOR[p.cat]}"></i>
+                    <span class="pn">${esc(p.planet.name || 'Planet ' + (p.index + 1))}</span>
+                    <span class="ps">${esc(p.system.name || p.system.key)}</span>
+                    <span class="pb"><em class="f-${p.faction}">${FACTION_LABEL[p.faction]}</em><em>${CAT_NAME[p.cat]}</em>${belt ? '<em class="no">no stake</em>' : `<em>${p.deposits} deposits</em>`}</span>
+                </button>`;
+            }).join('') + (all.length > shown.length ? `<button type="button" class="sb-more" data-more>Show more (${(all.length - shown.length).toLocaleString()} left)</button>` : '');
+        }
+
+        selectPlanet(key) {
+            const p = StakeData.planets.find(x => x.key === key);
+            if (!p || p.cat === 3) return;
+            const tier = this.plan ? this.plan.tier : 1, kind = this.plan ? this.plan.kind : 'standard';
+            this.plan = { key, system: p.system, planet: p.planet, index: p.index, tier, kind, items: [] };
+            this.addStakeBuildings();
+            this.hideTip(); this.stopSequence();
+            this.renderPlanetList();
+            this.renderAll();
+            this.save();
+        }
+
+        setTier(tier) {
+            if (!this.plan || this.plan.tier === tier) return;
+            const old = this.plan.items.filter(i => !i.b.comesWithStake).map(i => i.b.id.replace(/-t\d$/, '-t' + tier));
+            this.plan.tier = tier; this.plan.items = [];
+            this.addStakeBuildings();
+            let kept = 0;
+            old.forEach(id => { const b = this.byId(id); if (b && this.catalogue().includes(b) && this.addBuilding(id, false)) kept++; });
+            this.toast(`Tier ${tier} stake: ${StakeData.slots[this.plan.kind][tier].toLocaleString()} slots. ${kept ? kept + ' building' + (kept > 1 ? 's' : '') + ' carried over at tier ' + tier + '.' : 'A stake is bought per tier, so the pad holds tier ' + tier + ' buildings.'}`);
+            this.renderAll(); this.save();
+        }
+
+        setKind(kind) {
+            if (!this.plan || this.plan.kind === kind) return;
+            this.plan.kind = kind; this.plan.items = [];
+            this.addStakeBuildings();
+            this.toast(kind === 'cultivation' ? 'Cultivation stake: the cultivation hub replaces the central hub and farms unlock.' : 'Standard stake.');
+            this.renderAll(); this.save();
+        }
+
+        addStakeBuildings() {
+            const p = this.plan;
+            const want = p.kind === 'cultivation' ? 'cultivation_hub' : 'central_hub';
+            const hub = StakeData.buildings.find(b => b.comesWithStake && b.tier === p.tier && kindOf(b) === want && this.planetOK(b));
+            if (hub) p.items.push({ uid: ++this.uid, b: hub, cell: [0, 0] });
+        }
+
+        // ------------------------------------------------------------- rules
+        planetGrants() {
+            if (this._pgKey === this.plan.key && this._pg) return this._pg;
+            const p = this.plan.planet;
+            const g = new Set([CAT_TAG[p.type % 8], FACTION[Math.floor(p.type / 8)] || 'oni']);
+            const deposits = new Set();
+            (p.resources || []).forEach(r => { const s = slug(r.name); deposits.add(s); g.add('enables-' + s + '-extraction'); g.add('enables-' + s + '-farming'); });
+            this._pg = g; this._deposits = deposits; this._pgKey = this.plan.key;
+            return g;
+        }
+        deposits() { this.planetGrants(); return this._deposits; }
+        stakeGrants() {
+            const g = new Set([this.plan.kind === 'cultivation' ? 'cultivation-stake-only' : 'standard-stake-only']);
+            if (this.plan.kind === 'cultivation') g.add('organic-focused');
+            if (this.plan.tier >= 3) g.add('tier-3-plus');
+            return g;
+        }
+        planetOK(b) {
+            const pg = this.planetGrants(), sg = this.stakeGrants();
+            return (b.requiredTags || []).every(t => {
+                if (/-t\d$/.test(t)) return true;
+                if (t.endsWith('-planet') || t === 'asteroid-belt' || FACTION.includes(t)) return pg.has(t);
+                if (t.endsWith('-stake-only') || t === 'organic-focused') return sg.has(t);
+                return true;
+            });
+        }
+        catalogue() {
+            const k = this.plan.key + '|' + this.plan.tier + '|' + this.plan.kind;
+            if (this._catKey === k) return this._cat;
+            this._cat = StakeData.buildings.filter(b => b.tier === this.plan.tier && !b.comesWithStake && this.planetOK(b));
+            this._catKey = k;
+            return this._cat;
+        }
+        ctx() {
+            const grants = new Set(), produced = new Set();
+            this.plan.items.forEach(i => { (i.b.addedTags || []).forEach(t => grants.add(t)); (KIND_GRANTS[kindOf(i.b)] || []).forEach(t => grants.add(t)); StakeData.outputs(i.b).forEach(o => produced.add(o)); });
+            return { pg: this.planetGrants(), sg: this.stakeGrants(), grants, produced, deposits: this.deposits() };
+        }
+        status(b, ctx) {
+            const missing = []; let chain = false;
+            for (const t of b.requiredTags || []) {
+                if (/-t\d$/.test(t)) continue;
+                if (ctx.pg.has(t) || ctx.sg.has(t) || ctx.grants.has(t)) continue;
+                let m;
+                if ((m = /^enables-(.+)-processing$/.exec(t))) {
+                    const ins = StakeData.inputs(b);
+                    const bad = ins.filter(x => !ctx.deposits.has(x) && !ctx.produced.has(x));
+                    if (bad.length) missing.push({ tag: t, text: 'needs ' + bad.map(x => StakeData.resName(x)).join(' + ') + ' on this planet' });
+                    else if (ins.some(x => !ctx.deposits.has(x))) chain = true;
+                    continue;
                 }
+                if ((m = /^enables-(.+)-(extraction|farming)$/.exec(t))) { missing.push({ tag: t, text: 'no ' + StakeData.resName(m[1]) + ' deposit here' }); continue; }
+                if (HUB_FOR[t]) { missing.push({ tag: t, hub: HUB_FOR[t], text: 'needs a ' + KIND_LABEL[HUB_FOR[t]] }); continue; }
+                if (t === 'tier-3-plus') { missing.push({ tag: t, text: 'needs a tier 3+ stake' }); continue; }
+                if (t.startsWith('enables-')) { missing.push({ tag: t, text: 'needs the central hub' }); continue; }
+                missing.push({ tag: t, text: 'needs ' + t });
+            }
+            const hubs = [...new Set(missing.filter(x => x.hub).map(x => x.hub))];
+            return { ok: !missing.length, chain, missing, hubs, hard: missing.some(x => !x.hub) };
+        }
+
+        compute() {
+            const p = this.plan, bs = p.items.map(i => i.b);
+            const slotsMax = StakeData.slots[p.kind][p.tier];
+            const sum = f => bs.reduce((a, b) => a + (f(b) || 0), 0);
+            const prod = {}, cons = {}, cost = {};
+            bs.forEach(b => {
+                Object.entries(b.resourceExtractionRate || {}).forEach(([k, v]) => { prod[k] = (prod[k] || 0) + v; });
+                Object.entries(b.resourceRate || {}).forEach(([k, v]) => { if (v > 0) prod[k] = (prod[k] || 0) + v; else cons[k] = (cons[k] || 0) + -v; });
+                Object.entries(b.constructionCost || {}).forEach(([k, v]) => { cost[k] = (cost[k] || 0) + v; });
+            });
+            const keys = [...new Set([...Object.keys(prod), ...Object.keys(cons)])];
+            const ledger = keys.map(k => ({ id: k, name: StakeData.resName(k), prod: prod[k] || 0, cons: cons[k] || 0, net: (prod[k] || 0) - (cons[k] || 0), passive: !!(prod[k] && !bs.some(b => kindOf(b) !== 'central_hub' && kindOf(b) !== 'cultivation_hub' && ((b.resourceExtractionRate || {})[k] || ((b.resourceRate || {})[k] > 0)))) }))
+                .sort((a, b) => Math.abs(b.net) - Math.abs(a.net) || a.name.localeCompare(b.name));
+            const v = {
+                slotsUsed: sum(b => b.slots), slotsMax, power: sum(b => b.power), powerIn: sum(b => Math.max(0, b.power)), powerOut: sum(b => Math.max(0, -b.power)),
+                crewSlots: sum(b => b.crewSlots), crewNeeded: sum(b => b.neededCrew), storage: sum(b => b.storage), time: sum(b => b.constructionTime),
+                cost: Object.entries(cost).sort((a, b) => b[1] - a[1]), ledger, fuel: cons.fuel || 0
             };
-            document.head.appendChild(script);
-        }
-    }
-
-    // Render planet selection interface - Star Atlas Theme
-    renderPlanetSelector() {
-        const container = document.getElementById('constructionContent');
-        if (!container) return;
-
-        let html = `
-            <div class="construction-planet-selector">
-                <h3 class="construction-section-title">🪐 Select Planet for Construction</h3>
-                <div class="construction-form-group">
-                    <label class="construction-label">System:</label>
-                    <select id="systemSelect" onchange="window.constructionManager.onSystemChange()" class="construction-select">
-                        <option value="">Select a system...</option>
-        `;
-
-        this.systems.forEach((system, index) => {
-            if (system.planets && system.planets.length > 0) {
-                html += `<option value="${index}">${system.name || system.key} (${system.planets.length} planets)</option>`;
-            }
-        });
-
-        html += `
-                    </select>
-                </div>
-                <div id="planetSelectContainer" class="construction-form-group" style="display: none;">
-                    <label class="construction-label">Planet:</label>
-                    <select id="planetSelect" onchange="window.constructionManager.onPlanetChange()" class="construction-select">
-                        <option value="">Select a planet...</option>
-                    </select>
-                </div>
-            </div>
-            <div id="buildingInterface" style="display: none;"></div>
-        `;
-
-        container.innerHTML = html;
-    }
-
-    // Handle system selection change
-    onSystemChange() {
-        // Play select sound
-        if (window.spaceSounds) window.spaceSounds.select();
-
-        const systemIndex = document.getElementById('systemSelect').value;
-        const planetContainer = document.getElementById('planetSelectContainer');
-        const planetSelect = document.getElementById('planetSelect');
-
-        if (!systemIndex) {
-            planetContainer.style.display = 'none';
-            document.getElementById('buildingInterface').style.display = 'none';
-            return;
+            v.slotsOk = v.slotsUsed <= slotsMax; v.powerOk = v.power >= 0; v.crewOk = v.crewNeeded <= v.crewSlots;
+            v.valid = v.slotsOk && v.powerOk && v.crewOk;
+            return v;
         }
 
-        const system = this.systems[parseInt(systemIndex)];
-
-        let options = '<option value="">Select a planet...</option>';
-        system.planets.forEach((planet, index) => {
-            const planetName = planet.name || `Planet ${index + 1}`;
-            const planetType = this.getPlanetTypeName(planet.type || 0);
-            options += `<option value="${index}">${planetName} - ${planetType}</option>`;
-        });
-
-        planetSelect.innerHTML = options;
-        planetContainer.style.display = 'block';
-        document.getElementById('buildingInterface').style.display = 'none';
-    }
-
-    // Handle planet selection change
-    onPlanetChange() {
-        // Play select sound
-        if (window.spaceSounds) window.spaceSounds.select();
-
-        const systemIndex = document.getElementById('systemSelect').value;
-        const planetIndex = document.getElementById('planetSelect').value;
-        if (!planetIndex || !systemIndex) return;
-
-        const system = this.systems[parseInt(systemIndex)];
-        const planet = system.planets[parseInt(planetIndex)];
-        const planetName = planet.name || `Planet ${parseInt(planetIndex) + 1}`;
-
-        this.openBuildingInterface(system, planet, planetName);
-    }
-
-    // Open building interface - GaliaViewer: openBuildingInterface()
-    openBuildingInterface(system, planet, planetName) {
-        this.showBuildingModal(system, planet, planetName);
-    }
-
-    // Show building construction modal - Star Atlas Theme
-    showBuildingModal(system, planet, planetName) {
-        // Play modal open sound
-        if (window.spaceSounds) window.spaceSounds.openPopup();
-
-        const container = document.getElementById('buildingInterface');
-        const compatibleBuildings = this.getCompatibleBuildings(planet, system);
-
-        // Store for filtering
-        this.currentCompatibleBuildings = compatibleBuildings;
-        this.currentSystem = system;
-        this.currentPlanet = planet;
-
-        const modalHTML = `
-            <div class="construction-modal">
-                <div class="construction-modal-header">
-                    <h2 class="construction-modal-title">🏗️ Build Facility - ${planetName}</h2>
-                </div>
-
-                <!-- Claim Stake Selection -->
-                <div class="construction-stake-info">
-                    <div class="construction-stake-row">
-                        <strong>🏗️ Select Your Claim Stake Tier:</strong>
-                        <select id="claimStakeTier" onchange="window.constructionManager.updateCompatibleBuildings()" class="construction-stake-select">
-                            <option value="1">Tier 1 - Basic Stake</option>
-                            <option value="2">Tier 2 - Advanced Stake</option>
-                            <option value="3">Tier 3 - Professional Stake</option>
-                            <option value="4">Tier 4 - Industrial Stake</option>
-                            <option value="5">Tier 5 - Mega Stake</option>
-                        </select>
-                    </div>
-                    <div class="construction-planet-info">
-                        <span><strong>Planet Type:</strong> ${planet.type || 'Unknown'}</span>
-                        <span class="construction-divider">|</span>
-                        <span><strong>Available Resources:</strong> ${ConstructionUtils.formatResourcesWithTiers(planet.resources)}</span>
-                    </div>
-                </div>
-
-                <!-- Two-column layout -->
-                <div class="construction-layout">
-                    <!-- Left Panel: Building List (30%) -->
-                    <div class="construction-buildings-panel">
-                        <h3 class="construction-panel-title">Compatible Buildings <span id="buildingCount">(${compatibleBuildings.length})</span></h3>
-
-                        <!-- Search Bar -->
-                        <div class="construction-search-container">
-                            <input
-                                type="text"
-                                id="buildingSearchInput"
-                                placeholder="🔍 Search buildings..."
-                                class="construction-search-input"
-                                oninput="window.constructionManager.filterBuildings(this.value)"
-                            />
-                        </div>
-
-                        <!-- Tier Filters -->
-                        <div class="construction-filters">
-                            <div class="construction-filter-label">Filter by Tier:</div>
-                            <div class="construction-filter-group">
-                                <label class="construction-checkbox-label">
-                                    <input type="checkbox" id="tierFilter1" checked onchange="window.constructionManager.applyTierFilters()">
-                                    T1
-                                </label>
-                                <label class="construction-checkbox-label">
-                                    <input type="checkbox" id="tierFilter2" checked onchange="window.constructionManager.applyTierFilters()">
-                                    T2
-                                </label>
-                                <label class="construction-checkbox-label">
-                                    <input type="checkbox" id="tierFilter3" checked onchange="window.constructionManager.applyTierFilters()">
-                                    T3
-                                </label>
-                                <label class="construction-checkbox-label">
-                                    <input type="checkbox" id="tierFilter4" checked onchange="window.constructionManager.applyTierFilters()">
-                                    T4
-                                </label>
-                                <label class="construction-checkbox-label">
-                                    <input type="checkbox" id="tierFilter5" checked onchange="window.constructionManager.applyTierFilters()">
-                                    T5
-                                </label>
-                            </div>
-                            <div class="construction-filter-label">Filter by Type:</div>
-                            <div class="construction-filter-group">
-                                <label class="construction-checkbox-label">
-                                    <input type="checkbox" id="typeFilterExtractor" checked onchange="window.constructionManager.applyTierFilters()">
-                                    Extractors
-                                </label>
-                                <label class="construction-checkbox-label">
-                                    <input type="checkbox" id="typeFilterProcessor" checked onchange="window.constructionManager.applyTierFilters()">
-                                    Processors
-                                </label>
-                            </div>
-                        </div>
-
-                        <div id="buildingsList" class="construction-buildings-list">
-                            ${this.renderBuildingOptions(compatibleBuildings, system, planet)}
-                        </div>
-                    </div>
-
-                    <!-- Right Panel: Facility Plan Summary (70%) -->
-                    <div class="construction-plan-panel">
-                        <div id="facilityPlan" class="construction-facility-plan">
-                            <h3 class="construction-plan-title">🏭 Facility Plan Summary</h3>
-                            <div id="selectedBuildings">
-                                <div class="construction-empty-state">
-                                    <div class="construction-empty-icon">👈</div>
-                                    <div class="construction-empty-text">Select buildings to start planning</div>
-                                </div>
-                            </div>
-                            <div id="facilityPlanActions" class="construction-plan-actions" style="display: none;">
-                                <button onclick="window.constructionManager.clearFacilityPlan()" class="construction-btn construction-btn-danger">
-                                    Clear Plan
-                                </button>
-                                <button onclick="window.constructionManager.exportFacilityDiagram()" class="construction-btn construction-btn-secondary">
-                                    📊 Export Diagram
-                                </button>
-                                <button onclick="window.constructionManager.constructFacility()" class="construction-btn construction-btn-primary">
-                                    🚀 Construct Facility
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        container.innerHTML = modalHTML;
-        container.style.display = 'block';
-
-        // Initialize facility plan storage - EXACT GaliaViewer structure
-        this.currentFacilityPlan = {
-            system: system,
-            planet: planet,
-            planetName: planetName,
-            buildings: [],
-            claimStakeTier: 1,
-            availableSlots: this.getClaimStakeSlots(1),
-            totalPowerOutput: 0
-        };
-
-        // Auto-add buildings that come with the stake for this planet type and tier
-        this.autoAddStakeBuildings(planet, 1);
-        this.updateFacilityPlanDisplay();
-    }
-
-    // Auto-add buildings that come with the claim stake
-    autoAddStakeBuildings(planet, claimStakeTier) {
-        if (!window.rawBuildingData || !window.rawBuildingData.buildings) return;
-
-        const buildings = window.rawBuildingData.buildings;
-        const planetType = planet.type;
-
-        // Find buildings that come with stake and are compatible with this planet/tier
-        const stakeBuildings = buildings.filter(building => {
-            if (!building.comesWithStake) return false;
-            if (building.tier !== claimStakeTier) return false;
-
-            // Only include standard stake buildings, not cultivation stake buildings
-            const requiredTags = building.requiredTags || [];
-            if (requiredTags.includes('cultivation-stake-only')) return false;
-
-            // Check planet type compatibility
-            return ConstructionUtils.checkPlanetTypeCompatibility(planetType, requiredTags);
-        });
-
-        // Add these buildings to the facility plan
-        stakeBuildings.forEach(building => {
-            // Don't add duplicates
-            if (!this.currentFacilityPlan.buildings.find(b => b.id === building.id)) {
-                this.currentFacilityPlan.buildings.push(building);
-            }
-        });
-    }
-
-    // Get buildings compatible with the planet type - Uses shared utility
-    getCompatibleBuildings(planet, system, claimStakeTier = 1) {
-        return ConstructionUtils.getCompatibleBuildings(planet, system, claimStakeTier);
-    }
-
-    // Update compatible buildings when claim stake tier changes - with sounds
-    updateCompatibleBuildings() {
-        // Play select sound
-        if (window.spaceSounds) window.spaceSounds.select();
-
-        if (!this.currentFacilityPlan) return;
-
-        const claimStakeTier = parseInt(document.getElementById('claimStakeTier').value) || 1;
-        this.currentFacilityPlan.claimStakeTier = claimStakeTier;
-        this.currentFacilityPlan.availableSlots = this.getClaimStakeSlots(claimStakeTier);
-
-        // Remove manually added buildings but keep track of them
-        const manuallyAddedBuildings = this.currentFacilityPlan.buildings.filter(b => !b.comesWithStake);
-
-        // Reset buildings and re-add stake buildings for new tier
-        this.currentFacilityPlan.buildings = [];
-        this.autoAddStakeBuildings(this.currentFacilityPlan.planet, claimStakeTier);
-
-        // Re-add manually added buildings that are still compatible
-        manuallyAddedBuildings.forEach(building => {
-            if (building.minimumTier <= claimStakeTier) {
-                this.currentFacilityPlan.buildings.push(building);
-            }
-        });
-
-        const compatibleBuildings = this.getCompatibleBuildings(
-            this.currentFacilityPlan.planet,
-            this.currentFacilityPlan.system,
-            claimStakeTier
-        );
-
-        // Update buildings list
-        const buildingsList = document.getElementById('buildingsList');
-        const buildingCount = document.getElementById('buildingCount');
-
-        if (buildingsList && buildingCount) {
-            buildingsList.innerHTML = this.renderBuildingOptions(
-                compatibleBuildings,
-                this.currentFacilityPlan.system,
-                this.currentFacilityPlan.planet
-            );
-            buildingCount.textContent = `(${compatibleBuildings.length})`;
+        buildOrder() {
+            const rank = i => (BUILD_RANK[kindOf(i.b)] != null ? BUILD_RANK[kindOf(i.b)] : 3);
+            return this.plan.items.slice().sort((a, b) => rank(a) - rank(b) || a.uid - b.uid);
         }
 
-        // Update stored buildings for search
-        this.currentCompatibleBuildings = compatibleBuildings;
+        // ------------------------------------------------------------ mutate
+        addBuilding(id, announce) {
+            if (!this.plan) { this.toast('Pick a planet first.'); return false; }
+            const b = this.byId(id); if (!b) return false;
+            const st = this.status(b, this.ctx());
+            if (st.hard) { this.toast(`${b.name}: ${st.missing.filter(x => !x.hub).map(x => x.text).join('; ')}.`, 'bad'); return false; }
+            const added = [];
+            for (const hubKind of st.hubs) {
+                const hub = this.catalogue().find(x => kindOf(x) === hubKind && this.status(x, this.ctx()).ok);
+                if (!hub) { this.toast(`${b.name} needs a ${KIND_LABEL[hubKind]}, and none fits this stake.`, 'bad'); return false; }
+                if (!this.place(hub)) return false;
+                added.push(hub.name);
+            }
+            if (!this.place(b)) return false;
+            if (announce) {
+                if (window.spaceSounds) window.spaceSounds.success();
+                this.toast(added.length ? `Added ${b.name} with ${added.join(' and ')}.` : `Added ${b.name}.`, st.chain ? 'warn' : 'ok');
+            }
+            this.renderAll(); this.save();
+            return true;
+        }
 
-        // Update display and re-validate
-        this.updateFacilityPlanDisplay();
-        this.validateFacilityPlan();
-    }
+        place(b) {
+            const v = this.compute();
+            const slots = v.slotsUsed + (b.slots || 0), max = v.slotsMax;
+            if (slots > max) { this.toast(`No room: ${b.name} needs ${b.slots} slots, ${(max - v.slotsUsed).toLocaleString()} left on this tier ${this.plan.tier} stake.`, 'bad'); return false; }
+            const item = { uid: ++this.uid, b, cell: null };
+            item.cell = this.findCell(item);
+            if (!item.cell) { this.toast('The pad is full.', 'bad'); return false; }
+            this.plan.items.push(item);
+            this.lastAdded = item.uid;
+            return true;
+        }
 
-    // Filter buildings based on search input
-    filterBuildings(searchTerm) {
-        if (!this.currentCompatibleBuildings) return;
-
-        const searchLower = searchTerm.toLowerCase().trim();
-
-        // Apply tier and type filters first using shared utility
-        let filtered = ConstructionUtils.filterBuildingsByTiersAndTypes(this.currentCompatibleBuildings);
-
-        // Then apply search filter if present
-        if (searchLower) {
-            filtered = filtered.filter(building => {
-                const nameMatch = building.name.toLowerCase().includes(searchLower);
-                const tierMatch = building.tier && building.tier.toString().includes(searchLower);
-                const typeMatch = ConstructionUtils.getBuildingType(building).toLowerCase().includes(searchLower);
-                const descMatch = building.description && building.description.toLowerCase().includes(searchLower);
-
-                return nameMatch || tierMatch || typeMatch || descMatch;
+        findCell(item) {
+            const used = new Set(this.plan.items.filter(i => i.cell).map(i => i.cell.join(',')));
+            const free = c => !used.has(c.join(','));
+            const kind = kindOf(item.b);
+            if (HUB_CELL[kind] && free(HUB_CELL[kind])) return HUB_CELL[kind];
+            let anchor = [0, 0];
+            const parentKind = PARENT_HUB[kind] || kind;
+            const parent = this.plan.items.find(i => kindOf(i.b) === parentKind && i.cell);
+            if (parent) anchor = parent.cell; else if (HUB_CELL[parentKind]) anchor = HUB_CELL[parentKind];
+            const [ax, ay] = toScreen(anchor[0], anchor[1]);
+            let best = null, bestD = Infinity;
+            SPIRAL.forEach(c => {
+                if (!free(c)) return;
+                if (c[0] === 0 && c[1] === 0) return;
+                const [x, y] = toScreen(c[0], c[1]);
+                const d = Math.hypot(x - ax, (y - ay) / SQ) + 0.25 * Math.hypot(x - CX, (y - CY) / SQ);
+                if (d < bestD) { bestD = d; best = c; }
             });
+            return best;
         }
 
-        this.displayFilteredBuildings(filtered);
-    }
-
-    // Apply tier filters to building list
-    applyTierFilters() {
-        const searchInput = document.getElementById('buildingSearchInput');
-        const searchTerm = searchInput ? searchInput.value : '';
-        this.filterBuildings(searchTerm);
-    }
-
-    // Display filtered buildings
-    displayFilteredBuildings(buildings) {
-        const buildingsList = document.getElementById('buildingsList');
-        const buildingCount = document.getElementById('buildingCount');
-
-        if (buildingsList) {
-            if (buildings.length === 0) {
-                buildingsList.innerHTML = `
-                    <div style="text-align: center; padding: 40px; color: #666;">
-                        <h4 style="color: #FF9800; margin-bottom: 10px;">🔍 No buildings match your search</h4>
-                        <p>Try different keywords or clear the search</p>
-                    </div>
-                `;
-            } else {
-                buildingsList.innerHTML = this.renderBuildingOptions(
-                    buildings,
-                    this.currentSystem,
-                    this.currentPlanet
-                );
-            }
+        removeItem(uid) {
+            const i = this.plan.items.findIndex(x => x.uid === uid);
+            if (i < 0) return;
+            if (this.plan.items[i].b.comesWithStake) { this.toast('The hub comes with the stake and cannot be removed.', 'bad'); return; }
+            const b = this.plan.items[i].b;
+            this.plan.items.splice(i, 1);
+            if (window.spaceSounds) window.spaceSounds.deselect();
+            this.toast(`Removed ${b.name}.`);
+            this.renderAll(); this.save();
         }
 
-        if (buildingCount) {
-            buildingCount.textContent = `(${buildings.length}${buildings.length !== this.currentCompatibleBuildings.length ? ' / ' + this.currentCompatibleBuildings.length : ''})`;
-        }
-    }
-
-    // Get available slots for claim stake tier - Uses shared utility
-    getClaimStakeSlots(tier) {
-        return ConstructionUtils.getClaimStakeSlots(tier);
-    }
-
-    // Get base power output for claim stake tier - Uses shared utility
-    getClaimStakePower(tier) {
-        return ConstructionUtils.getClaimStakePower(tier);
-    }
-
-    // Validate facility plan for power, slot, and crew requirements - Uses shared utility
-    validateFacilityPlan() {
-        if (!this.currentFacilityPlan) return { valid: true };
-
-        const buildings = this.currentFacilityPlan.buildings;
-        const claimStakeTier = this.currentFacilityPlan.claimStakeTier;
-
-        const validation = ConstructionUtils.validateFacilityPlan(buildings, claimStakeTier);
-        this.currentFacilityPlan.validation = validation;
-        return validation;
-    }
-
-    // Check if planet type is compatible with building requirements - Uses shared utility
-    checkPlanetTypeCompatibility(planetTypeNum, requiredTags) {
-        return ConstructionUtils.checkPlanetTypeCompatibility(planetTypeNum, requiredTags);
-    }
-
-    // Generate detailed explanation when no buildings match - EXACT GaliaViewer
-    generateDetailedNoMatchesMessage(planet, system) {
-        if (typeof window.rawBuildingData === 'undefined') {
-            return '<div style="grid-column: 1 / -1; text-align: center; color: #666;">Building data not available.</div>';
+        clear() {
+            if (!this.plan) return;
+            this.plan.items = this.plan.items.filter(i => i.b.comesWithStake);
+            this.stopSequence(); this.hideTip();
+            this.renderAll(); this.save();
         }
 
-        const buildings = window.rawBuildingData.buildings || [];
-        const planetTypeNum = planet.type;
-        const claimStakeTier = this.currentFacilityPlan ? this.currentFacilityPlan.claimStakeTier : 1;
-
-        // Get planet type name using shared utility
-        const planetTypeName = getPlanetTypeName(planetTypeNum);
-
-        // Analyze why buildings don't match
-        let planetTypeIncompatible = 0;
-        let tierIncompatible = 0;
-        let bothIncompatible = 0;
-
-        buildings.forEach(building => {
-            const requiredTags = building.requiredTags || [];
-            const planetTypeCompatible = this.checkPlanetTypeCompatibility(planetTypeNum, requiredTags);
-            const tierCompatible = building.minimumTier <= claimStakeTier;
-
-            if (!planetTypeCompatible && !tierCompatible) {
-                bothIncompatible++;
-            } else if (!planetTypeCompatible) {
-                planetTypeIncompatible++;
-            } else if (!tierCompatible) {
-                tierIncompatible++;
-            }
-        });
-
-        let explanation = `
-            <div style="grid-column: 1 / -1; text-align: center; color: #666; padding: 20px; background: #2a2a2a; border-radius: 6px; border: 1px solid #444;">
-                <h4 style="color: #FF9800; margin-bottom: 15px;">❌ No Compatible Buildings Found</h4>
-
-                <div style="text-align: left; max-width: 500px; margin: 0 auto;">
-                    <p style="margin-bottom: 10px;"><strong>Planet:</strong> ${planet.name} (${planetTypeName})</p>
-                    <p style="margin-bottom: 15px;"><strong>Current Claim Stake:</strong> Tier ${claimStakeTier}</p>
-
-                    <div style="margin-bottom: 10px;"><strong>Analysis of ${buildings.length} available buildings:</strong></div>
-        `;
-
-        if (planetTypeIncompatible > 0) {
-            explanation += `<div style="margin-left: 10px; color: #f44336;">• ${planetTypeIncompatible} building(s) incompatible with ${planetTypeName} planets</div>`;
-        }
-
-        if (tierIncompatible > 0) {
-            explanation += `<div style="margin-left: 10px; color: #ff9800;">• ${tierIncompatible} building(s) require higher than Tier ${claimStakeTier} claim stake</div>`;
-        }
-
-        if (bothIncompatible > 0) {
-            explanation += `<div style="margin-left: 10px; color: #9e9e9e;">• ${bothIncompatible} building(s) incompatible with both planet type and claim stake tier</div>`;
-        }
-
-        explanation += `
-                    <div style="margin-top: 15px; padding: 10px; background: #1a1a1a; border-radius: 4px; border-left: 3px solid #4CAF50;">
-                        <strong>💡 Suggestions:</strong>
-                        <div style="margin-top: 5px;">
-                            ${tierIncompatible > 0 ? `• Upgrade your claim stake to access ${tierIncompatible} more building(s)` : ''}
-                            ${planetTypeIncompatible > 0 ? `• Try building on a different planet type` : ''}
-                            ${tierIncompatible === 0 && planetTypeIncompatible === 0 ? '• Check if building data is loaded properly' : ''}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        return explanation;
-    }
-
-    // Render building options - Star Atlas Theme
-    renderBuildingOptions(buildings, system, planet) {
-        if (buildings.length === 0) {
-            return this.generateDetailedNoMatchesMessage(planet, system);
-        }
-
-        return buildings.map(building => {
-            // Prepare crew, power, and storage info
-            const crewSlots = building.crewSlots || 0;
-            const neededCrew = building.neededCrew || 0;
-            const power = building.power || 0;
-            const storage = building.storage || 0;
-
-            const stats = [];
-            if (neededCrew > 0 || crewSlots > 0) {
-                stats.push(`👥 ${neededCrew}/${crewSlots}`);
-            }
-            if (power !== 0) {
-                const powerClass = power > 0 ? 'stat-positive' : 'stat-negative';
-                stats.push(`<span class="${powerClass}">⚡ ${power > 0 ? '+' : ''}${power}</span>`);
-            }
-            if (storage > 0) {
-                stats.push(`📦 ${storage.toLocaleString()}`);
-            }
-
-            return `
-                <div class="construction-building-card">
-                    <h4 class="construction-building-name">${building.name}</h4>
-                    <div class="construction-building-meta">Tier ${building.tier} • ${building.constructionTime || 0} minutes</div>
-                    <div class="construction-building-desc">${building.description || 'No description'}</div>
-
-                    ${stats.length > 0 ? `
-                        <div class="construction-building-stats">
-                            ${stats.join(' • ')}
-                        </div>
-                    ` : ''}
-
-                    <div class="construction-building-actions">
-                        <button onclick="window.constructionManager.addBuildingToPlan('${building.id}')" class="construction-btn construction-btn-add">
-                            ➕ Add to Plan
-                        </button>
-                        <button onclick="window.constructionManager.openRecipeExplorer('${building.name}', ${building.tier})" class="construction-btn construction-btn-recipe">
-                            🧪 Recipe
-                        </button>
-                        <button onclick="window.constructionManager.showBuildingDetails('${building.id}')" class="construction-btn construction-btn-details">
-                            📋 Details
-                        </button>
-                    </div>
-                </div>
-            `;
-        }).join('');
-    }
-
-    // Add building to facility plan - with sounds
-    addBuildingToPlan(buildingId) {
-        if (!this.currentFacilityPlan) return;
-
-        const building = window.rawBuildingData.buildings.find(b => b.id === buildingId);
-        if (!building) return;
-
-        // Play click sound
-        if (window.spaceSounds) window.spaceSounds.click();
-
-        // Check if building is compatible with current claim stake tier
-        if (building.minimumTier > this.currentFacilityPlan.claimStakeTier) {
-            alert(`❌ This building requires a Tier ${building.minimumTier} claim stake. You currently have Tier ${this.currentFacilityPlan.claimStakeTier}.`);
-            return;
-        }
-
-        // Temporarily add building to check validation
-        this.currentFacilityPlan.buildings.push(building);
-        const validation = this.validateFacilityPlan();
-
-        if (!validation.valid) {
-            // Remove the building if validation fails
-            this.currentFacilityPlan.buildings.pop();
-
-            let errorMessage = '❌ Cannot add building:\n\n';
-            if (validation.slotsExceeded) {
-                errorMessage += `• Exceeds available slots: ${validation.slotsUsed}/${validation.availableSlots}\n`;
-            }
-            if (validation.powerInsufficient) {
-                errorMessage += `• Insufficient power: ${validation.powerOutput} available, ${validation.powerConsumption} required\n`;
-            }
-            if (validation.crewInsufficient) {
-                errorMessage += `• Insufficient crew slots: ${validation.crewRequired} required, ${validation.crewSlots} available\n`;
-            }
-            errorMessage += '\nPlease upgrade your claim stake tier, add crew quarters, or remove other buildings first.';
-
-            alert(errorMessage);
-            return;
-        }
-
-        // Building successfully added - play success sound
-        if (window.spaceSounds) window.spaceSounds.success();
-        this.updateFacilityPlanDisplay();
-    }
-
-    // Update facility plan display - Enhanced with Analytics Dashboard
-    updateFacilityPlanDisplay() {
-        const facilityPlan = document.getElementById('facilityPlan');
-        const selectedBuildings = document.getElementById('selectedBuildings');
-        const facilityPlanActions = document.getElementById('facilityPlanActions');
-
-        if (!facilityPlan || !selectedBuildings || !this.currentFacilityPlan) return;
-
-        if (this.currentFacilityPlan.buildings.length === 0) {
-            // Show placeholder message
-            selectedBuildings.innerHTML = `
-                <div class="construction-empty-state">
-                    <div class="construction-empty-icon">👈</div>
-                    <div class="construction-empty-text">Select buildings to start planning</div>
-                </div>
-            `;
-            if (facilityPlanActions) facilityPlanActions.style.display = 'none';
-            // Destroy analytics if it exists
-            if (this.facilityAnalytics) {
-                this.facilityAnalytics.destroy();
-                this.facilityAnalytics = null;
-            }
-            return;
-        }
-
-        // Show action buttons when buildings are added
-        if (facilityPlanActions) facilityPlanActions.style.display = 'block';
-
-        const facilityStats = this.calculateFacilityStats();
-        const validation = this.validateFacilityPlan();
-        const totalTime = this.currentFacilityPlan.buildings.reduce((sum, b) => sum + (b.constructionTime || 0), 0);
-
-        // Validation status display - Star Atlas Theme
-        let validationDisplay = '';
-        if (!validation.valid) {
-            validationDisplay = `
-                <div class="construction-validation construction-validation-error">
-                    ⚠️ <strong>Validation Issues:</strong><br>
-                    ${validation.slotsExceeded ? `• Slots exceeded: ${validation.slotsUsed}/${validation.availableSlots}<br>` : ''}
-                    ${validation.powerInsufficient ? `• Power insufficient: ${validation.powerOutput}/${validation.powerConsumption}<br>` : ''}
-                    ${validation.crewInsufficient ? `• Crew insufficient: ${validation.crewRequired} required, ${validation.crewSlots} available<br>` : ''}
-                </div>
-            `;
-        } else {
-            validationDisplay = `
-                <div class="construction-validation construction-validation-success">
-                    ✅ <strong>Facility plan is valid!</strong>
-                </div>
-            `;
-        }
-
-        selectedBuildings.innerHTML = `
-            ${validationDisplay}
-            <div class="construction-summary-stats">
-                <strong>Buildings Selected: ${this.currentFacilityPlan.buildings.length}</strong><br>
-                <strong>Total Construction Time: ${totalTime} minutes</strong><br>
-                <strong>Claim Stake: Tier ${this.currentFacilityPlan.claimStakeTier}</strong><br>
-                <strong>Slots Used: ${validation.slotsUsed}/${validation.availableSlots}</strong>
-                ${validation.slotsExceeded ? ' <span class="stat-negative">⚠️</span>' : ' <span class="stat-positive">✓</span>'}<br>
-                <strong>Power: ${validation.powerOutput} output, ${validation.powerConsumption} consumption</strong>
-                ${validation.powerInsufficient ? ' <span class="stat-negative">⚠️</span>' : ' <span class="stat-positive">✓</span>'}<br>
-                <strong>Crew: ${validation.crewRequired || 0} required, ${validation.crewSlots || 0} available</strong>
-                ${validation.crewInsufficient ? ' <span class="stat-negative">⚠️</span>' : ' <span class="stat-positive">✓</span>'}
-            </div>
-
-            <div class="construction-selected-buildings">
-                ${this.currentFacilityPlan.buildings.map((building, index) => `
-                    <div class="construction-selected-card ${building.comesWithStake ? 'comes-with-stake' : ''}">
-                        ${!building.comesWithStake ? `
-                        <button onclick="window.constructionManager.removeBuildingFromPlan(${index})" class="construction-remove-btn">
-                            ✕
-                        </button>
-                        ` : ''}
-                        <div class="construction-selected-content">
-                            <strong class="construction-selected-name">${building.name}</strong><br>
-                            <div class="construction-selected-meta">Tier ${building.tier} • ${building.constructionTime || 0} min</div>
-                            <div class="construction-selected-stats">
-                                <span>👥 ${building.neededCrew || 0}/${building.crewSlots || 0}</span>
-                                <span>⚡ ${building.power || 0}</span>
-                                <span>📦 ${(building.storage || 0).toLocaleString()}</span>
-                            </div>
-                            ${building.comesWithStake ? '<div class="construction-stake-badge">📍 Included with Stake (Cannot Remove)</div>' : ''}
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-
-            <div class="construction-info-grid">
-                <!-- Recipe Ingredients Cost -->
-                ${Object.keys(facilityStats.totalRecipeCost).length > 0 ? `
-                <div class="construction-info-card">
-                    <strong>🧪 Recipe Ingredients:</strong><br>
-                    ${Object.entries(facilityStats.totalRecipeCost).map(([resource, amount]) =>
-                        `<div class="construction-info-item">• ${resource}: ${amount}</div>`
-                    ).join('')}
-                </div>
-                ` : ''}
-
-                <!-- Crew & Operations -->
-                <div class="construction-info-card">
-                    <strong>👥 Crew & Operations:</strong><br>
-                    <div class="construction-info-item">• Total Crew Slots: ${facilityStats.totalCrewSlots}</div>
-                    <div class="construction-info-item">• Crew Required: ${facilityStats.totalNeededCrew}</div>
-                    <div class="construction-info-item">• Power Output: <span class="${facilityStats.totalPower < 0 ? 'stat-negative' : ''}">${facilityStats.totalPower}</span></div>
-                    <div class="construction-info-item">• Storage Capacity: ${facilityStats.totalStorage.toLocaleString()}</div>
-                </div>
-
-                <!-- Resource Production -->
-                ${Object.keys(facilityStats.resourceExtraction).length > 0 || Object.keys(facilityStats.resourceConsumption).length > 0 ? `
-                <div class="construction-info-card">
-                    <strong>🔄 Resource Production:</strong><br>
-                    ${Object.entries(facilityStats.resourceExtraction).map(([resource, rate]) =>
-                        `<div class="construction-info-item stat-positive">• ${resource}: +${rate.toFixed(3)}/hour</div>`
-                    ).join('')}
-                    ${Object.entries(facilityStats.resourceConsumption).map(([resource, rate]) =>
-                        `<div class="construction-info-item stat-negative">• ${resource}: -${rate.toFixed(3)}/hour</div>`
-                    ).join('')}
-                </div>
-                ` : ''}
-            </div>
-        `;
-
-        // Create analytics dashboard container (innerHTML above destroyed any previous one)
-        const analyticsContainer = document.createElement('div');
-        analyticsContainer.id = 'facilityAnalyticsDashboard';
-        selectedBuildings.appendChild(analyticsContainer);
-
-        // Render analytics dashboard if FacilityAnalytics is available
-        if (typeof FacilityAnalytics !== 'undefined') {
+        save() {
             try {
-                // Destroy old analytics instance if it exists
-                if (this.facilityAnalytics) {
-                    this.facilityAnalytics.destroy();
-                }
-                // Create new instance and render
-                this.facilityAnalytics = new FacilityAnalytics('facilityAnalyticsDashboard');
-                this.facilityAnalytics.renderFacilityAnalytics(this.currentFacilityPlan, facilityStats, validation);
-                console.log('✅ Analytics dashboard rendered');
-            } catch (error) {
-                console.error('❌ Error rendering analytics:', error);
-            }
-        } else {
-            console.warn('⚠️ FacilityAnalytics class not available');
+                if (!this.plan) return;
+                localStorage.setItem(STORE_KEY, JSON.stringify({ key: this.plan.key, tier: this.plan.tier, kind: this.plan.kind, ids: this.plan.items.filter(i => !i.b.comesWithStake).map(i => i.b.id) }));
+            } catch (e) { /* storage is a convenience only */ }
         }
-    }
+        restore() {
+            try {
+                const s = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
+                if (!s || !s.key) return;
+                const p = StakeData.planets.find(x => x.key === s.key);
+                if (!p || p.cat === 3) return;
+                this.plan = { key: s.key, system: p.system, planet: p.planet, index: p.index, tier: s.tier || 1, kind: s.kind || 'standard', items: [] };
+                this.addStakeBuildings();
+                (s.ids || []).forEach(id => { if (this.byId(id)) this.addBuilding(id, false); });
+                this.renderPlanetList();
+            } catch (e) { /* ignore a bad save */ }
+        }
 
-    // Calculate comprehensive facility statistics - EXACT GaliaViewer
-    calculateFacilityStats() {
-        if (!this.currentFacilityPlan) return {};
+        // ------------------------------------------------------------ render
+        renderAll() { this.renderPlanetCard(); this.renderStake(); this.renderGauges(); this.renderPad(); this.renderCharts(); this.renderCatalogue(); }
 
-        const buildings = this.currentFacilityPlan.buildings;
-        const stats = {
-            totalCost: {},
-            totalRecipeCost: {},
-            totalCrewSlots: 0,
-            totalNeededCrew: 0,
-            totalPower: 0,
-            totalStorage: 0,
-            totalSlots: 0,
-            comesWithStake: false,
-            removableBuildings: 0,
-            enabledFeatures: [],
-            resourceExtraction: {},
-            resourceConsumption: {}
-        };
+        renderPlanetCard() {
+            const el = this.$('sbPlanetCard');
+            if (!this.plan) { el.innerHTML = `<div class="sb-pc-empty">No planet selected</div>`; return; }
+            const p = this.plan.planet, s = this.plan.system, cat = p.type % 8, fac = FACTION[Math.floor(p.type / 8)] || 'oni';
+            const sphere = window.Orrery ? Orrery.planetSphereHTML(p, 84) : `<i class="pdot big" style="--c:${CAT_COLOR[cat]}"></i>`;
+            const deps = (p.resources || []).slice().sort((a, b) => (StakeData.resTier(slug(a.name)) || 9) - (StakeData.resTier(slug(b.name)) || 9) || a.name.localeCompare(b.name));
+            el.innerHTML = `
+                <div class="sb-pc-visual">${sphere}</div>
+                <div class="sb-pc-body">
+                    <div class="sb-pc-name">${esc(p.name || 'Planet ' + (this.plan.index + 1))}</div>
+                    <div class="sb-pc-sub"><em class="f-${fac}">${FACTION_LABEL[fac]}</em> ${esc(CAT_NAME[cat])} &middot; ${esc(s.name || s.key)}${s.starbase && s.starbase.tier ? ' &middot; starbase T' + s.starbase.tier : ''}${s.closestFaction ? ' &middot; ' + esc(s.closestFaction) + ' territory' : ''}</div>
+                    <div class="rtags" id="sbDeposits">${deps.map(r => { const k = slug(r.name), t = StakeData.resTier(k), mx = StakeData.maxRich.get(k) || 1; return `<span class="rtag" data-res="${esc(k)}" title="${esc(r.name)} richness ${r.richness} (best anywhere ${mx})">${t ? `<i class="t t${t}">T${t}</i>` : '<i></i>'}<span class="rname">${esc(r.name)}</span><span class="rbar"><i style="width:${Math.round(100 * Math.min(1, r.richness / mx))}%"></i></span><span class="rval">${r.richness}</span></span>`; }).join('')}</div>
+                </div>`;
+        }
 
-        // Calculate totals from all buildings
-        buildings.forEach(building => {
-            // Resource costs
-            const cost = building.constructionCost || {};
-            Object.entries(cost).forEach(([resource, amount]) => {
-                stats.totalCost[resource] = (stats.totalCost[resource] || 0) + amount;
+        renderStake() {
+            const el = this.$('sbStake');
+            if (!this.plan) { el.innerHTML = ''; return; }
+            const p = this.plan;
+            el.innerHTML = `
+                <div class="sb-kind">${['standard', 'cultivation'].map(k => `<button type="button" class="chip${p.kind === k ? ' on' : ''}" data-kind="${k}">${k === 'standard' ? 'Standard stake' : 'Cultivation stake'}</button>`).join('')}</div>
+                <div class="sb-tiers">${[1, 2, 3, 4, 5].map(t => `<button type="button" class="sb-tier${p.tier === t ? ' on' : ''}" data-tier="${t}"><b>T${t}</b><span>${StakeData.slots[p.kind][t].toLocaleString()}</span><small>slots</small></button>`).join('')}</div>
+                <div class="sb-rule">A stake is bought per tier and holds tier ${p.tier} buildings. The ${p.kind === 'cultivation' ? 'cultivation' : 'central'} hub comes with it.</div>`;
+        }
+
+        gauge(label, used, max, ok, unit, hint) {
+            const f = max > 0 ? Math.min(1, used / max) : (used > 0 ? 1 : 0);
+            const C = 2 * Math.PI * 27, arc = C * 0.75;
+            const cls = !ok ? 'bad' : (f > 0.85 ? 'warn' : 'ok');
+            return `<div class="sb-gauge ${cls}" title="${esc(hint || '')}">
+                <svg viewBox="0 0 64 64" width="64" height="64"><circle class="track" cx="32" cy="32" r="27" stroke-dasharray="${arc} ${C}" transform="rotate(135 32 32)"/><circle class="val" cx="32" cy="32" r="27" stroke-dasharray="${arc} ${C}" stroke-dashoffset="${arc * (1 - f)}" transform="rotate(135 32 32)"/></svg>
+                <div class="sb-gauge-text"><b>${esc(used.toLocaleString())}</b><span>/ ${esc(max.toLocaleString())}${unit || ''}</span></div>
+                <div class="sb-gauge-label">${esc(label)}</div>
+            </div>`;
+        }
+
+        renderGauges() {
+            const el = this.$('sbGauges');
+            if (!this.plan) { el.innerHTML = ''; return; }
+            const v = this.compute();
+            el.innerHTML = this.gauge('Slots', v.slotsUsed, v.slotsMax, v.slotsOk, '', 'Building slots used on this stake')
+                + this.gauge('Power', v.powerOut, v.powerIn, v.powerOk, '', `Power drawn / generated (net ${v.power >= 0 ? '+' : ''}${v.power})`)
+                + this.gauge('Crew', v.crewNeeded, v.crewSlots, v.crewOk, '', 'Crew needed / crew housed');
+        }
+
+        renderPad() {
+            const tiles = this.$('sbTiles'), flow = this.root.querySelector('.sb-flow'), empty = this.$('sbEmpty');
+            const stage = this.$('sbStage');
+            stage.classList.toggle('reduced', !!window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+            if (!this.plan) { tiles.innerHTML = ''; flow.innerHTML = ''; empty.hidden = false; this.$('sbPadTitle').textContent = 'Stake pad'; this.$('sbPadSub').textContent = ''; return; }
+            empty.hidden = true;
+            const p = this.plan, cat = p.planet.type % 8;
+            stage.style.setProperty('--pad-tint', CAT_COLOR[cat]);
+            this.$('sbPadTitle').textContent = `${p.planet.name || 'Planet'} · tier ${p.tier} ${p.kind === 'cultivation' ? 'cultivation' : 'claim'} stake`;
+            this.$('sbPadSub').textContent = `${p.items.length} building${p.items.length === 1 ? '' : 's'}`;
+            const unit = T.unit(), [ax, ay] = T.anchor(), s = R / unit;
+            const seen = new Set(this.plan.items.map(i => i.uid));
+            // keep existing tile nodes (so the drop animation only plays for new ones), remove the gone, add the new
+            tiles.querySelectorAll('[data-uid]').forEach(n => { if (!seen.has(+n.dataset.uid)) n.remove(); });
+            p.items.forEach(it => {
+                if (!it.cell) return;
+                const [x, y] = toScreen(it.cell[0], it.cell[1]);
+                const kind = kindOf(it.b), [w, h] = T.size(kind);
+                let n = tiles.querySelector(`[data-uid="${it.uid}"]`);
+                if (!n) {
+                    n = document.createElement('div');
+                    n.className = `tile k-${kind}${it.uid === this.lastAdded ? ' drop' : ''}`;
+                    n.dataset.uid = it.uid;
+                    n.innerHTML = `<img src="${T.url(kind)}" alt="" draggable="false"><span class="tile-tag">${esc(it.b.name)}</span>`;
+                    tiles.appendChild(n);
+                }
+                n.style.left = (x - ax * s) + 'px'; n.style.top = (y - ay * s) + 'px'; n.style.width = (w * s) + 'px'; n.style.height = (h * s) + 'px';
+                n.style.zIndex = 10 + Math.round(y);
             });
-
-            // Recipe costs - look up recipe ingredients by matching pattern
-            if (typeof window.rawRecipeData !== 'undefined' && window.rawRecipeData.recipes) {
-                const buildingPattern = building.name.toLowerCase().replace(/\s+/g, '-');
-                const recipe = window.rawRecipeData.recipes.find(r =>
-                    r.outputId.includes(buildingPattern) && r.outputTier === building.tier
-                );
-                if (recipe && recipe.ingredients) {
-                    recipe.ingredients.forEach(ingredient => {
-                        stats.totalRecipeCost[ingredient.name] = (stats.totalRecipeCost[ingredient.name] || 0) + ingredient.quantity;
+            this.lastAdded = null;
+            // resource chains: producer -> consumer; hubs -> central hub (faint)
+            const pos = new Map(p.items.filter(i => i.cell).map(i => [i.uid, toScreen(i.cell[0], i.cell[1])]));
+            const paths = [];
+            const centre = p.items.find(i => i.b.comesWithStake);
+            p.items.forEach(i => {
+                const k = kindOf(i.b);
+                if (centre && i !== centre && KIND_GROUP[k] === 'hubs') { const [x1, y1] = pos.get(i.uid), [x2, y2] = pos.get(centre.uid); paths.push(`<path class="hub" d="M${x1} ${y1} L${x2} ${y2}"/>`); }
+                if (k !== 'processor') return;
+                StakeData.inputs(i.b).forEach(res => {
+                    p.items.forEach(src => {
+                        if (src === i || !StakeData.outputs(src.b).includes(res) || src.b.comesWithStake) return;
+                        const [x1, y1] = pos.get(src.uid), [x2, y2] = pos.get(i.uid);
+                        const mx = (x1 + x2) / 2, my = Math.min(y1, y2) - 28;
+                        paths.push(`<path class="flow c-${esc(StakeData.resCat(res) || 'raw')}" d="M${x1} ${y1} Q${mx} ${my} ${x2} ${y2}"><title>${esc(StakeData.resName(res))}: ${esc(src.b.name)} → ${esc(i.b.name)}</title></path>`);
                     });
+                });
+            });
+            flow.innerHTML = paths.join('');
+            // mark the cells that hold a building
+            const used = new Set(p.items.filter(i => i.cell).map(i => i.cell.join(',')));
+            this.root.querySelectorAll('.sb-grid .cell').forEach(c => c.classList.toggle('used', used.has(c.dataset.q + ',' + c.dataset.r)));
+            this.fit && this.fit();
+        }
+
+        fmtTime(sec) {
+            if (!sec) return '0';
+            if (sec < 60) return sec + ' s';
+            const m = Math.round(sec / 60);
+            if (m < 60) return m + ' min';
+            const h = Math.floor(m / 60), mm = m % 60;
+            return h + ' h' + (mm ? ' ' + mm + ' min' : '');
+        }
+
+        renderCatalogue() {
+            const list = this.$('sbCatList'), count = this.$('sbCatCount');
+            if (!this.plan) { list.innerHTML = '<p class="sb-muted">Pick a planet to see what can be built there.</p>'; count.textContent = ''; return; }
+            const ctx = this.ctx();
+            const q = this.cat.q, g = this.cat.group;
+            let rows = this.catalogue().map(b => ({ b, kind: kindOf(b), st: this.status(b, ctx) }));
+            if (g !== 'all') rows = rows.filter(r => KIND_GROUP[r.kind] === g);
+            if (q) rows = rows.filter(r => r.b.name.toLowerCase().includes(q) || StakeData.outputs(r.b).some(o => StakeData.resName(o).toLowerCase().includes(q)) || StakeData.inputs(r.b).some(o => StakeData.resName(o).toLowerCase().includes(q)));
+            const rank = r => (r.st.ok ? (r.st.chain ? 1 : 0) : (r.st.hard ? 3 : 2));
+            rows.sort((a, b) => rank(a) - rank(b) || (KIND_GROUP[a.kind] === 'hubs' ? -1 : 0) - (KIND_GROUP[b.kind] === 'hubs' ? -1 : 0) || a.b.name.localeCompare(b.b.name));
+            const placed = new Map(); this.plan.items.forEach(i => placed.set(i.b.id, (placed.get(i.b.id) || 0) + 1));
+            count.textContent = `${rows.length} of ${this.catalogue().length}`;
+            list.innerHTML = rows.length ? rows.map(r => {
+                const b = r.b, st = r.st;
+                const cls = st.ok ? (st.chain ? 'chain' : 'ok') : (st.hard ? 'locked' : 'hub');
+                const ins = StakeData.inputs(b), outs = StakeData.outputs(b);
+                let line = '';
+                if (r.kind === 'extractor' || r.kind === 'farm') line = Object.entries(b.resourceExtractionRate || {}).map(([k, v]) => `+${num(v)} ${esc(StakeData.resName(k))}`).join(', ');
+                else if (r.kind === 'processor') line = `${ins.map(k => esc(StakeData.resName(k))).join(' + ')} &rarr; ${outs.map(k => esc(StakeData.resName(k))).join(', ')}`;
+                else if (b.storage) line = `${b.storage.toLocaleString()} storage`;
+                else if (b.crewSlots) line = `houses ${b.crewSlots} crew`;
+                else if (b.power > 0) line = `+${b.power} power`;
+                const why = st.ok ? (st.chain ? 'input made on this stake (chain not verified in game)' : '') : st.missing.map(x => x.text).join('; ');
+                const n = placed.get(b.id) || 0;
+                return `<div class="sb-bcard ${cls}" data-id="${esc(b.id)}" data-res="${esc(outs.concat(ins).join(' '))}">
+                    ${T.thumbHTML(r.kind)}
+                    <div class="sb-bbody">
+                        <div class="sb-bhead"><span class="nm">${esc(b.name)}</span>${n ? `<span class="placed">&times;${n}</span>` : ''}</div>
+                        <div class="sb-bstats"><span>&#x25A3; ${b.slots}</span><span class="${b.power < 0 ? 'neg' : 'pos'}">&#x26A1; ${b.power > 0 ? '+' : ''}${b.power}</span><span>&#x1F465; ${b.neededCrew || 0}${b.crewSlots ? '/' + b.crewSlots : ''}</span></div>
+                        ${line ? `<div class="sb-bline">${line}</div>` : ''}
+                        ${why ? `<div class="sb-bwhy">${esc(why)}</div>` : ''}
+                    </div>
+                    <button type="button" class="sb-add" data-add="${esc(b.id)}" ${st.hard ? 'disabled' : ''} title="${st.hubs.length ? 'Adds the ' + st.hubs.map(h => KIND_LABEL[h]).join(' and ') + ' first' : 'Add to the pad'}">${st.hubs.length ? '+ hub' : '+'}</button>
+                </div>`;
+            }).join('') : '<p class="sb-muted">Nothing matches.</p>';
+        }
+
+        hotDeposits(b) {
+            const want = new Set(b ? StakeData.inputs(b).concat(Object.keys(b.resourceExtractionRate || {})) : []);
+            this.root.querySelectorAll('#sbDeposits .rtag').forEach(t => t.classList.toggle('hot', want.has(t.dataset.res)));
+        }
+
+        // -------------------------------------------------------------- tip
+        showTip(id, x, y, item) {
+            const b = this.byId(id); if (!b) return;
+            const tip = this.$('sbTip'), kind = kindOf(b);
+            const st = this.plan ? this.status(b, this.ctx()) : { ok: false, missing: [], hubs: [], hard: true };
+            const rows = [['Tier', 'T' + b.tier], ['Slots', b.slots], ['Power', (b.power > 0 ? '+' : '') + b.power], ['Crew needed', b.neededCrew || 0], ['Crew housed', b.crewSlots || 0], ['Storage', (b.storage || 0).toLocaleString()], ['Build time', b.constructionTime ? this.fmtTime(b.constructionTime) : 'with stake']];
+            const ext = Object.entries(b.resourceExtractionRate || {}), rate = Object.entries(b.resourceRate || {});
+            tip.innerHTML = `
+                <button type="button" class="sb-tip-x" data-tip="close" aria-label="Close">&times;</button>
+                <div class="sb-tip-head">${T.thumbHTML(kind, 'tile-thumb lg')}<div><b>${esc(b.name)}</b><span>${esc(KIND_LABEL[kind])}${b.comesWithStake ? ' · comes with the stake' : ''}</span></div></div>
+                <div class="sb-tip-grid">${rows.map(([k, v]) => `<span>${k}</span><b>${esc(String(v))}</b>`).join('')}</div>
+                ${ext.length ? `<div class="sb-tip-sec"><h5>Extracts / tick</h5>${ext.map(([k, v]) => `<span class="pos">+${num(v)} ${esc(StakeData.resName(k))}</span>`).join('')}</div>` : ''}
+                ${rate.length ? `<div class="sb-tip-sec"><h5>Rates / tick</h5>${rate.map(([k, v]) => `<span class="${v < 0 ? 'neg' : 'pos'}">${v > 0 ? '+' : ''}${num(v)} ${esc(StakeData.resName(k))}</span>`).join('')}</div>` : ''}
+                ${Object.keys(b.constructionCost || {}).length ? `<div class="sb-tip-sec"><h5>Construction cost</h5>${Object.entries(b.constructionCost).map(([k, v]) => `<span>${v} ${esc(StakeData.resName(k))}</span>`).join('')}</div>` : ''}
+                ${!item && !st.ok ? `<div class="sb-tip-why">${esc(st.missing.map(m => m.text).join('; '))}</div>` : ''}
+                <div class="sb-tip-actions">
+                    ${item ? (item.b.comesWithStake ? '' : `<button type="button" class="sb-btn danger" data-tip="remove" data-uid="${item.uid}">Remove</button>`) : `<button type="button" class="sb-btn" data-tip="add" data-id="${esc(b.id)}" ${st.hard ? 'disabled' : ''}>${st.hubs.length ? 'Add with ' + st.hubs.map(h => KIND_LABEL[h]).join(' + ') : 'Add to pad'}</button>`}
+                    <button type="button" class="sb-btn ghost" data-tip="recipe" data-name="${esc(b.name)}" data-tier="${b.tier}">Recipe</button>
+                </div>`;
+            tip.hidden = false;
+            const w = tip.offsetWidth, h = tip.offsetHeight;
+            tip.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, x + 12)) + 'px';
+            tip.style.top = Math.max(8, Math.min(window.innerHeight - h - 8, y + 12)) + 'px';
+            if (window.spaceSounds) window.spaceSounds.openPopup();
+        }
+        hideTip() { const tip = this.$('sbTip'); if (tip && !tip.hidden) { tip.hidden = true; } }
+
+        toast(msg, cls) {
+            const t = this.$('sbToast');
+            t.textContent = msg; t.className = 'sb-toast ' + (cls || ''); t.hidden = false;
+            clearTimeout(this._toastT); this._toastT = setTimeout(() => { t.hidden = true; }, 3800);
+        }
+
+        // ------------------------------------------------- construction sequence
+        construct() {
+            if (!this.plan) { this.toast('Pick a planet first.'); return; }
+            const v = this.compute();
+            if (!v.valid) { this.toast('Fix the plan first: ' + [!v.slotsOk ? 'slots' : '', !v.powerOk ? 'power' : '', !v.crewOk ? 'crew' : ''].filter(Boolean).join(', ') + ' over the limit.', 'bad'); return; }
+            if (this.plan.items.length < 2) { this.toast('Add at least one building to construct.'); return; }
+            this.stopSequence(); this.hideTip();
+            if (window.spaceSounds) window.spaceSounds.scan();
+            const order = this.buildOrder(), total = Math.max(1, v.time);
+            const stage = this.$('sbStage'), strip = this.$('sbStrip'), tiles = this.$('sbTiles');
+            const reduced = stage.classList.contains('reduced');
+            stage.classList.add('building');
+            tiles.querySelectorAll('.tile').forEach(n => n.classList.add('ghost'));
+            strip.hidden = false;
+            const steps = order.map(i => ({ i, ms: reduced ? 120 : Math.max(380, Math.min(1900, 9000 * (i.b.constructionTime || 0) / total)) + 250 }));
+            let k = 0, elapsed = 0;
+            const seq = this.sequence = { timer: null, done: false };
+            const step = () => {
+                if (seq !== this.sequence) return;
+                if (k >= steps.length) {
+                    strip.innerHTML = `<div class="sb-strip-done"><b>Facility online</b><span>${order.length} buildings · ${this.fmtTime(v.time)} · ${v.slotsUsed.toLocaleString()} of ${v.slotsMax.toLocaleString()} slots · power ${v.power >= 0 ? '+' : ''}${v.power} · crew ${v.crewNeeded}/${v.crewSlots}</span><button type="button" class="sb-btn ghost" data-stop>Close</button></div>`;
+                    strip.querySelector('[data-stop]').addEventListener('click', () => this.stopSequence());
+                    stage.classList.remove('building'); stage.classList.add('online');
+                    if (window.spaceSounds) window.spaceSounds.success();
+                    seq.done = true;
+                    return;
                 }
-            }
-
-            // Crew and operations
-            stats.totalCrewSlots += building.crewSlots || 0;
-            // Crew required is the neededCrew value (minimum crew to operate the building)
-            stats.totalNeededCrew += building.neededCrew || 0;
-            stats.totalPower += building.power || 0;
-            stats.totalStorage += building.storage || 0;
-            stats.totalSlots += building.slots || 0;
-
-            // Special properties
-            if (building.comesWithStake) {
-                stats.comesWithStake = true;
-            }
-            if (!building.cannotRemove) {
-                stats.removableBuildings++;
-            }
-
-            // Resource extraction rates
-            if (building.resourceExtractionRate) {
-                Object.entries(building.resourceExtractionRate).forEach(([resource, rate]) => {
-                    stats.resourceExtraction[resource] = (stats.resourceExtraction[resource] || 0) + rate;
-                });
-            }
-
-            // Resource consumption rates (negative rates)
-            if (building.resourceRate) {
-                Object.entries(building.resourceRate).forEach(([resource, rate]) => {
-                    if (rate < 0) {
-                        stats.resourceConsumption[resource] = (stats.resourceConsumption[resource] || 0) + Math.abs(rate);
-                    } else {
-                        stats.resourceExtraction[resource] = (stats.resourceExtraction[resource] || 0) + rate;
-                    }
-                });
-            }
-
-            // Enabled features (from addedTags)
-            if (building.addedTags) {
-                building.addedTags.forEach(tag => {
-                    if (tag.startsWith('enables-') && !stats.enabledFeatures.includes(tag)) {
-                        // Convert enables-processing-hub to "Processing Hub"
-                        const featureName = tag.replace('enables-', '').replace(/-/g, ' ')
-                            .replace(/\b\w/g, l => l.toUpperCase());
-                        stats.enabledFeatures.push(featureName);
-                    }
-                });
-            }
-        });
-
-        return stats;
-    }
-
-    // Remove building from plan - with sounds
-    removeBuildingFromPlan(index) {
-        if (!this.currentFacilityPlan || index < 0 || index >= this.currentFacilityPlan.buildings.length) return;
-
-        const building = this.currentFacilityPlan.buildings[index];
-
-        // Prevent removal of buildings that come with the stake
-        if (building.comesWithStake) {
-            alert('❌ Cannot remove this building - it is included with your claim stake and cannot be removed.');
-            return;
+                const { i, ms } = steps[k];
+                const n = tiles.querySelector(`[data-uid="${i.uid}"]`);
+                if (n) { n.classList.remove('ghost'); n.classList.add('rise'); n.style.setProperty('--ms', ms + 'ms'); }
+                elapsed += i.b.constructionTime || 0;
+                strip.innerHTML = `<div class="sb-strip-row"><span class="st">${k + 1} / ${steps.length}</span><b>${esc(i.b.name)}</b><span class="tm">${i.b.constructionTime ? this.fmtTime(i.b.constructionTime) : 'with stake'}</span><span class="el">elapsed ${this.fmtTime(elapsed)}</span></div><div class="sb-strip-bar"><i style="width:${Math.round(100 * (k + 1) / steps.length)}%"></i></div>`;
+                k++;
+                seq.timer = setTimeout(step, ms);
+            };
+            step();
+        }
+        stopSequence() {
+            if (!this.sequence) return;
+            clearTimeout(this.sequence.timer); this.sequence = null;
+            const stage = this.$('sbStage'); stage.classList.remove('building', 'online');
+            this.$('sbTiles').querySelectorAll('.tile').forEach(n => { n.classList.remove('ghost', 'rise'); });
+            this.$('sbStrip').hidden = true;
         }
 
-        // Play deselect sound
-        if (window.spaceSounds) window.spaceSounds.deselect();
+        // ------------------------------------------------------------ charts
+        // Plain HTML bars in the page's own style (no Chart.js): thin marks, rounded data ends, 2 px gaps between
+        // stacked segments, one hue for nominal series, a warm/cool pair with a neutral axis for signed values,
+        // kind colours (validated for CVD) for identity, hover tooltips on every mark, values in text tokens.
+        renderCharts() {
+            const el = this.$('sbCharts');
+            if (!this.plan) { el.innerHTML = ''; return; }
+            const v = this.compute(), items = this.plan.items, order = this.buildOrder();
+            const KC = { central_hub: 'hub', cultivation_hub: 'hub', extraction_hub: 'hub', processing_hub: 'hub', storage_hub: 'hub', farm_hub: 'hub', power_plant: 'hub', crew_quarters: 'hub', extractor: 'extractor', processor: 'processor', storage_module: 'storage', farm: 'farm' };
+            const kc = b => KC[kindOf(b)] || 'hub';
+            const legend = `<div class="ch-legend">${[['hub', 'Hubs & support'], ['extractor', 'Extractors'], ['processor', 'Processors'], ['storage', 'Storage'], ['farm', 'Farms']].map(([k, n]) => `<span><i class="c-${k}"></i>${n}</span>`).join('')}</div>`;
+            const short = n => n.replace(/^(Ice Giant|Gas Giant|Terrestrial|Volcanic|Barren|Dark|Oceanic) /, '');
+            const tip = t => `<span class="ct">${esc(t)}</span>`;
 
-        this.currentFacilityPlan.buildings.splice(index, 1);
-        this.updateFacilityPlanDisplay();
-    }
+            // 1. power budget: generation right (cool), draw left (warm), one row per building
+            const pmax = Math.max(1, ...items.map(i => Math.abs(i.b.power || 0)));
+            const prow = items.slice().sort((x, y) => Math.abs(y.b.power || 0) - Math.abs(x.b.power || 0)).map(i => {
+                const pw = i.b.power || 0, w = Math.abs(pw) / pmax * 50;
+                return `<div class="ch-row"><span class="ch-lbl">${esc(short(i.b.name))}</span><div class="ch-div"><i class="axis"></i>${pw < 0 ? `<b class="neg" style="right:50%;width:${w}%">${tip(short(i.b.name) + ' draws ' + -pw)}</b>` : `<b class="pos" style="left:50%;width:${w}%">${tip(short(i.b.name) + ' generates +' + pw)}</b>`}</div><span class="ch-val ${pw < 0 ? 'neg' : 'pos'}">${pw > 0 ? '+' : ''}${pw}</span></div>`;
+            }).join('');
+            const power = `<div class="sb-card ch half"><h4>Power budget <span>net ${v.power >= 0 ? '+' : ''}${v.power}</span></h4><div class="ch-key"><span><i class="k-neg"></i>draw ${v.powerOut}</span><span><i class="k-pos"></i>generation ${v.powerIn}</span></div>${prow}</div>`;
 
-    // Clear facility plan - with sounds
-    clearFacilityPlan() {
-        if (!this.currentFacilityPlan) return;
+            // 2. slots and crew: stacked by kind over the stake's limits
+            const byKind = key => { const m = {}; items.forEach(i => { const k = kc(i.b); m[k] = (m[k] || 0) + (i.b[key] || 0); }); return Object.entries(m).filter(([, n]) => n > 0); };
+            const stack = (title, parts, max, unit) => {
+                const total = parts.reduce((a, [, n]) => a + n, 0), over = total > max, span = Math.max(max, total);
+                return `<div class="ch-stack"><div class="ch-stack-head"><span>${title}</span><b class="${over ? 'neg' : ''}">${total.toLocaleString()} / ${max.toLocaleString()}${unit}</b></div><div class="ch-track">${parts.map(([k, n]) => `<b class="c-${k}" style="width:${n / span * 100}%">${tip(k + ': ' + n.toLocaleString())}</b>`).join('')}${over ? '' : `<i class="cap" style="left:${max / span * 100}%"></i>`}</div></div>`;
+            };
+            const slots = `<div class="sb-card ch half"><h4>Slots and crew <span>tier ${this.plan.tier}</span></h4>${stack('Slots used', byKind('slots'), v.slotsMax, '')}${stack('Crew needed', byKind('neededCrew'), v.crewSlots, ' housed')}${legend}</div>`;
 
-        // Play click sound
-        if (window.spaceSounds) window.spaceSounds.click();
+            // 3. build timeline: sequential gantt in build order
+            let cum = 0; const T = Math.max(1, v.time);
+            const trow = order.map(i => { const d = i.b.constructionTime || 0, x = cum / T * 100, w = Math.max(0.6, d / T * 100); cum += d; return `<div class="ch-row"><span class="ch-lbl">${esc(short(i.b.name))}</span><div class="ch-gantt"><b class="c-${kc(i.b)}" style="left:${x}%;width:${w}%">${tip(short(i.b.name) + ': ' + (d ? this.fmtTime(d) : 'with the stake') + ', done at ' + this.fmtTime(cum))}</b></div><span class="ch-val">${d ? this.fmtTime(d) : '–'}</span></div>`; }).join('');
+            const ticks = [0, 0.5, 1].map(f => `<span style="left:${f * 100}%">${this.fmtTime(Math.round(T * f))}</span>`).join('');
+            const timeline = `<div class="sb-card ch"><h4>Build timeline <span>${this.fmtTime(v.time)} sequential</span></h4>${trow}<div class="ch-row"><span class="ch-lbl"></span><div class="ch-axis">${ticks}</div><span class="ch-val"></span></div><div class="sb-verdict ${v.valid ? 'ok' : 'bad'}">${v.valid ? 'Plan is valid: slots, power and crew all fit.' : [!v.slotsOk ? `slots over by ${(v.slotsUsed - v.slotsMax).toLocaleString()}` : '', !v.powerOk ? `power short by ${(-v.power).toLocaleString()}` : '', !v.crewOk ? `crew short by ${v.crewNeeded - v.crewSlots}` : ''].filter(Boolean).join(' · ')}</div></div>`;
 
-        // Only remove manually added buildings, keep the ones that come with stake
-        this.currentFacilityPlan.buildings = this.currentFacilityPlan.buildings.filter(b => b.comesWithStake);
-        this.updateFacilityPlanDisplay();
-    }
+            // 4. production net per resource: positive right (cool), negative left (warm)
+            const led = v.ledger.filter(r => !r.passive || Math.abs(r.net) >= 0.01);
+            const nmax = Math.max(0.001, ...led.map(r => Math.abs(r.net)));
+            const nrow = led.map(r => { const w = Math.abs(r.net) / nmax * 50; return `<div class="ch-row"><span class="ch-lbl">${esc(r.name)}</span><div class="ch-div"><i class="axis"></i>${r.net < 0 ? `<b class="neg" style="right:50%;width:${w}%">${tip(r.name + ': made +' + num(r.prod) + ', used -' + num(r.cons))}</b>` : `<b class="pos" style="left:50%;width:${w}%">${tip(r.name + ': made +' + num(r.prod) + ', used -' + num(r.cons))}</b>`}</div><span class="ch-val ${r.net < 0 ? 'neg' : 'pos'}">${(r.net > 0 ? '+' : '') + num(r.net)}</span></div>`; }).join('');
+            const prod = `<div class="sb-card ch"><h4>Net production per tick <span>${v.ledger.length - led.length > 0 ? '+ ' + (v.ledger.length - led.length) + ' passive hub deposits' : ''}</span></h4><div class="ch-key"><span><i class="k-neg"></i>deficit (haul in)</span><span><i class="k-pos"></i>surplus</span></div>${nrow || '<p class="sb-muted">Nothing is produced yet.</p>'}<p class="sb-foot">A negative net must be hauled in (or the chain runs faster than the extractor feeding it). Richness is not applied: the export has no yield formula.</p></div>`;
 
-    // Construct facility (simulation) - with sounds
-    constructFacility() {
-        // Play scan sound
-        if (window.spaceSounds) window.spaceSounds.scan();
+            // 5. construction materials: the bill itself - every material as one-hue bars, plus the plan totals
+            const cmax = Math.max(1, ...v.cost.map(([, q]) => q));
+            const crow = v.cost.map(([k, q]) => { const t = StakeData.resTier(k); return `<div class="ch-row"><span class="ch-lbl">${t ? `<i class="t t${t}">T${t}</i>` : ''}${esc(StakeData.resName(k))}</span><div class="ch-bar"><b style="width:${q / cmax * 100}%">${tip(StakeData.resName(k) + ': ' + q.toLocaleString())}</b></div><span class="ch-val">${q.toLocaleString()}</span></div>`; }).join('');
+            const mats = `<div class="sb-card ch"><h4>Bill of materials <span>${v.cost.length} material${v.cost.length === 1 ? '' : 's'}</span></h4>${crow || '<p class="sb-muted">The hub comes with the stake. Add buildings to see what they cost.</p>'}
+                <div class="sb-kv"><span>Build time (sequential)</span><b>${this.fmtTime(v.time)}</b></div>
+                <div class="sb-kv"><span>Storage on the stake</span><b>${v.storage.toLocaleString()}</b></div>
+                <div class="sb-kv"><span>Fuel burn</span><b class="${v.fuel ? 'neg' : ''}">${v.fuel ? '-' + num(v.fuel) + ' / tick' : 'none'}</b></div>
+                <p class="sb-foot">Costs from buildings.json; a tier-N stake pays for tier-N buildings only. Times are the export's values read as seconds.</p></div>`;
 
-        if (!this.currentFacilityPlan || this.currentFacilityPlan.buildings.length === 0) {
-            alert('No buildings selected for construction!');
-            return;
+            el.innerHTML = mats + prod + timeline + power + slots;
         }
 
-        // Validate facility plan before construction
-        const validation = this.validateFacilityPlan();
-        if (!validation.valid) {
-            let errorMessage = '❌ Cannot construct facility due to validation errors:\n\n';
-            if (validation.slotsExceeded) {
-                errorMessage += `• Slots exceeded: ${validation.slotsUsed}/${validation.availableSlots}\n`;
-            }
-            if (validation.powerInsufficient) {
-                errorMessage += `• Insufficient power: ${validation.powerOutput} available, ${validation.powerConsumption} required\n`;
-            }
-            if (validation.crewInsufficient) {
-                errorMessage += `• Insufficient crew slots: ${validation.crewRequired} required, ${validation.crewSlots} available\n`;
-            }
-            errorMessage += '\nPlease fix these issues before constructing the facility.';
-            alert(errorMessage);
-            return;
-        }
-
-        const facilityStats = this.calculateFacilityStats();
-        const totalTime = this.currentFacilityPlan.buildings.reduce((sum, b) => sum + (b.constructionTime || 0), 0);
-        const buildingNames = this.currentFacilityPlan.buildings.map(b => b.name);
-
-        // Enhanced confirmation message with comprehensive stats
-        let confirmMessage = `🏗️ Construct facility on ${this.currentFacilityPlan.planetName}?\n\n`;
-        confirmMessage += `📋 Buildings (${this.currentFacilityPlan.buildings.length}): ${buildingNames.join(', ')}\n\n`;
-        confirmMessage += `⏱️ Total Construction Time: ${totalTime} minutes\n`;
-        confirmMessage += `👥 Crew: ${facilityStats.totalNeededCrew}/${facilityStats.totalCrewSlots} required/available\n`;
-        confirmMessage += `⚡ Power Output: ${facilityStats.totalPower}${facilityStats.totalPower < 0 ? ' ⚠️ NEGATIVE!' : ''}\n`;
-        confirmMessage += `📦 Storage: ${facilityStats.totalStorage.toLocaleString()}\n\n`;
-
-        const costEntries = Object.entries(facilityStats.totalCost);
-        if (costEntries.length > 0) {
-            confirmMessage += `💰 Resources Needed:\n${costEntries.map(([r, a]) => `  • ${r}: ${a}`).join('\n')}\n\n`;
-        }
-
-        if (Object.keys(facilityStats.resourceExtraction).length > 0) {
-            confirmMessage += `📈 Resource Production:\n${Object.entries(facilityStats.resourceExtraction).map(([r, rate]) =>
-                `  • ${r}: +${rate.toFixed(3)}/hour`).join('\n')}\n\n`;
-        }
-
-        confirmMessage += `⚠️ This is a simulation - no actual resources will be consumed.`;
-
-        if (confirm(confirmMessage)) {
-            let successMessage = `🎉 Facility construction started!\n\n`;
-            successMessage += `Buildings are now being constructed on ${this.currentFacilityPlan.planetName}.\n`;
-            successMessage += `Estimated completion: ${totalTime} minutes\n`;
-            successMessage += `Crew required: ${facilityStats.totalNeededCrew} personnel\n`;
-            successMessage += `Power generation: ${facilityStats.totalPower} units${facilityStats.totalPower < 0 ? ' (⚠️ Negative Power!)' : ''}`;
-
-            alert(successMessage);
-
-            // Log construction for reference
-            console.log('Facility Construction Started:', {
-                planet: this.currentFacilityPlan.planetName,
-                system: this.currentFacilityPlan.system.name,
-                buildings: this.currentFacilityPlan.buildings,
-                facilityStats: facilityStats,
-                totalTime: totalTime
-            });
+        // ------------------------------------------------------------ export
+        async exportPNG() {
+            if (!this.plan) { this.toast('Pick a planet first.'); return; }
+            const v = this.compute(), p = this.plan;
+            const W = 1400, PADX = 40;
+            const order = this.buildOrder();
+            const rowsL = Math.max(v.cost.length, v.ledger.length, order.length);
+            const H = 150 + STAGE_H + 60 + 24 * Math.min(rowsL, 22) + 100;
+            const c = document.createElement('canvas'); c.width = W * 2; c.height = H * 2;
+            const g = c.getContext('2d'); g.scale(2, 2);
+            g.fillStyle = '#04060f'; g.fillRect(0, 0, W, H);
+            g.fillStyle = '#4fd8ff'; g.font = '700 12px Orbitron, sans-serif'; g.fillText('AEPHIA INDUSTRIES · OPERATIONS HUB · STAKE BUILDER', PADX, 40);
+            g.fillStyle = '#fff'; g.font = '700 30px Rajdhani, sans-serif'; g.fillText(`${p.planet.name || 'Planet'} · tier ${p.tier} ${p.kind} stake`, PADX, 78);
+            g.fillStyle = '#b4c6ef'; g.font = '500 15px Rajdhani, sans-serif';
+            g.fillText(`${p.system.name || p.system.key} · ${CAT_NAME[p.planet.type % 8]} · ${FACTION_LABEL[FACTION[Math.floor(p.planet.type / 8)] || 'oni']} · ${order.length} buildings · slots ${v.slotsUsed.toLocaleString()} / ${v.slotsMax.toLocaleString()} · power ${v.power >= 0 ? '+' : ''}${v.power} · crew ${v.crewNeeded} / ${v.crewSlots} · ${new Date().toLocaleString()}`, PADX, 104);
+            // the pad
+            const ox = (W - STAGE_W) / 2, oy = 130;
+            g.strokeStyle = 'rgba(120,200,255,0.18)'; g.lineWidth = 1;
+            SPIRAL.forEach(([q, r]) => { const [x, y] = toScreen(q, r); g.beginPath(); for (let i = 0; i < 6; i++) { const a = Math.PI / 180 * (60 * i - 30); const px = ox + x + R * Math.cos(a), py = oy + y + R * Math.sin(a) * SQ; i ? g.lineTo(px, py) : g.moveTo(px, py); } g.closePath(); g.stroke(); });
+            const unit = T.unit(), [ax, ay] = T.anchor(), s = R / unit;
+            const items = p.items.filter(i => i.cell).map(i => ({ i, xy: toScreen(i.cell[0], i.cell[1]) })).sort((a, b) => a.xy[1] - b.xy[1]);
+            await Promise.all(items.map(({ i, xy }) => new Promise(res => {
+                const kind = kindOf(i.b), [w, h] = T.size(kind), im = new Image();
+                im.onload = () => { g.drawImage(im, ox + xy[0] - ax * s, oy + xy[1] - ay * s, w * s, h * s); res(); }; im.onerror = res; im.src = T.url(kind);
+            })));
+            // three columns
+            const y0 = oy + STAGE_H + 40, colW = (W - PADX * 2) / 3;
+            const col = (n, title, lines) => {
+                const x = PADX + n * colW;
+                g.fillStyle = '#4fd8ff'; g.font = '700 11px Orbitron, sans-serif'; g.fillText(title.toUpperCase(), x, y0);
+                g.font = '500 14px Rajdhani, sans-serif';
+                lines.slice(0, 22).forEach((l, k) => { g.fillStyle = l[2] || '#e6edf7'; g.fillText(l[0], x, y0 + 24 + k * 22); g.textAlign = 'right'; g.fillText(l[1], x + colW - 24, y0 + 24 + k * 22); g.textAlign = 'left'; });
+                if (lines.length > 22) { g.fillStyle = '#64748b'; g.fillText(`+ ${lines.length - 22} more`, x, y0 + 24 + 22 * 22); }
+            };
+            col(0, 'Bill of materials', v.cost.map(([k, q]) => [StakeData.resName(k), q.toLocaleString()]));
+            col(1, 'Production per tick', v.ledger.map(r => [r.name, (r.net > 0 ? '+' : '') + num(r.net), r.net < 0 ? '#ff8a7a' : '#7ee8a4']));
+            let cum = 0;
+            col(2, 'Build order', order.map((i, n) => { cum += i.b.constructionTime || 0; return [`${n + 1}. ${i.b.name}`, this.fmtTime(cum)]; }));
+            g.fillStyle = '#64748b'; g.font = '500 12px Rajdhani, sans-serif'; g.fillText('Generated by the ClaimStake Explorer · costs from buildings.json · times read as seconds', PADX, H - 24);
+            const a = document.createElement('a');
+            const now = new Date(), ymd = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+            a.download = `stake_${slug(p.planet.name || 'planet')}_T${p.tier}_${ymd}.png`;
+            a.href = c.toDataURL('image/png'); a.click();
+            this.toast('PNG exported.');
         }
     }
 
-    // Show detailed building information in a modal - Star Atlas Theme
-    showBuildingDetails(buildingId) {
-        // Play popup open sound
-        if (window.spaceSounds) window.spaceSounds.openPopup();
-
-        const building = window.rawBuildingData.buildings.find(b => b.id === buildingId);
-        if (!building) {
-            console.error('Building not found:', buildingId);
-            return;
-        }
-
-        // Remove existing detail modal if any
-        const existingModal = document.getElementById('buildingDetailModal');
-        if (existingModal) {
-            existingModal.remove();
-        }
-
-        // Construction cost details
-        const constructionCostHTML = building.constructionCost ? `
-            <div class="details-section" style="margin-bottom: 20px;">
-                <h3 style="color: #FF9800; border-bottom: 1px solid #444; padding-bottom: 5px;">Construction Cost</h3>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 10px;">
-                    ${Object.entries(building.constructionCost).map(([material, amount]) => `
-                        <div style="background: #2a2a3e; padding: 8px; border-radius: 4px;">
-                            <span style="font-weight: bold;">${material}</span>
-                            <span style="float: right; color: #4CAF50;">${amount}</span>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-        ` : '';
-
-        // Resource extraction details
-        const extractionHTML = building.resourceExtractionRate ? `
-            <div class="details-section" style="margin-bottom: 20px;">
-                <h3 style="color: #4CAF50; border-bottom: 1px solid #444; padding-bottom: 5px;">Resource Extraction Rate</h3>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 10px;">
-                    ${Object.entries(building.resourceExtractionRate).map(([resource, rate]) => `
-                        <div style="background: #2a2a3e; padding: 8px; border-radius: 4px;">
-                            <span style="font-weight: bold;">${resource}</span>
-                            <span style="float: right; color: #4CAF50;">+${rate}/hour</span>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-        ` : '';
-
-        // Resource consumption details
-        const consumptionHTML = building.resourceRate ? `
-            <div class="details-section" style="margin-bottom: 20px;">
-                <h3 style="color: #f44336; border-bottom: 1px solid #444; padding-bottom: 5px;">Resource Consumption</h3>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 10px;">
-                    ${Object.entries(building.resourceRate).map(([resource, rate]) => `
-                        <div style="background: #2a2a3e; padding: 8px; border-radius: 4px;">
-                            <span style="font-weight: bold;">${resource}</span>
-                            <span style="float: right; color: ${rate < 0 ? '#f44336' : '#4CAF50'};">${rate}/hour</span>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-        ` : '';
-
-        // Build enabled features list
-        const enabledFeatures = building.addedTags ? building.addedTags.filter(tag => tag.startsWith('enables-')).map(tag =>
-            tag.replace('enables-', '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-        ) : [];
-
-        const modalHTML = `
-            <div id="buildingDetailModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10001; display: flex; align-items: center; justify-content: center;">
-                <div style="background: #1a1a2e; color: white; padding: 20px; border-radius: 10px; max-width: 90%; max-height: 90%; overflow-y: auto; min-width: 600px; border: 2px solid #444;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #444; padding-bottom: 10px;">
-                        <h2 style="margin: 0; color: #4CAF50;">${building.name}</h2>
-                        <button onclick="document.getElementById('buildingDetailModal').remove()"
-                                style="background: #f44336; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;">
-                            ✕ Close
-                        </button>
-                    </div>
-
-                    <div class="building-overview" style="margin-bottom: 20px;">
-                        <p style="color: #ccc; font-style: italic; margin-bottom: 15px;">${building.description || 'No description available'}</p>
-
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px;">
-                            <div style="background: #2a2a3e; padding: 10px; border-radius: 6px; text-align: center;">
-                                <div style="font-size: 12px; color: #aaa;">Tier</div>
-                                <div style="font-size: 18px; font-weight: bold; color: #4CAF50;">${building.tier || 'Unknown'}</div>
-                            </div>
-                            <div style="background: #2a2a3e; padding: 10px; border-radius: 6px; text-align: center;">
-                                <div style="font-size: 12px; color: #aaa;">Min Tier</div>
-                                <div style="font-size: 18px; font-weight: bold; color: #FF9800;">${building.minimumTier || 'N/A'}</div>
-                            </div>
-                            <div style="background: #2a2a3e; padding: 10px; border-radius: 6px; text-align: center;">
-                                <div style="font-size: 12px; color: #aaa;">Power</div>
-                                <div style="font-size: 18px; font-weight: bold; color: #2196F3;">${building.power || 0}W</div>
-                            </div>
-                            <div style="background: #2a2a3e; padding: 10px; border-radius: 6px; text-align: center;">
-                                <div style="font-size: 12px; color: #aaa;">Slots</div>
-                                <div style="font-size: 18px; font-weight: bold; color: #9C27B0;">${building.slots || 0}</div>
-                            </div>
-                            <div style="background: #2a2a3e; padding: 10px; border-radius: 6px; text-align: center;">
-                                <div style="font-size: 12px; color: #aaa;">Storage</div>
-                                <div style="font-size: 18px; font-weight: bold; color: #607D8B;">${(building.storage || 0).toLocaleString()}</div>
-                            </div>
-                            <div style="background: #2a2a3e; padding: 10px; border-radius: 6px; text-align: center;">
-                                <div style="font-size: 12px; color: #aaa;">Build Time</div>
-                                <div style="font-size: 18px; font-weight: bold; color: #FF5722;">${building.constructionTime || 0}min</div>
-                            </div>
-                            <div style="background: #2a2a3e; padding: 10px; border-radius: 6px; text-align: center;">
-                                <div style="font-size: 12px; color: #aaa;">Crew Slots</div>
-                                <div style="font-size: 18px; font-weight: bold; color: #795548;">${building.crewSlots || 0}</div>
-                            </div>
-                            <div style="background: #2a2a3e; padding: 10px; border-radius: 6px; text-align: center;">
-                                <div style="font-size: 12px; color: #aaa;">Crew Needed</div>
-                                <div style="font-size: 18px; font-weight: bold; color: #E91E63;">${building.neededCrew || 0}</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    ${constructionCostHTML}
-                    ${extractionHTML}
-                    ${consumptionHTML}
-
-                    <div class="details-section" style="margin-bottom: 20px;">
-                        <h3 style="color: #9C27B0; border-bottom: 1px solid #444; padding-bottom: 5px;">Properties</h3>
-                        <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px;">
-                            ${building.comesWithStake ? '<span style="background: #4CAF50; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px;">Comes with Stake</span>' : ''}
-                            ${building.cannotRemove ? '<span style="background: #f44336; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px;">Cannot Remove</span>' : ''}
-                            ${Object.keys(building.resourceExtractionRate || {}).length > 0 ? '<span style="background: #FF9800; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px;">Has Resource Extraction</span>' : ''}
-                            ${enabledFeatures.length > 0 ? enabledFeatures.map(f => `<span style="background: #2196F3; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px;">Enables: ${f}</span>`).join('') : ''}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        document.body.insertAdjacentHTML('beforeend', modalHTML);
-    }
-
-    // Get planet type name - uses shared utility
-    getPlanetTypeName(type) {
-        return getPlanetTypeName(type);
-    }
-
-    // Open Recipe Explorer with selected building - Uses shared utility
-    openRecipeExplorer(buildingName, tier) {
-        ConstructionUtils.openRecipeExplorer(buildingName, tier);
-    }
-
-    // Export facility diagram as image
-    async exportFacilityDiagram() {
-        if (!this.currentFacilityPlan || this.currentFacilityPlan.buildings.length === 0) {
-            alert('❌ No facility plan to export. Please add buildings first.');
-            return;
-        }
-
-        // Check if html2canvas is available
-        if (typeof html2canvas === 'undefined') {
-            alert('❌ Export library not loaded. Please refresh the page and try again.');
-            console.error('html2canvas library not found');
-            return;
-        }
-
-        try {
-            // Create export view
-            const exportContainer = this.createExportView();
-            document.body.appendChild(exportContainer);
-
-            // Give browser time to render
-            await new Promise(resolve => setTimeout(resolve, 100));
-
-            // Capture as image
-            const canvas = await html2canvas(exportContainer, {
-                backgroundColor: '#1a1a2e',
-                scale: 2, // Higher quality
-                logging: false,
-                windowWidth: 1200,
-                windowHeight: exportContainer.scrollHeight
-            });
-
-            // Remove export container
-            document.body.removeChild(exportContainer);
-
-            // Download image
-            const link = document.createElement('a');
-            const planetName = this.currentFacilityPlan.planetName.replace(/[^a-z0-9]/gi, '_');
-            const timestamp = new Date().toISOString().slice(0, 10);
-            link.download = `facility_${planetName}_${timestamp}.png`;
-            link.href = canvas.toDataURL('image/png');
-            link.click();
-
-            console.log('✅ Facility diagram exported successfully');
-        } catch (error) {
-            console.error('❌ Error exporting diagram:', error);
-            alert('Failed to export diagram. Check console for details.');
-        }
-    }
-
-    // Create export-friendly view of the facility
-    createExportView() {
-        const facilityStats = this.calculateFacilityStats();
-        const validation = this.validateFacilityPlan();
-        const totalTime = this.currentFacilityPlan.buildings.reduce((sum, b) => sum + (b.constructionTime || 0), 0);
-
-        const container = document.createElement('div');
-        container.style.cssText = `
-            position: fixed;
-            left: -9999px;
-            top: 0;
-            width: 1200px;
-            background: #1a1a2e;
-            color: white;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            padding: 40px;
-            box-sizing: border-box;
-        `;
-
-        container.innerHTML = `
-            <div style="margin-bottom: 30px; text-align: center;">
-                <h1 style="color: #4CAF50; margin: 0 0 10px 0; font-size: 32px;">🏗️ Facility Construction Plan</h1>
-                <div style="font-size: 18px; color: #ccc;">${this.currentFacilityPlan.planetName}</div>
-                <div style="font-size: 14px; color: #888; margin-top: 5px;">${this.currentFacilityPlan.system.name || 'System'} • Tier ${this.currentFacilityPlan.claimStakeTier} Claim Stake</div>
-                <div style="font-size: 12px; color: #666; margin-top: 10px;">Generated: ${new Date().toLocaleString()}</div>
-            </div>
-
-            ${validation.valid ? `
-                <div style="background: #2e7d32; padding: 15px; border-radius: 8px; margin-bottom: 25px; text-align: center;">
-                    <div style="font-size: 20px; font-weight: bold;">✅ Facility Plan Valid</div>
-                </div>
-            ` : `
-                <div style="background: #c62828; padding: 15px; border-radius: 8px; margin-bottom: 25px;">
-                    <div style="font-size: 18px; font-weight: bold; margin-bottom: 10px;">⚠️ Validation Issues</div>
-                    ${validation.slotsExceeded ? `<div>• Slots exceeded: ${validation.slotsUsed}/${validation.availableSlots}</div>` : ''}
-                    ${validation.powerInsufficient ? `<div>• Power insufficient: ${validation.powerOutput}/${validation.powerConsumption}</div>` : ''}
-                    ${validation.crewInsufficient ? `<div>• Crew insufficient: ${validation.crewRequired} required, ${validation.crewSlots} available</div>` : ''}
-                </div>
-            `}
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
-                <div style="background: #2a2a3e; padding: 20px; border-radius: 8px;">
-                    <h3 style="color: #4CAF50; margin-top: 0;">📊 Facility Summary</h3>
-                    <div style="line-height: 1.8;">
-                        <div><strong>Buildings:</strong> ${this.currentFacilityPlan.buildings.length}</div>
-                        <div><strong>Construction Time:</strong> ${totalTime} minutes</div>
-                        <div><strong>Slots Used:</strong> ${validation.slotsUsed}/${validation.availableSlots}</div>
-                        <div><strong>Crew Required:</strong> ${facilityStats.totalNeededCrew}/${facilityStats.totalCrewSlots}</div>
-                        <div><strong>Power Output:</strong> <span style="color: ${facilityStats.totalPower < 0 ? '#ff4444' : '#4CAF50'}">${facilityStats.totalPower}</span></div>
-                        <div><strong>Storage:</strong> ${facilityStats.totalStorage.toLocaleString()}</div>
-                    </div>
-                </div>
-
-                <div style="background: #2a2a3e; padding: 20px; border-radius: 8px;">
-                    <h3 style="color: #4CAF50; margin-top: 0;">💰 Resource Cost</h3>
-                    <div style="line-height: 1.6; font-size: 13px; max-height: 200px; overflow-y: auto;">
-                        ${Object.entries(facilityStats.totalRecipeCost).length > 0 ?
-                            Object.entries(facilityStats.totalRecipeCost).map(([resource, amount]) =>
-                                `<div>• ${resource}: <strong>${amount}</strong></div>`
-                            ).join('') :
-                            '<div style="color: #888;">No recipe ingredients required</div>'
-                        }
-                    </div>
-                </div>
-            </div>
-
-            <div style="margin-bottom: 25px;">
-                <h3 style="color: #4CAF50;">🏢 Building Architecture</h3>
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
-                    ${this.currentFacilityPlan.buildings.map(building => `
-                        <div style="background: #2a2a3e; padding: 15px; border-radius: 6px; ${building.comesWithStake ? 'border: 2px solid #FF9800;' : 'border: 1px solid #444;'}">
-                            <div style="font-weight: bold; color: #4CAF50; margin-bottom: 8px; font-size: 14px;">${building.name}</div>
-                            <div style="font-size: 11px; color: #ccc; margin-bottom: 8px;">Tier ${building.tier} • ${building.constructionTime || 0} min</div>
-                            <div style="display: flex; gap: 12px; font-size: 12px; flex-wrap: wrap;">
-                                <span title="Crew">👥 ${building.neededCrew || 0}/${building.crewSlots || 0}</span>
-                                <span title="Power">⚡ ${building.power || 0}</span>
-                                <span title="Storage">📦 ${(building.storage || 0).toLocaleString()}</span>
-                            </div>
-                            ${building.comesWithStake ? '<div style="color: #FF9800; font-size: 10px; margin-top: 8px;">📍 Included with Stake</div>' : ''}
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-
-            ${Object.keys(facilityStats.resourceExtraction).length > 0 || Object.keys(facilityStats.resourceConsumption).length > 0 ? `
-                <div style="background: #2a2a3e; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
-                    <h3 style="color: #4CAF50; margin-top: 0;">🔄 Resource Production Flow</h3>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                        ${Object.keys(facilityStats.resourceExtraction).length > 0 ? `
-                            <div>
-                                <h4 style="color: #66bb6a; font-size: 14px;">Production (+)</h4>
-                                <div style="font-size: 12px; line-height: 1.6;">
-                                    ${Object.entries(facilityStats.resourceExtraction).map(([resource, rate]) =>
-                                        `<div>• ${resource}: <span style="color: #66bb6a;">+${rate.toFixed(3)}/hour</span></div>`
-                                    ).join('')}
-                                </div>
-                            </div>
-                        ` : ''}
-                        ${Object.keys(facilityStats.resourceConsumption).length > 0 ? `
-                            <div>
-                                <h4 style="color: #ef5350; font-size: 14px;">Consumption (-)</h4>
-                                <div style="font-size: 12px; line-height: 1.6;">
-                                    ${Object.entries(facilityStats.resourceConsumption).map(([resource, rate]) =>
-                                        `<div>• ${resource}: <span style="color: #ef5350;">-${rate.toFixed(3)}/hour</span></div>`
-                                    ).join('')}
-                                </div>
-                            </div>
-                        ` : ''}
-                    </div>
-                </div>
-            ` : ''}
-
-            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #444; text-align: center; color: #666; font-size: 12px;">
-                Generated by ClaimStake Explorer • Star Atlas Planning Tool
-            </div>
-        `;
-
-        return container;
-    }
-}
-
-// Initialize when tab is switched
-function initializeConstructionTab() {
-    if (!window.constructionManager) {
-        window.constructionManager = new ConstructionManager();
-        window.constructionManager.initializeWithPlanetData();
-    }
-}
+    // ---- entry point used by app.js when the Construction tab opens
+    window.initializeConstructionTab = function () {
+        if (window.constructionManager) return;
+        const root = document.getElementById('constructionContent');
+        if (!root) return;
+        window.constructionManager = new StakeBuilder(root);
+    };
+})();

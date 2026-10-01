@@ -135,17 +135,47 @@ Plan claim stake construction and analyze building efficiency
 
 **Features:**
 - Browse 100+ building types with filtering
-- **Building Analytics:** Tier distribution and resource requirements
-- **Recipe-Based ClaimStake Optimizer:** Find optimal planet placement for any recipe
-  - Analyzes raw material availability and processing chains
-  - Identifies single-planet craftable items (🔨 icon)
-  - Detects multi-planet cooperation needs (🔗 icon)
-  - Ranks regions by coverage score and proximity
-  - Color-coded resources (🟢 raw, 🟠 processed)
-- **Construction Tab:** Build facility plans with slot/power validation
-  - Slot limits: T1=4, T2=32, T3=108, T4=256, T5=500
-  - Power requirements: T1=100, T2=200, T3=300, T4=400, T5=500
-  - Export plans as JSON
+- **Analytics tab (rebuilt 2026-09-30):** three questions the export can answer, all computed from the loaded
+  data bundles (no derived JSON, no Chart.js)
+  - **Which tier to buy:** per planet type, a T1-T5 table from `buildings.json`: stake slots, the central hub, the
+    full hub set, one extractor and one processor at that tier, and the best lean stake (central + extraction hub
+    + power plant + crew quarters as needed) expressed as "extractors that fit" with the binding limit (slots, crew
+    or power). Extractor crew grows as n^3 while crew quarters house 5/10/20/40/80, so tiers 2-3 bind on crew
+  - **Deposit atlas:** the 93 raw deposits with stakeable-planet count, belt count, best richness, territory
+    counts, and whether an extractor family exists (six raws are fleet-mined only); click one for its ten richest
+    planets and a "Plan stake" button into the Stake Builder
+  - **Where to stake for a recipe:** search any of the 3,951 craftable outputs, expand its tree to raws, rank
+    every stakeable planet by coverage (then richness), filter by territory, see the regions with full coverage
+    and hand a planet to the Stake Builder. Fleet-only raws and unmapped ingredients are called out
+  - The previous tab parsed faction and region out of planet NAMES with a pattern from the old naming scheme, so
+    every planet was faction "SER"/region "Other" and the optimizer's faction filter matched nothing; it is gone
+    (`recipe-optimizer.js`, `competitive-advantage.js`, `analytics-styles.css` deleted)
+- **Stake Builder tab (rebuilt 2026-09-30):** plan one claim stake visually
+  - pick a planet (3,901 bodies, searchable, faction and category chips; asteroid belts are listed but cannot hold a stake)
+  - pick the stake you will buy: Standard or Cultivation, tier 1-5 with the slot counts from `claimStakeDefinitions`
+    (65 / 487 / 2,049 / 6,251 / 15,553). A stake is bought per tier and holds tier-N buildings only, so the catalogue
+    shows one tier at a time and the export's `-tN` upgrade-path tags are ignored
+  - the catalogue knows the rules: hubs unlock their family (adding an extractor adds the Extraction Hub for you),
+    extractors need their deposit on the planet, processors need every input on the planet (an input made by another
+    building in the plan is allowed but flagged as an unverified chain), the Fuel processor needs a tier 3+ stake
+  - the pad is an isometric hex grid with a Blender-rendered tile per building kind (`Images/stake/`, 12 tiles,
+    143 KB); extractors cluster by the Extraction Hub, processors by the Processing Hub, resource chains are drawn
+    producer -> consumer; click a tile or a card for the full sheet (rates, cost, remove)
+  - three gauges: slots, power (drawn / generated, the signed sum of every building's `power`) and crew
+    (`neededCrew` against `crewSlots`)
+  - **Construct facility** plays the build sequence on the pad (tiles rise in dependency order with the running
+    clock); Export PNG draws the pad and the three sheets to a 2,800 px image
+  - the sheet is five always-on charts drawn as plain HTML bars (no Chart.js on this page any more), one row of
+    three plus a row of two: bill of materials (with build time, storage and fuel burn), net production per tick
+    (deficits in orange, made / used in the tooltip), build timeline (gantt in build order, with the plan verdict),
+    power budget per building, slots and crew stacked by building kind; the kind palette passed the dataviz
+    validator (CVD, lightness, contrast)
+  - the plan survives a reload (localStorage)
+
+**Art:** `Tools/landing/stake_tiles.py` renders the twelve tiles with Blender 5.2 (orthographic camera, elevation 32
+deg, so a hex of circumradius r projects to 1.732r x 1.06r, the squash the page's grid uses) and
+`Tools/landing/pack_stake_tiles.py` crops them with one fixed box and writes `Images/stake/manifest.json` (unit =
+pixels per world unit, anchor = the ground centre), which is how the page scales a tile to a cell.
 
 **Use Case:** Optimizing claim stake layouts and identifying strategic manufacturing locations
 
@@ -224,11 +254,10 @@ All analytics are powered by the **CrossExplorerAnalytics** engine, combining da
    - Faction dominance analysis
    - Territory quality metrics
 
-4. **Recipe-Based Optimization** (ClaimStake Explorer)
-   - Optimal planet placement for recipes
-   - Raw material proximity analysis
-   - Multi-planet vs single-planet detection
-   - Regional coverage and proximity scoring
+4. **Stake planning** (ClaimStake Explorer)
+   - Which tier to buy: what one tier-N stake runs once its hubs are up
+   - Deposit atlas: where every raw sits, and which are fleet-mined only
+   - Where to stake for a recipe: planets ranked by raw coverage, handed to the Stake Builder
 
 5. **Fleet Resource Footprint** (Ship Explorer)
    - Construction costs per configuration
@@ -354,26 +383,13 @@ OperationsHub/
 
 ## 💡 Key Features
 
-### Recipe-Based ClaimStake Optimizer
-One of the most powerful features - find the best planet(s) to manufacture any item:
-
-1. Search for any recipe (e.g., "Basic Hydraulics")
-2. System analyzes:
-   - Raw material locations (🟢 green tags)
-   - Processed ingredient locations (🟠 orange tags)
-   - Single-planet craftability (🔨 hammer icon)
-   - Multi-planet requirements (🔗 chain icon)
-3. Ranks regions by:
-   - Coverage score (% of resources available)
-   - Proximity score (planets closer together)
-4. Shows top 10 optimal regions with detailed breakdowns
-
-**Example Use Cases:**
-- "Where can I craft Electromagnetic Fuses?"
-- "Which planets have all materials for Ship Shields?"
-- "What regions support multi-stage component manufacturing?"
-
----
+### Where to stake for a recipe
+The ClaimStake Explorer's Analytics tab answers "where do I put a stake to feed this item": pick an output, the
+recipe tree is expanded to raw deposits (one recipe per output name, the live `v1` one preferred), and every
+stakeable planet is ranked by how many of those raws it carries, with richness as the tiebreak. Full coverage means
+one stake feeds the whole tree; raws with no extractor family (Tritium Ore, Garnet Crystals, Aluminum Ore, Zinc Ore,
+Osmium Ore, Manganese Ore) must come from fleet mining and are flagged. "Plan a stake here" opens the Stake Builder on
+that planet.
 
 ## 🧪 Testing
 

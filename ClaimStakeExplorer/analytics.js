@@ -1,1158 +1,284 @@
-class BuildingAnalytics {
-    constructor(data) {
-        this.data = data;
-        this.resourceTierData = null;
-        this.allPlanetsData = null;
-        this.tierPlanetIndex = null;
-        this.generateAnalytics();
-    }
+// analytics.js - ClaimStake Explorer Analytics tab (rebuilt 2026-09-30). Three questions the export can answer:
+//   1. Which stake tier to buy: what a tier-N stake holds once the hubs are up, derived from buildings.json
+//      (slots per stake from claimStakeDefinitions, every hub / extractor / processor at that tier, crew binding).
+//   2. Deposit atlas: where each of the 93 raw deposits sits (stakeable planets, belts, best richness, territory),
+//      and whether an extractor family exists for it (six raws are fleet-mined only).
+//   3. Where to stake for a recipe: expand a recipe to its raws and rank stakeable planets by coverage.
+// Replaces the 2025 tier-recommendation / recipe-optimizer code, which read faction and region out of planet NAMES
+// with a pattern from the old naming scheme ("004-MUD-..."); today's names ("Serene Anchorage") made every planet
+// faction "SER" and region "Other", and the optimizer's faction filter then matched nothing.
+(function () {
+    'use strict';
 
-    generateAnalytics() {
-        this.tierAnalysis = this.analyzeTiers();
-        this.typeAnalysis = this.analyzeTypes();
-        this.resourceAnalysis = this.analyzeResources();
-        this.costAnalysis = this.analyzeCosts();
-        this.propertyAnalysis = this.analyzeProperties();
-    }
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const slug = n => String(n || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const num = (v, d) => (typeof v === 'number' ? v.toLocaleString(undefined, { maximumFractionDigits: d == null ? 3 : d }) : '0');
+    const CAT_NAME = ['Terrestrial', 'Volcanic', 'Barren', 'Asteroid Belt', 'Gas Giant', 'Ice Giant', 'Dark', 'Oceanic'];
+    const CAT_SLUG = ['terrestrial', 'volcanic', 'barren', 'asteroid-belt', 'gas-giant', 'ice-giant', 'dark', 'oceanic'];
+    const CAT_COLOR = ['#3fae79', '#e2512b', '#b7a58a', '#9a9a9a', '#d99a4e', '#7fd0ff', '#6b70b8', '#2f8cff'];
+    const FAC = { MUD: 'mud', ONI: 'oni', UST: 'ustur', USTUR: 'ustur', Ustur: 'ustur' };
+    const FAC_LABEL = { mud: 'MUD', oni: 'ONI', ustur: 'USTUR' };
+    const facOf = s => FAC[s] || slug(s || '');
 
-    async loadResourceTierData() {
-        if (this.resourceTierData) return;
-
-        try {
-            const response = await fetch('../JSON/resource_tier_analysis.json');
-            if (!response.ok) throw new Error('Failed to load resource tier data');
-            this.resourceTierData = await response.json();
-        } catch (error) {
-            console.error('Error loading resource tier data:', error);
-            this.resourceTierData = null;
-        }
-    }
-    async loadAllPlanetsData() {
-        if (this.allPlanetsData) {
-            return this.allPlanetsData;
+    class BuildingAnalytics {
+        constructor(data) {
+            this.data = data;
+            this.filters = { tierType: 0, atlasQ: '', atlasSort: 'planets', recipeFactions: new Set(), recipeQ: '' };
+            this.recipe = null;
+            this.prepared = false;
         }
 
-        const response = await fetch('../JSON/planets.json');
-        if (!response.ok) {
-            throw new Error('Failed to load planet data');
-        }
-
-        const data = await response.json();
-        this.allPlanetsData = data.mapData || [];
-        return this.allPlanetsData;
-    }
-
-
-    extractRegionCode(planetName) {
-        if (!planetName) {
-            return 'Other';
-        }
-
-        const match = planetName.match(/^(\d{3}|CSS)/);
-        return match ? match[1] : 'Other';
-    }
-
-    extractFactionCode(planetName, systemName = '') {
-        const sources = [planetName, systemName].filter(Boolean);
-
-        for (const source of sources) {
-            const factionMatch = source.match(/-(\w{3})-/i);
-            if (factionMatch && factionMatch[1]) {
-                return factionMatch[1].toUpperCase();
-            }
-
-            const prefixMatch = source.match(/^(\w{3})/i);
-            if (prefixMatch && prefixMatch[1]) {
-                return prefixMatch[1].toUpperCase();
-            }
-        }
-
-        return 'UNK';
-    }
-
-    async buildTierPlanetIndex() {
-        if (this.tierPlanetIndex) {
-            return this.tierPlanetIndex;
-        }
-
-        await this.loadResourceTierData();
-        const typeLookup = (this.resourceTierData && this.resourceTierData.type_to_tier_mapping) || {};
-        const systems = await this.loadAllPlanetsData();
-
-        const tiers = {};
-
-        systems.forEach(system => {
-            (system.planets || []).forEach(planet => {
-                if (!planet.resources || planet.resources.length === 0) {
-                    return;
-                }
-
-                const tierCounts = {};
-                let highestTier = 0;
-
-                planet.resources.forEach(resource => {
-                    const tierInfo = typeLookup[resource.type];
-                    if (!tierInfo || !tierInfo.tier) {
-                        return;
-                    }
-
-                    const tier = tierInfo.tier;
-                    tierCounts[tier] = (tierCounts[tier] || 0) + 1;
-                    highestTier = Math.max(highestTier, tier);
-                });
-
-                if (!highestTier) {
-                    return;
-                }
-
-                const tierKey = `tier_${highestTier}`;
-                if (!tiers[tierKey]) {
-                    tiers[tierKey] = {
-                        totalPlanets: 0,
-                        totalTierResources: 0,
-                        totalRegions: 0,
-                        factions: new Map()
-                    };
-                }
-
-                const tierBucket = tiers[tierKey];
-                tierBucket.totalPlanets += 1;
-
-                const factionCode = this.extractFactionCode(planet.name, system.name);
-                if (!tierBucket.factions.has(factionCode)) {
-                    tierBucket.factions.set(factionCode, {
-                        code: factionCode,
-                        planetCount: 0,
-                        totalTierResources: 0,
-                        regions: new Map()
-                    });
-                }
-
-                const factionBucket = tierBucket.factions.get(factionCode);
-                factionBucket.planetCount += 1;
-
-                const regionCode = this.extractRegionCode(planet.name);
-                if (!factionBucket.regions.has(regionCode)) {
-                    factionBucket.regions.set(regionCode, {
-                        code: regionCode,
-                        planetCount: 0,
-                        totalTierResources: 0,
-                        planets: []
-                    });
-                }
-
-                const targetTierCount = tierCounts[highestTier] || 0;
-                const planetSummary = {
-                    planet: planet.name,
-                    system: system.name,
-                    tier_counts: tierCounts,
-                    total_resources: planet.resources.length,
-                    highestTier: highestTier,
-                    highestTierCount: targetTierCount
-                };
-
-                const regionBucket = factionBucket.regions.get(regionCode);
-                regionBucket.planets.push(planetSummary);
-                regionBucket.planetCount += 1;
-                regionBucket.totalTierResources += targetTierCount;
-
-                factionBucket.totalTierResources += targetTierCount;
-                tierBucket.totalTierResources += targetTierCount;
+        // ---------------------------------------------------------------- data
+        prepare() {
+            if (this.prepared) return;
+            const SD = window.StakeData; SD.init();
+            this.SD = SD;
+            this.buildings = SD.buildings;
+            this.byId = new Map(this.buildings.map(b => [b.id, b]));
+            this.regions = new Map(((window.planetData && window.planetData.regionDefinitions) || []).map(r => [r.id, r]));
+            // stakeable planets with territory + region
+            this.planets = SD.planets.filter(p => p.cat !== 3).map(p => {
+                const s = p.system, reg = this.regions.get(s.regionId);
+                const names = new Set((p.planet.resources || []).map(r => slug(r.name)));
+                const rich = new Map((p.planet.resources || []).map(r => [slug(r.name), r.richness]));
+                return Object.assign({ territory: facOf(s.closestFaction || s.faction), region: reg ? reg.name : 'unknown', risk: reg ? (typeof reg.risk_zone === 'string' ? 'medium' : 'safe') : '', names, rich }, p);
             });
-        });
-
-        Object.keys(tiers).forEach(key => {
-            const bucket = tiers[key];
-            let totalRegions = 0;
-
-            bucket.factions = Array.from(bucket.factions.values()).map(faction => {
-                faction.regions = Array.from(faction.regions.values()).map(region => {
-                    region.planets.sort((a, b) => {
-                        const countDiff = (b.highestTierCount || 0) - (a.highestTierCount || 0);
-                        if (countDiff !== 0) {
-                            return countDiff;
-                        }
-
-                        const totalDiff = (b.total_resources || 0) - (a.total_resources || 0);
-                        if (totalDiff !== 0) {
-                            return totalDiff;
-                        }
-
-                        return a.planet.localeCompare(b.planet);
-                    });
-
-                    region.avgTierResources = region.planetCount
-                        ? region.totalTierResources / region.planetCount
-                        : 0;
-
-                    return region;
-                }).sort((a, b) => {
-                    const planetDiff = b.planetCount - a.planetCount;
-                    if (planetDiff !== 0) {
-                        return planetDiff;
-                    }
-                    return a.code.localeCompare(b.code);
+            // deposit atlas
+            const ext = new Set(this.buildings.filter(b => (b.addedTags || []).includes('extractor')).map(b => b.id.replace(/-extractor-t\d$/, '')));
+            const atlas = new Map();
+            SD.planets.forEach(p => {
+                const belt = p.cat === 3, s = p.system, terr = facOf(s.closestFaction || s.faction);
+                (p.planet.resources || []).forEach(r => {
+                    const k = slug(r.name);
+                    let d = atlas.get(k);
+                    if (!d) { d = { id: k, name: r.name, tier: SD.resTier(k) || 0, planets: 0, belts: 0, best: 0, fac: { mud: 0, oni: 0, ustur: 0 }, extractor: ext.has(k), top: [] }; atlas.set(k, d); }
+                    if (belt) d.belts++; else { d.planets++; d.fac[terr] = (d.fac[terr] || 0) + 1; d.top.push({ key: p.key, name: p.planet.name, system: s.name || s.key, terr, cat: p.cat, richness: r.richness }); }
+                    if (r.richness > d.best) d.best = r.richness;
                 });
-
-                totalRegions += faction.regions.length;
-                faction.avgTierResources = faction.planetCount
-                    ? faction.totalTierResources / faction.planetCount
-                    : 0;
-
-                return faction;
-            }).sort((a, b) => {
-                const planetDiff = b.planetCount - a.planetCount;
-                if (planetDiff !== 0) {
-                    return planetDiff;
-                }
-                return a.code.localeCompare(b.code);
             });
-
-            bucket.totalRegions = totalRegions;
-            bucket.avgTierResources = bucket.totalPlanets
-                ? bucket.totalTierResources / bucket.totalPlanets
-                : 0;
-        });
-
-        this.tierPlanetIndex = tiers;
-        return this.tierPlanetIndex;
-    }
-
-
-    async renderPlanetRecommendations() {
-        await this.loadResourceTierData();
-
-        if (!this.resourceTierData) return;
-
-        const tierPlanetIndex = await this.buildTierPlanetIndex();
-        const tierSummaries = tierPlanetIndex || {};
-        const tierDataByHighest = this.resourceTierData.planets_by_highest_tier || {};
-        const tierFiveData = tierDataByHighest.tier_5 || {};
-        const tierFiveTotal = tierFiveData.total_planets || 0;
-        const container = document.getElementById('analyticsContent');
-
-        const recommendationsSection = document.createElement('div');
-        recommendationsSection.className = 'planet-recommendations analytics-section';
-        recommendationsSection.innerHTML = `
-            <h3>ClaimStake Tier Recommendations</h3>
-            <p class="section-note">Match your claim stake tier with planet resources to maximize efficiency.</p>
-
-            <div class="label-explanation">
-                <h4>How to Read Planet Cards:</h4>
-                <div class="explanation-grid">
-                    <div class="explanation-item">
-                        <span class="example-label" style="color: #9b59b6; font-weight: 700;">7 T5</span>
-                        <span class="explanation-text">= Number of Tier 5 resources on this planet</span>
-                    </div>
-                    <div class="explanation-item">
-                        <span class="example-label" style="color: rgba(255,255,255,0.6);">78 total</span>
-                        <span class="explanation-text">= Total resources across all tiers (T1-T5)</span>
-                    </div>
-                    <div class="explanation-item">
-                        <span class="example-label" style="background: rgba(255,255,255,0.1); padding: 0.3rem 0.6rem; border-radius: 4px;">${tierFiveTotal} planets</span>
-                        <span class="explanation-text">= Planets where this is the highest available tier</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="tier-recommendations-grid">
-                ${this.renderTierRecommendation(5, 'Legendary', '#9b59b6', 'T5', tierSummaries['tier_5'])}
-                ${this.renderTierRecommendation(4, 'Epic', '#3498db', 'T4', tierSummaries['tier_4'])}
-                ${this.renderTierRecommendation(3, 'Rare', '#2ecc71', 'T3', tierSummaries['tier_3'])}
-                ${this.renderTierRecommendation(2, 'Uncommon', '#95a5a6', 'T2', tierSummaries['tier_2'])}
-                ${this.renderTierRecommendation(1, 'Common', '#7f8c8d', 'T1', tierSummaries['tier_1'])}
-            </div>
-        `;
-
-        container.appendChild(recommendationsSection);
-        this.attachPlanetCardHandlers(recommendationsSection);
-        this.attachRegionButtonHandlers(recommendationsSection);
-    }
-
-
-    renderTierRecommendation(tier, tierName, color, icon, tierSummary) {
-        const highestTierData = (this.resourceTierData.planets_by_highest_tier && this.resourceTierData.planets_by_highest_tier[`tier_${tier}`]) || null;
-
-        if (!highestTierData && !tierSummary) {
-            return `
-                <div class="tier-recommendation" style="border-left-color: ${color}">
-                    <div class="tier-recommendation-header">
-                        <span class="tier-icon">${icon}</span>
-                        <h4>T${tier} - ${tierName}</h4>
-                    </div>
-                    <p class="tier-info-text">No data available</p>
-                </div>
-            `;
+            atlas.forEach(d => { d.top.sort((a, b) => b.richness - a.richness || a.name.localeCompare(b.name)); d.top = d.top.slice(0, 10); const e = this.byId.get(d.id + '-extractor-t1'); d.rate = e ? Object.values(e.resourceExtractionRate || {})[0] : null; });
+            this.atlas = Array.from(atlas.values());
+            // recipes: one recipe per output name (live status first), ingredients by name
+            const recs = (window.rawRecipeData && window.rawRecipeData.recipes) || [];
+            const rank = { v1: 0, 'v1-add': 1, v2: 2 };
+            this.recipeByName = new Map();
+            recs.forEach(r => { const cur = this.recipeByName.get(r.outputName); if (!cur || (rank[r.c4_status] ?? 3) < (rank[cur.c4_status] ?? 3)) this.recipeByName.set(r.outputName, r); });
+            this.recipeNames = Array.from(this.recipeByName.keys()).sort();
+            this.rawByName = new Map(this.atlas.map(d => [d.name, d]));
+            this.resByName = new Map(Array.from(SD.res.values()).map(r => [r.name, r]));
+            this.prepared = true;
         }
 
-        const topPlanets = highestTierData && highestTierData.top_20_planets ? highestTierData.top_20_planets.slice(0, 10) : [];
-        const tierSummaryData = this.resourceTierData.tier_summary ? this.resourceTierData.tier_summary[`tier_${tier}`] : null;
-
-        let resourcePreview = '';
-        if ((tier === 5 || tier === 4) && tierSummaryData && tierSummaryData.resources) {
-            const previewResources = tierSummaryData.resources;
-            resourcePreview = `
-                <div class="resource-tags">
-                    ${previewResources.map(resource =>
-                        `<span class="resource-tag" style="background-color: ${color}20; border-color: ${color}60;">${resource.name}</span>`
-                    ).join('')}
-                </div>
-            `;
-        }
-
-        const totalPlanets = highestTierData ? highestTierData.total_planets : (tierSummary ? tierSummary.totalPlanets : 0);
-        const warning = tier === 5 ? `
-            <div class="warning-text">
-                Do not waste T5 claim stakes on planets without Tier 5 resources.
-            </div>
-        ` : '';
-
-        const regionMarkup = tierSummary
-            ? this.renderFullTierRegions(tierSummary, tier, color)
-            : this.renderRegionalPlanets(topPlanets, tier, color);
-
-        return `
-            <div class="tier-recommendation" style="border-left-color: ${color}">
-                <div class="tier-recommendation-header">
-                    <div class="tier-header-left">
-                        <span class="tier-icon">${icon}</span>
-                        <h4 style="color: ${color}">T${tier} - ${tierName}</h4>
-                    </div>
-                    <div class="tier-stats">
-                        <span class="planet-count">${totalPlanets} planets</span>
-                    </div>
-                </div>
-
-                <p class="tier-info-text">
-                    Can extract T${tier} resources${tier < 5 ? ' and lower tiers' : ' only'}.
-                </p>
-
-                ${warning}
-                ${resourcePreview}
-
-                <div class="regional-planets-section">
-                    ${regionMarkup}
-                </div>
-            </div>
-        `;
-    }
-
-
-renderFullTierRegions(tierSummary, tier, color) {
-    if (!tierSummary || !tierSummary.factions || tierSummary.factions.length === 0) {
-        return '<p class=\"tier-info-text\">No planets found for this tier.</p>';
-    }
-
-    const totalFactions = tierSummary.factions.length;
-    const totalRegions = tierSummary.totalRegions || tierSummary.factions.reduce((sum, faction) => sum + faction.regions.length, 0);
-    const summaryAverage = typeof tierSummary.avgTierResources === 'number' ? tierSummary.avgTierResources : 0;
-
-    const summarySection = `
-        <div class="tier-region-summary">
-            <div class="summary-card">
-                <span class="summary-label">Factions</span>
-                <span class="summary-value">${totalFactions}</span>
-            </div>
-            <div class="summary-card">
-                <span class="summary-label">Regions</span>
-                <span class="summary-value">${totalRegions}</span>
-            </div>
-            <div class="summary-card">
-                <span class="summary-label">Planets</span>
-                <span class="summary-value">${tierSummary.totalPlanets}</span>
-            </div>
-            <div class="summary-card">
-                <span class="summary-label">Avg T${tier} Resources</span>
-                <span class="summary-value">${summaryAverage.toFixed(1)}</span>
-            </div>
-        </div>
-    `;
-
-    const factionsMarkup = tierSummary.factions.map(faction => {
-        const factionAverage = typeof faction.avgTierResources === 'number' ? faction.avgTierResources : 0;
-        const regionsMarkup = faction.regions.map(region => {
-            const regionAverage = typeof region.avgTierResources === 'number' ? region.avgTierResources : 0;
-            const payload = encodeURIComponent(JSON.stringify({
-                faction: faction.code,
-                region: region.code,
-                planetCount: region.planetCount,
-                avgTierResources: regionAverage,
-                planets: region.planets || []
-            }));
-
-            return `
-                <button type="button" class="region-chip" data-region="${payload}" data-tier="${tier}" data-color="${color}" title="${region.planetCount} planets · avg ${regionAverage.toFixed(1)} T${tier}" style="border-color: ${color}55; background: ${color}15;">
-                    ${region.code}<span class="region-chip-meta">${region.planetCount}</span>
-                </button>
-            `;
-        }).join('');
-
-        return `
-        <section class="tier-faction-block">
-            <div class="tier-faction-header">
-                <span class="tier-faction-name">Faction ${faction.code}</span>
-                <span class="tier-faction-meta">${faction.planetCount} planets · avg ${factionAverage.toFixed(1)} T${tier}</span>
-            </div>
-            <div class="tier-faction-regions">
-                ${regionsMarkup || '<span class="tier-info-text">No regions recorded</span>'}
-            </div>
-        </section>
-        `;
-    }).join('');
-
-    return `
-        <div class="tier-region-overview">
-            ${summarySection}
-            <div class="tier-faction-list">
-                ${factionsMarkup}
-            </div>
-        </div>
-    `;
-}
-
-renderRegionalPlanets(planets, tier, color) {
-        const regions = this.groupPlanetsByRegion(planets);
-
-        return Array.from(regions.entries())
-            .sort((a, b) => b[1].length - a[1].length)
-            .map(([region, regionPlanets]) => `
-                <div class="region-group">
-                    <div class="region-header">
-                        <h5>Region ${region}</h5>
-                        <span class="region-count">${regionPlanets.length} planets</span>
-                    </div>
-                    <div class="planet-grid">
-                        ${regionPlanets.map(planet => {
-                            const encodedPlanet = encodeURIComponent(JSON.stringify(planet));
-                            return `
-                                <div class="planet-card clickable" data-planet="${encodedPlanet}" data-tier="${tier}" data-color="${color}">
-                                    <div class="planet-name">${planet.planet}</div>
-                                    <div class="planet-resources">
-                                        <span class="tier-count" style="color: ${color}">
-                                            ${planet.tier_counts[tier] || 0} T${tier}
-                                        </span>
-                                        <span class="total-count">
-                                            ${planet.total_resources} total
-                                        </span>
-                                    </div>
-                                </div>
-                            `;
-                        }).join('')}
-                    </div>
-                </div>
-            `).join('');
-    }
-
-
-attachRegionButtonHandlers(section) {
-    if (!section || section.dataset.regionHandlersAttached === 'true') {
-        return;
-    }
-
-    section.dataset.regionHandlersAttached = 'true';
-
-    section.addEventListener('click', (event) => {
-        const chip = event.target.closest('.region-chip');
-        if (!chip) return;
-
-        const encoded = chip.getAttribute('data-region');
-        if (!encoded) return;
-
-        try {
-            const payload = JSON.parse(decodeURIComponent(encoded));
-            const tierValue = parseInt(chip.getAttribute('data-tier'), 10) || 0;
-            const color = chip.getAttribute('data-color') || '#9b59b6';
-            this.showRegionModal(payload, tierValue, color);
-        } catch (error) {
-            console.error('Error parsing region payload:', error);
-        }
-    });
-}
-
-showRegionModal(regionData, tier, color) {
-    if (!regionData) return;
-
-    let overlay = document.getElementById('regionModalOverlay');
-    if (!overlay) {
-        overlay = document.createElement('div');
-        overlay.id = 'regionModalOverlay';
-        overlay.className = 'region-modal-overlay';
-        overlay.innerHTML = `
-            <div class="region-modal">
-                <div class="region-modal-header">
-                    <h3 class="region-modal-title"></h3>
-                    <button type="button" class="region-modal-close" aria-label="Close">×</button>
-                </div>
-                <div class="region-modal-body"></div>
-            </div>
-        `;
-        document.body.appendChild(overlay);
-
-        overlay.addEventListener('click', (event) => {
-            if (event.target === overlay) {
-                overlay.style.display = 'none';
-            }
-        });
-
-        overlay.querySelector('.region-modal-close').addEventListener('click', () => {
-            overlay.style.display = 'none';
-        });
-    }
-
-    const titleEl = overlay.querySelector('.region-modal-title');
-    const bodyEl = overlay.querySelector('.region-modal-body');
-
-    const factionLabel = regionData.faction ? `Faction ${regionData.faction}` : 'Faction';
-    titleEl.textContent = `${factionLabel} · Region ${regionData.region}`;
-
-    const planets = Array.isArray(regionData.planets) ? regionData.planets : [];
-    if (planets.length === 0) {
-        bodyEl.innerHTML = '<p class="tier-info-text">No planets recorded for this region.</p>';
-    } else {
-        bodyEl.innerHTML = planets.map(planet => {
-            const safePlanet = {
-                planet: planet.planet,
-                system: planet.system,
-                tier_counts: planet.tier_counts,
-                total_resources: planet.total_resources
+        // raws behind an output name (deterministic: the recipe map above), plus every intermediate
+        expand(name) {
+            const raws = new Map(), mids = [], seen = new Set();
+            const walk = (n, depth) => {
+                if (seen.has(n) || depth > 12) return; seen.add(n);
+                const res = this.resByName.get(n);
+                if (res && res.category === 'raw') { raws.set(n, (raws.get(n) || 0) + 1); return; }
+                const r = this.recipeByName.get(n);
+                if (!r || !r.ingredients || !r.ingredients.length) { raws.set(n, (raws.get(n) || 0) + 1); return; }
+                if (depth) mids.push(n);
+                r.ingredients.forEach(i => walk(i.name, depth + 1));
             };
-            const encodedPlanet = encodeURIComponent(JSON.stringify(safePlanet));
-            const tierCount = (planet.tier_counts && (planet.tier_counts[tier] || planet.tier_counts[String(tier)])) || planet.highestTierCount || 0;
-            return `
-                <button type="button" class="planet-chip clickable" data-planet="${encodedPlanet}" data-tier="${tier}" data-color="${color}">
-                    ${planet.planet} (${tierCount} x T${tier})
-                </button>
-            `;
-        }).join('');
-    }
-
-    overlay.style.display = 'flex';
-    this.attachPlanetCardHandlers(bodyEl);
-}
-
-    attachPlanetCardHandlers(section) {
-        if (!section) return;
-
-        section.addEventListener('click', (event) => {
-            const target = event.target.closest('[data-planet]');
-            if (!target) return;
-
-            const encoded = target.getAttribute('data-planet');
-            if (!encoded) return;
-
-            let planetData;
-            try {
-                planetData = JSON.parse(decodeURIComponent(encoded));
-            } catch (error) {
-                console.error('Error parsing planet data for modal:', error);
-                return;
-            }
-
-            let tierValue = parseInt(target.getAttribute('data-tier'), 10);
-            if (isNaN(tierValue)) {
-                tierValue = 5;
-            }
-
-            const color = target.getAttribute('data-color') || '#9b59b6';
-
-            this.showPlanetModal(planetData, tierValue, color);
-        });
-    }
-
-
-    groupPlanetsByRegion(planets) {
-        const regions = new Map();
-
-        planets.forEach(planet => {
-            // Extract region from planet name (first 3 digits)
-            const match = planet.planet.match(/^(\d{3}|CSS)/);
-            const region = match ? match[1] : 'Other';
-
-            if (!regions.has(region)) {
-                regions.set(region, []);
-            }
-            regions.get(region).push(planet);
-        });
-
-        return regions;
-    }
-
-    async showPlanetModal(planetData) {
-        // Load full planet data from planets.json
-        let fullPlanetData = null;
-
-        try {
-            // Load planet data if not already loaded
-            if (!this.allPlanetsData) {
-                const response = await fetch('../JSON/planets.json');
-                const data = await response.json();
-                this.allPlanetsData = data.mapData;
-            }
-
-            // Find the system and planet
-            for (const system of this.allPlanetsData) {
-                if (system.name === planetData.system) {
-                    const planet = system.planets.find(p => p.name === planetData.planet);
-                    if (planet) {
-                        fullPlanetData = { ...planet, system: system };
-                        break;
-                    }
-                }
-            }
-        } catch (error) {
-            console.error('Error loading planet data:', error);
+            walk(name, 0);
+            return { raws: Array.from(raws.keys()), mids };
         }
 
-        const modal = document.getElementById('buildingModal');
-        const modalContent = document.getElementById('modalContent');
-        const modalTitle = document.getElementById('modalTitle');
-
-        modalTitle.textContent = planetData.planet;
-
-        // Get resource type to tier mapping
-        const resourceTypeToTier = this.resourceTierData?.type_to_tier_mapping || {};
-
-        modalContent.innerHTML = `
-            <div class="planet-modal-content">
-                <div class="planet-overview">
-                    <h3>Planet Overview</h3>
-                    <div class="planet-info-grid">
-                        <div class="info-item">
-                            <span class="info-label">System:</span>
-                            <span class="info-value">${planetData.system}</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Total Resources:</span>
-                            <span class="info-value">${planetData.total_resources}</span>
-                        </div>
-                        ${fullPlanetData ? `
-                            <div class="info-item">
-                                <span class="info-label">Planet Type:</span>
-                                <span class="info-value">${this.getPlanetTypeName(fullPlanetData.type)}</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">Orbit:</span>
-                                <span class="info-value">${fullPlanetData.orbit?.toFixed(2) || 'Unknown'}</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">Scale:</span>
-                                <span class="info-value">${fullPlanetData.scale || 'Unknown'}</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">Angle:</span>
-                                <span class="info-value">${fullPlanetData.angle || 'Unknown'}°</span>
-                            </div>
-                        ` : ''}
-                    </div>
+        // ------------------------------------------------------------- render
+        async renderAnalytics() {
+            this.prepare();
+            const root = document.getElementById('analyticsContent');
+            if (!root) return;
+            const live = Array.from(this.recipeByName.values()).filter(r => r.c4_status === 'v1').length;
+            root.innerHTML = `
+                <div class="an-stats">
+                    ${[[this.planets.length, 'stakeable planets'], [this.SD.planets.length - this.planets.length, 'asteroid belts (no stake)'], [this.atlas.length, 'raw deposits'], [this.atlas.filter(d => !d.extractor).length, 'fleet-mined only'], [this.regions.size, 'regions'], [this.recipeNames.length, 'craftable outputs']].map(([n, l]) => `<div class="an-stat"><b>${n.toLocaleString()}</b><span>${l}</span></div>`).join('')}
                 </div>
+                <nav class="an-jump"><a href="#anTier">Which tier to buy</a><a href="#anAtlas">Deposit atlas</a><a href="#anRecipe">Where to stake for a recipe</a></nav>
+                <section class="an-section" id="anTier"></section>
+                <section class="an-section" id="anAtlas"></section>
+                <section class="an-section" id="anRecipe"></section>`;
+            this.renderTier(); this.renderAtlas(); this.renderRecipe();
+            if (!root.dataset.bound) { root.dataset.bound = '1'; this.bind(root); }
+        }
 
-                <div class="resource-breakdown">
-                    <h3>Resources by Tier</h3>
-                    <div class="tier-resource-grid">
-                        ${Object.entries(planetData.tier_counts).sort((a, b) => b[0] - a[0]).map(([t, count]) => {
-                            const tierColor = this.getTierColor(parseInt(t));
-                            return `
-                                <div class="tier-resource-item" style="border-left: 3px solid ${tierColor};">
-                                    <div class="tier-resource-header">
-                                        <span class="tier-badge-large" style="background: ${tierColor};">T${t}</span>
-                                        <span class="tier-resource-count">${count} resources</span>
-                                    </div>
-                                </div>
-                            `;
-                        }).join('')}
-                    </div>
-                </div>
+        bind(root) {
+            const snd = n => { if (window.spaceSounds && window.spaceSounds[n]) window.spaceSounds[n](); };
+            root.addEventListener('click', e => {
+                const tt = e.target.closest('[data-tier-type]'); if (tt) { this.filters.tierType = +tt.dataset.tierType; snd('select'); this.renderTier(); return; }
+                const row = e.target.closest('[data-dep]'); if (row && !e.target.closest('[data-plan]')) { row.classList.toggle('open'); snd('click'); return; }
+                const plan = e.target.closest('[data-plan]'); if (plan) { snd('success'); this.openBuilder(plan.dataset.plan); return; }
+                const rr = e.target.closest('[data-recipe]'); if (rr) { snd('click'); this.pickRecipe(rr.dataset.recipe); return; }
+                const fc = e.target.closest('[data-rf]'); if (fc) { const f = fc.dataset.rf; this.filters.recipeFactions.has(f) ? this.filters.recipeFactions.delete(f) : this.filters.recipeFactions.add(f); snd('select'); this.renderRecipeResults(); return; }
+                const clr = e.target.closest('[data-recipe-clear]'); if (clr) { this.recipe = null; this.filters.recipeQ = ''; this.renderRecipe(); return; }
+            });
+            root.addEventListener('input', e => {
+                if (e.target.id === 'anAtlasQ') { this.filters.atlasQ = e.target.value.trim().toLowerCase(); this.renderAtlasRows(); }
+                if (e.target.id === 'anRecipeQ') { this.filters.recipeQ = e.target.value.trim().toLowerCase(); this.renderRecipeHits(); }
+            });
+            root.addEventListener('change', e => { if (e.target.id === 'anAtlasSort') { this.filters.atlasSort = e.target.value; this.renderAtlasRows(); } });
+        }
 
-                ${fullPlanetData && fullPlanetData.resources ? `
-                    <div class="resource-list-section">
-                        <h3>All Resources (${fullPlanetData.resources.length})</h3>
-                        <div class="resource-list-grid">
-                            ${fullPlanetData.resources.map(resource => {
-                                const tierInfo = resourceTypeToTier[resource.type];
-                                const resourceTier = tierInfo?.tier || '?';
-                                const resourceName = tierInfo?.name || resource.name;
-                                const tierColor = this.getTierColor(resourceTier);
-                                const richnessStars = '★'.repeat(resource.richness) + '☆'.repeat(5 - resource.richness);
+        async openBuilder(key) {
+            const app = window.claimStakeApp; if (!app) return;
+            await app.switchTab('construction');
+            if (window.constructionManager) { window.constructionManager.selectPlanet(key); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+        }
 
-                                return `
-                                    <div class="resource-list-item">
-                                        <span class="resource-tier-badge" style="background: ${tierColor};">T${resourceTier}</span>
-                                        <span class="resource-name">${resourceName}</span>
-                                        <span class="resource-richness" title="Richness: ${resource.richness}/5">${richnessStars}</span>
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
-                    </div>
-                ` : ''}
-            </div>
-        `;
-
-        modal.style.display = 'block';
-    }
-
-    getTierColor(tier) {
-        const colors = {
-            5: '#9b59b6',
-            4: '#3498db',
-            3: '#2ecc71',
-            2: '#95a5a6',
-            1: '#7f8c8d'
-        };
-        return colors[tier] || '#7f8c8d';
-    }
-
-    getPlanetTypeName(type) {
-        // Basic planet type mapping
-        const types = {
-            1: 'Terrestrial', 2: 'Desert', 3: 'Ice', 4: 'Ocean', 5: 'Volcanic',
-            6: 'Gas Giant', 7: 'Rocky', 8: 'Toxic', 9: 'Barren', 10: 'Forest',
-            11: 'Tundra', 12: 'Jungle', 13: 'Swamp', 14: 'Lava', 15: 'Crystalline'
-        };
-        return types[type] || `Type ${type}`;
-    }
-
-    analyzeTiers() {
-        const tierStats = new Map();
-        let totalPower = 0;
-        let totalStorage = 0;
-
-        this.data.allBuildings.forEach(building => {
-            const tier = building.tier || 0;
-            if (!tierStats.has(tier)) {
-                tierStats.set(tier, {
-                    count: 0,
-                    totalPower: 0,
-                    totalStorage: 0,
-                    totalCrew: 0,
-                    avgConstructionTime: 0,
-                    buildings: []
-                });
+        // ---- 1. which tier to buy
+        tierFacts(type, tier) {
+            const b = k => this.byId.get(`${CAT_SLUG[type]}-${k}-t${tier}`);
+            const central = b('central-hub'), hubs = { extraction: b('extraction-hub'), processing: b('processing-hub'), storage: b('storage-hub'), farm: b('farm-hub'), power: b('power-plant'), crew: b('crew-quarters'), module: b('storage-module') };
+            const ex = this.byId.get(`copper-ore-extractor-t${tier}`), pr = this.byId.get(`copper-processor-t${tier}`);
+            if (!central || !ex || !pr || Object.values(hubs).some(h => !h)) return null;
+            const slots = this.SD.slots.standard[tier];
+            const set = [hubs.extraction, hubs.processing, hubs.storage, hubs.farm, hubs.power];
+            const sum = (list, f) => list.reduce((a, x) => a + (f(x) || 0), 0);
+            const full = { slots: sum(set, x => x.slots), power: central.power + sum(set, x => x.power), housed: central.crewSlots + sum(set, x => x.crewSlots), needed: central.neededCrew + sum(set, x => x.neededCrew), storage: central.storage + sum(set, x => x.storage), time: sum(set, x => x.constructionTime), units: sum(set, x => Object.values(x.constructionCost || {}).reduce((a, v) => a + v, 0)) };
+            // best mix on a lean stake (central + extraction hub + power plant + k crew quarters): most extractors that fit slots, crew and power
+            const lean = [hubs.extraction, hubs.power];
+            let best = { n: 0, k: 0, bound: 'slots' };
+            for (let k = 0; k <= 40; k++) {
+                const used = sum(lean, x => x.slots) + k * hubs.crew.slots;
+                const housed = central.crewSlots + sum(lean, x => x.crewSlots) + k * hubs.crew.crewSlots - central.neededCrew - sum(lean, x => x.neededCrew);
+                const power = central.power + sum(lean, x => x.power) + k * hubs.crew.power;
+                const bySlots = Math.floor((slots - used) / ex.slots), byCrew = Math.floor(housed / ex.neededCrew), byPower = Math.floor(power / -ex.power);
+                const n = Math.max(0, Math.min(bySlots, byCrew, byPower));
+                if (n > best.n) best = { n, k, bound: n === bySlots ? 'slots' : (n === byCrew ? 'crew' : 'power') };
             }
+            const ex1 = this.byId.get('copper-ore-extractor-t1');
+            return { tier, slots, central, hubs, ex, pr, full, best, mult: Object.values(ex.resourceExtractionRate)[0] / Object.values(ex1.resourceExtractionRate)[0], proc: Object.values(pr.resourceRate).find(v => v > 0) };
+        }
 
-            const stats = tierStats.get(tier);
-            stats.count++;
-            stats.totalPower += building.power || 0;
-            stats.totalStorage += building.storage || 0;
-            stats.totalCrew += building.crewSlots || 0;
-            stats.avgConstructionTime += building.constructionTime || 0;
-            stats.buildings.push(building);
+        fmtTime(sec) { if (!sec) return '0'; if (sec < 60) return sec + ' s'; const m = Math.round(sec / 60); if (m < 60) return m + ' min'; const h = Math.floor(m / 60), mm = m % 60; return h + ' h' + (mm ? ' ' + mm + ' min' : ''); }
 
-            totalPower += building.power || 0;
-            totalStorage += building.storage || 0;
-        });
+        renderTier() {
+            const el = document.getElementById('anTier'); if (!el) return;
+            const type = this.filters.tierType;
+            const facts = [1, 2, 3, 4, 5].map(t => this.tierFacts(type, t));
+            const row = (label, f, cls) => `<tr class="${cls || ''}"><th>${label}</th>${facts.map(x => `<td>${x ? f(x) : '–'}</td>`).join('')}</tr>`;
+            const sign = v => (v > 0 ? '+' : '') + num(v);
+            el.innerHTML = `
+                <div class="an-head"><h3>Which tier to buy</h3><p>A stake is bought per tier and holds tier-N buildings only, so the question is what one tier-N stake can run once its hubs are up. Numbers from buildings.json for a <b>${CAT_NAME[type]}</b> planet; the central hub comes with the stake.</p></div>
+                <div class="chips an-types">${CAT_NAME.map((n, i) => i === 3 ? '' : `<button type="button" class="chip${i === type ? ' on' : ''}" data-tier-type="${i}" style="--c:${CAT_COLOR[i]}"><i></i>${n}</button>`).join('')}</div>
+                <div class="an-tablewrap"><table class="an-table">
+                    <thead><tr><th></th>${facts.map(x => `<th><span class="t t${x.tier}">T${x.tier}</span></th>`).join('')}</tr></thead>
+                    <tbody>
+                        ${row('Stake slots', x => `<b>${x.slots.toLocaleString()}</b>`, 'hl')}
+                        ${row('Central hub power / crew housed / storage', x => `${sign(x.central.power)} / ${x.central.crewSlots} / ${x.central.storage.toLocaleString()}`)}
+                        <tr class="sub"><th colspan="6">Full hub set: extraction, processing, storage, farm hubs + power plant</th></tr>
+                        ${row('Slots used by the set', x => `${x.full.slots.toLocaleString()} <small>${Math.round(100 * x.full.slots / x.slots)}% of the stake</small>`)}
+                        ${row('Net power with central hub', x => sign(x.full.power))}
+                        ${row('Crew housed / needed by the set', x => `${x.full.housed} / ${x.full.needed}`)}
+                        ${row('Storage', x => x.full.storage.toLocaleString())}
+                        ${row('Build time / material units', x => `${this.fmtTime(x.full.time)} / ${x.full.units}`)}
+                        <tr class="sub"><th colspan="6">One extractor (Copper Ore shown; every deposit scales the same way) and one processor</th></tr>
+                        ${row('Extractor slots / power / crew', x => `${x.ex.slots} / ${x.ex.power} / <b>${x.ex.neededCrew}</b>`)}
+                        ${row('Extractor output vs tier 1', x => `${num(Object.values(x.ex.resourceExtractionRate)[0])} /tick <small>&times;${num(x.mult, 1)}</small>`)}
+                        ${row('Processor slots / power / crew / throughput', x => `${x.pr.slots} / ${x.pr.power} / ${x.pr.neededCrew} / ${x.proc} per tick`)}
+                        ${row('Build time (extractor / processor)', x => `${this.fmtTime(x.ex.constructionTime)} / ${this.fmtTime(x.pr.constructionTime)}`)}
+                        <tr class="sub"><th colspan="6">Best lean stake: central + extraction hub + power plant + crew quarters as needed</th></tr>
+                        ${row('Extractors that fit', x => `<b class="big">${x.best.n}</b> <small>with ${x.best.k} crew quarters, bound by ${x.best.bound}</small>`, 'hl')}
+                        ${row('Crew needed by those extractors', x => (x.best.n * x.ex.neededCrew).toLocaleString())}
+                    </tbody>
+                </table></div>
+                <p class="sb-foot">Extractor crew grows as n&sup3; (1 / 8 / 27 / 64 / 125) while crew quarters house 5 / 10 / 20 / 40 / 80, so from tier 3 the crew binds before the slots do. Rates are per tick as exported; richness is not applied.</p>`;
+        }
 
-        // Calculate averages
-        tierStats.forEach(stats => {
-            stats.avgConstructionTime = Math.round(stats.avgConstructionTime / stats.count);
-            stats.avgPower = Math.round(stats.totalPower / stats.count);
-            stats.avgStorage = Math.round(stats.totalStorage / stats.count);
-        });
+        // ---- 2. deposit atlas
+        renderAtlas() {
+            const el = document.getElementById('anAtlas'); if (!el) return;
+            el.innerHTML = `
+                <div class="an-head"><h3>Deposit atlas</h3><p>Every raw deposit on the map: how many stakeable planets carry it, the best richness anywhere, which territories, and whether an extractor family exists. Click a deposit for its richest planets.</p></div>
+                <div class="an-tools"><input type="text" id="anAtlasQ" class="sb-input" placeholder="Find a deposit" value="${esc(this.filters.atlasQ)}" autocomplete="off"><select id="anAtlasSort" class="sb-input an-select"><option value="planets">Most planets</option><option value="rare">Rarest first</option><option value="tier">Highest tier</option><option value="richness">Best richness</option><option value="name">Name</option></select></div>
+                <div class="an-atlas" id="anAtlasRows"></div>`;
+            el.querySelector('#anAtlasSort').value = this.filters.atlasSort;
+            this.renderAtlasRows();
+        }
 
-        return {
-            tierStats,
-            totalPower,
-            totalStorage,
-            averagePower: Math.round(totalPower / this.data.allBuildings.length),
-            averageStorage: Math.round(totalStorage / this.data.allBuildings.length)
-        };
-    }
+        renderAtlasRows() {
+            const el = document.getElementById('anAtlasRows'); if (!el) return;
+            const q = this.filters.atlasQ, sort = this.filters.atlasSort;
+            let rows = this.atlas.filter(d => !q || d.name.toLowerCase().includes(q));
+            const cmp = { planets: (a, b) => b.planets - a.planets, rare: (a, b) => a.planets - b.planets, tier: (a, b) => b.tier - a.tier || b.planets - a.planets, richness: (a, b) => b.best - a.best, name: (a, b) => a.name.localeCompare(b.name) }[sort];
+            rows.sort((a, b) => cmp(a, b) || a.name.localeCompare(b.name));
+            const maxP = Math.max(1, ...this.atlas.map(d => d.planets));
+            el.innerHTML = `<div class="an-dep head"><span>Deposit</span><span>Stakeable planets</span><span>Belts</span><span>Best richness</span><span>Territory</span><span>Extractor</span></div>` + rows.map(d => `
+                <div class="an-dep" data-dep="${esc(d.id)}">
+                    <span class="nm"><i class="t t${d.tier}">T${d.tier}</i>${esc(d.name)}</span>
+                    <span class="bar"><b style="width:${Math.round(100 * d.planets / maxP)}%"></b><em>${d.planets.toLocaleString()}</em></span>
+                    <span class="n">${d.belts.toLocaleString()}</span>
+                    <span class="n">${d.best}</span>
+                    <span class="fac">${['mud', 'oni', 'ustur'].map(f => d.fac[f] ? `<em class="f-${f}">${FAC_LABEL[f]} ${d.fac[f]}</em>` : '').join('')}</span>
+                    <span>${d.extractor ? `<em class="ok">yes</em> <small>${d.rate != null ? num(d.rate) + ' /tick at T1' : ''}</small>` : '<em class="no">fleet only</em>'}</span>
+                    <div class="an-dep-more">${d.planets ? d.top.map(p => `<div class="an-pl"><i class="pdot" style="--c:${CAT_COLOR[p.cat]}"></i><b>${esc(p.name)}</b><span>${esc(p.system)}</span><em class="f-${p.terr}">${FAC_LABEL[p.terr] || ''}</em><span class="rbar"><i style="width:${Math.round(100 * p.richness / d.best)}%"></i></span><span class="rv">${p.richness}</span><button type="button" class="sb-btn ghost" data-plan="${esc(p.key)}">Plan stake</button></div>`).join('') : '<p class="sb-muted">Only on asteroid belts: mine it with a fleet.</p>'}</div>
+                </div>`).join('');
+        }
 
-    analyzeTypes() {
-        const typeStats = new Map();
+        // ---- 3. where to stake for a recipe
+        renderRecipe() {
+            const el = document.getElementById('anRecipe'); if (!el) return;
+            el.innerHTML = `
+                <div class="an-head"><h3>Where to stake for a recipe</h3><p>Pick anything craftable. Its recipe tree is expanded to raw deposits, then every stakeable planet is ranked by how many of those raws it holds. Full coverage means one stake can feed the whole tree; raws without an extractor family must come from fleet mining.</p></div>
+                <div class="an-tools"><input type="text" id="anRecipeQ" class="sb-input" placeholder="Search a recipe output, e.g. Copper Wire, Power Regulation Module" value="${esc(this.filters.recipeQ)}" autocomplete="off"><div class="chips">${['mud', 'oni', 'ustur'].map(f => `<button type="button" class="chip f-${f}${this.filters.recipeFactions.has(f) ? ' on' : ''}" data-rf="${f}">${FAC_LABEL[f]} territory</button>`).join('')}</div></div>
+                <div class="an-hits" id="anRecipeHits"></div>
+                <div id="anRecipeOut"></div>`;
+            this.renderRecipeHits(); this.renderRecipeResults();
+        }
 
-        this.data.allBuildings.forEach(building => {
-            const type = building.type || 'Unknown';
-            if (!typeStats.has(type)) {
-                typeStats.set(type, {
-                    count: 0,
-                    buildings: [],
-                    totalPower: 0,
-                    totalStorage: 0,
-                    hasExtraction: 0
-                });
-            }
+        renderRecipeHits() {
+            const el = document.getElementById('anRecipeHits'); if (!el) return;
+            const q = this.filters.recipeQ;
+            if (!q || q.length < 2 || (this.recipe && this.recipe.outputName.toLowerCase() === q)) { el.innerHTML = ''; return; }
+            const hits = this.recipeNames.filter(n => n.toLowerCase().includes(q)).slice(0, 12);
+            el.innerHTML = hits.map(n => { const r = this.recipeByName.get(n); return `<button type="button" class="an-hit" data-recipe="${esc(n)}"><b>${esc(n)}</b><span>${esc(r.outputType || '')}${r.outputTier ? ' · T' + r.outputTier : ''}</span><em class="st-${esc(r.c4_status)}">${r.c4_status === 'v1' ? 'live' : esc(r.c4_status)}</em></button>`; }).join('') || '<p class="sb-muted">No recipe matches.</p>';
+        }
 
-            const stats = typeStats.get(type);
-            stats.count++;
-            stats.buildings.push(building);
-            stats.totalPower += building.power || 0;
-            stats.totalStorage += building.storage || 0;
-            if (building.hasExtraction) stats.hasExtraction++;
-        });
+        pickRecipe(name) {
+            this.recipe = this.recipeByName.get(name) || null;
+            this.filters.recipeQ = name.toLowerCase();
+            const q = document.getElementById('anRecipeQ'); if (q) q.value = name;
+            this.renderRecipeHits(); this.renderRecipeResults();
+        }
 
-        return typeStats;
-    }
-
-    analyzeResources() {
-        const extractionResources = new Map();
-        const consumptionResources = new Map();
-
-        this.data.allBuildings.forEach(building => {
-            // Analyze extraction
-            if (building.resourceExtractionRate) {
-                Object.entries(building.resourceExtractionRate).forEach(([resource, rate]) => {
-                    if (!extractionResources.has(resource)) {
-                        extractionResources.set(resource, {
-                            totalRate: 0,
-                            buildingCount: 0,
-                            buildings: []
-                        });
-                    }
-                    const stats = extractionResources.get(resource);
-                    stats.totalRate += rate;
-                    stats.buildingCount++;
-                    stats.buildings.push({
-                        name: building.name,
-                        rate: rate,
-                        tier: building.tier
-                    });
-                });
-            }
-
-            // Analyze consumption
-            if (building.resourceRate) {
-                Object.entries(building.resourceRate).forEach(([resource, rate]) => {
-                    if (!consumptionResources.has(resource)) {
-                        consumptionResources.set(resource, {
-                            totalRate: 0,
-                            buildingCount: 0,
-                            buildings: []
-                        });
-                    }
-                    const stats = consumptionResources.get(resource);
-                    stats.totalRate += Math.abs(rate); // Make positive for analysis
-                    stats.buildingCount++;
-                    stats.buildings.push({
-                        name: building.name,
-                        rate: rate,
-                        tier: building.tier
-                    });
-                });
-            }
-        });
-
-        return {
-            extraction: extractionResources,
-            consumption: consumptionResources
-        };
-    }
-
-    analyzeCosts() {
-        const materialCosts = new Map();
-        let totalBuildingsWithCost = 0;
-
-        this.data.allBuildings.forEach(building => {
-            if (building.constructionCost) {
-                totalBuildingsWithCost++;
-                Object.entries(building.constructionCost).forEach(([material, amount]) => {
-                    if (!materialCosts.has(material)) {
-                        materialCosts.set(material, {
-                            totalAmount: 0,
-                            buildingCount: 0,
-                            buildings: []
-                        });
-                    }
-                    const stats = materialCosts.get(material);
-                    stats.totalAmount += amount;
-                    stats.buildingCount++;
-                    stats.buildings.push({
-                        name: building.name,
-                        amount: amount,
-                        tier: building.tier
-                    });
-                });
-            }
-        });
-
-        return {
-            materialCosts,
-            totalBuildingsWithCost,
-            averageMaterialsPerBuilding: totalBuildingsWithCost > 0 ?
-                Math.round([...materialCosts.values()].reduce((sum, stats) =>
-                    sum + stats.buildingCount, 0) / totalBuildingsWithCost) : 0
-        };
-    }
-
-    analyzeProperties() {
-        let comesWithStakeCount = 0;
-        let cannotRemoveCount = 0;
-        let hasExtractionCount = 0;
-        let hubBuildingCount = 0;
-
-        this.data.allBuildings.forEach(building => {
-            if (building.comesWithStake) comesWithStakeCount++;
-            if (building.cannotRemove) cannotRemoveCount++;
-            if (building.hasExtraction) hasExtractionCount++;
-            if (building.isHub) hubBuildingCount++;
-        });
-
-        return {
-            comesWithStakeCount,
-            cannotRemoveCount,
-            hasExtractionCount,
-            hubBuildingCount,
-            percentageWithStake: Math.round((comesWithStakeCount / this.data.allBuildings.length) * 100),
-            percentageCannotRemove: Math.round((cannotRemoveCount / this.data.allBuildings.length) * 100),
-            percentageWithExtraction: Math.round((hasExtractionCount / this.data.allBuildings.length) * 100)
-        };
-    }
-
-    async renderAnalytics() {
-        this.updateAnalyticsStats();
-        await this.renderPlanetRecommendations();
-        this.renderTierAnalysis();
-        this.renderTypeAnalysis();
-        this.renderResourceAnalysis();
-        this.renderCostAnalysis();
-        this.renderPropertyAnalysis();
-    }
-
-    updateAnalyticsStats() {
-        document.getElementById('analyticsTotal').textContent = this.data.allBuildings.length;
-        document.getElementById('analyticsUniqueTiers').textContent = this.tierAnalysis.tierStats.size;
-        document.getElementById('analyticsResourceTypes').textContent =
-            this.resourceAnalysis.extraction.size + this.resourceAnalysis.consumption.size;
-        document.getElementById('analyticsConstructionMaterials').textContent = this.costAnalysis.materialCosts.size;
-    }
-
-    renderTierAnalysis() {
-        const container = document.getElementById('analyticsContent');
-
-        const tierSection = document.createElement('div');
-        tierSection.className = 'analytics-section';
-        tierSection.innerHTML = `
-            <h3>🏢 Tier Analysis</h3>
-            <p class="section-note">Building distribution and capabilities by tier level</p>
-            <div class="tier-analysis-grid">
-                ${Array.from(this.tierAnalysis.tierStats.entries())
-                    .sort(([a], [b]) => a - b)
-                    .map(([tier, stats]) => `
-                        <div class="analytics-item tier-item">
-                            <div class="item-content">
-                                <div class="item-header">
-                                    <h4>Tier ${tier}</h4>
-                                    <div class="tier-badge">T${tier}</div>
-                                </div>
-                                <div class="item-stats">
-                                    <div class="primary-stat">
-                                        <div class="stat-value">${stats.count}</div>
-                                        <div class="stat-label">Buildings</div>
-                                    </div>
-                                    <div class="secondary-stat">
-                                        <div class="stat-value">${stats.avgPower}</div>
-                                        <div class="stat-label">Avg Power</div>
-                                    </div>
-                                    <div class="secondary-stat">
-                                        <div class="stat-value">${stats.avgStorage}</div>
-                                        <div class="stat-label">Avg Storage</div>
-                                    </div>
-                                </div>
-                                <div class="tier-details">
-                                    <p>Average Construction Time: ${stats.avgConstructionTime}s</p>
-                                    <p>Total Crew Capacity: ${stats.totalCrew}</p>
-                                </div>
-                            </div>
-                        </div>
-                    `).join('')}
-            </div>
-        `;
-
-        container.appendChild(tierSection);
-    }
-
-    renderTypeAnalysis() {
-        const container = document.getElementById('analyticsContent');
-
-        const typeSection = document.createElement('div');
-        typeSection.className = 'analytics-section';
-        typeSection.innerHTML = `
-            <h3>🏭 Building Type Analysis</h3>
-            <p class="section-note">Distribution and characteristics by building category</p>
-            <div class="type-analysis-grid">
-                ${Array.from(this.typeAnalysis.entries())
-                    .sort(([, a], [, b]) => b.count - a.count)
-                    .map(([type, stats]) => `
-                        <div class="analytics-item type-item">
-                            <div class="item-content">
-                                <div class="item-header">
-                                    <h4>${type}</h4>
-                                    <div class="type-badge">${this.getBuildingIcon(type)}</div>
-                                </div>
-                                <div class="item-stats">
-                                    <div class="primary-stat">
-                                        <div class="stat-value">${stats.count}</div>
-                                        <div class="stat-label">Buildings</div>
-                                    </div>
-                                    <div class="secondary-stat">
-                                        <div class="stat-value">${Math.round(stats.totalPower / stats.count) || 0}</div>
-                                        <div class="stat-label">Avg Power</div>
-                                    </div>
-                                    <div class="secondary-stat">
-                                        <div class="stat-value">${stats.hasExtraction}</div>
-                                        <div class="stat-label">With Extraction</div>
-                                    </div>
-                                </div>
-                                <div class="type-percentage">
-                                    ${Math.round((stats.count / this.data.allBuildings.length) * 100)}% of all buildings
-                                </div>
-                            </div>
-                        </div>
-                    `).join('')}
-            </div>
-        `;
-
-        container.appendChild(typeSection);
-    }
-
-    renderResourceAnalysis() {
-        const container = document.getElementById('analyticsContent');
-
-        const resourceSection = document.createElement('div');
-        resourceSection.className = 'analytics-section';
-        resourceSection.innerHTML = `
-            <h3>💎 Resource Analysis</h3>
-            <p class="section-note">Most extracted and consumed resources across all buildings</p>
-
-            <div class="resource-analysis-tabs">
-                <h4>Top Extracted Resources</h4>
-                <div class="resource-grid">
-                    ${Array.from(this.resourceAnalysis.extraction.entries())
-                        .sort(([, a], [, b]) => b.buildingCount - a.buildingCount)
-                        .slice(0, 10)
-                        .map(([resource, stats]) => `
-                            <div class="resource-analysis-item">
-                                <div class="resource-name">${resource}</div>
-                                <div class="resource-stats">
-                                    <span>${stats.buildingCount} buildings</span>
-                                    <span>Total Rate: ${stats.totalRate.toFixed(4)}/s</span>
-                                </div>
-                            </div>
-                        `).join('')}
+        renderRecipeResults() {
+            const el = document.getElementById('anRecipeOut'); if (!el) return;
+            if (!this.recipe) { el.innerHTML = '<p class="sb-muted an-empty">Search a recipe above to rank the planets for it.</p>'; return; }
+            const r = this.recipe, { raws, mids } = this.expand(r.outputName);
+            const rawInfo = raws.map(n => ({ name: n, id: slug(n), d: this.rawByName.get(n) }));
+            const fleetOnly = rawInfo.filter(x => x.d && !x.d.extractor), unknown = rawInfo.filter(x => !x.d);
+            const need = rawInfo.filter(x => x.d).map(x => x.id);
+            const fs = this.filters.recipeFactions;
+            const ranked = this.planets.filter(p => !fs.size || fs.has(p.territory)).map(p => {
+                const have = need.filter(k => p.names.has(k));
+                return { p, have, cov: need.length ? have.length / need.length : 0, rich: have.reduce((a, k) => a + (p.rich.get(k) || 0), 0) };
+            }).filter(x => x.have.length).sort((a, b) => b.cov - a.cov || b.rich - a.rich || a.p.planet.name.localeCompare(b.p.planet.name));
+            const top = ranked.slice(0, 12), full = ranked.filter(x => x.cov === 1).length;
+            const byRegion = new Map();
+            ranked.forEach(x => { const k = x.p.region; const e = byRegion.get(k) || { name: k, risk: x.p.risk, terr: x.p.territory, full: 0, best: 0, n: 0 }; e.n++; if (x.cov === 1) e.full++; e.best = Math.max(e.best, x.cov); byRegion.set(k, e); });
+            const regions = Array.from(byRegion.values()).sort((a, b) => b.full - a.full || b.best - a.best || b.n - a.n).slice(0, 6);
+            el.innerHTML = `
+                <div class="an-recipe-head">
+                    <div><b>${esc(r.outputName)}</b><span>${esc(r.outputType || '')}${r.outputTier ? ' · T' + r.outputTier : ''} · ${r.c4_status === 'v1' ? 'live' : esc(r.c4_status)} · ${raws.length} raw${raws.length === 1 ? '' : 's'}${mids.length ? ' · ' + mids.length + ' intermediate' + (mids.length === 1 ? '' : 's') : ''}</span></div>
+                    <button type="button" class="sb-btn ghost" data-recipe-clear>Clear</button>
                 </div>
-
-                <h4>Top Consumed Resources</h4>
-                <div class="resource-grid">
-                    ${Array.from(this.resourceAnalysis.consumption.entries())
-                        .sort(([, a], [, b]) => b.buildingCount - a.buildingCount)
-                        .slice(0, 10)
-                        .map(([resource, stats]) => `
-                            <div class="resource-analysis-item">
-                                <div class="resource-name">${resource}</div>
-                                <div class="resource-stats">
-                                    <span>${stats.buildingCount} buildings</span>
-                                    <span>Total Rate: ${stats.totalRate.toFixed(4)}/s</span>
-                                </div>
-                            </div>
-                        `).join('')}
-                </div>
-            </div>
-        `;
-
-        container.appendChild(resourceSection);
+                <div class="an-raws">${rawInfo.map(x => `<span class="rtag ${x.d ? (x.d.extractor ? '' : 'fleet') : 'unk'}" title="${x.d ? x.d.planets + ' stakeable planets' : 'not a mapped deposit'}">${x.d && x.d.tier ? `<i class="t t${x.d.tier}">T${x.d.tier}</i>` : '<i></i>'}<span class="rname">${esc(x.name)}</span><span class="rval">${x.d ? x.d.planets.toLocaleString() : '?'}</span></span>`).join('')}</div>
+                ${fleetOnly.length ? `<p class="an-note warn">${fleetOnly.map(x => esc(x.name)).join(', ')}: no extractor family exists, so a fleet mines ${fleetOnly.length === 1 ? 'it' : 'these'} (belts included).</p>` : ''}
+                ${unknown.length ? `<p class="an-note">${unknown.map(x => esc(x.name)).join(', ')}: not a mapped deposit and no recipe makes it; left out of the ranking.</p>` : ''}
+                ${mids.length ? `<p class="an-note">Intermediates: ${mids.slice(0, 14).map(esc).join(', ')}${mids.length > 14 ? ' and ' + (mids.length - 14) + ' more' : ''}.</p>` : ''}
+                <div class="an-summary"><div class="an-stat"><b>${full.toLocaleString()}</b><span>planets with every raw</span></div><div class="an-stat"><b>${ranked.length.toLocaleString()}</b><span>planets with any</span></div><div class="an-stat"><b>${top.length ? Math.round(100 * top[0].cov) + '%' : '–'}</b><span>best coverage</span></div></div>
+                ${regions.length ? `<div class="an-regions">${regions.map(g => `<span class="an-region"><b>${esc(g.name)}</b><em class="f-${g.terr}">${FAC_LABEL[g.terr] || ''}</em><small>${g.risk === 'safe' ? 'safe zone' : 'medium risk'} · ${g.full ? g.full + ' full' : Math.round(100 * g.best) + '% best'} · ${g.n} planet${g.n === 1 ? '' : 's'}</small></span>`).join('')}</div>` : ''}
+                <div class="an-planets">${top.map((x, i) => `
+                    <div class="an-pcard${x.cov === 1 ? ' full' : ''}">
+                        <div class="an-pcard-head"><span class="rank">#${i + 1}</span><i class="pdot" style="--c:${CAT_COLOR[x.p.cat]}"></i><b>${esc(x.p.planet.name)}</b><em class="f-${x.p.territory}">${FAC_LABEL[x.p.territory] || ''}</em></div>
+                        <div class="an-pcard-sub">${esc(x.p.system.name || x.p.system.key)} · ${esc(x.p.region)} · ${x.p.risk === 'safe' ? 'safe zone' : 'medium risk'} · ${CAT_NAME[x.p.cat]}</div>
+                        <div class="an-cov"><b style="width:${Math.round(100 * x.cov)}%"></b><em>${x.have.length} / ${need.length}</em></div>
+                        <div class="an-pcard-tags">${need.map(k => `<span class="${x.p.names.has(k) ? 'has' : 'miss'}">${esc(this.SD.resName(k))}${x.p.names.has(k) ? ' <small>' + x.p.rich.get(k) + '</small>' : ''}</span>`).join('')}</div>
+                        <button type="button" class="sb-btn" data-plan="${esc(x.p.key)}">Plan a stake here</button>
+                    </div>`).join('') || '<p class="sb-muted">No stakeable planet carries any of these raws in the selected territories.</p>'}</div>`;
+        }
     }
 
-    renderCostAnalysis() {
-        const container = document.getElementById('analyticsContent');
-
-        const costSection = document.createElement('div');
-        costSection.className = 'analytics-section';
-        costSection.innerHTML = `
-            <h3>🔨 Construction Cost Analysis</h3>
-            <p class="section-note">Most common construction materials and their usage</p>
-            <div class="cost-analysis-grid">
-                ${Array.from(this.costAnalysis.materialCosts.entries())
-                    .sort(([, a], [, b]) => b.buildingCount - a.buildingCount)
-                    .slice(0, 12)
-                    .map(([material, stats]) => `
-                        <div class="cost-analysis-item">
-                            <div class="material-name">${material}</div>
-                            <div class="material-stats">
-                                <div class="stat-row">
-                                    <span class="stat-label">Used in:</span>
-                                    <span class="stat-value">${stats.buildingCount} buildings</span>
-                                </div>
-                                <div class="stat-row">
-                                    <span class="stat-label">Total Amount:</span>
-                                    <span class="stat-value">${stats.totalAmount}</span>
-                                </div>
-                                <div class="stat-row">
-                                    <span class="stat-label">Avg per Building:</span>
-                                    <span class="stat-value">${Math.round(stats.totalAmount / stats.buildingCount)}</span>
-                                </div>
-                            </div>
-                        </div>
-                    `).join('')}
-            </div>
-        `;
-
-        container.appendChild(costSection);
-    }
-
-    renderPropertyAnalysis() {
-        const container = document.getElementById('analyticsContent');
-
-        const propertySection = document.createElement('div');
-        propertySection.className = 'analytics-section';
-        propertySection.innerHTML = `
-            <h3>⚙️ Building Properties</h3>
-            <p class="section-note">Special building characteristics and their distribution</p>
-            <div class="property-analysis-grid">
-                <div class="property-stat-card">
-                    <div class="property-icon">🏗️</div>
-                    <div class="property-stat">
-                        <div class="stat-number">${this.propertyAnalysis.comesWithStakeCount}</div>
-                        <div class="stat-label">Comes with Stake</div>
-                        <div class="stat-percentage">${this.propertyAnalysis.percentageWithStake}% of all buildings</div>
-                    </div>
-                </div>
-                <div class="property-stat-card">
-                    <div class="property-icon">🔒</div>
-                    <div class="property-stat">
-                        <div class="stat-number">${this.propertyAnalysis.cannotRemoveCount}</div>
-                        <div class="stat-label">Cannot Remove</div>
-                        <div class="stat-percentage">${this.propertyAnalysis.percentageCannotRemove}% of all buildings</div>
-                    </div>
-                </div>
-                <div class="property-stat-card">
-                    <div class="property-icon">⛏️</div>
-                    <div class="property-stat">
-                        <div class="stat-number">${this.propertyAnalysis.hasExtractionCount}</div>
-                        <div class="stat-label">Resource Extraction</div>
-                        <div class="stat-percentage">${this.propertyAnalysis.percentageWithExtraction}% of all buildings</div>
-                    </div>
-                </div>
-                <div class="property-stat-card">
-                    <div class="property-icon">🏢</div>
-                    <div class="property-stat">
-                        <div class="stat-number">${this.propertyAnalysis.hubBuildingCount}</div>
-                        <div class="stat-label">Hub Buildings</div>
-                        <div class="stat-percentage">${Math.round((this.propertyAnalysis.hubBuildingCount / this.data.allBuildings.length) * 100)}% of all buildings</div>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        container.appendChild(propertySection);
-    }
-
-    getBuildingIcon(buildingType) {
-        const icons = {
-            'Hub': '🏢',
-            'Extraction': '⛏️',
-            'Storage': '📦',
-            'Processing': '🏭',
-            'Power': '⚡',
-            'Agricultural': '🌱',
-            'Crew': '👥',
-            'Defense': '🛡️',
-            'Infrastructure': '🏗️'
-        };
-
-        return icons[buildingType] || '🏢';
-    }
-}
-
-
-
-
+    window.BuildingAnalytics = BuildingAnalytics;
+})();

@@ -1,0 +1,94 @@
+{
+ "unit": 150.147,
+ "anchor": [
+  160.0,
+  302.59
+ ],
+ "squash": 0.5299,
+ "tiles": {
+  "central_hub": {
+   "file": "central_hub.webp",
+   "size": [
+    320,
+    385
+   ]
+  },
+  "crew_quarters": {
+   "file": "crew_quarters.webp",
+   "size": [
+    320,
+    385
+   ]
+  },
+  "cultivation_hub": {
+   "file": "cultivation_hub.webp",
+   "size": [
+    320,
+    385
+   ]
+  },
+  "extraction_hub": {
+   "file": "extraction_hub.webp",
+   "size": [
+    320,
+    385
+   ]
+  },
+  "extractor": {
+   "file": "extractor.webp",
+   "size": [
+    320,
+    385
+   ]
+  },
+  "farm": {
+   "file": "farm.webp",
+   "size": [
+    320,
+    385
+   ]
+  },
+  "farm_hub": {
+   "file": "farm_hub.webp",
+   "size": [
+    320,
+    385
+   ]
+  },
+  "power_plant": {
+   "file": "power_plant.webp",
+   "size": [
+    320,
+    385
+   ]
+  },
+  "processing_hub": {
+   "file": "processing_hub.webp",
+   "size": [
+    320,
+    385
+   ]
+  },
+  "processor": {
+   "file": "processor.webp",
+   "size": [
+    320,
+    385
+   ]
+  },
+  "storage_hub": {
+   "file": "storage_hub.webp",
+   "size": [
+    320,
+    385
+   ]
+  },
+  "storage_module": {
+   "file": "storage_module.webp",
+   "size": [
+    320,
+    385
+   ]
+  }
+ }
+}

@@ -6,28 +6,26 @@
     <title>Aephia Industries - ClaimStake Explorer</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="icon" type="image/jpeg" href="../Images/channels4_profile.jpg">
-    <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="../Utils/FacilityAnalytics.css">
-    <link rel="stylesheet" href="analytics-styles.css">
-    <!-- Chart.js for data visualization -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
-    <!-- html2canvas for image export -->
-    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <link rel="stylesheet" href="styles.css?v=20260930">
+    <link rel="stylesheet" href="stake-visual.css?v=20260930">
 </head>
 <body>
+    <div class="pe-sky" aria-hidden="true"></div>
     <header>
-        <h1>🏗️ ClaimStake Explorer</h1>
-
+        <a class="brand" href="../index.html" title="Back to the Operations Hub">
+            <img src="../Images/channels4_profile.jpg" alt="">
+            <span><b>Aephia Industries</b><small>Operations Hub</small></span>
+        </a>
+        <h1>ClaimStake Explorer</h1>
         <nav class="navigation-tabs">
-            <button class="nav-tab active" data-tab="explorer">🏢 Explorer</button>
-            <button class="nav-tab" data-tab="analytics">📊 Analytics</button>
-            <button class="nav-tab" data-tab="construction">🏗️ Construction</button>
+            <button class="nav-tab active" data-tab="explorer">Explorer</button>
+            <button class="nav-tab" data-tab="analytics">Analytics</button>
+            <button class="nav-tab" data-tab="construction">Stake Builder</button>
         </nav>
-
         <nav class="breadcrumb">
-            <a href="../index.html">Home</a> > ClaimStake Explorer
+            <a href="../index.html">Home</a> / ClaimStake Explorer
         </nav>
     </header>
 
@@ -170,98 +168,14 @@
 
         <!-- Analytics Tab Content -->
         <div id="analyticsTab" class="tab-content">
-            <div class="analytics-header">
-                <h2>📊 ClaimStake Analytics</h2>
-                <p>Comprehensive analysis of buildings, profitability, efficiency, and strategy</p>
-            </div>
-
-            <!-- Sub-tabs for different analytics -->
-            <nav class="sub-navigation-tabs">
-                <button class="sub-nav-tab active" data-subtab="basic">📈 Building Analytics</button>
-                <button class="sub-nav-tab" data-subtab="recipe-optimizer">🎯 Recipe Optimizer</button>
-            </nav>
-
-            <!-- Basic Analytics Sub-tab -->
-            <div id="basicAnalyticsSubtab" class="subtab-content active">
-                <div class="analytics-stats">
-                    <div class="stat-card">
-                        <h3>Total Buildings</h3>
-                        <div class="stat-number" id="analyticsTotal">0</div>
-                    </div>
-                    <div class="stat-card">
-                        <h3>Unique Tiers</h3>
-                        <div class="stat-number" id="analyticsUniqueTiers">0</div>
-                    </div>
-                    <div class="stat-card">
-                        <h3>Resource Types</h3>
-                        <div class="stat-number" id="analyticsResourceTypes">0</div>
-                    </div>
-                    <div class="stat-card">
-                        <h3>Construction Materials</h3>
-                        <div class="stat-number" id="analyticsConstructionMaterials">0</div>
-                    </div>
-                </div>
-
-                <div class="analytics-sections" id="analyticsContent">
-                    <!-- Analytics content will be populated by JavaScript -->
-                </div>
-            </div>
-
-            <!-- Recipe Optimizer Sub-tab -->
-            <div id="recipe-optimizerAnalyticsSubtab" class="subtab-content">
-                <div class="recipe-optimizer-header">
-                    <h3>🎯 Recipe-Based ClaimStake Placement Optimizer</h3>
-                    <p>Find the best regions to place your claim stakes (T1-T5) based on recipe resource requirements</p>
-                </div>
-
-                <div class="recipe-search-section">
-                    <div class="search-container">
-                        <input type="text" id="recipeOptimizerSearch" placeholder="Search for a recipe..." autocomplete="off">
-                        <button id="optimizeButton" disabled>🎯 Optimize Placement</button>
-                    </div>
-                    <div id="recipeSearchResults" class="recipe-search-results"></div>
-
-                    <div class="faction-filter-section">
-                        <label style="color: rgba(255, 255, 255, 0.8); font-weight: 600; margin-bottom: 0.5rem; display: block;">Filter by Faction:</label>
-                        <div class="faction-checkboxes">
-                            <label class="faction-checkbox-item">
-                                <input type="checkbox" id="factionMUD" value="MUD" checked>
-                                <span style="color: #ff4444;">MUD</span>
-                            </label>
-                            <label class="faction-checkbox-item">
-                                <input type="checkbox" id="factionONI" value="ONI" checked>
-                                <span style="color: #4444ff;">ONI</span>
-                            </label>
-                            <label class="faction-checkbox-item">
-                                <input type="checkbox" id="factionUST" value="UST" checked>
-                                <span style="color: #ffaa00;">UST</span>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="recipeOptimizerResults" class="recipe-optimizer-results">
-                    <div class="placeholder-content">
-                        <div class="placeholder-icon">🎯</div>
-                        <h3>Recipe ClaimStake Optimizer</h3>
-                        <p>Search for a recipe above to find optimal claim stake placement recommendations</p>
-                        <div class="placeholder-tips">
-                            <div class="tip">🔍 <strong>Search:</strong> Enter a recipe name to get started</div>
-                            <div class="tip">🌍 <strong>Regional Analysis:</strong> Find best regions with required resources</div>
-                            <div class="tip">📍 <strong>Proximity:</strong> Identifies planets closer together for efficiency</div>
-                            <div class="tip">⭐ <strong>Tier Matching:</strong> Recommends appropriate claim stake tiers (T1-T5)</div>
-                        </div>
-                    </div>
-                </div>
+            <div id="analyticsContent" class="an-root">
+                <!-- rendered by analytics.js: which tier to buy, deposit atlas, where to stake for a recipe -->
             </div>
         </div>
+
         <!-- Construction Tab Content -->
         <div id="constructionTab" class="tab-content">
-            <div class="analytics-header">
-                <h2>🏗️ Facility Construction</h2>
-                <p>Select a planet and build your facility with compatible buildings</p>
-            </div>
-            <div id="constructionContent" style="padding: 20px;">
+            <div id="constructionContent">
                 <!-- Construction content will be populated by JavaScript -->
             </div>
         </div>
@@ -295,15 +209,15 @@
     <script src="../Utils/JsonManager.js" onload="console.log('✅ JsonManager.js loaded')" onerror="console.error('❌ Failed to load JsonManager.js')"></script>
     <script src="../Utils/DataLoader.js?v=20250925-2142" onload="console.log('✅ DataLoader.js loaded, DataLoader available:', typeof DataLoader !== 'undefined')" onerror="console.error('❌ Failed to load DataLoader.js')"></script>
     <script src="../Utils/CrossExplorerAnalytics.js" onload="console.log('✅ CrossExplorerAnalytics.js loaded')" onerror="console.error('❌ Failed to load CrossExplorerAnalytics.js')"></script>
-    <script src="../Utils/FacilityAnalytics.js?v=20251124-crew" onload="console.log('✅ FacilityAnalytics.js loaded')" onerror="console.error('❌ Failed to load FacilityAnalytics.js')"></script>
     <script src="../Data/buildings-data.js?v=20250925-2142" onload="console.log('✅ buildings-data.js loaded, rawBuildingData available:', typeof rawBuildingData !== 'undefined')" onerror="console.error('❌ Failed to load buildings-data.js')"></script>
     <script src="../Data/planet-data.js?v=20250925-2142" onload="console.log('u2705 planet-data.js loaded')" onerror="console.error('❌ Failed to load planet-data.js')"></script>
     <script src="../Data/recipes-data.js?v=20250925-2142" onload="console.log('✅ recipes-data.js loaded')" onerror="console.error('❌ Failed to load recipes-data.js')"></script>
     <script src="../Data/resources-data.js" onload="console.log('✅ resources-data.js loaded')" onerror="console.error('❌ Failed to load resources-data.js')"></script>
-    <script src="construction.js?v=20251124-crew" onload="console.log('✅ construction.js loaded')" onerror="console.error('❌ Failed to load construction.js')"></script>
+    <script src="../PlanetExplorer/orrery.js?v=20260930"></script>
     <script src="explorer.js?v=20250925-2142" onload="console.log('✅ explorer.js loaded')" onerror="console.error('❌ Failed to load explorer.js')"></script>
-    <script src="analytics.js?v=20251006-regions-modal" onload="console.log('✅ analytics.js loaded')" onerror="console.error('❌ Failed to load analytics.js')"></script>
-    <script src="recipe-optimizer.js" onload="console.log('✅ recipe-optimizer.js loaded')" onerror="console.error('❌ Failed to load recipe-optimizer.js')"></script>
+    <script src="stake-visual.js?v=20260930"></script>
+    <script src="construction.js?v=20260930" onload="console.log('✅ construction.js loaded')" onerror="console.error('❌ Failed to load construction.js')"></script>
+    <script src="analytics.js?v=20260930" onload="console.log('✅ analytics.js loaded')" onerror="console.error('❌ Failed to load analytics.js')"></script>
     <script src="app.js?v=20250925-2142" onload="console.log('✅ app.js loaded - FRESH VERSION')" onerror="console.error('❌ Failed to load app.js')"></script>
 </body>
 </html>

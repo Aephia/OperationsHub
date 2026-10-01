@@ -4,26 +4,18 @@
 class ConstructionUtils {
     // Get available slots for claim stake tier
     static getClaimStakeSlots(tier) {
-        const slotsByTier = {
-            1: 32,     // Tier 1: 32 slots
-            2: 243,    // Tier 2: 243 slots
-            3: 1024,   // Tier 3: 1024 slots
-            4: 3125,   // Tier 4: 3125 slots
-            5: 7776    // Tier 5: 7776 slots
-        };
-        return slotsByTier[tier] || 32;
+        // claimStakeDefinitions in buildings.json (SAGE export): the data beats the 2025 placeholder table
+        const defs = (typeof window !== 'undefined' && window.rawBuildingData && window.rawBuildingData.claimStakeDefinitions) || [];
+        const def = defs.find(d => d.tier === tier && d.id.startsWith('claim-stake'));
+        if (def) return def.slots;
+        return { 1: 65, 2: 487, 3: 2049, 4: 6251, 5: 15553 }[tier] || 65;
     }
 
     // Get base power output for claim stake tier
     static getClaimStakePower(tier) {
-        const powerByTier = {
-            1: 100,    // Tier 1: 100 power
-            2: 200,    // Tier 2: 200 power
-            3: 300,    // Tier 3: 300 power
-            4: 400,    // Tier 4: 400 power
-            5: 500     // Tier 5: 500 power
-        };
-        return powerByTier[tier] || 100;
+        // The central hub that comes with the stake carries its own power value (+100 at T1), so there is no
+        // separate base allowance; the old 100-500 table double-counted it.
+        return 0;
     }
 
     // Check if planet type is compatible with building requirements
