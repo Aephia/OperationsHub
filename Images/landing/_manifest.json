@@ -1,0 +1,191 @@
+{
+ "hero_Pearce_X4.webp": [
+  [
+   671,
+   506
+  ],
+  19
+ ],
+ "hero_Fimbul_Tankship.webp": [
+  [
+   711,
+   507
+  ],
+  25
+ ],
+ "hero_Ogrika_Thripid.webp": [
+  [
+   631,
+   617
+  ],
+  51
+ ],
+ "hero_Calico_Guardian.webp": [
+  [
+   520,
+   368
+  ],
+  25
+ ],
+ "fleet_Pearce_X4.webp": [
+  [
+   225,
+   170
+  ],
+  5
+ ],
+ "fleet_Fimbul_Tankship.webp": [
+  [
+   238,
+   170
+  ],
+  6
+ ],
+ "fleet_Ogrika_Thripid.webp": [
+  [
+   174,
+   170
+  ],
+  10
+ ],
+ "fleet_Calico_Guardian.webp": [
+  [
+   240,
+   170
+  ],
+  8
+ ],
+ "fleet_VZUS_Ambwe.webp": [
+  [
+   225,
+   170
+  ],
+  8
+ ],
+ "fleet_Opal_Rayfam.webp": [
+  [
+   232,
+   170
+  ],
+  9
+ ],
+ "fleet_Busan_ThrillOfLife.webp": [
+  [
+   167,
+   170
+  ],
+  7
+ ],
+ "fleet_Rainbow_Arc.webp": [
+  [
+   272,
+   170
+  ],
+  7
+ ],
+ "fleet_Pearce_C11.webp": [
+  [
+   256,
+   170
+  ],
+  9
+ ],
+ "fleet_Armstrong_Imp.webp": [
+  [
+   284,
+   170
+  ],
+  11
+ ],
+ "fleet_Tufa_Feist.webp": [
+  [
+   294,
+   170
+  ],
+  9
+ ],
+ "fleet_Fimbul_Mamba.webp": [
+  [
+   245,
+   170
+  ],
+  10
+ ],
+ "fleet_Calico_Maxhog.webp": [
+  [
+   394,
+   170
+  ],
+  6
+ ],
+ "fleet_Ogrika_Sunpaa.webp": [
+  [
+   209,
+   170
+  ],
+  6
+ ],
+ "fleet_Pearce_F4.webp": [
+  [
+   223,
+   170
+  ],
+  8
+ ],
+ "fleet_VZUS_Ballad.webp": [
+  [
+   252,
+   170
+  ],
+  8
+ ],
+ "card_claimstake.webp": [
+  [
+   960,
+   540
+  ],
+  42
+ ],
+ "card_hub.webp": [
+  [
+   960,
+   540
+  ],
+  63
+ ],
+ "card_recipe.webp": [
+  [
+   960,
+   540
+  ],
+  37
+ ],
+ "card_resources.webp": [
+  [
+   960,
+   540
+  ],
+  69
+ ],
+ "hero_planet_1920.webp": [
+  [
+   1920,
+   1080
+  ],
+  71
+ ],
+ "hero_planet_960.webp": [
+  [
+   960,
+   540
+  ],
+  19
+ ],
+ "card_planet.webp": [
+  [
+   960,
+   540
+  ],
+  20
+ ]
+}

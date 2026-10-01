@@ -3,193 +3,241 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aephia Industries - Star Atlas Operations</title>
+    <title>Aephia Industries - Operations Hub</title>
+    <meta name="description" content="Aephia Industries Operations Hub: planning and analytics tools for Star Atlas SAGE - planets, ships, recipes, claim stakes, resources, habitats and the Galia region map.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="landing.css">
+    <link rel="preload" as="image" href="Images/landing/hero_planet_1920.webp" media="(min-width: 901px)">
+    <link rel="preload" as="image" href="Images/landing/hero_Pearce_X4.webp">
     <link rel="icon" type="image/jpeg" href="Images/channels4_profile.jpg">
 </head>
 <body>
-    <!-- Animated Background Layers -->
-    <canvas id="starfield-canvas"></canvas>
-    <div class="nebula-bg"></div>
-    <div class="grid-overlay"></div>
-    <div class="orbital-glow"></div>
-    <div id="mouse-spotlight"></div>
+    <!-- Sky: one Cycles-rendered backdrop + a starfield drawn ONCE, twinkle is two opacity layers -->
+    <div class="sky" aria-hidden="true">
+        <div class="sky-planet"></div>
+        <canvas id="stars-a"></canvas>
+        <canvas id="stars-b"></canvas>
+        <div class="sky-vignette"></div>
+    </div>
 
-    <!-- JSON Manager Button -->
-    <button class="json-manager-btn top-right" id="openJsonManager">
-        <span>JSON Manager</span>
-    </button>
-
-    <!-- Hero Section -->
-    <header class="hero">
-        <div class="hero-content">
-            <div class="hero-card">
-                <div class="hero-logo">
-                    <img src="Images/channels4_profile.jpg" alt="Aephia Industries Logo" class="logo-image">
-                </div>
-                <span class="hero-tag">Aephia Industries</span>
-                <h1 class="hero-title">Operations Hub</h1>
-                <p class="hero-subtitle">
-                    Tactical suite for Star Atlas fleet operations, resource management, and galactic exploration. Navigate the metaverse with precision.
-                </p>
-            </div>
-        </div>
+    <header class="topbar">
+        <a class="brand" href="#top">
+            <img src="Images/channels4_profile.jpg" alt="Aephia Industries">
+            <span><b>Aephia Industries</b><small>Star Atlas operations</small></span>
+        </a>
+        <nav class="topnav" aria-label="Sections">
+            <a href="#modules">Modules</a>
+            <a href="#fleet">Fleet</a>
+            <a href="#status">Data</a>
+        </nav>
+        <button class="json-manager-btn" id="openJsonManager"><span>JSON Manager</span></button>
     </header>
 
-    <!-- Main Content -->
+    <!-- Hero -->
+    <section class="hero" id="top">
+        <div class="hero-copy">
+            <span class="eyebrow">Operations deck online</span>
+            <h1><span>Aephia Industries</span>Operations Hub</h1>
+            <p class="lede">
+                Seven planning modules over the live SAGE data set: survey planets, audit hulls, decode crafting
+                trees, price claim stakes, track resources, plan habitats and read the Galia map. Built by the guild,
+                for the guild.
+            </p>
+            <div class="hero-actions">
+                <a class="btn btn-primary" href="#modules">Open the modules</a>
+                <a class="btn btn-ghost" href="ShipExplorer/index.html">Ship Explorer</a>
+            </div>
+            <div class="stats" aria-label="Data set size">
+                <div class="stat"><b>3,901</b><span>Planets</span></div>
+                <div class="stat"><b>5,251</b><span>Recipes</span></div>
+                <div class="stat"><b>67</b><span>Ships</span></div>
+                <div class="stat"><b>3,526</b><span>Resources</span></div>
+                <div class="stat"><b>1,620</b><span>Buildings</span></div>
+                <div class="stat"><b>945</b><span>Systems</span></div>
+                <span class="stat-note">SAGE uber-export of 2026-09-11</span>
+            </div>
+        </div>
+
+        <div class="stage" aria-hidden="true">
+            <div class="stage-glow"></div>
+            <figure class="ship ship-back">
+                <img src="Images/landing/hero_Calico_Guardian.webp" alt="" width="520" height="368" decoding="async">
+                <figcaption>Calico Guardian</figcaption>
+            </figure>
+            <figure class="ship ship-mid">
+                <img src="Images/landing/hero_Ogrika_Thripid.webp" alt="" width="631" height="617" decoding="async">
+                <figcaption>Ogrika Thripid</figcaption>
+            </figure>
+            <figure class="ship ship-front">
+                <span class="thruster" style="left: 6%; top: 34%;"></span>
+                <img src="Images/landing/hero_Pearce_X4.webp" alt="" width="671" height="506" fetchpriority="high">
+                <figcaption>Pearce X4</figcaption>
+            </figure>
+        </div>
+    </section>
+
+    <!-- Fleet strip: pure CSS marquee, pauses on hover and when the tab is hidden -->
+    <section class="fleet" id="fleet">
+        <div class="fleet-head">
+            <h2>Fleet on record</h2>
+            <span>67 hulls, 10 manufacturers</span>
+            <a href="ShipExplorer/index.html">Open Ship Explorer &rarr;</a>
+        </div>
+        <div class="fleet-viewport">
+            <div class="fleet-track" id="fleetTrack"></div>
+        </div>
+    </section>
+
+    <!-- Modules -->
     <main class="main-content" id="modules">
-        <!-- Module Cards Grid -->
+        <div class="deck-head">
+            <h2>Modules</h2>
+            <p>Every module runs in the browser off the local JSON data set. No account, no wallet.</p>
+        </div>
+
         <section class="deck">
             <article class="module-card" data-tilt>
-                <div class="card-glow"></div>
-                <div class="module-header">
+                <div class="card-art">
+                    <span class="card-badge">Planet intel</span>
+                    <img class="art" src="Images/landing/card_planet.webp" alt="" width="960" height="540" loading="lazy" decoding="async">
+                </div>
+                <div class="card-body">
                     <span class="module-label">Planet Intel</span>
                     <h2>Planet Explorer</h2>
+                    <p>Resources and tiers for all 3,901 surveyed worlds, star systems by SAGE code and lore name, manufacturing self-sufficiency and territory analytics.</p>
+                    <div class="module-meta"><span>Mapping</span><span>Resources</span><span>Strategy</span></div>
+                    <div class="card-actions">
+                        <button class="launch-btn" data-href="PlanetExplorer/index.html"><span>Launch Module</span></button>
+                        <button class="help-btn" data-module="planetExplorer">Module Guide</button>
+                    </div>
                 </div>
-                <p>Surface atmosphere composition, orbital data, and resource tiers for any surveyed world. Build perfect extraction chains before you touch ground.</p>
-                <div class="module-meta">
-                    <span>Mapping</span>
-                    <span>Resources</span>
-                    <span>Strategy</span>
-                </div>
-                <button class="launch-btn" data-href="PlanetExplorer/index.html">
-                    <span>Launch Module</span>
-                </button>
-                <button class="help-btn" data-module="planetExplorer">Module Guide</button>
             </article>
 
             <article class="module-card" data-tilt>
-                <div class="card-glow"></div>
-                <div class="module-header">
+                <div class="card-art ship">
+                    <span class="card-badge">Fleet operations</span>
+                    <img class="hull" src="Images/landing/hero_Fimbul_Tankship.webp" alt="" width="711" height="507" loading="lazy" decoding="async">
+                </div>
+                <div class="card-body">
                     <span class="module-label">Fleet Operations</span>
                     <h2>Ship Explorer</h2>
+                    <p>Audit hull stats, compare loadouts side by side, search any stat and study configuration coverage before you commit a fleet.</p>
+                    <div class="module-meta"><span>Fleet</span><span>Components</span><span>Analytics</span></div>
+                    <div class="card-actions">
+                        <button class="launch-btn" data-href="ShipExplorer/index.html"><span>Launch Module</span></button>
+                        <button class="help-btn" data-module="shipExplorer">Module Guide</button>
+                    </div>
                 </div>
-                <p>Audit hull performance, compare manufacturer loadouts, and study configuration coverage to optimize every fleet deployment.</p>
-                <div class="module-meta">
-                    <span>Fleet</span>
-                    <span>Components</span>
-                    <span>Analytics</span>
-                </div>
-                <button class="launch-btn" data-href="ShipExplorer/index.html">
-                    <span>Launch Module</span>
-                </button>
-                <button class="help-btn" data-module="shipExplorer">Module Guide</button>
             </article>
 
             <article class="module-card" data-tilt>
-                <div class="card-glow"></div>
-                <div class="module-header">
+                <div class="card-art">
+                    <span class="card-badge">Manufacturing</span>
+                    <img class="art" src="Images/landing/card_recipe.webp" alt="" width="960" height="540" loading="lazy" decoding="async">
+                </div>
+                <div class="card-body">
                     <span class="module-label">Manufacturing</span>
                     <h2>Recipe Explorer</h2>
+                    <p>Decode 5,251 crafting trees, rank the most demanded components, find bottlenecks and page through every resource's use.</p>
+                    <div class="module-meta"><span>Crafting</span><span>Logistics</span><span>Demand</span></div>
+                    <div class="card-actions">
+                        <button class="launch-btn" data-href="RecipeExplorer/index.html"><span>Launch Module</span></button>
+                        <button class="help-btn" data-module="recipeExplorer">Module Guide</button>
+                    </div>
                 </div>
-                <p>Decrypt crafting trees, optimize throughput, and highlight bottlenecks with visualized Star Atlas fabrication pipelines.</p>
-                <div class="module-meta">
-                    <span>Crafting</span>
-                    <span>Logistics</span>
-                    <span>Throughput</span>
-                </div>
-                <button class="launch-btn" data-href="RecipeExplorer/index.html">
-                    <span>Launch Module</span>
-                </button>
-                <button class="help-btn" data-module="recipeExplorer">Module Guide</button>
             </article>
 
             <article class="module-card" data-tilt>
-                <div class="card-glow"></div>
-                <div class="module-header">
+                <div class="card-art">
+                    <span class="card-badge">Industrial planning</span>
+                    <img class="art" src="Images/landing/card_claimstake.webp" alt="" width="960" height="540" loading="lazy" decoding="async">
+                </div>
+                <div class="card-body">
                     <span class="module-label">Industrial Planning</span>
                     <h2>ClaimStake Explorer</h2>
+                    <p>Compare facility loadouts per tier, price the build, and lock in the claim stakes that pay back, with tier-aware recommendations.</p>
+                    <div class="module-meta"><span>Construction</span><span>ROI</span><span>Tiers</span></div>
+                    <div class="card-actions">
+                        <button class="launch-btn" data-href="ClaimStakeExplorer/index.html"><span>Launch Module</span></button>
+                        <button class="help-btn" data-module="claimStakeExplorer">Module Guide</button>
+                    </div>
                 </div>
-                <p>Compare facility load-outs, calculate build costs, and lock in profitable claim stakes with tier-aware recommendations.</p>
-                <div class="module-meta">
-                    <span>Construction</span>
-                    <span>ROI</span>
-                    <span>Automation</span>
-                </div>
-                <button class="launch-btn" data-href="ClaimStakeExplorer/index.html">
-                    <span>Launch Module</span>
-                </button>
-                <button class="help-btn" data-module="claimStakeExplorer">Module Guide</button>
             </article>
 
             <article class="module-card" data-tilt>
-                <div class="card-glow"></div>
-                <div class="module-header">
+                <div class="card-art">
+                    <span class="card-badge">Commodity index</span>
+                    <img class="art" src="Images/landing/card_resources.webp" alt="" width="960" height="540" loading="lazy" decoding="async">
+                </div>
+                <div class="card-body">
                     <span class="module-label">Commodity Index</span>
                     <h2>Resources Explorer</h2>
+                    <p>Search and benchmark all 3,526 resources in the SAGE economy: rarity, tier, where they come from and what they feed.</p>
+                    <div class="module-meta"><span>Commodities</span><span>Tiers</span><span>Sources</span></div>
+                    <div class="card-actions">
+                        <button class="launch-btn" data-href="ResourcesExplorer/index.html"><span>Launch Module</span></button>
+                        <button class="help-btn" data-module="resourcesExplorer">Module Guide</button>
+                    </div>
                 </div>
-                <p>Search, filter, and benchmark every resource in the Star Atlas economy. Track rarity, use cases, and conversion paths.</p>
-                <div class="module-meta">
-                    <span>Commodities</span>
-                    <span>Trading</span>
-                    <span>Analytics</span>
-                </div>
-                <button class="launch-btn" data-href="ResourcesExplorer/index.html">
-                    <span>Launch Module</span>
-                </button>
-                <button class="help-btn" data-module="resourcesExplorer">Module Guide</button>
             </article>
 
             <article class="module-card" data-tilt>
-                <div class="card-glow"></div>
-                <div class="module-header">
+                <div class="card-art">
+                    <span class="card-badge">Habitat engineering</span>
+                    <img class="art" src="Images/landing/card_hub.webp" alt="" width="960" height="540" loading="lazy" decoding="async">
+                </div>
+                <div class="card-body">
                     <span class="module-label">Habitat Engineering</span>
                     <h2>Hub Explorer</h2>
+                    <p>Plan habitat construction, compare crafting stations and size storage with the build planners.</p>
+                    <div class="module-meta"><span>Habitat</span><span>Crafting</span><span>Planning</span></div>
+                    <div class="card-actions">
+                        <button class="launch-btn" data-href="HubExplorer/index.html"><span>Launch Module</span></button>
+                        <button class="help-btn" data-module="hubExplorer">Module Guide</button>
+                    </div>
                 </div>
-                <p>Plan habitat construction, compare crafting stations, and optimize storage capacity with comprehensive build planners.</p>
-                <div class="module-meta">
-                    <span>Habitat</span>
-                    <span>Crafting</span>
-                    <span>Planning</span>
-                </div>
-                <button class="launch-btn" data-href="HubExplorer/index.html">
-                    <span>Launch Module</span>
-                </button>
-                <button class="help-btn" data-module="hubExplorer">Module Guide</button>
             </article>
 
-            <article class="module-card" data-tilt>
-                <div class="card-glow"></div>
-                <div class="module-header">
+            <article class="module-card wide" data-tilt>
+                <div class="card-art">
+                    <span class="card-badge">Regional intelligence</span>
+                    <img class="art" src="Images/landing/card_regionmap.webp" alt="" width="960" height="540" loading="lazy" decoding="async">
+                </div>
+                <div class="card-body">
                     <span class="module-label">Regional Intelligence</span>
                     <h2>Region Map Explorer</h2>
+                    <p>The Galia chart: 945 systems and their warp links across 69 regions. Read ownership, border security and distances, and run the conquest simulator.</p>
+                    <div class="module-meta"><span>2D Map</span><span>Region Status</span><span>Conquest</span></div>
+                    <div class="card-actions">
+                        <button class="launch-btn" data-href="RegionMapExplorer/index.html"><span>Launch Module</span></button>
+                        <button class="help-btn" data-module="regionMapExplorer">Module Guide</button>
+                    </div>
                 </div>
-                <p>Interactive 2D map of all Galia regions. Click regions to view ownership status, border security, warp lane connections, and strategic distances.</p>
-                <div class="module-meta">
-                    <span>2D Map</span>
-                    <span>Region Status</span>
-                    <span>Connections</span>
-                </div>
-                <button class="launch-btn" data-href="RegionMapExplorer/index.html">
-                    <span>Launch Module</span>
-                </button>
-                <button class="help-btn" data-module="regionMapExplorer">Module Guide</button>
             </article>
         </section>
 
-        <!-- Intel Strip -->
-        <section class="intel-strip">
-            <div class="intel-card">
-                <h3>Live Atlas Feed</h3>
-                <p>Hook into faction dispatches, market shifts, and territory pulses to stay ahead of the fleet.</p>
+        <section class="status" id="status">
+            <div class="status-card">
+                <h3>Data set</h3>
+                <p>SAGE uber-export of 2026-09-11: 10 files refreshed, 0 failed. Upload your own JSON through the JSON Manager to override any file locally.</p>
             </div>
-            <div class="intel-card">
-                <h3>Command Utilities</h3>
-                <p>Rapid access to map overlays, fleet controls, and facility builders from a single deck.</p>
+            <div class="status-card">
+                <h3>Factions on the chart</h3>
+                <p>System colours in the Galia chart follow the closest faction.</p>
+                <div class="swatches"><span><i style="background: var(--mud)"></i>MUD</span><span><i style="background: var(--oni)"></i>ONI</span><span><i style="background: var(--ust)"></i>Ustur</span></div>
             </div>
-            <div class="intel-card">
-                <h3>Ready for Expansion</h3>
-                <p>Modular architecture prepared for DAO intel feeds, ship refits, and live economy dashboards.</p>
+            <div class="status-card">
+                <h3>Runs anywhere</h3>
+                <p>Static files only. Serve the folder with any web server and every module works offline, on any modern browser.</p>
             </div>
         </section>
     </main>
 
-    <!-- Footer -->
     <footer class="main-footer">
-        <p>&copy; 2024 Aephia Industries | Star Atlas Operations Hub</p>
+        <p>&copy; 2024&ndash;2026 Aephia Industries | Star Atlas Operations Hub. Ship and station art &copy; ATMTA, Inc.</p>
     </footer>
 
     <!-- JSON Manager Modal -->
@@ -272,330 +320,154 @@
     <script src="Documentation/module-help-content.js"></script>
     <script src="Utils/JsonManager.js"></script>
     <script>
-        // ============================================
-        // ANIMATED STARFIELD BACKGROUND
-        // ============================================
-        class Starfield {
-            constructor() {
-                this.canvas = document.getElementById('starfield-canvas');
-                this.ctx = this.canvas.getContext('2d');
-                this.stars = [];
-                this.shootingStars = [];
-                this.nebulaClouds = [];
+    (function () {
+        'use strict';
+        var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-                this.resize();
-                this.init();
-                this.animate();
-
-                window.addEventListener('resize', () => this.resize());
-            }
-
-            resize() {
-                this.canvas.width = window.innerWidth;
-                this.canvas.height = window.innerHeight;
-            }
-
-            init() {
-                // Create static stars with varying sizes and brightness
-                const starCount = Math.floor((this.canvas.width * this.canvas.height) / 3000);
-
-                for (let i = 0; i < starCount; i++) {
-                    this.stars.push({
-                        x: Math.random() * this.canvas.width,
-                        y: Math.random() * this.canvas.height,
-                        size: Math.random() * 2 + 0.5,
-                        brightness: Math.random(),
-                        twinkleSpeed: Math.random() * 0.02 + 0.005,
-                        twinkleOffset: Math.random() * Math.PI * 2,
-                        color: this.getStarColor()
-                    });
+        // ------------------------------------------------------------------
+        // STARFIELD: drawn once per resize into two canvases. Twinkle is a
+        // CSS opacity animation on the whole layer - zero JavaScript per frame.
+        // ------------------------------------------------------------------
+        function drawStars() {
+            var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+            var w = window.innerWidth, h = window.innerHeight;
+            ['stars-a', 'stars-b'].forEach(function (id, layer) {
+                var c = document.getElementById(id);
+                c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+                var ctx = c.getContext('2d');
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                ctx.clearRect(0, 0, w, h);
+                var n = Math.round((w * h) / (layer === 0 ? 9000 : 14000));
+                for (var i = 0; i < n; i++) {
+                    var x = Math.random() * w, y = Math.random() * h;
+                    var r = Math.random() * (layer === 0 ? 0.9 : 1.4) + 0.3;
+                    var a = 0.35 + Math.random() * 0.65;
+                    var t = Math.random();
+                    ctx.fillStyle = t < 0.7 ? 'rgba(255,255,255,' + a + ')' : t < 0.85 ? 'rgba(170,215,255,' + a + ')' : 'rgba(255,225,190,' + a + ')';
+                    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
                 }
+            });
+        }
+        var resizeTimer;
+        window.addEventListener('resize', function () { clearTimeout(resizeTimer); resizeTimer = setTimeout(drawStars, 200); }, { passive: true });
+        drawStars();
 
-                // Create nebula cloud particles
-                for (let i = 0; i < 5; i++) {
-                    this.nebulaClouds.push({
-                        x: Math.random() * this.canvas.width,
-                        y: Math.random() * this.canvas.height,
-                        radius: 200 + Math.random() * 300,
-                        color: i % 2 === 0 ? 'rgba(0, 240, 255, 0.02)' : 'rgba(168, 85, 247, 0.02)',
-                        speedX: (Math.random() - 0.5) * 0.1,
-                        speedY: (Math.random() - 0.5) * 0.1
-                    });
-                }
-            }
+        // ------------------------------------------------------------------
+        // FLEET STRIP: build the marquee from one list, duplicated once so the
+        // -50% translate loops seamlessly.
+        // ------------------------------------------------------------------
+        var FLEET = [
+            ['Pearce_X4', 'Pearce X4'], ['Fimbul_Tankship', 'Fimbul Tankship'], ['Ogrika_Thripid', 'Ogrika Thripid'],
+            ['Calico_Guardian', 'Calico Guardian'], ['VZUS_Ambwe', 'VZUS Ambwe'], ['Opal_Rayfam', 'Opal Rayfam'],
+            ['Busan_ThrillOfLife', 'Busan Thrill of Life'], ['Rainbow_Arc', 'Rainbow Arc'], ['Pearce_C11', 'Pearce C11'],
+            ['Armstrong_Imp', 'Armstrong IMP'], ['Tufa_Feist', 'Tufa Feist'], ['Fimbul_Mamba', 'Fimbul Mamba'],
+            ['Calico_Maxhog', 'Calico Maxhog'], ['Ogrika_Sunpaa', 'Ogrika Sunpaa'], ['Pearce_F4', 'Pearce F4'], ['VZUS_Ballad', 'VZUS Ballad']
+        ];
+        var track = document.getElementById('fleetTrack');
+        var html = '';
+        for (var pass = 0; pass < 2; pass++) {
+            FLEET.forEach(function (s) {
+                html += '<figure' + (pass ? ' class="dup" aria-hidden="true"' : '') + '><img src="Images/landing/fleet_' + s[0] + '.webp" alt="' + (pass ? '' : s[1]) + '" loading="lazy" decoding="async"><figcaption>' + s[1] + '</figcaption></figure>';
+            });
+        }
+        track.innerHTML = html;
 
-            getStarColor() {
-                const colors = [
-                    'rgba(255, 255, 255, 1)',     // White
-                    'rgba(200, 220, 255, 1)',     // Blue-white
-                    'rgba(255, 240, 220, 1)',     // Warm white
-                    'rgba(180, 200, 255, 1)',     // Light blue
-                    'rgba(0, 240, 255, 0.8)'      // Cyan accent
-                ];
-                return colors[Math.floor(Math.random() * colors.length)];
-            }
-
-            createShootingStar() {
-                if (Math.random() < 0.002 && this.shootingStars.length < 3) {
-                    this.shootingStars.push({
-                        x: Math.random() * this.canvas.width,
-                        y: 0,
-                        length: 80 + Math.random() * 120,
-                        speed: 8 + Math.random() * 12,
-                        angle: Math.PI / 4 + (Math.random() - 0.5) * 0.3,
-                        opacity: 1
-                    });
-                }
-            }
-
-            animate() {
-                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-                const time = Date.now() * 0.001;
-
-                // Draw nebula clouds
-                this.nebulaClouds.forEach(cloud => {
-                    cloud.x += cloud.speedX;
-                    cloud.y += cloud.speedY;
-
-                    // Wrap around
-                    if (cloud.x < -cloud.radius) cloud.x = this.canvas.width + cloud.radius;
-                    if (cloud.x > this.canvas.width + cloud.radius) cloud.x = -cloud.radius;
-                    if (cloud.y < -cloud.radius) cloud.y = this.canvas.height + cloud.radius;
-                    if (cloud.y > this.canvas.height + cloud.radius) cloud.y = -cloud.radius;
-
-                    const gradient = this.ctx.createRadialGradient(
-                        cloud.x, cloud.y, 0,
-                        cloud.x, cloud.y, cloud.radius
-                    );
-                    gradient.addColorStop(0, cloud.color);
-                    gradient.addColorStop(1, 'transparent');
-
-                    this.ctx.fillStyle = gradient;
-                    this.ctx.fillRect(cloud.x - cloud.radius, cloud.y - cloud.radius, cloud.radius * 2, cloud.radius * 2);
-                });
-
-                // Draw stars with twinkling
-                this.stars.forEach(star => {
-                    const twinkle = Math.sin(time * star.twinkleSpeed * 10 + star.twinkleOffset);
-                    const brightness = 0.5 + twinkle * 0.5;
-                    const size = star.size * (0.8 + twinkle * 0.2);
-
-                    this.ctx.beginPath();
-                    this.ctx.arc(star.x, star.y, size, 0, Math.PI * 2);
-                    this.ctx.fillStyle = star.color.replace('1)', `${brightness})`);
-                    this.ctx.fill();
-
-                    // Add glow to brighter stars
-                    if (star.size > 1.5) {
-                        const glow = this.ctx.createRadialGradient(
-                            star.x, star.y, 0,
-                            star.x, star.y, size * 3
-                        );
-                        glow.addColorStop(0, star.color.replace('1)', `${brightness * 0.3})`));
-                        glow.addColorStop(1, 'transparent');
-                        this.ctx.fillStyle = glow;
-                        this.ctx.fillRect(star.x - size * 3, star.y - size * 3, size * 6, size * 6);
-                    }
-                });
-
-                // Create and animate shooting stars
-                this.createShootingStar();
-
-                this.shootingStars = this.shootingStars.filter(star => {
-                    star.x += Math.cos(star.angle) * star.speed;
-                    star.y += Math.sin(star.angle) * star.speed;
-                    star.opacity -= 0.01;
-
-                    if (star.opacity > 0) {
-                        const gradient = this.ctx.createLinearGradient(
-                            star.x, star.y,
-                            star.x - Math.cos(star.angle) * star.length,
-                            star.y - Math.sin(star.angle) * star.length
-                        );
-                        gradient.addColorStop(0, `rgba(255, 255, 255, ${star.opacity})`);
-                        gradient.addColorStop(0.3, `rgba(0, 240, 255, ${star.opacity * 0.5})`);
-                        gradient.addColorStop(1, 'transparent');
-
-                        this.ctx.strokeStyle = gradient;
-                        this.ctx.lineWidth = 2;
-                        this.ctx.beginPath();
-                        this.ctx.moveTo(star.x, star.y);
-                        this.ctx.lineTo(
-                            star.x - Math.cos(star.angle) * star.length,
-                            star.y - Math.sin(star.angle) * star.length
-                        );
-                        this.ctx.stroke();
-
-                        return true;
-                    }
-                    return false;
-                });
-
-                requestAnimationFrame(() => this.animate());
-            }
+        // ------------------------------------------------------------------
+        // PARALLAX: pointer -> two CSS variables (rAF-coalesced, only while the
+        // pointer moves); scroll -> one variable, only while the hero is visible.
+        // ------------------------------------------------------------------
+        var root = document.documentElement, hero = document.querySelector('.hero');
+        if (!reduceMotion && window.matchMedia('(pointer: fine)').matches) {
+            var px = 0, py = 0, pending = false;
+            hero.addEventListener('pointermove', function (e) {
+                var r = hero.getBoundingClientRect();
+                px = ((e.clientX - r.left) / r.width - 0.5) * 2;
+                py = ((e.clientY - r.top) / r.height - 0.5) * 2;
+                if (!pending) { pending = true; requestAnimationFrame(function () { pending = false; root.style.setProperty('--mx', px.toFixed(3)); root.style.setProperty('--my', py.toFixed(3)); }); }
+            }, { passive: true });
+            hero.addEventListener('pointerleave', function () { root.style.setProperty('--mx', 0); root.style.setProperty('--my', 0); });
+        }
+        if (!reduceMotion && 'IntersectionObserver' in window) {
+            var heroVisible = true, scrollPending = false;
+            new IntersectionObserver(function (en) { heroVisible = en[0].isIntersecting; }, { threshold: 0 }).observe(hero);
+            window.addEventListener('scroll', function () {
+                if (!heroVisible || scrollPending) return;
+                scrollPending = true;
+                requestAnimationFrame(function () { scrollPending = false; root.style.setProperty('--sy', window.scrollY); });
+            }, { passive: true });
         }
 
-        // ============================================
-        // MOUSE SPOTLIGHT EFFECT
-        // ============================================
-        class MouseSpotlight {
-            constructor() {
-                this.spotlight = document.getElementById('mouse-spotlight');
-                this.mouseX = 0;
-                this.mouseY = 0;
-                this.spotlightX = 0;
-                this.spotlightY = 0;
-
-                document.addEventListener('mousemove', (e) => {
-                    this.mouseX = e.clientX;
-                    this.mouseY = e.clientY;
+        // ------------------------------------------------------------------
+        // CARD REVEAL (one-shot) + soft tilt (event-driven only)
+        // ------------------------------------------------------------------
+        var cards = document.querySelectorAll('.module-card');
+        if (!reduceMotion && 'IntersectionObserver' in window) {
+            var io = new IntersectionObserver(function (entries) {
+                entries.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } });
+            }, { threshold: 0.15, rootMargin: '0px 0px -5% 0px' });
+            cards.forEach(function (c) { io.observe(c); });
+        } else {
+            cards.forEach(function (c) { c.classList.add('in'); });
+        }
+        if (!reduceMotion && window.matchMedia('(pointer: fine)').matches) {
+            cards.forEach(function (card) {
+                card.addEventListener('mousemove', function (e) {
+                    var r = card.getBoundingClientRect();
+                    var rx = ((e.clientY - r.top) / r.height - 0.5) * -5;
+                    var ry = ((e.clientX - r.left) / r.width - 0.5) * 6;
+                    card.style.transform = 'translateY(-6px) perspective(1000px) rotateX(' + rx.toFixed(2) + 'deg) rotateY(' + ry.toFixed(2) + 'deg)';
                 });
-
-                this.animate();
-            }
-
-            animate() {
-                // Smooth interpolation
-                this.spotlightX += (this.mouseX - this.spotlightX) * 0.1;
-                this.spotlightY += (this.mouseY - this.spotlightY) * 0.1;
-
-                this.spotlight.style.left = `${this.spotlightX}px`;
-                this.spotlight.style.top = `${this.spotlightY}px`;
-
-                requestAnimationFrame(() => this.animate());
-            }
+                card.addEventListener('mouseleave', function () { card.style.transform = ''; });
+            });
         }
 
-        // ============================================
-        // CARD TILT EFFECT
-        // ============================================
-        class CardTilt {
-            constructor() {
-                const cards = document.querySelectorAll('[data-tilt]');
+        // Pause every CSS animation while the tab is hidden.
+        document.addEventListener('visibilitychange', function () { document.body.classList.toggle('paused', document.hidden); });
 
-                cards.forEach(card => {
-                    const glow = card.querySelector('.card-glow');
-
-                    card.addEventListener('mousemove', (e) => {
-                        const rect = card.getBoundingClientRect();
-                        const x = e.clientX - rect.left;
-                        const y = e.clientY - rect.top;
-
-                        const centerX = rect.width / 2;
-                        const centerY = rect.height / 2;
-
-                        const rotateX = (y - centerY) / 20;
-                        const rotateY = (centerX - x) / 20;
-
-                        card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-12px)`;
-
-                        // Update glow position
-                        if (glow) {
-                            const percentX = (x / rect.width) * 100;
-                            const percentY = (y / rect.height) * 100;
-                            card.style.setProperty('--mouse-x', `${percentX}%`);
-                            card.style.setProperty('--mouse-y', `${percentY}%`);
-                        }
-                    });
-
-                    card.addEventListener('mouseleave', () => {
-                        card.style.transform = '';
-                    });
-                });
-            }
-        }
-
-        // ============================================
-        // INITIALIZE
-        // ============================================
-        document.addEventListener('DOMContentLoaded', () => {
-            // Initialize effects
-            new Starfield();
-            new MouseSpotlight();
-            new CardTilt();
-
-            // Launch module buttons
-            document.querySelectorAll('.launch-btn[data-href]').forEach((button) => {
-                button.addEventListener('click', () => {
-                    const href = button.getAttribute('data-href');
-                    if (href) {
-                        // Add transition effect
-                        document.body.style.opacity = '0';
-                        document.body.style.transition = 'opacity 0.3s ease';
-                        setTimeout(() => {
-                            window.location.href = href;
-                        }, 300);
-                    }
-                });
+        // ------------------------------------------------------------------
+        // Module launch + guides + JSON manager (unchanged behaviour)
+        // ------------------------------------------------------------------
+        document.querySelectorAll('.launch-btn[data-href]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                var href = button.getAttribute('data-href');
+                if (!href) return;
+                document.body.style.transition = 'opacity 0.25s ease';
+                document.body.style.opacity = '0';
+                setTimeout(function () { window.location.href = href; }, 250);
             });
-
-            // Help button handlers
-            const helpModal = document.getElementById('helpModal');
-            const helpModalBody = document.getElementById('helpModalBody');
-            const closeHelpModal = document.getElementById('closeHelpModal');
-
-            document.querySelectorAll('.help-btn[data-module]').forEach((button) => {
-                button.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const moduleKey = button.getAttribute('data-module');
-                    const content = moduleHelpContent[moduleKey];
-
-                    if (content) {
-                        let html = `<h2>${content.title}</h2>`;
-                        content.sections.forEach(section => {
-                            html += `
-                                <div class="help-section">
-                                    <h3>${section.heading}</h3>
-                                    <div class="help-section-content">${section.content}</div>
-                                </div>
-                            `;
-                        });
-                        helpModalBody.innerHTML = html;
-                        helpModal.style.display = 'flex';
-                    }
-                });
-            });
-
-            closeHelpModal.addEventListener('click', () => {
-                helpModal.style.display = 'none';
-            });
-
-            window.addEventListener('click', (event) => {
-                if (event.target === helpModal) {
-                    helpModal.style.display = 'none';
-                }
-            });
-
-            // JSON Manager handlers
-            const jsonManagerModal = document.getElementById('jsonManagerModal');
-            const openJsonManagerBtn = document.getElementById('openJsonManager');
-            const closeJsonManagerBtn = document.getElementById('closeJsonManager');
-
-            if (openJsonManagerBtn) {
-                openJsonManagerBtn.addEventListener('click', () => {
-                    jsonManagerModal.style.display = 'flex';
-                    if (window.JsonManager) {
-                        window.JsonManager.populateFileList();
-                    }
-                });
-            }
-
-            if (closeJsonManagerBtn) {
-                closeJsonManagerBtn.addEventListener('click', () => {
-                    jsonManagerModal.style.display = 'none';
-                });
-            }
-
-            window.addEventListener('click', (event) => {
-                if (event.target === jsonManagerModal) {
-                    jsonManagerModal.style.display = 'none';
-                }
-            });
-
-            // Fade in on load
-            document.body.style.opacity = '1';
         });
+
+        var helpModal = document.getElementById('helpModal');
+        var helpModalBody = document.getElementById('helpModalBody');
+        document.querySelectorAll('.help-btn[data-module]').forEach(function (button) {
+            button.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var content = window.moduleHelpContent && moduleHelpContent[button.getAttribute('data-module')];
+                if (!content) return;
+                var h = '<h2>' + content.title + '</h2>';
+                content.sections.forEach(function (section) {
+                    h += '<div class="help-section"><h3>' + section.heading + '</h3><div class="help-section-content">' + section.content + '</div></div>';
+                });
+                helpModalBody.innerHTML = h;
+                helpModal.style.display = 'flex';
+            });
+        });
+        document.getElementById('closeHelpModal').addEventListener('click', function () { helpModal.style.display = 'none'; });
+
+        var jsonManagerModal = document.getElementById('jsonManagerModal');
+        document.getElementById('openJsonManager').addEventListener('click', function () {
+            jsonManagerModal.style.display = 'flex';
+            if (window.JsonManager) { window.JsonManager.populateFileList(); }
+        });
+        document.getElementById('closeJsonManager').addEventListener('click', function () { jsonManagerModal.style.display = 'none'; });
+        window.addEventListener('click', function (event) {
+            if (event.target === helpModal) helpModal.style.display = 'none';
+            if (event.target === jsonManagerModal) jsonManagerModal.style.display = 'none';
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') { helpModal.style.display = 'none'; jsonManagerModal.style.display = 'none'; }
+        });
+    })();
     </script>
 </body>
 </html>

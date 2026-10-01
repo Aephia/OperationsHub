@@ -36,6 +36,32 @@ Then open your browser to: `http://localhost:8000`
 
 ---
 
+## 🛰️ Landing page (`index.html` + `landing.css`, redesigned 2026-09-30)
+
+The hub's front page is a Star Atlas "operations deck": a Cycles-rendered planet backdrop, three
+transparent hull renders drifting at three depths, a marquee of 16 hulls, and one art card per module
+(official claim-stake and station art, a hull render, and the Galia chart drawn from `JSON/planets.json`).
+
+**Motion budget.** Every continuous effect is a CSS `transform`/`opacity` animation (compositor only):
+no per-frame JavaScript, no `backdrop-filter`, the starfield is drawn once per resize, pointer and
+scroll parallax write two CSS variables and only while the pointer moves or the hero is on screen.
+Everything pauses when the tab is hidden and switches off under `prefers-reduced-motion`. The whole
+image set is ~570 KB of WebP (`Images/landing/`).
+
+**Rebuilding the images** (`Tools/landing/`, all read the Star Atlas raw assets in the Battle Arena repo):
+
+```bash
+# 1. planet backdrop - Blender 5.2, Cycles 128 spp on the GPU, ~1 min
+"C:\Program Files\Blender Foundation\Blender 5.2\blender.exe" -b -P Tools/landing/ops_planet.py -- <out.png> 2560 1440 128
+# 2. hull cut-outs, card crops and the planet crops -> Images/landing/*.webp
+python Tools/landing/pack_landing.py <out.png>
+# 3. Galia chart card from the map data
+python Tools/landing/galia_chart.py
+```
+
+`styles.css` still owns the JSON Manager and Module Guide modals; `landing.css` owns everything else on
+the page and is loaded after it.
+
 ## 📂 Explorer Applications
 
 ### 1. 🪐 **Planet Explorer**
