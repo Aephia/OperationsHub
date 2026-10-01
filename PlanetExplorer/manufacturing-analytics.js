@@ -63,13 +63,11 @@ class ManufacturingAnalytics {
         const totalPlanets = planets.length;
         const topSufficiency = planets.length > 0 ? Math.max(...planets.map(p => p.selfSufficiencyScore)) : 0;
 
-        // Count unique specializations
+        // Count unique specializations - the analysis already carries each planet's top specialization,
+        // so no per-planet recipe walk here (that walk made this tab take seconds to open).
         const specializations = new Set();
         planets.forEach(p => {
-            const details = this.getManufacturingDetails(p);
-            if (details.topSpecialization) {
-                specializations.add(details.topSpecialization.type);
-            }
+            if (p.topSpecialization && p.topSpecialization.type) specializations.add(p.topSpecialization.type);
         });
 
         // Total recipes available across all planets
@@ -304,6 +302,17 @@ class ManufacturingAnalytics {
         const allRecipes = this.crossAnalytics?.dataCache?.recipes || [];
         const availableResources = new Set((planet.availableResources || planet.resources || []).map(r => typeof r === 'string' ? r : r.name));
         const planetTypeName = this.getPlanetTypeName(planet.planetType);
+
+        // Planets with the same type and deposit set get identical details: share one walk between them.
+        if (!this._detailsCache) this._detailsCache = new Map();
+        const cacheKey = planetTypeName + '|' + Array.from(availableResources).sort().join('|');
+        const cached = this._detailsCache.get(cacheKey);
+        if (cached) {
+            planet.manufacturableRecipes = cached.count;
+            planet.topSpecialization = cached.topSpecialization || planet.topSpecialization || null;
+            planet._manufacturingDetails = cached;
+            return cached;
+        }
         const planetTypeNameLower = planetTypeName.toLowerCase();
 
         const matchesPlanetType = (recipe) => {
@@ -316,7 +325,12 @@ class ManufacturingAnalytics {
             });
         };
 
-        const relevantRecipes = allRecipes.filter(recipe => recipe.ingredients && recipe.ingredients.length > 0 && matchesPlanetType(recipe));
+        // the planet-type filter only depends on the type name: compute it once per type
+        if (!this._relevantByType) this._relevantByType = new Map();
+        if (!this._relevantByType.has(planetTypeName)) {
+            this._relevantByType.set(planetTypeName, allRecipes.filter(recipe => recipe.ingredients && recipe.ingredients.length > 0 && matchesPlanetType(recipe)));
+        }
+        const relevantRecipes = this._relevantByType.get(planetTypeName);
         const maxDepthIterations = 6;
         const availableItems = new Set(availableResources);
         const remaining = [...relevantRecipes];
@@ -417,6 +431,7 @@ class ManufacturingAnalytics {
         planet.manufacturableRecipes = details.count;
         planet.topSpecialization = details.topSpecialization || planet.topSpecialization || null;
         planet._manufacturingDetails = details;
+        this._detailsCache.set(cacheKey, details);
         return details;
     }
 

@@ -8,19 +8,23 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="planet-visual.css?v=20260930">
     <link rel="icon" type="image/jpeg" href="../Images/channels4_profile.jpg">
 </head>
 <body>
+    <div class="pe-sky" aria-hidden="true"></div>
     <header>
-        <h1>🪐 Planet Explorer</h1>
-
+        <a class="brand" href="../index.html" title="Back to the Operations Hub">
+            <img src="../Images/channels4_profile.jpg" alt="">
+            <span><b>Aephia Industries</b><small>Operations Hub</small></span>
+        </a>
+        <h1>Planet Explorer</h1>
         <nav class="navigation-tabs">
-            <button class="nav-tab active" data-tab="explorer">🌍 Explorer</button>
-            <button class="nav-tab" data-tab="analytics">📊 Analytics</button>
+            <button class="nav-tab active" data-tab="explorer">Explorer</button>
+            <button class="nav-tab" data-tab="analytics">Analytics</button>
         </nav>
-
         <nav class="breadcrumb">
-            <a href="../index.html">Home</a> > Planet Explorer
+            <a href="../index.html">Home</a> / Planet Explorer
         </nav>
     </header>
 
@@ -104,46 +108,56 @@
             <div id="basicAnalyticsSubtab" class="subtab-content active">
             <div class="analytics-stats">
                 <div class="stat-card">
-                    <span class="stat-number" id="averageRichness">0</span>
-                    <span class="stat-label">Average Richness</span>
+                    <span class="stat-number" id="totalDeposits">0</span>
+                    <span class="stat-label">Deposits</span>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-number" id="topSystemsCount">0</span>
-                    <span class="stat-label">Resource-Rich Systems</span>
+                    <span class="stat-number" id="totalResourceTypes">0</span>
+                    <span class="stat-label">Resource types</span>
                 </div>
                 <div class="stat-card">
                     <span class="stat-number" id="regionalResourcesCount">0</span>
-                    <span class="stat-label">Regionally Limited Resources</span>
+                    <span class="stat-label">Not in every region</span>
                 </div>
                 <div class="stat-card">
                     <span class="stat-number" id="totalRegions">0</span>
-                    <span class="stat-label">Total Regions</span>
+                    <span class="stat-label">Regions</span>
                 </div>
             </div>
 
             <div class="analytics-sections">
-                <div class="analytics-section">
-                    <h3>🗺️ Regionally Limited Resources</h3>
-                    <p class="section-note">Resources that are NOT present in all regions. Regions are faction-specific (e.g. ONI-003, UST-CSS), so the same name prefix in different factions counts as separate regions. These resources may be valuable for regional trade or strategic importance.</p>
-                    <div id="regionallyLimitedResources" class="resource-analysis-grid">
-                        <!-- Regionally limited resources will be populated here -->
-                    </div>
+                <div class="analytics-section charts-row" id="resourceCharts">
+                    <!-- three small charts: deposits by planet category, tier mix per faction, deposits per tier -->
                 </div>
 
                 <div class="analytics-section">
-                    <h3>💎 Highest Quality Resources</h3>
-                    <p class="section-note">Resources with the highest average richness across all deposits</p>
-                    <div id="highestQuality" class="resource-analysis-grid">
-                        <!-- Highest quality resources will be populated here -->
+                    <div class="section-head">
+                        <h3>Resource atlas</h3>
+                        <p class="section-note">Every resource in the deposit data. Richness is only comparable within a resource, so each row shows its own best deposit and how the rest spread. Click a row for its ten richest deposits.</p>
+                        <div class="atlas-tools">
+                            <input type="search" id="atlasSearch" placeholder="Find a resource" autocomplete="off">
+                            <select id="atlasSort">
+                                <option value="tier">Sort: tier, then deposits</option>
+                                <option value="deposits">Sort: most deposits</option>
+                                <option value="scarce">Sort: fewest deposits</option>
+                                <option value="regions">Sort: fewest regions</option>
+                                <option value="name">Sort: name</option>
+                            </select>
+                        </div>
                     </div>
+                    <div id="resourceAtlas" class="atlas"></div>
                 </div>
 
                 <div class="analytics-section">
-                    <h3>🌟 Top Resource Locations</h3>
-                    <p class="section-note">Star systems ranked by number of unique resource types (resource diversity across all planets). Strategic Score is a system rating from your data (meaning not defined here).</p>
-                    <div id="topLocations" class="location-analysis-grid">
-                        <!-- Top locations will be populated here -->
-                    </div>
+                    <h3>Not in every region</h3>
+                    <p class="section-note">Resources missing from some of the 69 regions (regions from the map data). Fewest regions first. Click a region chip for the deposits there, richest first.</p>
+                    <div id="regionallyLimitedResources" class="resource-analysis-grid"></div>
+                </div>
+
+                <div class="analytics-section">
+                    <h3>Most diverse systems</h3>
+                    <p class="section-note">Systems ranked by distinct resources across their planets. Click one for its system view.</p>
+                    <div id="topLocations" class="rank-bars"></div>
                 </div>
             </div>
             </div>
@@ -212,7 +226,8 @@
     <script src="../Utils/CrossExplorerAnalytics.js"></script>
     <script src="../Data/planet-data.js"></script>
     <script src="../Data/system-codes-data.js"></script>
-    <script src="explorer.js?v=20260914"></script>
+    <script src="orrery.js?v=20260930"></script>
+    <script src="explorer.js?v=20260930"></script>
     <script src="analytics.js?v=20260914"></script>
     <script src="manufacturing-analytics.js?v=20260914"></script>
     <script src="territory-analytics.js?v=20260914"></script>

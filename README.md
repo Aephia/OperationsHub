@@ -67,6 +67,27 @@ the page and is loaded after it.
 ### 1. 🪐 **Planet Explorer**
 Discover and analyze 3,901 planets across all star systems
 
+**Visual upgrade (2026-09-30):** every system is drawn as an **orrery** (`PlanetExplorer/orrery.js`, SVG) from
+the data's own `orbit`, `angle` and `scale`: the star is coloured by `star.type`, planets by category
+(`type % 8`), asteroid belts are dotted rings, gas giants carry a ring. The system modal animates it (CSS
+transforms only, off under reduced motion) and names every planet; planet rows and orrery bodies open the
+planet modal, warp-link chips jump to the linked system. Cards carry badges for faction, star type, starbase
+level (L6 = Central Space Station), King, Core and the region's risk zone and raw-tier cap. **Richness** is
+shown as the value plus a bar against the richest deposit of the same resource in Galia (the old "x/5" was
+wrong: tier-1 ores run to 7.0, tiers 2-5 stay under 2.2); tier badges come from `resources.json`. Belts are
+marked "ships only" (no central hub, so no claim stake). Styles live in `PlanetExplorer/planet-visual.css`,
+loaded after `styles.css`.
+
+**Analytics tab (same date).** *Resource Analytics* was rebuilt (`analytics.js`): three bar charts (deposits
+by planet category, by resource tier, tier mix by territory), a sortable, searchable **resource atlas** (one row
+per resource: tier, deposits, systems, regions, min / median / best richness and the best deposit; a row opens
+its ten richest deposits, each linking to the system view), "not in every region" using the map data's real
+region names, and the most diverse systems as rank bars. *Territory* gained a **Galia map** (all 945 systems in
+faction colour, the top 25 by the formula as pins, redrawn on Apply) and the Faction Dominance cards now render
+on first load with real region names (they used to need an Apply click and showed name fragments). Chart faction
+colours (MUD `#e8503a`, ONI `#3a86f0`, USTUR `#bf8a28`) passed the colour-vision checks of the dataviz skill on the
+page's surface; category bars are single-hue by design.
+
 **Features:**
 - Filter by faction (MUD, ONI, USTUR) and planet type
 - Star Systems list grouped by region number, each entry showing the SAGE code and the lore name

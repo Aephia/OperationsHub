@@ -276,141 +276,78 @@ class CrossExplorerAnalytics {
      * Best planets for specific manufacturing chains
      */
     async analyzePlanetProductOptimization() {
-        await this.loadAllData();
+        // Only what this analysis reads (the full loader also pulls the 12 MB ships file).
+        await Promise.all([this.loadPlanetData(), this.loadRecipeData(), this.loadBuildingData(), this.loadResourceTierData()]);
 
         const planets = this.dataCache.planets;
         const recipes = this.dataCache.recipes;
-        const buildings = this.dataCache.buildings;
-        const resourceTierData = this.dataCache.resourceTierData;
+        const totalRecipes = recipes.length;
 
+        // Depth-aware manufacturability (same walk as manufacturing-analytics.js), computed ONCE per
+        // distinct (planet category, deposit set): thousands of planets share a few hundred signatures.
+        const prepared = recipes.filter(r => r.ingredients && r.ingredients.length > 0).map(recipe => ({
+            recipe,
+            ingredients: recipe.ingredients.map(i => i.name),
+            outputs: [recipe.outputName].concat(Array.isArray(recipe.outputs) ? recipe.outputs.map(o => o && o.name) : []).filter(Boolean),
+            planetTypes: (recipe.planetTypes || []).map(t => String(t).toLowerCase())
+        }));
+        const relevantByCategory = new Map();
+        const relevantFor = (categoryLower) => {
+            if (!relevantByCategory.has(categoryLower)) {
+                relevantByCategory.set(categoryLower, prepared.filter(p => !p.planetTypes.length ||
+                    p.planetTypes.some(t => t.includes(categoryLower) || categoryLower.includes(t))));
+            }
+            return relevantByCategory.get(categoryLower);
+        };
+        const walk = (categoryLower, resourceNames) => {
+            const availableItems = new Set(resourceNames);
+            let remaining = relevantFor(categoryLower);
+            const made = [];
+            for (let depth = 1; remaining.length && depth <= 6; depth++) {
+                const next = [];
+                const newly = [];
+                for (const p of remaining) {
+                    let ok = true;
+                    for (let i = 0; i < p.ingredients.length; i++) { if (!availableItems.has(p.ingredients[i])) { ok = false; break; } }
+                    (ok ? newly : next).push(p);
+                }
+                if (!newly.length) break;
+                for (const p of newly) { made.push(p.recipe); for (const o of p.outputs) availableItems.add(o); }
+                remaining = next;
+            }
+            const specialization = new Map();
+            made.forEach(r => { const t = r.resourceType || 'General'; specialization.set(t, (specialization.get(t) || 0) + 1); });
+            const top = Array.from(specialization.entries()).sort((a, b) => b[1] - a[1])[0];
+            return { count: made.length, topSpecialization: top ? { type: top[0], count: top[1] } : null };
+        };
+        const memo = new Map();
         const planetScores = [];
 
         planets.forEach(system => {
             if (!system.planets) return;
-
             system.planets.forEach(planet => {
                 if (!planet.resources) return;
-
-                // Get available resources on this planet
-                const availableResources = new Set(planet.resources.map(r => r.name));
-
-                // Depth-aware manufacturability calculation (matches manufacturing-analytics.js)
+                const availableResources = Array.from(new Set(planet.resources.map(r => r.name)));
                 const planetTypeName = this.getPlanetTypeName(planet.type);
-                // Strip faction prefix (e.g., "UST Terrestrial Planet" -> "Terrestrial Planet")
-                const planetTypeWithoutFaction = planetTypeName.replace(/^(ONI|MUD|UST|USTUR)\s+/, '');
-                const planetTypeNameLower = planetTypeWithoutFaction.toLowerCase();
-
-                const matchesPlanetType = (recipe) => {
-                    if (!recipe.planetTypes || recipe.planetTypes.length === 0) {
-                        return true;
-                    }
-                    return recipe.planetTypes.some(type => {
-                        const lower = type.toLowerCase();
-                        return lower.includes(planetTypeNameLower) || planetTypeNameLower.includes(lower);
-                    });
-                };
-
-                const relevantRecipes = recipes.filter(recipe =>
-                    recipe.ingredients &&
-                    recipe.ingredients.length > 0 &&
-                    matchesPlanetType(recipe)
-                );
-
-                const maxDepthIterations = 6;
-                const availableItems = new Set(availableResources);
-                const remaining = [...relevantRecipes];
-                const manufacturableRecipes = [];
-
-                let depth = 1;
-                while (remaining.length > 0 && depth <= maxDepthIterations) {
-                    const nextRemaining = [];
-                    const newlyManufacturable = [];
-
-                    for (const recipe of remaining) {
-                        const canManufacture = recipe.ingredients.every(ingredient =>
-                            availableItems.has(ingredient.name)
-                        );
-                        if (canManufacture) {
-                            newlyManufacturable.push({ ...recipe, depth });
-                        } else {
-                            nextRemaining.push(recipe);
-                        }
-                    }
-
-                    if (newlyManufacturable.length === 0) {
-                        break;
-                    }
-
-                    newlyManufacturable.forEach(recipe => {
-                        manufacturableRecipes.push(recipe);
-
-                        // Add recipe outputs to available items for next depth
-                        const outputs = new Set();
-                        if (recipe.outputName) {
-                            outputs.add(recipe.outputName);
-                        }
-                        if (Array.isArray(recipe.outputs)) {
-                            recipe.outputs.forEach(output => {
-                                if (output && output.name) {
-                                    outputs.add(output.name);
-                                }
-                            });
-                        }
-                        outputs.forEach(item => availableItems.add(item));
-                    });
-
-                    remaining.length = 0;
-                    remaining.push(...nextRemaining);
-                    depth += 1;
-                }
-
-                // Calculate self-sufficiency score (depth-aware)
-                const totalRecipes = recipes.length;
-                const selfSufficiencyScore = (manufacturableRecipes.length / totalRecipes) * 100;
-
-                // DEBUG: Log for first few planets to verify calculation
-                if (planet.name === '016-UST-KING-01-P8') {
-                    console.log(`[CrossExplorerAnalytics] Planet: ${planet.name}`);
-                    console.log(`  Planet type ID: ${planet.type}`);
-                    console.log(`  Planet type name (full): ${planetTypeName}`);
-                    console.log(`  Planet type name (stripped): ${planetTypeWithoutFaction}`);
-                    console.log(`  Available resources (${availableResources.size}):`, Array.from(availableResources).slice(0, 5));
-                    console.log(`  Total recipes in game: ${totalRecipes}`);
-                    console.log(`  Recipes with ingredients: ${recipes.filter(r => r.ingredients && r.ingredients.length > 0).length}`);
-                    console.log(`  Relevant recipes (matching planet type): ${relevantRecipes.length}`);
-                    if (relevantRecipes.length > 0) {
-                        console.log(`  Sample relevant recipe:`, relevantRecipes[0]);
-                    }
-                    console.log(`  Manufacturable recipes: ${manufacturableRecipes.length}`);
-                    console.log(`  Self-Sufficiency: ${selfSufficiencyScore.toFixed(3)}%`);
-                }
-
-                // Calculate specialization (what this planet is best at)
-                const specializationMap = new Map();
-                manufacturableRecipes.forEach(recipe => {
-                    const type = recipe.resourceType || 'General';
-                    specializationMap.set(type, (specializationMap.get(type) || 0) + 1);
-                });
-
-                const topSpecialization = Array.from(specializationMap.entries())
-                    .sort((a, b) => b[1] - a[1])[0];
+                const categoryLower = planetTypeName.replace(/^(ONI|MUD|UST|USTUR)\s+/, '').toLowerCase();
+                const key = categoryLower + '|' + availableResources.slice().sort().join('|');
+                let result = memo.get(key);
+                if (!result) { result = walk(categoryLower, availableResources); memo.set(key, result); }
 
                 planetScores.push({
                     system: system.name,
                     planet: planet.name,
                     planetType: planet.type,
                     totalResources: planet.resources.length,
-                    availableResources: Array.from(availableResources),
-                    manufacturableRecipes: manufacturableRecipes.length,
-                    selfSufficiencyScore,
-                    topSpecialization: topSpecialization ? {
-                        type: topSpecialization[0],
-                        count: topSpecialization[1]
-                    } : null,
+                    availableResources,
+                    manufacturableRecipes: result.count,
+                    selfSufficiencyScore: (result.count / totalRecipes) * 100,
+                    topSpecialization: result.topSpecialization,
                     strategicScore: system.strategicScore || 0
                 });
             });
         });
+        console.log(`[CrossExplorerAnalytics] manufacturability: ${planetScores.length} planets, ${memo.size} distinct signatures walked`);
 
         return {
             planetScores: planetScores.sort((a, b) => b.selfSufficiencyScore - a.selfSufficiencyScore),

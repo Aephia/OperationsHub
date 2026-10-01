@@ -50,8 +50,132 @@ class TerritoryAnalytics {
 
         // Stats section removed from UI, no need to update
         // this.updateStats();
-        this.renderTopSystems();
+        // factionSummary only existed after "Apply Formula" (the loader returns factionDominance), so the
+        // dominance cards never showed on first load: compute it once with the default weights.
+        this.recalculateTerritoryValues();
         this.renderFactionDominance();
+        this.renderTerritoryMap();
+        this.renderTopSystems();
+    }
+
+    // Galia chart from the map data: every system as a dot in its territory's faction colour, the
+    // top-ranked systems by the current formula drawn larger and labelled. Re-drawn when the formula changes.
+    renderTerritoryMap() {
+        const container = document.getElementById('territoryContent');
+        const systems = (window.planetData && window.planetData.mapData) || [];
+        if (!container || !systems.length || !this.data?.territoryAnalysis) return;
+
+        let section = document.getElementById('territoryMapSection');
+        if (!section) {
+            section = document.createElement('section');
+            section.className = 'analytics-section';
+            section.id = 'territoryMapSection';
+            container.appendChild(section);
+        }
+
+        const W = 960, H = 600, pad = 36;
+        const xs = systems.map(s => s.coordinates[0]), ys = systems.map(s => s.coordinates[1]);
+        const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+        const sc = Math.min((W - 2 * pad) / (x1 - x0), (H - 2 * pad) / (y1 - y0));
+        const ox = (W - (x1 - x0) * sc) / 2, oy = (H - (y1 - y0) * sc) / 2;
+        const P = c => [ox + (c[0] - x0) * sc, H - (oy + (c[1] - y0) * sc)];   // north up, like the Region Map Explorer
+        const byName = new Map(systems.map(s => [s.name, s]));
+        const fac = f => (f || '').toUpperCase().startsWith('MUD') ? 'mud' : (f || '').toUpperCase().startsWith('ONI') ? 'oni' : 'ust';
+
+        // The pins follow the TABLE: its column filters narrow the set, the formula orders it.
+        const ranked = this.filteredSystems && this.filteredSystems.length ? this.filteredSystems : this.data.territoryAnalysis;
+        const filtered = this.filteredSystems && this.allSystems && this.filteredSystems.length !== this.allSystems.length;
+        const inSet = new Set(ranked.map(t => t.system));
+        const top = ranked.slice(0, 25);
+        const topSet = new Set(top.map(t => t.system));
+        const maxV = top[0] ? top[0].territoryValue : 1;
+
+        let dots = '';
+        systems.forEach(s => {
+            if (topSet.has(s.name)) return;
+            const [x, y] = P(s.coordinates);
+            const dim = filtered && !inSet.has(s.name) ? ' dim' : '';
+            dots += `<circle class="tm-dot f-${fac(s.closestFaction)}${dim}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.2"><title>${this.escapeHtml(s.name)} (${this.escapeHtml(s.closestFaction || '?')})</title></circle>`;
+        });
+        let pins = '', labels = '';
+        top.forEach((t, i) => {
+            const s = byName.get(t.system); if (!s) return;
+            const [x, y] = P(s.coordinates);
+            const r = 4 + 6 * (t.territoryValue / maxV);
+            pins += `<circle class="tm-pin f-${fac(t.faction)}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(1)}" data-system="${this.escapeHtml(s.key)}"><title>#${i + 1} ${this.escapeHtml(t.system)} - score ${t.territoryValue.toFixed(1)}</title></circle>`;
+            labels += `<text class="tm-label${i < 10 ? '' : ' tm-label-far'}" x="${(x + r + 3).toFixed(1)}" y="${(y + 4).toFixed(1)}">${i + 1} ${this.escapeHtml(t.system)}</text>`;
+        });
+
+        const note = filtered
+            ? `Pins are the ${Math.min(25, ranked.length)} highest-scoring of the ${ranked.length} systems the table filter leaves; the rest are dimmed.`
+            : 'All 945 systems in their territory\'s colour; the 25 highest-scoring systems by the formula below are the large pins.';
+        section.innerHTML = `
+            <h3>Territory map</h3>
+            <p class="section-note">${note} The top 10 are named, all 25 once zoomed in. Scroll to zoom, drag to pan, click a pin for its system view.</p>
+            <div class="tm-bar">
+                <div class="tm-legend"><span><i class="f-mud"></i>MUD</span><span><i class="f-oni"></i>ONI</span><span><i class="f-ust"></i>USTUR</span><span><i class="pin"></i>Top by score</span></div>
+                <div class="tm-zoom"><button type="button" data-zoom="in" title="Zoom in">+</button><button type="button" data-zoom="out" title="Zoom out">&minus;</button><button type="button" data-zoom="reset" title="Reset view">Reset</button><span class="tm-k"></span></div>
+            </div>
+            <svg class="territory-map" viewBox="0 0 ${W} ${H}" role="img" aria-label="Galia map with the highest value systems">${dots}${pins}${labels}</svg>
+        `;
+        this.bindMapZoom(section, W, H);
+    }
+
+    // viewBox zoom + pan, state kept across re-renders (formula apply, table filter)
+    bindMapZoom(section, W, H) {
+        const svg = section.querySelector('svg');
+        const kLabel = section.querySelector('.tm-k');
+        if (!this.mapView) this.mapView = { k: 1, cx: W / 2, cy: H / 2 };
+        const v = this.mapView;
+        const apply = () => {
+            v.k = Math.min(8, Math.max(1, v.k));
+            const w = W / v.k, h = H / v.k;
+            v.cx = Math.min(W - w / 2, Math.max(w / 2, v.cx));
+            v.cy = Math.min(H - h / 2, Math.max(h / 2, v.cy));
+            svg.setAttribute('viewBox', `${(v.cx - w / 2).toFixed(1)} ${(v.cy - h / 2).toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}`);
+            svg.style.fontSize = (12 / Math.sqrt(v.k)).toFixed(1) + 'px';   // labels grow slower than the map
+            svg.style.setProperty('--ps', (1 / Math.sqrt(v.k)).toFixed(3));  // so do the pins
+            svg.classList.toggle('zoomed', v.k >= 2);
+            if (kLabel) kLabel.textContent = v.k.toFixed(1) + 'x';
+        };
+        const toMap = (e) => {
+            const r = svg.getBoundingClientRect();
+            const w = W / v.k, h = H / v.k;
+            return [v.cx - w / 2 + (e.clientX - r.left) / r.width * w, v.cy - h / 2 + (e.clientY - r.top) / r.height * h];
+        };
+        const zoomAt = (factor, px, py) => {
+            const k0 = v.k; v.k = Math.min(8, Math.max(1, v.k * factor));
+            const f = 1 - k0 / v.k;        // keep the point under the pointer fixed
+            v.cx += (px - v.cx) * f; v.cy += (py - v.cy) * f;
+            apply();
+        };
+        svg.addEventListener('wheel', (e) => { e.preventDefault(); const [px, py] = toMap(e); zoomAt(e.deltaY < 0 ? 1.25 : 0.8, px, py); }, { passive: false });
+        section.querySelector('.tm-zoom').addEventListener('click', (e) => {
+            const b = e.target.closest('[data-zoom]'); if (!b) return;
+            if (b.dataset.zoom === 'reset') { v.k = 1; v.cx = W / 2; v.cy = H / 2; apply(); }
+            else zoomAt(b.dataset.zoom === 'in' ? 1.5 : 1 / 1.5, v.cx, v.cy);
+        });
+        let drag = null;
+        svg.addEventListener('pointerdown', (e) => { if (e.button !== 0) return; drag = { x: e.clientX, y: e.clientY, cx: v.cx, cy: v.cy, moved: false }; svg.setPointerCapture(e.pointerId); });
+        svg.addEventListener('pointermove', (e) => {
+            if (!drag) return;
+            const r = svg.getBoundingClientRect();
+            const dx = (e.clientX - drag.x) / r.width * (W / v.k), dy = (e.clientY - drag.y) / r.height * (H / v.k);
+            if (Math.abs(e.clientX - drag.x) + Math.abs(e.clientY - drag.y) > 3) drag.moved = true;
+            v.cx = drag.cx - dx; v.cy = drag.cy - dy; apply();
+        });
+        const end = (e) => {
+            if (!drag) return;
+            const moved = drag.moved; drag = null;
+            if (moved) return;
+            const pin = e.target.closest('[data-system]');
+            if (!pin || !window.planetExplorer) return;
+            const sys = window.planetExplorer.systemByKey.get(pin.dataset.system);
+            if (sys) window.planetExplorer.showSystemModal(sys);
+        };
+        svg.addEventListener('pointerup', end);
+        svg.addEventListener('pointercancel', () => { drag = null; });
+        apply();
     }
 
     recalculateTerritoryValues() {
@@ -85,8 +209,23 @@ class TerritoryAnalytics {
             contestedSystems: territories.filter(t => t.contested).length || 0,
             totalValue: territories.reduce((sum, t) => sum + t.territoryValue, 0),
             averageValue: territories.reduce((sum, t) => sum + t.territoryValue, 0) / territories.length,
-            keyRegions: [...new Set(territories.map(t => (t.systemCode || t.system).substring(0, 3)))].slice(0, 5)
+            // real region names from the map data (the old 3-character prefix of a lore name was noise)
+            keyRegions: this.topRegionsFor(territories)
         })).sort((a, b) => b.totalValue - a.totalValue);
+    }
+
+    // The faction's regions ranked by the summed territory value of their systems, by real region name.
+    topRegionsFor(territories) {
+        if (!this.regionOfSystem) {
+            const regions = new Map(((window.planetData && window.planetData.regionDefinitions) || []).map(r => [r.id, r.name]));
+            this.regionOfSystem = new Map(((window.planetData && window.planetData.mapData) || []).map(s => [s.name, regions.get(s.regionId) || null]));
+        }
+        const sum = new Map();
+        territories.forEach(t => {
+            const r = this.regionOfSystem.get(t.system);
+            if (r) sum.set(r, (sum.get(r) || 0) + t.territoryValue);
+        });
+        return Array.from(sum.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5).map(e => e[0]);
     }
 
     getFormulaString() {
@@ -316,6 +455,7 @@ class TerritoryAnalytics {
                 this.filteredSystems = [...this.allSystems];
                 this.currentPage = 1;
                 this.renderSystemTablePage(1);
+                this.renderTerritoryMap();
             });
         }
 
@@ -457,6 +597,7 @@ class TerritoryAnalytics {
 
         this.currentPage = 1;
         this.renderSystemTablePage(1);
+        this.renderTerritoryMap();
     }
 
     renderFactionDominance() {
