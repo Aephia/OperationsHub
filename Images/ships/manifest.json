@@ -1,0 +1,498 @@
+{
+ "Busan Pulse": {
+  "hull": null,
+  "hero": "Busan_Pulse_store.webp",
+  "turn": null,
+  "frames": 0,
+  "frameSize": 0,
+  "source": "store",
+  "symbol": "PULSE"
+ },
+ "Fimbul Airbike": {
+  "hull": "Fimbul_Airbike",
+  "hero": "Fimbul_Airbike_hero.webp",
+  "turn": "Fimbul_Airbike_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Fimbul ECOS Unibomba": {
+  "hull": "Fimbul_Unibomba",
+  "hero": "Fimbul_Unibomba_hero.webp",
+  "turn": "Fimbul_Unibomba_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Ogrika Ruch": {
+  "hull": null,
+  "hero": "Ogrika_Ruch_store.webp",
+  "turn": null,
+  "frames": 0,
+  "frameSize": 0,
+  "source": "store",
+  "symbol": "OGKARU"
+ },
+ "Opal Jet": {
+  "hull": "Opal_Jet",
+  "hero": "Opal_Jet_hero.webp",
+  "turn": "Opal_Jet_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Pearce X4": {
+  "hull": "Pearce_X4",
+  "hero": "Pearce_X4_hero.webp",
+  "turn": "Pearce_X4_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "VZUS solos": {
+  "hull": "VZUS_Solos",
+  "hero": "VZUS_Solos_hero.webp",
+  "turn": "VZUS_Solos_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Calico Maxhog": {
+  "hull": "Calico_Maxhog",
+  "hero": "Calico_Maxhog_hero.webp",
+  "turn": "Calico_Maxhog_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Calico Scud": {
+  "hull": "Calico_Scud",
+  "hero": "Calico_Scud_hero.webp",
+  "turn": "Calico_Scud_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Fimbul Lowbie": {
+  "hull": "Fimbul_Lowbie",
+  "hero": "Fimbul_Lowbie_hero.webp",
+  "turn": "Fimbul_Lowbie_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Ogrika Niruch": {
+  "hull": "Ogrika_Niruch",
+  "hero": "Ogrika_Niruch_hero.webp",
+  "turn": "Ogrika_Niruch_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Opal Jetjet": {
+  "hull": "Opal_JetJet",
+  "hero": "Opal_JetJet_hero.webp",
+  "turn": "Opal_JetJet_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Pearce X5": {
+  "hull": "Pearce_X5",
+  "hero": "Pearce_X5_hero.webp",
+  "turn": "Pearce_X5_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Armstrong IMP Tip": {
+  "hull": "Armstrong_IMPTip",
+  "hero": "Armstrong_IMPTip_hero.webp",
+  "turn": "Armstrong_IMPTip_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Busan Thrill of Life": {
+  "hull": "Busan_ThrillOfLife",
+  "hero": "Busan_ThrillOfLife_hero.webp",
+  "turn": "Busan_ThrillOfLife_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Calico Medtech": {
+  "hull": "Calico_MedTech",
+  "hero": "Calico_MedTech_hero.webp",
+  "turn": "Calico_MedTech_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Calico Shipit": {
+  "hull": null,
+  "hero": "Calico_Shipit_store.webp",
+  "turn": null,
+  "frames": 0,
+  "frameSize": 0,
+  "source": "store",
+  "symbol": "CALSHIP"
+ },
+ "Fimbul BYOS Earp": {
+  "hull": "Fimbul_Earp",
+  "hero": "Fimbul_Earp_hero.webp",
+  "turn": "Fimbul_Earp_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Ogrika Mik": {
+  "hull": "Ogrika_Mik",
+  "hero": "Ogrika_Mik_hero.webp",
+  "turn": "Ogrika_Mik_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Opal Rayfam": {
+  "hull": "Opal_Rayfam",
+  "hero": "Opal_Rayfam_hero.webp",
+  "turn": "Opal_Rayfam_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Pearce R6": {
+  "hull": "Pearce_R6",
+  "hero": "Pearce_R6_hero.webp",
+  "turn": "Pearce_R6_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Pearce X6": {
+  "hull": "Pearce_X6",
+  "hero": "Pearce_X6_hero.webp",
+  "turn": "Pearce_X6_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Rainbow Chi": {
+  "hull": "Rainbow_Chi",
+  "hero": "Rainbow_Chi_hero.webp",
+  "turn": "Rainbow_Chi_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Tufa Feist": {
+  "hull": "Tufa_Feist",
+  "hero": "Tufa_Feist_hero.webp",
+  "turn": "Tufa_Feist_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "VZUS ambwe": {
+  "hull": "VZUS_Ambwe",
+  "hero": "VZUS_Ambwe_hero.webp",
+  "turn": "VZUS_Ambwe_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Armstrong IMP Tap": {
+  "hull": null,
+  "hero": "Armstrong_IMP_Tap_store.webp",
+  "turn": null,
+  "frames": 0,
+  "frameSize": 0,
+  "source": "store",
+  "symbol": "IMP2"
+ },
+ "Calico ATS Enforcer": {
+  "hull": "Calico_Enforcer",
+  "hero": "Calico_Enforcer_hero.webp",
+  "turn": "Calico_Enforcer_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Calico Compakt Hero": {
+  "hull": "Calico_CompaktHero",
+  "hero": "Calico_CompaktHero_hero.webp",
+  "turn": "Calico_CompaktHero_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Calico Evac": {
+  "hull": "Calico_Evac",
+  "hero": "Calico_Evac_hero.webp",
+  "turn": "Calico_Evac_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Fimbul BYOS Packlite": {
+  "hull": "Fimbul_Packlite",
+  "hero": "Fimbul_Packlite_hero.webp",
+  "turn": "Fimbul_Packlite_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Fimbul BYOS Ranger": {
+  "hull": null,
+  "hero": "Fimbul_BYOS_Ranger_store.webp",
+  "turn": null,
+  "frames": 0,
+  "frameSize": 0,
+  "source": "store",
+  "symbol": "FBLBRA"
+ },
+ "Fimbul Mamba EX": {
+  "hull": "Fimbul_Mamba",
+  "hero": "Fimbul_Mamba_hero.webp",
+  "turn": "Fimbul_Mamba_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Fimbul Mamba": {
+  "hull": "Fimbul_Mamba",
+  "hero": "Fimbul_Mamba_hero.webp",
+  "turn": "Fimbul_Mamba_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Ogrika Tursic": {
+  "hull": "Ogrika_Tursic",
+  "hero": "Ogrika_Tursic_hero.webp",
+  "turn": "Ogrika_Tursic_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Pearce F4": {
+  "hull": "Pearce_F4",
+  "hero": "Pearce_F4_hero.webp",
+  "turn": "Pearce_F4_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Rainbow Om": {
+  "hull": "Rainbow_Om",
+  "hero": "Rainbow_Om_hero.webp",
+  "turn": "Rainbow_Om_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "VZUS opod": {
+  "hull": "VZUS_Opod",
+  "hero": "VZUS_Opod_hero.webp",
+  "turn": "VZUS_Opod_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Fimbul BYOS Butch": {
+  "hull": null,
+  "hero": "Fimbul_BYOS_Butch_store.webp",
+  "turn": null,
+  "frames": 0,
+  "frameSize": 0,
+  "source": "store",
+  "symbol": "FBLBBU"
+ },
+ "Fimbul ECOS Greenader": {
+  "hull": "Fimbul_Greenader",
+  "hero": "Fimbul_Greenader_hero.webp",
+  "turn": "Fimbul_Greenader_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Ogrika Sunpaa": {
+  "hull": "Ogrika_Sunpaa",
+  "hero": "Ogrika_Sunpaa_hero.webp",
+  "turn": "Ogrika_Sunpaa_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Ogrika Thripid": {
+  "hull": "Ogrika_Thripid",
+  "hero": "Ogrika_Thripid_hero.webp",
+  "turn": "Ogrika_Thripid_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Opal Bitboat": {
+  "hull": "Opal_Bitboat",
+  "hero": "Opal_Bitboat_hero.webp",
+  "turn": "Opal_Bitboat_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Pearce R8": {
+  "hull": "Pearce_R8",
+  "hero": "Pearce_R8_hero.webp",
+  "turn": "Pearce_R8_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Rainbow Arc": {
+  "hull": "Rainbow_Arc",
+  "hero": "Rainbow_Arc_hero.webp",
+  "turn": "Rainbow_Arc_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Armstrong IMP": {
+  "hull": "Armstrong_Imp",
+  "hero": "Armstrong_Imp_hero.webp",
+  "turn": "Armstrong_Imp_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Busan Maiden Heart": {
+  "hull": "Busan_MaidenHeart",
+  "hero": "Busan_MaidenHeart_hero.webp",
+  "turn": "Busan_MaidenHeart_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Calico Guardian": {
+  "hull": "Calico_Guardian",
+  "hero": "Calico_Guardian_hero.webp",
+  "turn": "Calico_Guardian_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Fimbul ECOS Bombarella": {
+  "hull": "Fimbul_Bombarella",
+  "hero": "Fimbul_Bombarella_hero.webp",
+  "turn": "Fimbul_Bombarella_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Fimbul Sledbarge": {
+  "hull": null,
+  "hero": "Fimbul_Sledbarge_store.webp",
+  "turn": null,
+  "frames": 0,
+  "frameSize": 0,
+  "source": "store",
+  "symbol": "FBLSLE"
+ },
+ "Ogrika Jod Asteris": {
+  "hull": "Ogrika_JodAsteris",
+  "hero": "Ogrika_JodAsteris_hero.webp",
+  "turn": "Ogrika_JodAsteris_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Pearce C9": {
+  "hull": "Pearce_C9",
+  "hero": "Pearce_C9_hero.webp",
+  "turn": "Pearce_C9_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Pearce D9": {
+  "hull": "Pearce_D9",
+  "hero": "Pearce_D9_hero.webp",
+  "turn": "Pearce_D9_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "VZUS ballad": {
+  "hull": "VZUS_Ballad",
+  "hero": "VZUS_Ballad_hero.webp",
+  "turn": "VZUS_Ballad_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Fimbul BYOS Tankship": {
+  "hull": "Fimbul_Tankship",
+  "hero": "Fimbul_Tankship_hero.webp",
+  "turn": "Fimbul_Tankship_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Fimbul ECOS Treearrow": {
+  "hull": "Fimbul_Treearrow",
+  "hero": "Fimbul_Treearrow_hero.webp",
+  "turn": "Fimbul_Treearrow_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Pearce C11": {
+  "hull": "Pearce_C11",
+  "hero": "Pearce_C11_hero.webp",
+  "turn": "Pearce_C11_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Starbase - Tier 0": null,
+ "Starbase - Tier 1": null,
+ "Starbase - Tier 2": null,
+ "Starbase - Tier 3": null,
+ "Starbase - Tier 4": null,
+ "Starbase - Tier 5": null,
+ "Busan The Last Stand mk. VIII": {
+  "hull": null,
+  "hero": "Busan_The_Last_Stand_mk_VIII_store.webp",
+  "turn": null,
+  "frames": 0,
+  "frameSize": 0,
+  "source": "store",
+  "symbol": "STAND"
+ },
+ "Fimbul BYOS Gallowspine": null,
+ "Fimbul ECOS Superphoenix": {
+  "hull": "Fimbul_Superphoenix",
+  "hero": "Fimbul_Superphoenix_hero.webp",
+  "turn": "Fimbul_Superphoenix_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Pearce T1": {
+  "hull": "Pearce_T1",
+  "hero": "Pearce_T1_hero.webp",
+  "turn": "Pearce_T1_turn.webp",
+  "frames": 12,
+  "frameSize": 320,
+  "source": "render"
+ },
+ "Rainbow Phi": {
+  "hull": null,
+  "hero": "Rainbow_Phi_store.webp",
+  "turn": null,
+  "frames": 0,
+  "frameSize": 0,
+  "source": "store",
+  "symbol": "PHI"
+ }
+}

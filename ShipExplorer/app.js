@@ -603,7 +603,8 @@ class ShipExplorer {
 
                 const label = document.createElement('label');
                 label.htmlFor = `ship-${index}`;
-                label.textContent = this.getShipDisplayName(ship);
+                if (typeof this.thumbHTML === 'function') label.innerHTML = this.thumbHTML(ship) + `<span>${this.escapeHtml(this.getShipDisplayName(ship))}</span>`;
+                else label.textContent = this.getShipDisplayName(ship);
 
                 div.appendChild(checkbox);
                 div.appendChild(label);
@@ -903,7 +904,9 @@ class ShipExplorer {
         const manufacturer = ship?.manufacturer || 'Unknown';
         const name = ship?.name || 'Ship';
         const sizeTier = ship?.sizeTier || '';
-        return sizeTier ? `${manufacturer} ${name} (${sizeTier})` : `${manufacturer} ${name}`;
+        // the record's name already starts with the manufacturer ("Pearce X4"): do not say it twice
+        const full = name.toLowerCase().startsWith(manufacturer.toLowerCase()) ? name : `${manufacturer} ${name}`;
+        return sizeTier ? `${full} (${sizeTier})` : full;
     }
 
     toggleShip(index) {
@@ -952,6 +955,7 @@ class ShipExplorer {
             .filter(Boolean);
 
         if (selectedShipData.length === 0) {
+            if (typeof this.renderGallery === 'function') { this.renderGallery(wrapper); return; }
             wrapper.innerHTML = '<div class="empty-state">Select ships from the list to begin comparing configurations.</div>';
             return;
         }
@@ -1052,7 +1056,7 @@ class ShipExplorer {
                 html += `<td class="stat-value">${this.formatStatValue(entry.baseValue)}</td>`;
                 entry.cells.forEach(cell => {
                     if (cell.type === 'empty') {
-                        html += '<td class="stat-value stat-empty">�</td>';
+                        html += '<td class="stat-value stat-empty">&ndash;</td>';
                         return;
                     }
 
@@ -1104,7 +1108,9 @@ class ShipExplorer {
 
         html += '</tbody></table>';
         if (this.statDescriptionTooltip) this.statDescriptionTooltip.hidden = true;
+        if (typeof this.renderSelectedStrip === 'function') html = this.renderSelectedStrip(selectedShipData) + html;
         wrapper.innerHTML = html;
+        if (typeof this.bindGalleryEvents === 'function') this.bindGalleryEvents(wrapper);
         this.applyStatSearch(wrapper);
 
         const changedOnlyToggle = wrapper.querySelector('#changedOnlyToggle');
@@ -1240,7 +1246,7 @@ class ShipExplorer {
     }
 
     formatStatValue(value) {
-        if (value === null || value === undefined || Number.isNaN(value)) return '�';
+        if (value === null || value === undefined || Number.isNaN(value)) return '–';
         if (typeof value !== 'number') return value;
 
         if (value === 0) return '0';
@@ -1269,7 +1275,7 @@ class ShipExplorer {
 
         const resourcesSection = this.buildConfigResourceAnalyticsSection();
 
-        container.innerHTML = resourcesSection;
+        container.innerHTML = (typeof this.renderFleetOverview === 'function' ? this.renderFleetOverview() : '') + resourcesSection;
 
         // Attach event listeners to filter inputs and pagination
         this.attachAnalyticsFilterListeners();
@@ -1514,7 +1520,7 @@ class ShipExplorer {
                 : '<span class="analytics-hint">Click to calculate</span>';
             const buttonLabel = cachedTotals ? 'View Again' : 'View Raw Inputs';
 
-            const shipDisplayName = row.manufacturer
+            const shipDisplayName = row.manufacturer && !String(row.shipName).toLowerCase().startsWith(String(row.manufacturer).toLowerCase())
                 ? `${this.escapeHtml(row.manufacturer)} ${this.escapeHtml(row.shipName)}`
                 : this.escapeHtml(row.shipName);
 
@@ -2439,18 +2445,18 @@ class ShipExplorer {
     }
 
     formatPercentage(value) {
-        if (value === null || value === undefined || Number.isNaN(value)) return '�';
+        if (value === null || value === undefined || Number.isNaN(value)) return '–';
         return `${(value * 100).toFixed(1)}%`;
     }
 
     formatSignedValue(value) {
-        if (value === null || value === undefined || Number.isNaN(value)) return '�';
+        if (value === null || value === undefined || Number.isNaN(value)) return '–';
         const sign = value >= 0 ? '+' : '-';
         return `${sign}${this.formatStatValue(Math.abs(value))}`;
     }
 
     formatSignedPercent(value) {
-        if (value === null || value === undefined || Number.isNaN(value)) return '�';
+        if (value === null || value === undefined || Number.isNaN(value)) return '–';
         const sign = value >= 0 ? '+' : '-';
         return `${sign}${Math.abs(value).toFixed(1)}%`;
     }

@@ -6,21 +6,25 @@
     <title>Aephia Industries - Ship Explorer</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css?v=20260913f">
+    <link rel="stylesheet" href="ship-visual.css?v=20260930">
     <link rel="icon" type="image/jpeg" href="../Images/channels4_profile.jpg">
 </head>
 <body>
+    <div class="pe-sky" aria-hidden="true"></div>
     <header>
-        <h1>🚀 Ship Explorer</h1>
-
+        <a class="brand" href="../index.html" title="Back to the Operations Hub">
+            <img src="../Images/channels4_profile.jpg" alt="">
+            <span><b>Aephia Industries</b><small>Operations Hub</small></span>
+        </a>
         <nav class="navigation-tabs">
-            <button class="nav-tab active" data-tab="explorer">🌍 Explorer</button>
-            <button class="nav-tab" data-tab="analytics">📊 Analytics</button>
+            <button class="nav-tab active" data-tab="explorer">Explorer</button>
+            <button class="nav-tab" data-tab="analytics">Analytics</button>
         </nav>
-
+        <h1>Ship Explorer</h1>
         <nav class="breadcrumb">
-            <a href="../index.html">Home</a> > Ship Explorer
+            <a href="../index.html">Home</a> / Ship Explorer
         </nav>
     </header>
 
@@ -88,6 +92,7 @@
     <script src="js/component-management.js"></script>
     <script src="js/custom-ship-management.js"></script>
     <script src="js/recipe-lookup.js"></script>
-    <script src="app.js?v=20260913f"></script>
+    <script src="app.js?v=20260930"></script>
+    <script src="ship-visual.js?v=20260930"></script>
 </body>
 </html>

@@ -166,6 +166,20 @@ Plan and optimize space hub construction
 ### 6. 🚢 **Ship Explorer**
 Compare ships, analyze configurations, and plan fleets
 
+**Visual upgrade (2026-09-30):** the comparison pane opens as a **hull gallery** (one card per ship with its
+Cycles render, size chip, role, class and four key stats; size chips, manufacturer and role filters; a card
+adds the ship to the comparison). Selected ships show as a strip above the comparison table. **Ship view**
+opens a modal with a drag-to-rotate **turntable** (12 views) and a spec sheet whose bars compare each stat
+with the best ship of the same size tier. The sidebar list carries thumbnails. Art: `Tools/landing/pack_ships.py`
+packs the Battle Arena renders into `Images/ships/` (51 of 67 ships have a hull render) with `manifest.json`
+keyed by the record's Ship Name; nine hulls without a model (Pulse, Ruch, Shipit, IMP Tap, Ranger, Butch,
+Sledbarge, The Last Stand, Phi) fall back to the official store image from the Star Atlas galaxy catalogue
+(`galaxy.staratlas.com/nfts`, the same images the market shows), still only; the six Custom starbases and the
+unreleased Gallowspine show initials. The Analytics
+tab opens with a **Fleet overview** (hulls by size and role, leaders by cargo, hit points, mining rate, scan
+power, subwarp speed and warp distance) above the configuration resource totals. Display names no longer
+repeat the manufacturer. Files: `ShipExplorer/ship-visual.js`, `ship-visual.css` (hooks in `app.js`).
+
 **Features:**
 - Multi-ship side-by-side comparison (67 ships available)
 - Real-time stat calculations with component modifiers
