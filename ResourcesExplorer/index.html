@@ -6,163 +6,54 @@
     <title>Aephia Industries - Resources Explorer</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="icon" type="image/jpeg" href="../Images/channels4_profile.jpg">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=20261001">
+    <link rel="stylesheet" href="resource-visual.css?v=20261001">
 </head>
 <body>
+    <div class="pe-sky" aria-hidden="true"></div>
     <header>
-        <h1>⚒️ Resources Explorer</h1>
-
+        <a class="brand" href="../index.html" title="Back to the Operations Hub">
+            <img src="../Images/channels4_profile.jpg" alt="">
+            <span><b>Aephia Industries</b><small>Operations Hub</small></span>
+        </a>
+        <h1>Resources Explorer</h1>
         <nav class="navigation-tabs">
-            <button class="nav-tab active" data-tab="explorer">🗂️ Explorer</button>
-            <button class="nav-tab" data-tab="analytics">📊 Analytics</button>
+            <button class="nav-tab active" data-tab="explorer">Explorer</button>
+            <button class="nav-tab" data-tab="analytics">Analytics</button>
         </nav>
-
         <nav class="breadcrumb">
-            <a href="../index.html">Home</a> > Resources Explorer
+            <a href="../index.html">Home</a> / Resources Explorer
         </nav>
     </header>
 
     <main>
-        <!-- Explorer Tab Content -->
         <div id="explorerTab" class="tab-content active">
-            <div class="stats">
-                <div class="stat-card">
-                    <span class="stat-number" id="totalResources">0</span>
-                    <span class="stat-label">Total Resources</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-number" id="filteredResources">0</span>
-                    <span class="stat-label">Filtered Results</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-number" id="uniqueCategories">0</span>
-                    <span class="stat-label">Categories</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-number" id="averageValue">0</span>
-                    <span class="stat-label">Average Value</span>
-                </div>
-            </div>
-
-            <div class="explorer-layout">
-                <div class="filters-sidebar">
-                    <h3>🔍 Filters</h3>
-                    <div class="search-container" id="explorerControls">
-                        <input type="text" id="searchInput" placeholder="Search resources...">
-                    </div>
-
-                    <div class="filter-section">
-                        <h4>📦 Categories</h4>
-                        <div class="checkbox-container" id="categoryCheckboxes">
-                            <!-- Category checkboxes will be populated here -->
-                        </div>
-                    </div>
-
-                    <div class="filter-section">
-                        <h4>⭐ Tiers</h4>
-                        <div class="checkbox-container" id="tierCheckboxes">
-                            <!-- Tier checkboxes will be populated here -->
-                        </div>
-                    </div>
-                </div>
-
-                <div class="resources-main">
-                    <div class="resources-grid" id="resourcesGrid">
-                        <!-- Resources will be populated here -->
-                    </div>
-                </div>
+            <div class="an-stats rx-stats" id="rxStats"></div>
+            <div class="explorer-layout rx-layout">
+                <aside class="rx-sidebar" id="rxSide"></aside>
+                <section class="rx-main">
+                    <div class="resources-grid rx-grid" id="resourcesGrid"></div>
+                </section>
             </div>
         </div>
 
-        <!-- Analytics Tab Content -->
         <div id="analyticsTab" class="tab-content">
-            <div class="analytics-header">
-                <h2>📊 Resource Analytics</h2>
-                <p>Analyze resource distribution, values, and categories</p>
-            </div>
-
-            <!-- Sub-tabs for different analytics -->
-            <nav class="sub-navigation-tabs">
-                <button class="sub-nav-tab active" data-subtab="basic">📈 Basic Analytics</button>
-                <button class="sub-nav-tab" data-subtab="flow">🔄 Resource Flow</button>
-            </nav>
-
-            <!-- Basic Analytics Sub-tab -->
-            <div id="basicAnalyticsSubtab" class="subtab-content active">
-                <div class="analytics-sections">
-                    <div class="analytics-section">
-                        <h3>💰 Most Valuable Resources</h3>
-                        <p class="section-note">Resources ranked by base value</p>
-                        <div id="mostValuableResources">
-                            <!-- Most valuable resources table will be populated here -->
-                        </div>
-                    </div>
-
-                    <div class="analytics-section">
-                        <h3>📊 Category Distribution</h3>
-                        <p class="section-note">Resource breakdown by category and tier</p>
-                        <div id="categoryDistribution" class="category-analysis-grid">
-                            <!-- Category distribution will be populated here -->
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Resource Flow Sub-tab -->
-            <div id="flowAnalyticsSubtab" class="subtab-content">
-                <div id="flowLoadingMessage" style="display: none;">
-                    <p>🔄 Loading resource flow analysis...</p>
-                </div>
-
-                <div class="analytics-stats" id="flowStats">
-                    <div class="stat-card">
-                        <span class="stat-number" id="flowTotalResources">0</span>
-                        <span class="stat-label">Total Resources</span>
-                    </div>
-                    <div class="stat-card">
-                        <span class="stat-number" id="flowCriticalResources">0</span>
-                        <span class="stat-label">Critical Resources</span>
-                    </div>
-                    <div class="stat-card">
-                        <span class="stat-number" id="flowBottlenecks">0</span>
-                        <span class="stat-label">Supply Bottlenecks</span>
-                    </div>
-                    <div class="stat-card">
-                        <span class="stat-number" id="flowMaxDepth">0</span>
-                        <span class="stat-label">Max Chain Depth</span>
-                    </div>
-                </div>
-
-                <div id="flowAnalysisContent" class="analytics-sections">
-                    <!-- Flow analysis content will be rendered here -->
-                </div>
-            </div>
+            <div id="analyticsContent"></div>
         </div>
     </main>
 
-    <div class="modal" id="resourceModal">
-        <div class="modal-content">
-            <span class="close" id="closeModal">&times;</span>
-            <div id="modalContent">
-                <!-- Resource details will be shown here -->
-            </div>
-        </div>
-    </div>
-
     <script src="../SFX/sounds.js"></script>
-    <script src="../Utils/DOMUtils.js"></script>
-    <script src="../Utils/BaseAnalytics.js"></script>
-    <script src="../Utils/BaseExplorer.js"></script>
-    <script src="../Utils/BaseApp.js"></script>
-    <script src="../Utils/JsonManager.js"></script>
-    <script src="../Utils/DataLoader.js"></script>
-    <script src="../Utils/CrossExplorerAnalytics.js"></script>
-    <script src="../Data/resources-data.js"></script>
-    <script src="explorer.js"></script>
-    <script src="analytics.js"></script>
-    <script src="flow-analytics.js"></script>
-    <script src="app.js"></script>
+    <script src="../Utils/BaseApp.js?v=20250925-2142"></script>
+    <script src="../Data/resources-data.js?v=20260911"></script>
+    <script src="../Data/recipes-data.js?v=20260911"></script>
+    <script src="../Data/planet-data.js?v=20260911"></script>
+    <script src="../Data/buildings-data.js?v=20260911"></script>
+    <script src="resource-model.js?v=20261001"></script>
+    <script src="resource-visual.js?v=20261001"></script>
+    <script src="explorer.js?v=20261001"></script>
+    <script src="analytics.js?v=20261001"></script>
+    <script src="app.js?v=20261001"></script>
 </body>
 </html>

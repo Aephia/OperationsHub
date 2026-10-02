@@ -1,3 +1,6 @@
+// app.js - Resources Explorer bootstrap (rebuilt 2026-10-01). Builds the ResourceModel from the four data bundles the
+// page loads as globals, then the Explorer tab, the Analytics tab and the resource sheet. ?r=<name> opens a sheet,
+// ?search=<text> pre-fills the search (both used by cross-module links).
 class ResourcesApp extends BaseApp {
     constructor() {
         super();
@@ -5,85 +8,38 @@ class ResourcesApp extends BaseApp {
     }
 
     async loadData() {
-        try {
-            console.log('📦 Loading Resources Explorer data...');
-            const resourcesData = await DataLoader.loadExplorerData('resources');
-            this.data = resourcesData.resources || [];
-            console.log(`✅ Loaded ${this.data.length} resources using DataLoader`);
-        } catch (error) {
-            console.error('💥 Error loading resources data:', error);
-            console.error('Detailed error:', error.message);
-            this.data = [];
-        }
+        const resources = (window.resourcesData && window.resourcesData.resources) || [];
+        const recipes = (window.rawRecipeData && window.rawRecipeData.recipes) || [];
+        const planets = window.planetData || { mapData: [], regionDefinitions: [] };
+        const buildings = (window.rawBuildingData && window.rawBuildingData.buildings) || [];
+        const t0 = performance.now();
+        this.model = new ResourceModel(resources, recipes, planets, buildings);
+        this.data = this.model.list;
+        console.log(`Resources Explorer: ${this.data.length} resources, ${recipes.length} recipes, ${this.model.systems.length} systems, ${buildings.length} buildings - model built in ${Math.round(performance.now() - t0)} ms`);
     }
 
     initializeModules() {
-        if (this.data && this.data.length > 0) {
-            this.modules.explorer = new ResourcesExplorer(this.data);
-            this.modules.analytics = new ResourceAnalytics(this.data);
-            this.modules.flowAnalytics = new ResourceFlowAnalytics();
-
-            // Keep backward compatibility
-            this.resourcesExplorer = this.modules.explorer;
-            this.resourceAnalytics = this.modules.analytics;
-            this.flowAnalytics = this.modules.flowAnalytics;
-
-            // Make available globally for modal interactions
-            window.resourcesExplorer = this.modules.explorer;
-            window.flowAnalytics = this.modules.flowAnalytics;
-
-            console.log(`📈 Modules initialized with ${this.data.length} resources`);
-            console.log(`🔬 Found ${this.modules.explorer.allCategories.size} categories and ${this.modules.explorer.allTiers.size} tiers`);
-
-            // Initialize sub-tab navigation
-            this.initSubTabNavigation();
-        } else {
-            console.error('❌ Cannot initialize modules - no data available');
-        }
+        if (!this.data.length) { console.error('Resources Explorer: no resources loaded'); return; }
+        window.resourceVisual = new ResourceVisual(this.model);
+        this.modules.explorer = new ResourcesExplorer(this.model);
+        this.modules.analytics = new ResourceAnalytics(this.model);
+        window.resourcesExplorer = this.modules.explorer;
+        document.addEventListener('visibilitychange', () => document.body.classList.toggle('is-hidden', document.hidden));
     }
 
-    initSubTabNavigation() {
-        const subNavButtons = document.querySelectorAll('.sub-nav-tab');
-        subNavButtons.forEach(button => {
-            button.addEventListener('click', async (e) => {
-                // Play tab switch sound
-                if (window.spaceSounds) window.spaceSounds.tabSwitch();
-
-                const subtab = e.target.dataset.subtab;
-
-                // Remove active class from all sub-tabs
-                document.querySelectorAll('.sub-nav-tab').forEach(btn => btn.classList.remove('active'));
-                document.querySelectorAll('.subtab-content').forEach(content => content.classList.remove('active'));
-
-                // Add active class to clicked button
-                e.target.classList.add('active');
-
-                // Show corresponding content
-                const subtabContent = document.getElementById(`${subtab}AnalyticsSubtab`);
-                if (subtabContent) {
-                    subtabContent.classList.add('active');
-                }
-
-                // Load flow analytics when flow tab is clicked
-                if (subtab === 'flow' && this.flowAnalytics) {
-                    await this.flowAnalytics.renderFlowAnalytics();
-                }
-            });
-        });
+    updateInitialView() {
+        super.updateInitialView();
+        const params = new URLSearchParams(window.location.search);
+        const q = params.get('search');
+        if (q) { const input = document.getElementById('searchInput'); if (input) input.value = q; this.modules.explorer.handleSearch(q); }
+        const r = params.get('r');
+        if (r && this.model.byName.has(r)) window.resourceVisual.open(r);
     }
 
-    getModalId() {
-        return 'resourceModal';
-    }
+    getModalId() { return 'rxNoLegacyModal'; }
 }
 
-// Initialize the application when the DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('⚒️ DOM Content Loaded - Starting Resources App');
-    try {
-        window.resourcesApp = new ResourcesApp();
-        console.log('✅ Resources App instance created successfully');
-    } catch (error) {
-        console.error('💥 Failed to create Resources App:', error);
-    }
+    try { window.resourcesApp = new ResourcesApp(); }
+    catch (error) { console.error('Resources Explorer failed to start:', error); }
 });

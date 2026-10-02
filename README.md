@@ -119,14 +119,42 @@ Explore 5,251 manufacturing recipes and production chains
 ---
 
 ### 3. 💎 **Resources Explorer**
-Analyze 93 resource types, values, and supply chains
+Every one of the 3,526 resources (93 raw, 757 processed, 1,372 components, 1,304 advanced): where it comes from, what
+it is made of, who asks for it. **Rebuilt 2026-10-01** on a single data model (`resource-model.js`) read from the four
+bundles the page loads (resources, recipes, planets, buildings); nothing derived, no Chart.js.
 
-**Features:**
-- Filter by tier, category (Raw, Processed, Organic), and source type
-- **Resource Flow Tab:** Critical resources dashboard with bottleneck detection
-- Supply chain depth analysis (0-N processing steps)
+- **Explorer tab:** cards carry tier, release status (v1 = live on chain now; v1-add / v2 = unreleased), the source
+  line (a raw: planets, belts, best richness, planet types; crafted: the ingredients) and the demand bar (recipes that
+  list it as a direct ingredient). Filters: category, tier, release, comes-from (claim-stake extractor / fleet mining
+  only / crafted); sort by use, reach, name, tier or steps from raw; 120 cards at a time with "show more"
+- **Resource sheet** (click a card): the **supply-chain graph** - the deduplicated recipe DAG laid out in layers
+  (longest path from the output, one barycenter pass), pills coloured by category, dashed-flow edges, drag to pan,
+  wheel to zoom, hover a node to light its upstream and downstream path, click a node to open it (back button keeps
+  the trail). Chains run up to 168 resources / 271 links / 14 levels (Drone Port TTN T5); the SVG is sized in pixels
+  so nodes stay legible and wide chains pan; the graph takes the full sheet width and ~74% of the viewport height
+  (a 160-node chain fits whole on a 2560-wide screen). Under it, the **raw bill**: every deposit in the tree with how
+  many recipes in that chain use it. Below, side by side: **Where it is found** for a raw (galaxy map of the 945 systems with
+  the carrying systems lit by territory colour and sized by richness, planets / belts / best richness / T1 extractor
+  rate, territory, planet types, regions, the twelve richest bodies) or **How it is made** for anything crafted
+  (ingredients, build time, production steps, starbase level, planet types), then **Who asks for it** (the largest
+  consumers per craft, live share, product types). Links into the Recipe Explorer (`?search=`), ClaimStake and
+  Planet explorers; `?r=<name>` opens a sheet and `?search=` pre-fills the search for cross-module links
+- **Analytics tab (five always-on sections, HTML bars):** the economy's shape (category x tier, live vs unreleased
+  per category); steps from raw (depth histogram and ingredients-per-recipe, both by category); **demand** (all
+  3,526 ranked by direct recipe use, 50 per page, search keeps the global rank - Power Regulation Module 962, the
+  same count as the Recipe Explorer's Analytics tab); **raw backbone** (the 93 deposits ranked by reach = how many
+  crafted resources need them anywhere in their tree, with direct use, planets, belts, richness, extractor; raw
+  kinds per planet type; the raws no claim stake can mine); data gaps
+- **Gone, and why:** "Most valuable resources" and "Average value" ranked tier, because `baseValue` is tier x 10 for
+  all 3,526 resources and `stackSize` is 100 for every one; the Resource Flow tab's criticality score was invented
+  weights and its "bottlenecks" counted extractor buildings as supply, so every crafted resource with a user was a
+  bottleneck (`flow-analytics.js` deleted; 530 dead lines cut from `styles.css`). Base value, stack size and the
+  generated descriptions are not shown anywhere
+- **Rules applied:** a raw is stake-minable only if an extractor family exists AND a planet carries it - six raws
+  have no kit (Aluminum, Garnet, Manganese, Osmium, Tritium, Zinc) and the belt-only deposits (e.g. Strontium
+  Crystals: 0 planets, 271 belts, kit exists) are fleet-mined because no stake can sit on a belt
 
-**Use Case:** Understanding resource economics and planning extraction operations
+**Use Case:** what a resource depends on and what depends on it, before planning a stake or a production line
 
 ---
 

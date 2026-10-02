@@ -1,399 +1,139 @@
-// Fixed tier checkbox string/number type mismatch - v2025-09-26c
-class ResourcesExplorer extends BaseExplorer {
-    constructor(data) {
-        super(data);
+// explorer.js - Resources Explorer, Explorer tab (rebuilt 2026-10-01).
+// Cards carry what the export knows about a resource: tier, release status, where it comes from (deposits for a raw,
+// the recipe for anything crafted), how many steps it sits from raw, and how many recipes ask for it. The three
+// numbers the old cards showed (base value, stack size, id) were constants - value is tier x 10 and every stack is 100.
+(function () {
+    'use strict';
 
-        // Initialize properties after calling super
-        this.allCategories = new Set();
-        this.allTiers = new Set();
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const CAT = { raw: { label: 'Raw', color: '#dd7429' }, processed: { label: 'Processed', color: '#2a9fcf' }, component: { label: 'Component', color: '#2fa985' }, advanced: { label: 'Advanced', color: '#9476db' } };
+    const SORTS = { demand: 'Most used', reach: 'Widest reach', name: 'Name', tier: 'Tier', depth: 'Steps from raw' };
+    const PAGE = 120;
 
-        // Now initialize properly
-        this.initialize();
-    }
+    class ResourcesExplorer {
+        constructor(model) {
+            this.m = model;
+            this.filters = { q: '', cats: new Set(), tiers: new Set(), status: new Set(), source: new Set(), sort: 'demand' };
+            this.shown = PAGE;
+            this.filtered = model.list.slice();
+            this.renderSidebar();
+            this.bind();
+            this.apply();
+        }
 
-    extractMetadata() {
-        this.allCategories.clear();
-        this.allTiers.clear();
+        snd(n) { if (window.spaceSounds && window.spaceSounds[n]) window.spaceSounds[n](); }
 
-        this.data.forEach(resource => {
-            if (resource.category) {
-                this.allCategories.add(resource.category);
+        renderSidebar() {
+            const side = document.getElementById('rxSide'); if (!side) return;
+            const st = this.m.stats;
+            side.innerHTML = `
+                <div class="rx-side-head"><h3>Find a resource</h3><span class="sb-count" id="rxCount"></span></div>
+                <input type="text" id="searchInput" class="sb-input" placeholder="Name, e.g. Copper Ore, Power Regulation Module" autocomplete="off">
+                <h4>Category</h4>
+                <div class="chips" data-group="cats">${Object.entries(CAT).map(([k, c]) => `<button type="button" class="chip" data-v="${k}" style="--c:${c.color}"><i></i>${c.label} <small>${(st.byCat[k] || 0).toLocaleString()}</small></button>`).join('')}</div>
+                <h4>Tier</h4>
+                <div class="chips" data-group="tiers">${[1, 2, 3, 4, 5].map(t => `<button type="button" class="chip" data-v="${t}"><i class="t t${t}">T${t}</i><small>${(st.byTier[t] || 0).toLocaleString()}</small></button>`).join('')}</div>
+                <h4>Release</h4>
+                <div class="chips" data-group="status"><button type="button" class="chip" data-v="live" style="--c:#7ee8a4"><i></i>Live now <small>${st.byStatus.live.toLocaleString()}</small></button><button type="button" class="chip" data-v="unreleased" style="--c:#ffb86b"><i></i>Unreleased <small>${st.byStatus.unreleased.toLocaleString()}</small></button></div>
+                <h4>Comes from</h4>
+                <div class="chips" data-group="source"><button type="button" class="chip" data-v="mined" style="--c:#dd7429"><i></i>Claim-stake extractor</button><button type="button" class="chip" data-v="fleet" style="--c:#ffd36b"><i></i>Fleet mining only</button><button type="button" class="chip" data-v="crafted" style="--c:#2a9fcf"><i></i>Crafted</button></div>
+                <h4>Sort</h4>
+                <select id="rxSort" class="sb-input">${Object.entries(SORTS).map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}</select>
+                <button type="button" class="sb-btn ghost" id="rxClear">Clear filters</button>
+                <p class="sb-foot">Value and stack size are not shown: the export gives every resource a value of tier &times; 10 and a stack of 100, so neither tells one resource from another.</p>`;
+        }
+
+        bind() {
+            const side = document.getElementById('rxSide'), grid = document.getElementById('resourcesGrid');
+            side.addEventListener('click', e => {
+                const chip = e.target.closest('.chip');
+                if (chip) {
+                    const g = chip.closest('[data-group]').dataset.group, v = chip.dataset.v, set = this.filters[g];
+                    set.has(v) ? set.delete(v) : set.add(v);
+                    chip.classList.toggle('on', set.has(v));
+                    this.snd(set.has(v) ? 'select' : 'deselect');
+                    this.apply(); return;
+                }
+                if (e.target.id === 'rxClear') {
+                    ['cats', 'tiers', 'status', 'source'].forEach(g => this.filters[g].clear());
+                    this.filters.q = ''; const q = document.getElementById('searchInput'); if (q) q.value = '';
+                    side.querySelectorAll('.chip.on').forEach(c => c.classList.remove('on'));
+                    this.snd('deselect'); this.apply();
+                }
+            });
+            side.addEventListener('change', e => { if (e.target.id === 'rxSort') { this.filters.sort = e.target.value; this.snd('click'); this.apply(); } });
+            grid.addEventListener('click', e => {
+                const more = e.target.closest('[data-more]'); if (more) { this.shown += PAGE; this.snd('click'); this.renderItems(); return; }
+                const card = e.target.closest('.rc'); if (card) { this.snd('click'); window.resourceVisual && window.resourceVisual.open(card.dataset.name); }
+            });
+        }
+
+        handleSearch(q) { this.filters.q = (q || '').trim().toLowerCase(); this.apply(); }
+
+        apply() {
+            const f = this.filters;
+            this.filtered = this.m.list.filter(r =>
+                (!f.q || r.name.toLowerCase().includes(f.q) || r.id.includes(f.q)) &&
+                (!f.cats.size || f.cats.has(r.category)) &&
+                (!f.tiers.size || f.tiers.has(String(r.tier))) &&
+                (!f.status.size || f.status.has(r.live ? 'live' : 'unreleased')) &&
+                (!f.source.size || f.source.has(r.source)));
+            const cmp = {
+                demand: (a, b) => b.demand - a.demand || b.reach - a.reach,
+                reach: (a, b) => b.reach - a.reach || b.demand - a.demand,
+                name: (a, b) => a.name.localeCompare(b.name),
+                tier: (a, b) => a.tier - b.tier || b.demand - a.demand,
+                depth: (a, b) => b.depth - a.depth || b.demand - a.demand
+            }[f.sort];
+            this.filtered.sort((a, b) => cmp(a, b) || a.name.localeCompare(b.name));
+            this.shown = PAGE;
+            this.renderItems(); this.updateStats();
+        }
+
+        line(r) {
+            if (r.category === 'raw') {
+                const d = r.deposit;
+                if (!d) return 'No deposit on the map';
+                const types = d.typeList.filter(t => t.cat !== 3).slice(0, 3).map(t => t.name).join(', ');
+                return `Found on <b>${d.planets.toLocaleString()}</b> planets${d.belts ? ` and ${d.belts.toLocaleString()} belts` : ''} &middot; best richness ${d.best}${types ? ` &middot; ${esc(types)}` : ''}`;
             }
-            if (resource.tier) {
-                this.allTiers.add(resource.tier);
-            }
-        });
-
-        console.log(`📊 Extracted metadata:`, {
-            categories: Array.from(this.allCategories),
-            tiers: Array.from(this.allTiers)
-        });
-    }
-
-    populateFilters() {
-        this.populateCategoryCheckboxes();
-        this.populateTierCheckboxes();
-    }
-
-    populateCategoryCheckboxes() {
-        const sortedCategories = Array.from(this.allCategories).sort();
-        this.createCheckboxFilter('categoryCheckboxes', sortedCategories, 'category', (category) => {
-            return category.charAt(0).toUpperCase() + category.slice(1);
-        });
-    }
-
-    populateTierCheckboxes() {
-        const sortedTiers = Array.from(this.allTiers).sort((a, b) => a - b);
-        this.createCheckboxFilter('tierCheckboxes', sortedTiers, 'tier', (tier) => {
-            return `Tier ${tier}`;
-        });
-    }
-
-    applyFilters() {
-        const categoryFilters = this.selectedFilters.get('category');
-        const tierFilters = this.selectedFilters.get('tier');
-
-        const hasActiveFilters = this.currentSearchTerm ||
-                                 (categoryFilters && categoryFilters.size > 0) ||
-                                 (tierFilters && tierFilters.size > 0);
-
-        console.log(`🔍 ResourcesExplorer applyFilters:`, {
-            searchTerm: this.currentSearchTerm,
-            categoryFilters: categoryFilters?.size || 0,
-            tierFilters: tierFilters?.size || 0,
-            hasActiveFilters,
-            totalData: this.data.length
-        });
-
-        if (!hasActiveFilters) {
-            // No filters active - show all data
-            this.filteredData = [...this.data];
-            console.log(`✅ No filters active, showing all ${this.filteredData.length} items`);
-        } else {
-            // Apply filters using parent logic
-            super.applyFilters();
-            console.log(`🔍 Filters applied, showing ${this.filteredData.length} items`);
+            if (!r.recipe || !r.ingredients.length) return 'No recipe makes it in this export';
+            const parts = r.ingredients.slice(0, 4).map(i => `${esc(i.name)}${i.quantity > 1 ? ` &times;${i.quantity}` : ''}`);
+            return `From ${parts.join(', ')}${r.ingredients.length > 4 ? ` and ${r.ingredients.length - 4} more` : ''}`;
         }
 
-        this.renderItems();
-        this.updateStats();
-    }
-
-    matchesSearch(resource, searchTerm) {
-        const nameMatch = resource.name.toLowerCase().includes(searchTerm);
-        const descMatch = resource.description && resource.description.toLowerCase().includes(searchTerm);
-        const idMatch = resource.id && resource.id.toLowerCase().includes(searchTerm);
-        const categoryMatch = resource.category && resource.category.toLowerCase().includes(searchTerm);
-
-        return nameMatch || descMatch || idMatch || categoryMatch;
-    }
-
-    matchesFilter(resource, filterType, selectedItems) {
-        if (filterType === 'category') {
-            const matches = selectedItems.has(resource.category);
-            if (selectedItems.size > 0) {
-                console.log(`🏷️ Category filter: ${resource.name} (${resource.category}) → ${matches}`);
-            }
-            return matches;
-        } else if (filterType === 'tier') {
-            // Convert tier to string for comparison since checkbox values are strings
-            const tierString = String(resource.tier);
-            const matches = selectedItems.has(tierString);
-            if (selectedItems.size > 0) {
-                console.log(`🎯 Tier filter: ${resource.name} (tier ${resource.tier} → "${tierString}") against [${Array.from(selectedItems).join(', ')}] → ${matches}`);
-            }
-            return matches;
-        }
-        return true;
-    }
-
-    renderItems() {
-        const container = document.getElementById('resourcesGrid');
-        if (!container) {
-            console.error('❌ Resources grid container not found');
-            return;
+        card(r) {
+            const c = CAT[r.category] || CAT.processed;
+            const kind = r.category === 'raw'
+                ? (r.stakeMinable ? 'Raw &middot; claim-stake extractor' : (r.beltOnly ? 'Raw &middot; belts only, fleet mining' : 'Raw &middot; fleet mining only'))
+                : `${c.label} &middot; ${r.depth} step${r.depth === 1 ? '' : 's'} from raw`;
+            const pct = Math.round(100 * r.demand / this.m.maxDemand);
+            return `<article class="rc" data-name="${esc(r.name)}" style="--c:${c.color}">
+                <div class="rc-head"><i class="t t${r.tier}">T${r.tier}</i><b class="rc-name">${esc(r.name)}</b><em class="rc-status ${r.live ? 'live' : 'unr'}">${r.statusLabel}</em></div>
+                <div class="rc-kind">${kind}</div>
+                <div class="rc-line">${this.line(r)}</div>
+                <div class="rc-demand"><span>${r.demand ? `used by <b>${r.demand.toLocaleString()}</b> recipe${r.demand === 1 ? '' : 's'}` : 'not an ingredient anywhere'}${r.category === 'raw' && r.reach ? ` &middot; reaches <b>${r.reach.toLocaleString()}</b>` : ''}</span><i class="bar"><b style="width:${pct}%"></b></i></div>
+            </article>`;
         }
 
-        container.innerHTML = '';
-
-        if (this.filteredData.length === 0) {
-            container.innerHTML = `
-                <div class="empty-state">
-                    <h3>🔍 No resources found</h3>
-                    <p>Try adjusting your search or filters</p>
-                </div>
-            `;
-            return;
+        renderItems() {
+            const grid = document.getElementById('resourcesGrid'); if (!grid) return;
+            const items = this.filtered.slice(0, this.shown);
+            if (!items.length) { grid.innerHTML = '<div class="rx-empty"><h3>No resources match</h3><p>Loosen a filter or clear the search.</p></div>'; return; }
+            grid.innerHTML = items.map(r => this.card(r)).join('') +
+                (this.filtered.length > this.shown ? `<button type="button" class="sb-more rc-more" data-more>Show ${Math.min(PAGE, this.filtered.length - this.shown)} more of ${(this.filtered.length - this.shown).toLocaleString()} remaining</button>` : '');
         }
 
-        console.log(`🎨 Rendering ${this.filteredData.length} resources`);
-
-        this.filteredData.forEach(resource => {
-            const card = this.createResourceCard(resource);
-            container.appendChild(card);
-        });
-    }
-
-    createResourceCard(resource) {
-        const card = document.createElement('div');
-        card.className = 'item-card';
-        card.onclick = () => {
-            if (window.spaceSounds) window.spaceSounds.click();
-            this.showModal(resource);
-        };
-
-        const tierBadge = resource.tier ? `<span class="item-tier">Tier ${resource.tier}</span>` : '';
-        const category = resource.category || 'unknown';
-
-        card.innerHTML = `
-            <div class="item-header">
-                <h3>${resource.name || 'Unknown Resource'}</h3>
-                ${tierBadge}
-            </div>
-            <div class="item-category">${category.charAt(0).toUpperCase() + category.slice(1)}</div>
-            <div class="item-details">
-                <div class="detail-item">
-                    <span class="detail-label">Base Value:</span>
-                    <span class="detail-value value-highlight">${resource.baseValue || 0}</span>
-                </div>
-                <div class="detail-item">
-                    <span class="detail-label">Stack Size:</span>
-                    <span class="detail-value">${resource.stackSize || 0}</span>
-                </div>
-                <div class="detail-item">
-                    <span class="detail-label">ID:</span>
-                    <span class="detail-value">${resource.id || 'N/A'}</span>
-                </div>
-            </div>
-        `;
-
-        return card;
-    }
-
-    updateStats() {
-        const totalResources = this.data.length;
-        const filteredCount = this.filteredData.length;
-        const uniqueCategories = this.allCategories.size;
-
-        const averageValue = this.filteredData.length > 0
-            ? Math.round(this.filteredData.reduce((sum, resource) => sum + (resource.baseValue || 0), 0) / this.filteredData.length)
-            : 0;
-
-        console.log(`📊 Updating stats:`, {
-            totalResources,
-            filteredCount,
-            uniqueCategories,
-            averageValue
-        });
-
-        this.updateStatElement('totalResources', totalResources);
-        this.updateStatElement('filteredResources', filteredCount);
-        this.updateStatElement('uniqueCategories', uniqueCategories);
-        this.updateStatElement('averageValue', averageValue);
-    }
-
-    updateStatElement(elementId, value) {
-        const element = document.getElementById(elementId);
-        if (element) {
-            element.textContent = value.toLocaleString();
-        } else {
-            console.warn(`⚠️ Stat element not found: ${elementId}`);
+        updateStats() {
+            const c = document.getElementById('rxCount'); if (c) c.textContent = `${this.filtered.length.toLocaleString()} of ${this.m.list.length.toLocaleString()}`;
+            const strip = document.getElementById('rxStats'); if (!strip || strip.dataset.done) return;
+            const st = this.m.stats;
+            strip.innerHTML = [[st.total, 'resources'], [st.byCat.raw, 'raw deposits'], [st.byCat.processed, 'processed'], [st.byCat.component, 'components'], [st.byCat.advanced, 'advanced'], [st.byStatus.live, 'live on chain now'], [st.byStatus.unreleased, 'unreleased']]
+                .map(([n, l]) => `<div class="an-stat"><b>${(n || 0).toLocaleString()}</b><span>${l}</span></div>`).join('');
+            strip.dataset.done = '1';
         }
     }
 
-    populateModal(resource) {
-        const modalContent = document.getElementById('modalContent');
-        if (!modalContent) {
-            console.error('❌ Modal content not found');
-            return;
-        }
-
-        const tierInfo = resource.tier ? `<span class="item-tier">Tier ${resource.tier}</span>` : '';
-        const category = resource.category || 'unknown';
-
-        modalContent.innerHTML = `
-            <div class="modal-header">
-                <h2>${resource.name || 'Unknown Resource'} ${tierInfo}</h2>
-                <div class="item-category">${category.charAt(0).toUpperCase() + category.slice(1)}</div>
-            </div>
-
-            <div class="modal-body">
-                <div class="resource-info-grid">
-                    <div class="info-section">
-                        <h3>📝 Basic Information</h3>
-                        <div class="info-item">
-                            <span class="info-label">Resource ID:</span>
-                            <span class="info-value">${resource.id || 'N/A'}</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Category:</span>
-                            <span class="info-value">${category.charAt(0).toUpperCase() + category.slice(1)}</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Tier:</span>
-                            <span class="info-value">${resource.tier || 'N/A'}</span>
-                        </div>
-                    </div>
-
-                    <div class="info-section">
-                        <h3>💰 Economic Data</h3>
-                        <div class="info-item">
-                            <span class="info-label">Base Value:</span>
-                            <span class="info-value value-highlight">${resource.baseValue || 0}</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Stack Size:</span>
-                            <span class="info-value">${resource.stackSize || 0}</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Value per Stack:</span>
-                            <span class="info-value value-highlight">${((resource.baseValue || 0) * (resource.stackSize || 0)).toLocaleString()}</span>
-                        </div>
-                    </div>
-                </div>
-
-                ${resource.description ? `
-                    <div class="info-section">
-                        <h3>📋 Description</h3>
-                        <p class="resource-description">${resource.description}</p>
-                    </div>
-                ` : ''}
-            </div>
-
-            <div class="modal-actions">
-                <button class="view-recipe-btn" id="viewRecipeBtn" data-resource-name="${this.escapeHtml(resource.name)}">
-                    View Recipes →
-                </button>
-            </div>
-        `;
-
-        // Setup recipe button click handler
-        setTimeout(() => {
-            const recipeBtn = document.getElementById('viewRecipeBtn');
-            if (recipeBtn) {
-                recipeBtn.addEventListener('click', () => {
-                    const resourceName = recipeBtn.getAttribute('data-resource-name');
-                    this.openRecipeExplorer(resourceName);
-                });
-            }
-        }, 0);
-
-        // Add modal-specific styles if not already present
-        if (!document.querySelector('#modalStyles')) {
-            const style = document.createElement('style');
-            style.id = 'modalStyles';
-            style.textContent = `
-                .modal-header {
-                    margin-bottom: 1.5rem;
-                    text-align: center;
-                }
-
-                .modal-header h2 {
-                    color: #4facfe;
-                    margin-bottom: 0.5rem;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: 1rem;
-                }
-
-                .resource-info-grid {
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 1.5rem;
-                    margin-bottom: 1.5rem;
-                }
-
-                .info-section {
-                    background: rgba(255, 255, 255, 0.05);
-                    border-radius: 8px;
-                    padding: 1rem;
-                }
-
-                .info-section h3 {
-                    color: #4facfe;
-                    margin-bottom: 1rem;
-                    font-size: 1rem;
-                }
-
-                .info-item {
-                    display: flex;
-                    justify-content: space-between;
-                    margin-bottom: 0.5rem;
-                    padding: 0.25rem 0;
-                    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-                }
-
-                .info-item:last-child {
-                    border-bottom: none;
-                }
-
-                .info-label {
-                    color: rgba(255, 255, 255, 0.7);
-                    font-size: 0.9rem;
-                }
-
-                .info-value {
-                    color: white;
-                    font-weight: bold;
-                    font-size: 0.9rem;
-                }
-
-                .resource-description {
-                    color: rgba(255, 255, 255, 0.8);
-                    line-height: 1.5;
-                    font-style: italic;
-                }
-
-                .modal-actions {
-                    margin-top: 1.5rem;
-                    padding-top: 1.5rem;
-                    border-top: 1px solid rgba(255, 255, 255, 0.1);
-                    display: flex;
-                    justify-content: center;
-                }
-
-                .view-recipe-btn {
-                    background: linear-gradient(45deg, #4facfe, #00f2fe);
-                    border: none;
-                    color: white;
-                    padding: 0.75rem 1.5rem;
-                    border-radius: 6px;
-                    cursor: pointer;
-                    font-size: 1rem;
-                    font-weight: 600;
-                    transition: all 0.2s ease;
-                }
-
-                .view-recipe-btn:hover {
-                    transform: translateX(3px);
-                    box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
-                }
-
-                @media (max-width: 768px) {
-                    .resource-info-grid {
-                        grid-template-columns: 1fr;
-                    }
-                }
-            `;
-            document.head.appendChild(style);
-        }
-    }
-
-    openRecipeExplorer(resourceName) {
-        // Open Recipe Explorer in new tab and search for recipes that output this resource
-        const url = `../RecipeExplorer/index.html?search=${encodeURIComponent(resourceName)}`;
-        window.open(url, '_blank');
-    }
-
-    escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    getModalId() {
-        return 'resourceModal';
-    }
-}
+    ResourcesExplorer.CAT = CAT;
+    window.ResourcesExplorer = ResourcesExplorer;
+})();
