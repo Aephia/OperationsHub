@@ -215,22 +215,31 @@
 
         applyPan() { const g = this.graph; g.svg.style.transform = `translate(calc(-50% + ${g.tx}px), ${g.ty}px) scale(${g.s})`; }
 
+        // Pointer model: a drag pans (pointer capture on the host), a click without movement opens the node, hover
+        // tracing comes from pointermove only (so a graph that appears under a motionless cursor stays untraced) and
+        // is cleared when the pointer leaves the graph. mousedown is cancelled so a drag never selects page text.
         bindGraph() {
             const g = this.graph; let drag = null;
+            g.host.addEventListener('mousedown', e => e.preventDefault());
+            g.host.addEventListener('dragstart', e => e.preventDefault());
             g.host.addEventListener('pointerdown', e => { if (e.button !== 0) return; drag = { x: e.clientX, y: e.clientY, tx: g.tx, ty: g.ty, moved: false }; g.host.setPointerCapture(e.pointerId); });
-            g.host.addEventListener('pointermove', e => { if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y; if (Math.abs(dx) + Math.abs(dy) > 3) drag.moved = true; g.tx = drag.tx + dx; g.ty = drag.ty + dy; this.applyPan(); });
-            const up = e => { if (!drag) return; const was = drag; drag = null; if (!was.moved) { const nd = e.target.closest('.nd'); if (nd) { this.snd('click'); this.open(nd.dataset.name); } } };
+            g.host.addEventListener('pointermove', e => {
+                if (drag) { const dx = e.clientX - drag.x, dy = e.clientY - drag.y; if (Math.abs(dx) + Math.abs(dy) > 3) { drag.moved = true; this.trace(null); } g.tx = drag.tx + dx; g.ty = drag.ty + dy; this.applyPan(); return; }
+                const nd = e.target.closest('.nd'); const name = nd ? nd.dataset.name : null;
+                if (name !== g.hover) { g.hover = name; this.trace(name); }
+            });
+            const up = e => { if (!drag) return; const was = drag; drag = null; if (!was.moved) { const nd = e.target.closest('.nd'); if (nd) { this.snd('click'); this.trace(null); this.open(nd.dataset.name); } } };
             g.host.addEventListener('pointerup', up); g.host.addEventListener('pointercancel', () => { drag = null; });
+            g.host.addEventListener('pointerleave', () => { if (!drag) { g.hover = null; this.trace(null); } });
             g.host.addEventListener('wheel', e => { e.preventDefault(); const f = e.deltaY < 0 ? 1.15 : 1 / 1.15; g.s = Math.max(0.3, Math.min(4, g.s * f)); this.applyPan(); }, { passive: false });
-            g.host.addEventListener('pointerover', e => { const nd = e.target.closest('.nd'); if (nd) this.trace(nd.dataset.name); });
-            g.host.addEventListener('pointerout', e => { const nd = e.target.closest('.nd'); if (nd && !e.relatedTarget?.closest?.('.nd')) this.trace(null); });
         }
 
         trace(name) {
-            const g = this.graph; if (!g) return;
+            const g = this.graph; if (!g || !g.svg.isConnected) return;
             g.svg.classList.toggle('tracing', !!name);
-            g.svg.querySelectorAll('.hi').forEach(el => el.classList.remove('hi'));
+            g.svg.querySelectorAll('.hi, .hov').forEach(el => el.classList.remove('hi', 'hov'));
             if (!name) return;
+            const own = g.svg.querySelector(`.nd[data-name="${CSS.escape(name)}"]`); if (own) own.classList.add('hov');
             const up = new Set(), down = new Set();
             const walkUp = n => { if (up.has(n)) return; up.add(n); (g.parents.get(n) || []).forEach(e => walkUp(e.from)); };
             const walkDown = n => { if (down.has(n)) return; down.add(n); (g.kids.get(n) || []).forEach(e => walkDown(e.to)); };
