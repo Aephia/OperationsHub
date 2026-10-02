@@ -13,7 +13,7 @@
     class ResourcesExplorer {
         constructor(model) {
             this.m = model;
-            this.filters = { q: '', cats: new Set(), tiers: new Set(), status: new Set(), source: new Set(), sort: 'demand' };
+            this.filters = { q: '', cats: new Set(), tiers: new Set(), source: new Set(), sort: 'demand' };
             this.shown = PAGE;
             this.filtered = model.list.slice();
             this.renderSidebar();
@@ -33,8 +33,6 @@
                 <div class="chips" data-group="cats">${Object.entries(CAT).map(([k, c]) => `<button type="button" class="chip" data-v="${k}" style="--c:${c.color}"><i></i>${c.label} <small>${(st.byCat[k] || 0).toLocaleString()}</small></button>`).join('')}</div>
                 <h4>Tier</h4>
                 <div class="chips" data-group="tiers">${[1, 2, 3, 4, 5].map(t => `<button type="button" class="chip" data-v="${t}"><i class="t t${t}">T${t}</i><small>${(st.byTier[t] || 0).toLocaleString()}</small></button>`).join('')}</div>
-                <h4>Release</h4>
-                <div class="chips" data-group="status"><button type="button" class="chip" data-v="live" style="--c:#7ee8a4"><i></i>Live now <small>${st.byStatus.live.toLocaleString()}</small></button><button type="button" class="chip" data-v="unreleased" style="--c:#ffb86b"><i></i>Unreleased <small>${st.byStatus.unreleased.toLocaleString()}</small></button></div>
                 <h4>Comes from</h4>
                 <div class="chips" data-group="source"><button type="button" class="chip" data-v="mined" style="--c:#dd7429"><i></i>Claim-stake extractor</button><button type="button" class="chip" data-v="fleet" style="--c:#ffd36b"><i></i>Fleet mining only</button><button type="button" class="chip" data-v="crafted" style="--c:#2a9fcf"><i></i>Crafted</button></div>
                 <h4>Sort</h4>
@@ -55,7 +53,7 @@
                     this.apply(); return;
                 }
                 if (e.target.id === 'rxClear') {
-                    ['cats', 'tiers', 'status', 'source'].forEach(g => this.filters[g].clear());
+                    ['cats', 'tiers', 'source'].forEach(g => this.filters[g].clear());
                     this.filters.q = ''; const q = document.getElementById('searchInput'); if (q) q.value = '';
                     side.querySelectorAll('.chip.on').forEach(c => c.classList.remove('on'));
                     this.snd('deselect'); this.apply();
@@ -76,7 +74,6 @@
                 (!f.q || r.name.toLowerCase().includes(f.q) || r.id.includes(f.q)) &&
                 (!f.cats.size || f.cats.has(r.category)) &&
                 (!f.tiers.size || f.tiers.has(String(r.tier))) &&
-                (!f.status.size || f.status.has(r.live ? 'live' : 'unreleased')) &&
                 (!f.source.size || f.source.has(r.source)));
             const cmp = {
                 demand: (a, b) => b.demand - a.demand || b.reach - a.reach,
@@ -109,7 +106,7 @@
                 : `${c.label} &middot; ${r.depth} step${r.depth === 1 ? '' : 's'} from raw`;
             const pct = Math.round(100 * r.demand / this.m.maxDemand);
             return `<article class="rc" data-name="${esc(r.name)}" style="--c:${c.color}">
-                <div class="rc-head"><i class="t t${r.tier}">T${r.tier}</i><b class="rc-name">${esc(r.name)}</b><em class="rc-status ${r.live ? 'live' : 'unr'}">${r.statusLabel}</em></div>
+                <div class="rc-head"><i class="t t${r.tier}">T${r.tier}</i><b class="rc-name">${esc(r.name)}</b></div>
                 <div class="rc-kind">${kind}</div>
                 <div class="rc-line">${this.line(r)}</div>
                 <div class="rc-demand"><span>${r.demand ? `used by <b>${r.demand.toLocaleString()}</b> recipe${r.demand === 1 ? '' : 's'}` : 'not an ingredient anywhere'}${r.category === 'raw' && r.reach ? ` &middot; reaches <b>${r.reach.toLocaleString()}</b>` : ''}</span><i class="bar"><b style="width:${pct}%"></b></i></div>
@@ -128,7 +125,7 @@
             const c = document.getElementById('rxCount'); if (c) c.textContent = `${this.filtered.length.toLocaleString()} of ${this.m.list.length.toLocaleString()}`;
             const strip = document.getElementById('rxStats'); if (!strip || strip.dataset.done) return;
             const st = this.m.stats;
-            strip.innerHTML = [[st.total, 'resources'], [st.byCat.raw, 'raw deposits'], [st.byCat.processed, 'processed'], [st.byCat.component, 'components'], [st.byCat.advanced, 'advanced'], [st.byStatus.live, 'live on chain now'], [st.byStatus.unreleased, 'unreleased']]
+            strip.innerHTML = [[st.total, 'resources'], [st.byCat.raw, 'raw deposits'], [st.byCat.processed, 'processed'], [st.byCat.component, 'components'], [st.byCat.advanced, 'advanced'], [st.maxDepth, 'deepest chain (steps)']]
                 .map(([n, l]) => `<div class="an-stat"><b>${(n || 0).toLocaleString()}</b><span>${l}</span></div>`).join('');
             strip.dataset.done = '1';
         }

@@ -90,7 +90,6 @@
             this.prepare();
             const root = document.getElementById('analyticsContent');
             if (!root) return;
-            const live = Array.from(this.recipeByName.values()).filter(r => r.c4_status === 'v1').length;
             root.innerHTML = `
                 <div class="an-stats">
                     ${[[this.planets.length, 'stakeable planets'], [this.SD.planets.length - this.planets.length, 'asteroid belts (no stake)'], [this.atlas.length, 'raw deposits'], [this.atlas.filter(d => !d.extractor).length, 'fleet-mined only'], [this.regions.size, 'regions'], [this.recipeNames.length, 'craftable outputs']].map(([n, l]) => `<div class="an-stat"><b>${n.toLocaleString()}</b><span>${l}</span></div>`).join('')}
@@ -232,7 +231,7 @@
             const q = this.filters.recipeQ;
             if (!q || q.length < 2 || (this.recipe && this.recipe.outputName.toLowerCase() === q)) { el.innerHTML = ''; return; }
             const hits = this.recipeNames.filter(n => n.toLowerCase().includes(q)).slice(0, 12);
-            el.innerHTML = hits.map(n => { const r = this.recipeByName.get(n); return `<button type="button" class="an-hit" data-recipe="${esc(n)}"><b>${esc(n)}</b><span>${esc(r.outputType || '')}${r.outputTier ? ' · T' + r.outputTier : ''}</span><em class="st-${esc(r.c4_status)}">${r.c4_status === 'v1' ? 'live' : esc(r.c4_status)}</em></button>`; }).join('') || '<p class="sb-muted">No recipe matches.</p>';
+            el.innerHTML = hits.map(n => { const r = this.recipeByName.get(n); return `<button type="button" class="an-hit" data-recipe="${esc(n)}"><b>${esc(n)}</b><span>${esc(r.outputType || '')}${r.outputTier ? ' · T' + r.outputTier : ''}</span></button>`; }).join('') || '<p class="sb-muted">No recipe matches.</p>';
         }
 
         pickRecipe(name) {
@@ -260,7 +259,7 @@
             const regions = Array.from(byRegion.values()).sort((a, b) => b.full - a.full || b.best - a.best || b.n - a.n).slice(0, 6);
             el.innerHTML = `
                 <div class="an-recipe-head">
-                    <div><b>${esc(r.outputName)}</b><span>${esc(r.outputType || '')}${r.outputTier ? ' · T' + r.outputTier : ''} · ${r.c4_status === 'v1' ? 'live' : esc(r.c4_status)} · ${raws.length} raw${raws.length === 1 ? '' : 's'}${mids.length ? ' · ' + mids.length + ' intermediate' + (mids.length === 1 ? '' : 's') : ''}</span></div>
+                    <div><b>${esc(r.outputName)}</b><span>${esc(r.outputType || '')}${r.outputTier ? ' · T' + r.outputTier : ''} · ${raws.length} raw${raws.length === 1 ? '' : 's'}${mids.length ? ' · ' + mids.length + ' intermediate' + (mids.length === 1 ? '' : 's') : ''}</span></div>
                     <button type="button" class="sb-btn ghost" data-recipe-clear>Clear</button>
                 </div>
                 <div class="an-raws">${rawInfo.map(x => `<span class="rtag ${x.d ? (x.d.extractor ? '' : 'fleet') : 'unk'}" title="${x.d ? x.d.planets + ' stakeable planets' : 'not a mapped deposit'}">${x.d && x.d.tier ? `<i class="t t${x.d.tier}">T${x.d.tier}</i>` : '<i></i>'}<span class="rname">${esc(x.name)}</span><span class="rval">${x.d ? x.d.planets.toLocaleString() : '?'}</span></span>`).join('')}</div>

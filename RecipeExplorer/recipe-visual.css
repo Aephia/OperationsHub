@@ -1,0 +1,66 @@
+/* ============================================================================
+   recipe-visual.css - Recipe Explorer planner (2026-10-01). Loaded after styles.css and the shared
+   ResourcesExplorer/resource-visual.css (header, chips, sheet, chain graph, charts, analytics vocabulary).
+   Only the planner's own layout lives here: the finder list, the plan items, the plan sheet, inline "uses" box.
+   ============================================================================ */
+
+.rp-layout { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 1.2rem; align-items: start; }
+.rp-sidebar { max-height: calc(100vh - 104px); }
+.rp-list { display: flex; flex-direction: column; gap: 0.2rem; margin-top: 0.4rem; min-height: 0; }
+.rp-row { display: grid; grid-template-columns: minmax(0, 1fr) 34px; gap: 0.4rem; align-items: center; border: 1px solid transparent; border-radius: 8px; padding: 0.2rem 0.2rem 0.2rem 0.5rem; }
+.rp-row:hover { background: rgba(79, 216, 255, 0.05); border-color: var(--line); }
+.rp-row.in { border-color: rgba(126, 232, 164, 0.35); background: rgba(126, 232, 164, 0.05); }
+.rp-row-main { cursor: pointer; min-width: 0; }
+.rp-row-main b { display: block; font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.95rem; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.15; }
+.rp-row-main span { display: block; font-size: 0.7rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rp-row-main span em { font-style: normal; color: var(--warn); }
+.rp-add { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--line-strong); background: rgba(79, 216, 255, 0.16); color: #fff; font-family: 'Orbitron', sans-serif; font-size: 0.7rem; cursor: pointer; }
+.rp-add:hover { background: rgba(79, 216, 255, 0.3); }
+.rp-row.in .rp-add { background: rgba(126, 232, 164, 0.2); border-color: rgba(126, 232, 164, 0.5); }
+
+.rp-main { min-width: 0; }
+.rp-empty { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 2rem; }
+.rp-empty h3 { font-family: 'Orbitron', sans-serif; font-size: 0.9rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--cyan); margin: 0 0 0.6rem; }
+.rp-empty p { color: var(--text-secondary); max-width: 720px; line-height: 1.5; }
+.rp-empty p b { color: #fff; }
+.rp-plan { display: flex; flex-direction: column; gap: 1rem; }
+.rp-items { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.rp-item { display: inline-flex; align-items: center; gap: 0.3rem; border: 1px solid var(--line-strong); border-radius: 10px; background: rgba(79, 216, 255, 0.08); padding: 0.3rem 0.3rem 0.3rem 0.6rem; }
+.rp-item-name { background: none; border: none; color: #fff; font: inherit; font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.98rem; cursor: pointer; text-align: left; padding: 0; display: flex; align-items: center; gap: 0.3rem; }
+.rp-item-name small { font-weight: 500; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+.rp-item-name:hover { color: var(--cyan); }
+.rp-item.on { background: rgba(79, 216, 255, 0.22); border-color: var(--cyan); box-shadow: 0 0 18px rgba(79, 216, 255, 0.25); }
+.rp-item.on .rp-item-name { color: var(--cyan); }
+.rp-focus-hint { font-size: 0.8rem; color: var(--text-muted); }
+.rp-focus-hint b { color: #fff; }
+.rp-item label { display: inline-flex; align-items: center; gap: 0.1rem; color: var(--text-muted); font-family: 'Orbitron', sans-serif; font-size: 0.62rem; }
+.rp-item input { width: 74px; padding: 0.3rem 0.4rem; border-radius: 6px; border: 1px solid var(--line); background: rgba(0, 0, 0, 0.35); color: #fff; font-family: 'Orbitron', sans-serif; font-size: 0.68rem; text-align: right; }
+.rp-item input:focus { outline: none; border-color: var(--line-strong); }
+.rp-x { background: none; border: none; color: var(--text-muted); font-size: 1.2rem; line-height: 1; cursor: pointer; padding: 0 0.3rem; }
+.rp-x:hover { color: var(--bad); }
+.rp-stats .an-stat.warn b { color: var(--warn); }
+.rp-sheet { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 1rem; align-items: start; }
+.rp-crafts { display: flex; flex-direction: column; gap: 0.15rem; }
+.rp-craft { display: grid; grid-template-columns: 16px minmax(120px, 1.6fr) 90px minmax(50px, 0.8fr) 96px; gap: 0.5rem; align-items: center; font-size: 0.82rem; padding: 0.22rem 0; border-bottom: 1px solid rgba(255, 255, 255, 0.04); }
+.rp-craft .d { font-family: 'Orbitron', sans-serif; font-size: 0.56rem; color: var(--text-dim); text-align: center; }
+.rp-craft .nm { font: inherit; color: #fff; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rp-craft .n { font-family: 'Orbitron', sans-serif; font-size: 0.62rem; color: #fff; text-align: right; }
+.rp-craft .n small { display: block; font-family: 'Rajdhani', sans-serif; font-size: 0.68rem; color: var(--text-muted); font-weight: 500; }
+.rp-craft .bar { position: relative; height: 8px; background: rgba(255, 255, 255, 0.05); border-radius: 2px; }
+.rp-craft .bar b { position: absolute; left: 0; top: 0; height: 100%; background: #2fa985; border-radius: 0 4px 4px 0; min-width: 2px; }
+.rp-sheet .rx-panel .ch { max-height: 520px; overflow: auto; padding-right: 2px; }
+.rp-sheet .rp-crafts { max-height: 520px; overflow: auto; }
+.rx-panel-head .warn { font-style: normal; color: var(--warn); }
+.chip.static.warn { color: var(--warn); border-color: rgba(255, 184, 107, 0.4); }
+.rp-sheet-add { margin-left: auto; }
+.rp-sheet-graph { height: clamp(360px, 58vh, 900px); }
+.cg-svg .nd.cat-plan { --cc: var(--cyan); }
+.cg-svg .ed.cat-plan { stroke: rgba(79, 216, 255, 0.5); }
+
+/* analytics: inline "recipes using it" box */
+.an-uses { background: rgba(79, 216, 255, 0.05); border: 1px solid var(--line-strong); border-radius: 12px; padding: 0.9rem 1rem; margin-bottom: 0.8rem; }
+.an-uses-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 0.3rem; max-height: 420px; overflow: auto; }
+.an-uses .rx-panel-head .sb-btn { margin-left: auto; }
+
+@media (max-width: 1000px) { .rp-sheet { grid-template-columns: 1fr; } }
+@media (max-width: 820px) { .rp-layout { grid-template-columns: 1fr; } .rp-sidebar { position: static; max-height: none; } .rp-list { max-height: 50vh; overflow: auto; } }

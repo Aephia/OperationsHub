@@ -38,7 +38,7 @@
             const st = this.m.stats;
             root.innerHTML = `
                 <div class="an-root">
-                    <div class="an-stats">${[[st.total, 'resources'], [st.byCat.raw, 'raw deposits'], [st.byStatus.live, 'live on chain now'], [st.byStatus.unreleased, 'unreleased'], [st.maxDepth, 'deepest chain (steps)'], [this.m.recipes.length, 'recipes read']].map(([n, l]) => `<div class="an-stat"><b>${num(n)}</b><span>${l}</span></div>`).join('')}</div>
+                    <div class="an-stats">${[[st.total, 'resources'], [st.byCat.raw, 'raw deposits'], [st.byCat.processed, 'processed'], [st.byCat.component + st.byCat.advanced, 'components + advanced'], [st.maxDepth, 'deepest chain (steps)'], [this.m.recipes.length, 'recipes read']].map(([n, l]) => `<div class="an-stat"><b>${num(n)}</b><span>${l}</span></div>`).join('')}</div>
                     <nav class="an-jump"><a href="#anShape">The economy's shape</a><a href="#anDepth">Steps from raw</a><a href="#anDemand">Demand</a><a href="#anRaw">Raw backbone</a><a href="#anGaps">Data gaps</a></nav>
                     <section class="an-section" id="anShape"></section>
                     <section class="an-section" id="anDepth"></section>
@@ -70,7 +70,7 @@
             const el = document.getElementById('anShape'); const st = this.m.stats;
             const maxCat = Math.max(...CATS.map(c => st.byCat[c] || 0));
             el.innerHTML = `
-                <div class="an-head"><h3>The economy's shape</h3><p><b>${num(st.total)}</b> resources: ${CATS.map(c => `${num(st.byCat[c])} ${CAT[c].label.toLowerCase()}`).join(', ')}. Left, each category split by tier; right, how much of each category is live on chain today (status v1) against what the export lists for later (v1-add, v2).</p></div>
+                <div class="an-head"><h3>The economy's shape</h3><p><b>${num(st.total)}</b> resources: ${CATS.map(c => `${num(st.byCat[c])} ${CAT[c].label.toLowerCase()}`).join(', ')}. Each category split by tier; right, how many resources sit at each tier across the whole catalogue.</p></div>
                 <div class="an-two">
                     <div class="ch">
                         <div class="ch-key">${[1, 2, 3, 4, 5].map(t => `<span><i style="background:${TIER_COLOR[t]}"></i>Tier ${t}</span>`).join('')}</div>
@@ -78,9 +78,9 @@
                         <p class="sb-foot">Every category has a tier 1 to 5 band; the 93 raws split ${[1, 2, 3, 4, 5].map(t => st.byCatTier.raw[t] || 0).join(' / ')} across the tiers.</p>
                     </div>
                     <div class="ch">
-                        <div class="ch-key"><span><i style="background:#7ee8a4"></i>Live now</span><span><i style="background:#ffb86b"></i>Unreleased</span></div>
-                        ${CATS.map(c => { const s = st.byCatStatus[c]; return `<div class="ch-stack"><div class="ch-stack-head"><span><i class="dot" style="background:${CAT[c].color}"></i>${CAT[c].label}</span><b>${Math.round(100 * s.live / Math.max(1, s.live + s.unreleased))}% live</b></div>${this.track([{ n: s.live, color: '#7ee8a4', label: 'live' }, { n: s.unreleased, color: '#ffb86b', label: 'unreleased' }], s.live + s.unreleased, maxCat)}</div>`; }).join('')}
-                        <p class="sb-foot">${num(st.byStatus.live)} of ${num(st.total)} resources are craftable or minable on chain now (${Math.round(100 * st.byStatus.live / st.total)}%).</p>
+                        <div class="ch-key">${CATS.map(c => `<span><i style="background:${CAT[c].color}"></i>${CAT[c].label}</span>`).join('')}</div>
+                        ${[1, 2, 3, 4, 5].map(t => `<div class="ch-row"><span class="ch-lbl"><i class="t t${t}">T${t}</i>Tier ${t}</span>${this.track(CATS.map(c => ({ n: st.byCatTier[c][t] || 0, color: CAT[c].color, label: CAT[c].label })), st.byTier[t] || 0, Math.max(...[1, 2, 3, 4, 5].map(x => st.byTier[x] || 0)))}<span class="ch-val">${num(st.byTier[t])}</span></div>`).join('')}
+                        <p class="sb-foot">The tiers are nearly even in size; what changes with tier is the mix, with raws thinning out and advanced components taking over.</p>
                     </div>
                 </div>`;
         }
@@ -108,7 +108,7 @@
         renderDemand() {
             const el = document.getElementById('anDemand');
             el.innerHTML = `
-                <div class="an-head"><h3>Demand: what the economy asks for</h3><p>Every resource ranked by how many recipes list it as a direct ingredient, each recipe counted once, all release statuses (the same count the Recipe Explorer's Analytics tab shows). <b>Live</b> is the share of those recipes craftable on chain now. Search keeps the global rank.</p></div>
+                <div class="an-head"><h3>Demand: what the economy asks for</h3><p>Every resource ranked by how many recipes list it as a direct ingredient, each recipe counted once (the same count the Recipe Explorer's Analytics tab shows). Search keeps the global rank.</p></div>
                 <div class="an-tools"><input type="text" id="anDemandQ" class="sb-input" placeholder="Find a resource in the ranking" value="${esc(this.demandQ)}" autocomplete="off"></div>
                 <div class="an-rank" id="anDemandRows"></div>
                 <div class="pager" id="anDemandPager"></div>`;
@@ -122,8 +122,8 @@
             const pages = Math.max(1, Math.ceil(items.length / PAGE));
             const page = Math.min(Math.max(this.demandPage, 1), pages); this.demandPage = page;
             const start = (page - 1) * PAGE, slice = items.slice(start, start + PAGE), max = this.m.maxDemand;
-            el.innerHTML = `<div class="an-rk head"><span>#</span><span>Resource</span><span>Recipes using it</span><span>Live</span><span>Steps</span></div>` +
-                (slice.map(r => `<button type="button" class="an-rk" data-go="${esc(r.name)}"><span class="rk">${r.rank}</span><span class="nm"><i class="dot" style="background:${CAT[r.category].color}"></i><i class="t t${r.tier}">T${r.tier}</i>${esc(r.name)}</span><span class="bar"><b style="width:${(100 * r.demand / max).toFixed(2)}%"></b><em>${num(r.demand)}</em></span><span class="n">${r.demand ? Math.round(100 * r.liveDemand / r.demand) + '%' : '&ndash;'}</span><span class="n">${r.depth}</span></button>`).join('') || `<p class="sb-muted an-empty">No resource matches "${esc(q)}".</p>`);
+            el.innerHTML = `<div class="an-rk head"><span>#</span><span>Resource</span><span>Recipes using it</span><span>Steps</span></div>` +
+                (slice.map(r => `<button type="button" class="an-rk" data-go="${esc(r.name)}"><span class="rk">${r.rank}</span><span class="nm"><i class="dot" style="background:${CAT[r.category].color}"></i><i class="t t${r.tier}">T${r.tier}</i>${esc(r.name)}</span><span class="bar"><b style="width:${(100 * r.demand / max).toFixed(2)}%"></b><em>${num(r.demand)}</em></span><span class="n">${r.depth}</span></button>`).join('') || `<p class="sb-muted an-empty">No resource matches "${esc(q)}".</p>`);
             const btn = (label, target, cls) => `<button type="button" class="pager-btn ${cls || ''}" data-page="${target}"${target < 1 || target > pages || target === page ? ' disabled' : ''}>${label}</button>`;
             const shown = new Set([1, pages]); for (let p = page - 2; p <= page + 2; p++) if (p >= 1 && p <= pages) shown.add(p);
             let nums = '', prev = 0; [...shown].sort((a, b) => a - b).forEach(p => { if (p - prev > 1) nums += '<span class="pager-gap">&hellip;</span>'; nums += btn(p, p, p === page ? 'active' : ''); prev = p; });

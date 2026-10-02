@@ -1,7 +1,8 @@
 // resource-model.js - Resources Explorer data model (rebuilt 2026-10-01).
 // One pass over the loaded bundles (resources, recipes, planets, buildings) that gives every resource the facts the
 // export can actually support:
-//   - identity: category, tier, release status (v1 = live on chain now, v1-add / v2 = unreleased)
+//   - identity: category, tier (release status is deliberately NOT surfaced - the release will be v2, so every
+//     recipe counts; c4_status is used only as a tie-break when several recipes share one output name)
 //   - source: for a raw, every planet and belt that carries the deposit (planets.json), best richness, territories,
 //     planet types, and whether an extractor family exists in buildings.json (six raws are fleet-mined only);
 //     for anything crafted, the recipe that makes it (one per output name, live status first) with its ingredients,
@@ -42,8 +43,6 @@
             this.indexDeposits();
             this.indexExtractors();
             this.list.forEach(r => {
-                r.live = r.c4_status === 'v1';
-                r.statusLabel = r.live ? 'live' : (r.c4_status === 'v2' ? 'unreleased' : 'added later');
                 r.recipe = this.recipeByName.get(r.name) || null;
                 r.ingredients = r.recipe ? r.recipe.ingredients.map(i => ({ name: i.name, quantity: i.quantity, res: this.byName.get(i.name) || null })) : [];
                 r.depth = this.depthOf(r.name);
@@ -82,7 +81,6 @@
                 r.demand = direct.get(r.name) || 0;
                 const c = consumers.get(r.name) || [];
                 r.consumers = c;
-                r.liveDemand = c.filter(x => x.status === 'v1').length;
             });
             this.maxDemand = Math.max(1, ...this.list.map(r => r.demand));
         }
@@ -193,15 +191,13 @@
 
         // ------------------------------------------------------------ stats
         computeStats() {
-            const byCat = {}, byTier = {}, byCatTier = {}, byStatus = { live: 0, unreleased: 0 }, byCatStatus = {};
+            const byCat = {}, byTier = {}, byCatTier = {};
             const depthHist = new Map(), ingHist = new Map();
-            CAT_ORDER.forEach(c => { byCat[c] = 0; byCatTier[c] = [0, 0, 0, 0, 0, 0]; byCatStatus[c] = { live: 0, unreleased: 0 }; });
+            CAT_ORDER.forEach(c => { byCat[c] = 0; byCatTier[c] = [0, 0, 0, 0, 0, 0]; });
             this.list.forEach(r => {
                 byCat[r.category] = (byCat[r.category] || 0) + 1;
                 byTier[r.tier] = (byTier[r.tier] || 0) + 1;
                 if (byCatTier[r.category]) byCatTier[r.category][r.tier] = (byCatTier[r.category][r.tier] || 0) + 1;
-                const st = r.live ? 'live' : 'unreleased';
-                byStatus[st]++; if (byCatStatus[r.category]) byCatStatus[r.category][st]++;
                 const dh = depthHist.get(r.depth) || { raw: 0, processed: 0, component: 0, advanced: 0 }; dh[r.category] = (dh[r.category] || 0) + 1; depthHist.set(r.depth, dh);
                 if (r.recipe) { const k = r.ingredients.length; const ih = ingHist.get(k) || { raw: 0, processed: 0, component: 0, advanced: 0 }; ih[r.category]++; ingHist.set(k, ih); }
             });
@@ -215,7 +211,7 @@
                 outputsNotResources: (() => { const m = new Map(); this.recipeByName.forEach((r, n) => { if (!this.byName.has(n)) m.set(r.outputType || 'other', (m.get(r.outputType || 'other') || 0) + 1); }); return Array.from(m.entries()).sort((a, b) => b[1] - a[1]); })(),
                 stepsMismatch: this.list.filter(r => r.recipe && r.recipe.productionSteps != null && r.recipe.productionSteps !== r.depth).length
             };
-            return { total: this.list.length, byCat, byTier, byCatTier, byStatus, byCatStatus, depthHist, ingHist, typeRaws, gaps, raws: raws.length, maxDepth: Math.max(...this.list.map(r => r.depth)) };
+            return { total: this.list.length, byCat, byTier, byCatTier, depthHist, ingHist, typeRaws, gaps, raws: raws.length, maxDepth: Math.max(...this.list.map(r => r.depth)) };
         }
     }
 

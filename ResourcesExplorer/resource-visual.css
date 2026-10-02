@@ -137,19 +137,19 @@ body.rx-modal-open { overflow: hidden; }
 .rx-sheet { user-select: none; -webkit-user-select: none; }
 .rx-sheet p, .rx-sheet h2, .rx-sheet .rx-facts, .rx-sheet .rx-pl, .rx-sheet .rx-where, .rx-sheet .rx-regions, .rx-sheet .rx-note { user-select: text; -webkit-user-select: text; }
 .rx-graph:active { cursor: grabbing; }
-.rx-svg { position: absolute; left: 50%; top: 10px; display: block; transform-origin: 50% 0; transition: transform 0.08s linear; overflow: visible; }
-.rx-svg .ed { fill: none; stroke: rgba(160, 190, 230, 0.28); stroke-width: 1.4; stroke-dasharray: 6 8; animation: rx-flow 2.4s linear infinite; transition: stroke 0.15s, opacity 0.15s; }
-.rx-svg .ed.cat-raw { stroke: rgba(221, 116, 41, 0.45); } .rx-svg .ed.cat-processed { stroke: rgba(42, 159, 207, 0.45); } .rx-svg .ed.cat-component { stroke: rgba(47, 169, 133, 0.45); } .rx-svg .ed.cat-advanced { stroke: rgba(148, 118, 219, 0.45); }
-.rx-svg .nd { cursor: pointer; }
-.rx-svg .nd .in { animation: rx-node 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
-.rx-svg .nd rect { fill: rgba(9, 13, 28, 0.96); stroke: var(--cc, var(--cyan)); stroke-width: 1.2; transition: fill 0.15s, stroke-width 0.15s; }
-.rx-svg .nd.cat-raw { --cc: var(--raw); } .rx-svg .nd.cat-processed { --cc: var(--processed); } .rx-svg .nd.cat-component { --cc: var(--component); } .rx-svg .nd.cat-advanced { --cc: var(--advanced); }
-.rx-svg .nd.root rect { stroke-width: 2.2; fill: rgba(79, 216, 255, 0.12); }
-.rx-svg .nd text { fill: #fff; font-family: 'Rajdhani', sans-serif; font-weight: 600; font-size: 12.5px; text-anchor: middle; pointer-events: none; }
-.rx-svg .nd text.tr { fill: rgba(255, 255, 255, 0.55); font-size: 9.5px; font-weight: 500; letter-spacing: 0.04em; }
-.rx-svg .nd.hov rect { fill: rgba(79, 216, 255, 0.16); stroke-width: 2; }
-.rx-svg.tracing .nd { opacity: 0.22; } .rx-svg.tracing .nd.hi { opacity: 1; }
-.rx-svg.tracing .ed { opacity: 0.12; } .rx-svg.tracing .ed.hi { opacity: 1; stroke-width: 2.2; stroke: #fff; }
+.cg-svg { position: absolute; left: 50%; top: 10px; display: block; transform-origin: 50% 0; transition: transform 0.08s linear; overflow: visible; }
+.cg-svg .ed { fill: none; stroke: rgba(160, 190, 230, 0.28); stroke-width: 1.4; stroke-dasharray: 6 8; animation: rx-flow 2.4s linear infinite; transition: stroke 0.15s, opacity 0.15s; }
+.cg-svg .ed.cat-raw { stroke: rgba(221, 116, 41, 0.45); } .cg-svg .ed.cat-processed { stroke: rgba(42, 159, 207, 0.45); } .cg-svg .ed.cat-component { stroke: rgba(47, 169, 133, 0.45); } .cg-svg .ed.cat-advanced { stroke: rgba(148, 118, 219, 0.45); }
+.cg-svg .nd { cursor: pointer; }
+.cg-svg .nd .in { animation: rx-node 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.cg-svg .nd rect { fill: rgba(9, 13, 28, 0.96); stroke: var(--cc, var(--cyan)); stroke-width: 1.2; transition: fill 0.15s, stroke-width 0.15s; }
+.cg-svg .nd.cat-raw { --cc: var(--raw); } .cg-svg .nd.cat-processed { --cc: var(--processed); } .cg-svg .nd.cat-component { --cc: var(--component); } .cg-svg .nd.cat-advanced { --cc: var(--advanced); }
+.cg-svg .nd.root rect { stroke-width: 2.2; fill: rgba(79, 216, 255, 0.12); }
+.cg-svg .nd text { fill: #fff; font-family: 'Rajdhani', sans-serif; font-weight: 600; font-size: 12.5px; text-anchor: middle; pointer-events: none; }
+.cg-svg .nd text.tr { fill: rgba(255, 255, 255, 0.55); font-size: 9.5px; font-weight: 500; letter-spacing: 0.04em; }
+.cg-svg .nd.hov rect { fill: rgba(79, 216, 255, 0.16); stroke-width: 2; }
+.cg-svg.tracing .nd { opacity: 0.22; } .cg-svg.tracing .nd.hi { opacity: 1; }
+.cg-svg.tracing .ed { opacity: 0.12; } .cg-svg.tracing .ed.hi { opacity: 1; stroke-width: 2.2; stroke: #fff; }
 .rx-bill { margin-top: 0.8rem; }
 .rx-bill h4, .rx-row h4 { font-size: 0.6rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-dim); margin: 0 0 0.35rem; font-weight: 600; }
 .rx-raw-portrait { height: 100%; display: grid; grid-template-columns: 160px minmax(0, 1fr); align-items: center; gap: 1.2rem; padding: 1rem 1.4rem; }
@@ -236,7 +236,7 @@ body.rx-modal-open { overflow: hidden; }
 .an-tools { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; margin-bottom: 0.8rem; }
 .an-tools .sb-input { width: auto; flex: 1 1 260px; }
 .an-rank { display: flex; flex-direction: column; gap: 0.12rem; }
-.an-rk { display: grid; grid-template-columns: 44px minmax(180px, 1.3fr) minmax(160px, 1.6fr) 60px 56px; gap: 0.6rem; align-items: center; text-align: left; padding: 0.32rem 0.6rem; border-radius: 8px; border: 1px solid transparent; background: none; color: var(--text-secondary); font: inherit; font-size: 0.84rem; cursor: pointer; }
+.an-rk { display: grid; grid-template-columns: 44px minmax(180px, 1.3fr) minmax(160px, 1.6fr) 56px; gap: 0.6rem; align-items: center; text-align: left; padding: 0.32rem 0.6rem; border-radius: 8px; border: 1px solid transparent; background: none; color: var(--text-secondary); font: inherit; font-size: 0.84rem; cursor: pointer; }
 .an-rk.raw { grid-template-columns: 36px minmax(150px, 1.2fr) minmax(120px, 1.3fr) 56px minmax(90px, 1fr) 48px 44px 120px; }
 .an-rk:hover { background: rgba(79, 216, 255, 0.05); border-color: var(--line); }
 .an-rk.head { cursor: default; font-size: 0.6rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-dim); }
@@ -274,10 +274,10 @@ body.rx-modal-open { overflow: hidden; }
 @keyframes rx-flow { to { stroke-dashoffset: -28; } }
 @keyframes rx-pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.35); opacity: 0.75; } }
 @keyframes rx-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
-body.is-hidden .rx-svg .ed, body.is-hidden .rx-map-svg .hot, body.is-hidden .rx-ore { animation-play-state: paused; }
+body.is-hidden .cg-svg .ed, body.is-hidden .rx-map-svg .hot, body.is-hidden .rx-ore { animation-play-state: paused; }
 @media (prefers-reduced-motion: reduce) {
-    .rx-svg .ed, .rx-map-svg .hot, .rx-ore, .rx-modal, .rx-sheet, .rx-svg .nd .in { animation: none !important; }
-    .rc, .rx-svg { transition: none; }
+    .cg-svg .ed, .rx-map-svg .hot, .rx-ore, .rx-modal, .rx-sheet, .cg-svg .nd .in { animation: none !important; }
+    .rc, .cg-svg { transition: none; }
 }
 
 /* -------------------------------------------------------- RESPONSIVE ---- */

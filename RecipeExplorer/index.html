@@ -6,141 +6,52 @@
     <title>Aephia Industries - Recipe Explorer</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="icon" type="image/jpeg" href="../Images/channels4_profile.jpg">
-    <link rel="stylesheet" href="styles.css?v=20260928d">
+    <link rel="stylesheet" href="styles.css?v=20261001">
+    <link rel="stylesheet" href="../ResourcesExplorer/resource-visual.css?v=20261001d">
+    <link rel="stylesheet" href="recipe-visual.css?v=20261001d">
 </head>
 <body>
+    <div class="pe-sky" aria-hidden="true"></div>
     <header>
-        <h1>🧪 Recipe Explorer</h1>
-
+        <a class="brand" href="../index.html" title="Back to the Operations Hub">
+            <img src="../Images/channels4_profile.jpg" alt="">
+            <span><b>Aephia Industries</b><small>Operations Hub</small></span>
+        </a>
+        <h1>Recipe Explorer</h1>
         <nav class="navigation-tabs">
-            <button class="nav-tab active" data-tab="explorer">🌍 Explorer</button>
-            <button class="nav-tab" data-tab="analytics">📊 Analytics</button>
+            <button class="nav-tab active" data-tab="explorer">Planner</button>
+            <button class="nav-tab" data-tab="analytics">Analytics</button>
         </nav>
-
         <nav class="breadcrumb">
-            <a href="../index.html">Home</a> > Recipe Explorer
+            <a href="../index.html">Home</a> / Recipe Explorer
         </nav>
     </header>
 
     <main>
-        <!-- Explorer Tab Content -->
         <div id="explorerTab" class="tab-content active">
-            <div class="explorer-layout">
-                <div class="recipes-sidebar">
-                    <h3>📋 Recipe Categories</h3>
-                    <div class="search-container">
-                        <input type="text" id="searchInput" placeholder="Search recipes...">
-                        <div class="search-mode-toggle">
-                            <label class="search-mode-label">
-                                <input type="radio" name="searchMode" value="recipe" checked>
-                                <span>Recipe Name</span>
-                            </label>
-                            <label class="search-mode-label">
-                                <input type="radio" name="searchMode" value="ingredient">
-                                <span>Ingredient</span>
-                            </label>
-                        </div>
-                    </div>
-                    <div class="checkbox-container" id="recipeCheckboxes">
-                        <!-- Recipe category checkboxes will be populated here -->
-                    </div>
-                </div>
-
-                <div class="tree-main">
-                    <div class="tree-header">
-                        <h2 id="selectedRecipeTitle">Select a Recipe</h2>
-                        <p id="selectedRecipeDescription">Choose a recipe from the left sidebar to view its dependency tree</p>
-                    </div>
-
-                    <div class="tree-container" id="treeContainer">
-                        <div class="placeholder-content">
-                            <div class="placeholder-icon">🌲</div>
-                            <h3>Recipe Tree Visualization</h3>
-                            <p>Select recipes from the left sidebar to explore their crafting dependencies and see how resources flow through the recipe chain.</p>
-                            <div class="placeholder-tips">
-                                <div class="tip">🔍 <strong>Search:</strong> Use the search bar to find specific recipes</div>
-                                <div class="tip">☑️ <strong>Categories:</strong> Check recipe categories to view their dependency trees</div>
-                                <div class="tip">🌿 <strong>Tree View:</strong> Visualize how raw materials become final products</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <div class="explorer-layout rp-layout">
+                <aside class="rx-sidebar rp-sidebar" id="rpSide"></aside>
+                <section class="rp-main" id="rpMain"></section>
             </div>
         </div>
-
-        <!-- Analytics Tab Content -->
         <div id="analyticsTab" class="tab-content">
-            <div class="analytics-header">
-                <h2>📊 Recipe Analytics</h2>
-                <p>Analyze recipe complexity, resource requirements, and manufacturing chains</p>
-            </div>
-
-            <!-- Basic Analytics -->
-            <div id="basicAnalyticsSubtab" class="subtab-content active">
-            <div class="analytics-stats">
-                <div class="stat-card">
-                    <span class="stat-number" id="totalRecipeCount">0</span>
-                    <span class="stat-label">Total Recipes</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-number" id="averageConstructionTime">0</span>
-                    <span class="stat-label">Avg Construction Time</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-number" id="maxTier">0</span>
-                    <span class="stat-label">Highest Tier</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-number" id="uniqueIngredients">0</span>
-                    <span class="stat-label">Unique Ingredients</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-number" id="complexRecipes">0</span>
-                    <span class="stat-label">Complex Recipes (5+ ingredients)</span>
-                </div>
-            </div>
-
-            <div class="analytics-sections">
-                <div class="analytics-section">
-                    <div class="section-head">
-                        <h3>⛏️ Raw Materials</h3>
-                        <input type="search" class="section-search" id="rawMaterialsSearch" placeholder="Search raw materials..." autocomplete="off">
-                    </div>
-                    <p class="section-note">Base resources that start production chains, ranked by the recipes that use them (50 per page)</p>
-                    <div id="rawMaterials" class="raw-materials-grid">
-                        <!-- Raw materials will be populated here -->
-                    </div>
-                </div>
-
-                <div class="analytics-section">
-                    <div class="section-head">
-                        <h3>🔩 Processed & Components</h3>
-                        <input type="search" class="section-search" id="processedComponentsSearch" placeholder="Search processed & components..." autocomplete="off">
-                    </div>
-                    <p class="section-note">Every processed material and component, ranked by the recipes that use it (50 per page)</p>
-                    <div id="processedComponents" class="raw-materials-grid">
-                        <!-- Processed & component materials will be populated here -->
-                    </div>
-                </div>
-            </div>
-            </div>
+            <div id="analyticsContent"></div>
         </div>
     </main>
 
     <script src="../SFX/sounds.js"></script>
-    <script src="../Utils/DOMUtils.js"></script>
-    <script src="../Utils/BaseAnalytics.js"></script>
-    <script src="../Utils/BaseExplorer.js"></script>
-    <script src="../Utils/BaseApp.js"></script>
-    <script src="../Utils/JsonManager.js"></script>
-    <script src="../Utils/DataLoader.js"></script>
-    <script src="../Utils/CrossExplorerAnalytics.js"></script>
-    <script src="../Data/recipes-data.js"></script>
-    <script src="../Data/resources-data.js"></script>
-    <script src="enhanced-tree-renderer.js"></script>
-    <script src="analytics.js?v=20260928d"></script>
-    <script src="app.js"></script>
+    <script src="../Utils/BaseApp.js?v=20250925-2142"></script>
+    <script src="../Data/resources-data.js?v=20260911"></script>
+    <script src="../Data/recipes-data.js?v=20260911"></script>
+    <script src="../Data/planet-data.js?v=20260911"></script>
+    <script src="../Data/buildings-data.js?v=20260911"></script>
+    <script src="../Utils/ChainGraph.js?v=20261001"></script>
+    <script src="../ResourcesExplorer/resource-model.js?v=20261001d"></script>
+    <script src="recipe-model.js?v=20261001b"></script>
+    <script src="recipe-plan.js?v=20261001d"></script>
+    <script src="analytics.js?v=20261001b"></script>
+    <script src="app.js?v=20261001"></script>
 </body>
 </html>

@@ -103,18 +103,43 @@ page's surface; category bars are single-hue by design.
 ---
 
 ### 2. 🧪 **Recipe Explorer**
-Explore 5,251 manufacturing recipes and production chains
+The 5,251 recipes as a **production planner** (rebuilt 2026-10-01). Sits on the Resources Explorer's data model
+(`ResourcesExplorer/resource-model.js`: recipe per output name live-first, deduplicated supply DAG, deposits,
+extractor kits) plus `recipe-model.js` (recipes by `outputId` - 318 output names repeat across tiers - and the
+quantity expansion). The chain graph is the shared `Utils/ChainGraph.js`, the same one the Resources sheet draws.
 
-**Features:**
-- Filter by category (Infrastructure, Processing, Ship Components)
-- Tier-based filtering (T1-T5)
-- **Analytics Tab:** Recipe complexity and ingredient-usage rankings over all 5,251 recipes
-  (every `c4_status`: the release will be v2, so the design-intent recipes count). Raw Materials and
-  Processed & Components each list every resource, 50 per page, with a name search beside the
-  heading that keeps the global rank
-- **Manufacturing Chain:** Visualize full production chains
+- **Planner tab:** left, the recipe finder - search by output or by ingredient, chips for what it makes (16 output
+  types), output tier, starbase level, five sorts, 100 rows at a time.
+  **+** adds a recipe to the plan; the plan survives a reload (localStorage). Right, the plan: each item with an
+  editable quantity - **click an item to show its chain alone in the graph, click it again for the whole plan**
+  (no modal; owner, 2026-10-01) - then the always-on sheet, whose numbers, raw bill and craft list always total
+  every recipe in the plan:
+  - **the whole chain** - one aggregated graph for the plan (a virtual "Production plan" root when there is more
+    than one recipe) with total quantities on every link; drag, zoom, hover to trace, click to open
+  - **raw bill** - every deposit to gather with units, coloured claim-stake extractor vs fleet-mining-only
+  - **craft list in build order** - every intermediate deepest first, crafts = units ÷ output per craft rounded up,
+    time = crafts × build time; the headline numbers carry the critical path (longest chain of build times,
+    everything in parallel), the sequential total, the highest starbase level any step needs and the raws no claim
+    stake can mine
+- **Recipe sheet** (any row, plan item or node): the recipe's own chain, ingredients, build time, production steps,
+  starbase level, planet types, research nodes, the other tiers of the same output, who uses the output, add to /
+  remove from the plan; links into the Resources Explorer. `?recipe=<outputId or name>` adds a recipe to the plan,
+  `?search=` pre-fills the finder (both kept for cross-module links)
+- **Analytics tab (five always-on sections, HTML bars):** what the catalogue makes (by output type, and each type
+  by tier); build time by output type with the longest crafts and deepest chains; where things are crafted (planet
+  type × output type, starbase level, the 616 faction-exclusive recipes); **ingredient demand** (every resource
+  ranked by the recipes listing it, category chips, 50 per page, search keeps the global rank, click a row for the
+  recipes using it - the one recipe-side ranking kept from the 2026-09-28 build); gated recipes (11 exotic, 45
+  research-gated). Release status is not shown (see the Resources Explorer note)
+- **Gone, and why:** the nested category checkboxes and the horizontal tree renderer (`enhanced-tree-renderer.js`,
+  1,571 lines, replaced by the shared graph), the unreferenced `manufacturing-chain.js` /
+  `chain-visualizer-styles.css`, and the recipe modal's complexity score (tier × 10 + ingredients × 5 + time ÷ 10 +
+  unique × 3), "resource intensity", "time efficiency", "tier progression" and "material efficiency" labels -
+  invented weights and thresholds. `styles.css` 1,930 → 362 lines
+- Build times are the export's `constructionTime` read as seconds (units are not stated), as the ClaimStake
+  Explorer reads them
 
-**Use Case:** Planning production strategies and identifying supply chain bottlenecks
+**Use Case:** "what do I need, in what order, and how long, to make N of this" - before a stake plan or a trade
 
 ---
 
@@ -123,10 +148,12 @@ Every one of the 3,526 resources (93 raw, 757 processed, 1,372 components, 1,304
 it is made of, who asks for it. **Rebuilt 2026-10-01** on a single data model (`resource-model.js`) read from the four
 bundles the page loads (resources, recipes, planets, buildings); nothing derived, no Chart.js.
 
-- **Explorer tab:** cards carry tier, release status (v1 = live on chain now; v1-add / v2 = unreleased), the source
-  line (a raw: planets, belts, best richness, planet types; crafted: the ingredients) and the demand bar (recipes that
-  list it as a direct ingredient). Filters: category, tier, release, comes-from (claim-stake extractor / fleet mining
-  only / crafted); sort by use, reach, name, tier or steps from raw; 120 cards at a time with "show more"
+- **Explorer tab:** cards carry tier, the source line (a raw: planets, belts, best richness, planet types; crafted:
+  the ingredients) and the demand bar (recipes that list it as a direct ingredient). Filters: category, tier,
+  comes-from (claim-stake extractor / fleet mining only / crafted); sort by use, reach, name, tier or steps from raw;
+  120 cards at a time with "show more". **Release status (`c4_status`) is deliberately not shown anywhere in the hub
+  (owner, 2026-10-01): the release will be v2, so every recipe counts** - it survives only as a tie-break when several
+  recipes share one output name
 - **Resource sheet** (click a card): the **supply-chain graph** - the deduplicated recipe DAG laid out in layers
   (longest path from the output, one barycenter pass), pills coloured by category, dashed-flow edges, drag to pan,
   wheel to zoom, hover a node to light its upstream and downstream path, click a node to open it (back button keeps
@@ -139,8 +166,8 @@ bundles the page loads (resources, recipes, planets, buildings); nothing derived
   (ingredients, build time, production steps, starbase level, planet types), then **Who asks for it** (the largest
   consumers per craft, live share, product types). Links into the Recipe Explorer (`?search=`), ClaimStake and
   Planet explorers; `?r=<name>` opens a sheet and `?search=` pre-fills the search for cross-module links
-- **Analytics tab (five always-on sections, HTML bars):** the economy's shape (category x tier, live vs unreleased
-  per category); steps from raw (depth histogram and ingredients-per-recipe, both by category); **demand** (all
+- **Analytics tab (five always-on sections, HTML bars):** the economy's shape (category x tier, and tier x category);
+  steps from raw (depth histogram and ingredients-per-recipe, both by category); **demand** (all
   3,526 ranked by direct recipe use, 50 per page, search keeps the global rank - Power Regulation Module 962, the
   same count as the Recipe Explorer's Analytics tab); **raw backbone** (the 93 deposits ranked by reach = how many
   crafted resources need them anywhere in their tree, with direct use, planets, belts, richness, extractor; raw

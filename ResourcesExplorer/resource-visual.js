@@ -65,7 +65,7 @@
                     <button type="button" class="rx-x" data-close aria-label="Close">&times;</button>
                     <header class="rx-head">
                         ${this.history.length ? `<button type="button" class="sb-btn ghost rx-back" data-back>&larr; ${esc(this.history[this.history.length - 1])}</button>` : ''}
-                        <div class="rx-title"><i class="t t${r.tier}">T${r.tier}</i><h2>${esc(r.name)}</h2><em class="rc-status ${r.live ? 'live' : 'unr'}">${r.statusLabel}</em></div>
+                        <div class="rx-title"><i class="t t${r.tier}">T${r.tier}</i><h2>${esc(r.name)}</h2></div>
                         <div class="rx-badges">
                             <span class="badge" style="--c:${c.color}"><i></i>${c.label}</span>
                             <span class="badge">${r.category === 'raw' ? (r.stakeMinable ? 'claim-stake extractor' : (r.beltOnly ? 'belts only: fleet mining' : 'fleet mining only')) : (r.recipe && r.ingredients.length ? `${r.depth} step${r.depth === 1 ? '' : 's'} from raw` : 'no recipe')}</span>
@@ -145,109 +145,26 @@
             const byType = new Map(); r.consumers.forEach(x => byType.set(x.type || 'other', (byType.get(x.type || 'other') || 0) + 1));
             const types = Array.from(byType.entries()).sort((a, b) => b[1] - a[1]).slice(0, 6);
             return `<section class="rx-panel">
-                <div class="rx-panel-head"><h3>Who asks for it</h3><span>${r.demand ? `${r.demand.toLocaleString()} recipes, ${r.liveDemand.toLocaleString()} live` : 'nothing lists it as an ingredient'}</span></div>
+                <div class="rx-panel-head"><h3>Who asks for it</h3><span>${r.demand ? `${r.demand.toLocaleString()} recipes` : 'nothing lists it as an ingredient'}</span></div>
                 ${r.demand ? `
-                <div class="ch rx-cons">${top.map(x => `<div class="ch-row"><button type="button" class="ch-lbl rx-link" data-go="${esc(x.name)}" title="${esc(x.name)}">${esc(x.name)}</button><div class="ch-bar"><b style="width:${Math.round(100 * x.quantity / maxQ)}%"><span class="ct">${esc(x.name)}: &times;${num(x.quantity, 0)} per craft${x.tier ? ' &middot; T' + x.tier : ''}${x.status === 'v1' ? ' &middot; live' : ''}</span></b></div><span class="ch-val">&times;${num(x.quantity, 0)}</span></div>`).join('')}</div>
+                <div class="ch rx-cons">${top.map(x => `<div class="ch-row"><button type="button" class="ch-lbl rx-link" data-go="${esc(x.name)}" title="${esc(x.name)}">${esc(x.name)}</button><div class="ch-bar"><b style="width:${Math.round(100 * x.quantity / maxQ)}%"><span class="ct">${esc(x.name)}: &times;${num(x.quantity, 0)} per craft${x.tier ? ' &middot; T' + x.tier : ''}</span></b></div><span class="ch-val">&times;${num(x.quantity, 0)}</span></div>`).join('')}</div>
                 <p class="rx-note">Largest quantities per craft. ${r.demand > 8 ? `${(r.demand - 8).toLocaleString()} more recipes use it.` : ''}</p>
                 <div class="rx-row"><h4>By product type</h4><div class="chips">${types.map(([t, n]) => `<span class="chip static">${esc(t.toLowerCase().replace(/_/g, ' '))} <small>${n.toLocaleString()}</small></span>`).join('')}</div></div>` : ''}
             </section>`;
         }
 
-        // ------------------------------------------------------------- graph
-        layout(dag) {
-            // layer = longest path from the root (so an ingredient used at two depths sits below both users)
-            const layer = new Map(); layer.set(dag.root, 0);
-            const kids = new Map(), parents = new Map();
-            dag.edges.forEach(e => { (kids.get(e.from) || kids.set(e.from, []).get(e.from)).push(e); (parents.get(e.to) || parents.set(e.to, []).get(e.to)).push(e); });
-            const order = []; const state = new Map();
-            const visit = n => { if (state.get(n) === 2) return; if (state.get(n) === 1) return; state.set(n, 1); (kids.get(n) || []).forEach(e => visit(e.to)); state.set(n, 2); order.push(n); };
-            visit(dag.root); order.reverse();
-            order.forEach(n => { (kids.get(n) || []).forEach(e => { layer.set(e.to, Math.max(layer.get(e.to) || 0, (layer.get(n) || 0) + 1)); }); });
-            const rows = []; layer.forEach((l, n) => { (rows[l] = rows[l] || []).push(n); });
-            const W = n => Math.min(176, Math.max(92, 14 + 7.2 * n.length)), GAP = 16, ROW = 92;
-            const pos = new Map();
-            // first pass: alphabetical, then two barycenter passes (down, then up) to untangle
-            rows.forEach(row => row.sort());
-            const place = row => { let x = 0; const widths = row.map(W); const total = widths.reduce((a, b) => a + b, 0) + GAP * (row.length - 1); x = -total / 2; row.forEach((n, i) => { pos.set(n, { x: x + widths[i] / 2, w: widths[i] }); x += widths[i] + GAP; }); };
-            rows.forEach(place);
-            const bary = (row, rel) => { const key = new Map(row.map(n => { const es = rel.get(n) || []; const xs = es.map(e => pos.get(rel === parents ? e.from : e.to)).filter(Boolean).map(p => p.x); return [n, xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : (pos.get(n) || { x: 0 }).x]; })); row.sort((a, b) => key.get(a) - key.get(b)); place(row); };
-            for (let i = 1; i < rows.length; i++) bary(rows[i], parents);
-            for (let i = rows.length - 2; i >= 1; i--) bary(rows[i], kids);
-            for (let i = 1; i < rows.length; i++) bary(rows[i], parents);
-            const nodes = []; let minX = Infinity, maxX = -Infinity;
-            rows.forEach((row, l) => row.forEach(n => { const p = pos.get(n); nodes.push({ name: n, x: p.x, y: l * ROW, w: p.w, layer: l, res: dag.nodes.get(n).res }); minX = Math.min(minX, p.x - p.w / 2); maxX = Math.max(maxX, p.x + p.w / 2); }));
-            return { nodes, rows: rows.length, minX, maxX, height: (rows.length - 1) * ROW + 44, kids, parents };
-        }
-
+        // ------------------------------------------------------------- graph (shared Utils/ChainGraph.js)
         drawGraph(dag) {
             const host = document.getElementById('rxGraph'); if (!host) return;
-            const L = this.layout(dag);
-            const byName = new Map(L.nodes.map(n => [n.name, n]));
-            const H = 40, PAD = 24;
-            const edges = dag.edges.map(e => {
-                const a = byName.get(e.from), b = byName.get(e.to);
-                const x1 = a.x, y1 = a.y + H / 2, x2 = b.x, y2 = b.y - H / 2, c = (y2 - y1) * 0.5;
-                const cat = (b.res && b.res.category) || 'processed';
-                return `<path class="ed cat-${cat}" data-from="${esc(e.from)}" data-to="${esc(e.to)}" d="M${x1.toFixed(1)},${y1.toFixed(1)} C${x1.toFixed(1)},${(y1 + c).toFixed(1)} ${x2.toFixed(1)},${(y2 - c).toFixed(1)} ${x2.toFixed(1)},${y2.toFixed(1)}"><title>${esc(e.from)} needs ${esc(e.to)} &times;${e.quantity}</title></path>`;
-            }).join('');
-            const nodes = L.nodes.map(n => {
-                const cat = (n.res && n.res.category) || 'processed';
-                const label = n.name.length > 24 ? n.name.slice(0, 23) + '…' : n.name;
-                // the layout transform lives on the outer group; the reveal animation runs on the inner one so CSS never overrides it
-                return `<g class="nd cat-${cat}${n.layer === 0 ? ' root' : ''}" data-name="${esc(n.name)}" transform="translate(${n.x.toFixed(1)},${n.y.toFixed(1)})"><g class="in" style="animation-delay:${Math.min(1200, n.layer * 70)}ms"><rect x="${(-n.w / 2).toFixed(1)}" y="${-H / 2}" width="${n.w.toFixed(1)}" height="${H}" rx="9"/><text class="nm" y="${n.res ? -2 : 5}">${esc(label)}</text>${n.res ? `<text class="tr" y="13">T${n.res.tier} &middot; ${CAT[n.res.category] ? CAT[n.res.category].label : ''}${n.res.demand ? ' &middot; ' + n.res.demand.toLocaleString() + ' uses' : ''}</text>` : ''}<title>${esc(n.name)}</title></g></g>`;
-            }).join('');
-            const vbW = (L.maxX - L.minX) + PAD * 2, vbH = L.height + PAD * 2;
-            host.innerHTML = `<svg class="rx-svg" viewBox="${(L.minX - PAD).toFixed(1)} ${-PAD - H / 2} ${vbW.toFixed(1)} ${vbH.toFixed(1)}"><g class="edges">${edges}</g><g class="nodes">${nodes}</g></svg>`;
-            this.graph = { host, svg: host.querySelector('svg'), kids: L.kids, parents: L.parents, vbW, vbH, k: 1, s: 1, tx: 0, ty: 0 };
-            this.bindGraph();
-            this.fitGraph();
-        }
-
-        // Size the SVG in pixels: fit the host when the chain is small, otherwise keep nodes legible (k >= 0.6) and let
-        // the user pan; zoom (s) and pan (tx, ty) are a CSS transform on the SVG itself, origin top centre.
-        fitGraph() {
-            const g = this.graph; if (!g) return;
-            const hw = g.host.clientWidth || 800, hh = g.host.clientHeight || 520;
-            g.k = Math.max(0.6, Math.min(1.8, hw / g.vbW, hh / g.vbH));
-            g.svg.setAttribute('width', (g.vbW * g.k).toFixed(0)); g.svg.setAttribute('height', (g.vbH * g.k).toFixed(0));
-            g.s = 1; g.tx = 0; g.ty = 0; this.applyPan();
-        }
-
-        applyPan() { const g = this.graph; g.svg.style.transform = `translate(calc(-50% + ${g.tx}px), ${g.ty}px) scale(${g.s})`; }
-
-        // Pointer model: a drag pans (pointer capture on the host), a click without movement opens the node, hover
-        // tracing comes from pointermove only (so a graph that appears under a motionless cursor stays untraced) and
-        // is cleared when the pointer leaves the graph. mousedown is cancelled so a drag never selects page text.
-        bindGraph() {
-            const g = this.graph; let drag = null;
-            g.host.addEventListener('mousedown', e => e.preventDefault());
-            g.host.addEventListener('dragstart', e => e.preventDefault());
-            g.host.addEventListener('pointerdown', e => { if (e.button !== 0) return; drag = { x: e.clientX, y: e.clientY, tx: g.tx, ty: g.ty, moved: false }; g.host.setPointerCapture(e.pointerId); });
-            g.host.addEventListener('pointermove', e => {
-                if (drag) { const dx = e.clientX - drag.x, dy = e.clientY - drag.y; if (Math.abs(dx) + Math.abs(dy) > 3) { drag.moved = true; this.trace(null); } g.tx = drag.tx + dx; g.ty = drag.ty + dy; this.applyPan(); return; }
-                const nd = e.target.closest('.nd'); const name = nd ? nd.dataset.name : null;
-                if (name !== g.hover) { g.hover = name; this.trace(name); }
+            this.graphView = new ChainGraph(host, {
+                onOpen: name => this.open(name),
+                sound: n => this.snd(n),
+                label: n => n.res ? `T${n.res.tier} · ${CAT[n.res.category] ? CAT[n.res.category].label : ''}${n.res.demand ? ' · ' + n.res.demand.toLocaleString() + ' uses' : ''}` : ''
             });
-            const up = e => { if (!drag) return; const was = drag; drag = null; if (!was.moved) { const nd = e.target.closest('.nd'); if (nd) { this.snd('click'); this.trace(null); this.open(nd.dataset.name); } } };
-            g.host.addEventListener('pointerup', up); g.host.addEventListener('pointercancel', () => { drag = null; });
-            g.host.addEventListener('pointerleave', () => { if (!drag) { g.hover = null; this.trace(null); } });
-            g.host.addEventListener('wheel', e => { e.preventDefault(); const f = e.deltaY < 0 ? 1.15 : 1 / 1.15; g.s = Math.max(0.3, Math.min(4, g.s * f)); this.applyPan(); }, { passive: false });
+            this.graphView.draw(dag);
         }
 
-        trace(name) {
-            const g = this.graph; if (!g || !g.svg.isConnected) return;
-            g.svg.classList.toggle('tracing', !!name);
-            g.svg.querySelectorAll('.hi, .hov').forEach(el => el.classList.remove('hi', 'hov'));
-            if (!name) return;
-            const own = g.svg.querySelector(`.nd[data-name="${CSS.escape(name)}"]`); if (own) own.classList.add('hov');
-            const up = new Set(), down = new Set();
-            const walkUp = n => { if (up.has(n)) return; up.add(n); (g.parents.get(n) || []).forEach(e => walkUp(e.from)); };
-            const walkDown = n => { if (down.has(n)) return; down.add(n); (g.kids.get(n) || []).forEach(e => walkDown(e.to)); };
-            walkUp(name); walkDown(name);
-            const lit = new Set([...up, ...down]);
-            g.svg.querySelectorAll('.nd').forEach(el => { if (lit.has(el.dataset.name)) el.classList.add('hi'); });
-            g.svg.querySelectorAll('.ed').forEach(el => { const a = el.dataset.from, b = el.dataset.to; if ((up.has(a) && up.has(b)) || (down.has(a) && down.has(b))) el.classList.add('hi'); });
-        }
+        fitGraph() { if (this.graphView) this.graphView.fit(); }
 
         // --------------------------------------------------------------- map
         drawMap(r) {
