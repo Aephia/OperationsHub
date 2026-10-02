@@ -40,7 +40,8 @@ Then open your browser to: `http://localhost:8000`
 
 The hub's front page is a Star Atlas "operations deck": a Cycles-rendered planet backdrop, three
 transparent hull renders drifting at three depths, a marquee of 16 hulls, and one art card per module
-(official claim-stake and station art, a hull render, and the Galia chart drawn from `JSON/planets.json`).
+(official claim-stake and station art and hull renders). The Region Map Explorer and its Galia-chart card were
+removed on 2026-10-01 (owner: "we dont need it"); the Planet Explorer's Territory tab keeps the Galia map.
 
 **Motion budget.** Every continuous effect is a CSS `transform`/`opacity` animation (compositor only):
 no per-frame JavaScript, no `backdrop-filter`, the starfield is drawn once per resize, pointer and
@@ -55,9 +56,12 @@ image set is ~570 KB of WebP (`Images/landing/`).
 "C:\Program Files\Blender Foundation\Blender 5.2\blender.exe" -b -P Tools/landing/ops_planet.py -- <out.png> 2560 1440 128
 # 2. hull cut-outs, card crops and the planet crops -> Images/landing/*.webp
 python Tools/landing/pack_landing.py <out.png>
-# 3. Galia chart card from the map data
-python Tools/landing/galia_chart.py
 ```
+
+**Module Guides** (the button on every card) read `Documentation/module-help-content.js`, rewritten 2026-10-01 for
+the rebuilt modules. They had been dead since the landing redesign: the file declares the table with a top-level
+`const`, which is not a `window` property, and the click handler tested `window.moduleHelpContent` first; the handler
+now tests the identifier and the file also assigns it to `window`.
 
 `styles.css` still owns the JSON Manager and Module Guide modals; `landing.css` owns everything else on
 the page and is loaded after it.
@@ -237,14 +241,31 @@ pixels per world unit, anchor = the ground centre), which is how the page scales
 ---
 
 ### 5. 🏠 **Hub Explorer**
-Plan and optimize space hub construction
+A crafting-hab **builder** (rebuilt 2026-10-01) on `hub-model.js`, which joins the hab export
+(`JSON/craftingHabBuildings.json`: 5 hab tiers, 4 crafting stations, 5 cargo storages with slots, storage, jobs,
+speed, fee, XP, install time and module cost) with the 21 `HAB_ASSETS` recipes that craft those items (the recipes
+also supply the 4 landing pads, 2 paints and the pet house the hab export does not list). Each tier consumes the
+previous one, so the model also reports the **cumulative** modules and install time from nothing.
 
-**Features:**
-- Habitat tier progression (T1-T5)
-- Crafting station efficiency calculations
-- Cargo storage capacity planning
+- **Builder tab:** left, the catalogue - every hab asset as a card with its four key numbers, the modules it needs,
+  what it consumes, the cumulative figure, and a "craft it" link into the Recipe Explorer; right, the hab build:
+  one hab tier, any number of stations, storages, pads and decorations with quantities, four gauges (slots used by
+  storage and pads against the hab's slots, storage, jobs, throughput = jobs × speed), the module bill, install and
+  craft time, and **"Raw bill for the whole build"**, which opens the Recipe Explorer planner with every asset's
+  recipe loaded (`?plan=id:qty,…`). The build survives a reload (localStorage)
+- **Ladders tab:** hab tiers (slots, storage, install from nothing, table with fee / XP / modules / recipe),
+  crafting stations (speed, jobs, throughput), cargo storage (bonus, storage per slot), landing pads and
+  decorations from their recipes
+- **Slots:** every asset takes the slot figure the SAGE export gives it (`split-uber-export.js` copies the
+  `craftingHabs` section verbatim): stations 8 / 64 / 216 / 512, cargo storage 1..5; the gauge goes red when a hab
+  is over capacity. Landing pads and decorations carry no slot figure in the export and count as 0, which the page
+  says. Install time is the hab export's `constructionTime`, craft time the recipe's; both read as seconds
+- **Gone:** the four-tab page (Hubs / Crafting / Storage / Planner) whose Landing Pads and Decorative sections were
+  always empty (they filtered a list that holds neither), the `eval` of the data file, the JSON export button and
+  the "efficiency rating" bar (speed ÷ 2); the old `styles.css` replaced by the shared base + `hub-visual.css`
 
-**Use Case:** Designing efficient space hub configurations
+**Use Case:** what a hab of tier N with these stations and storages gives you, what to bring, and what it all
+costs in raws
 
 ---
 

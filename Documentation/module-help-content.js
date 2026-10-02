@@ -1,384 +1,154 @@
-// Help content for all modules
+// Module guides shown by the landing page's "Module Guide" buttons (index.html reads moduleHelpContent[data-module]).
+// Rewritten 2026-10-01 to describe the rebuilt modules. Release status (c4_status) is not a thing the hub shows.
 const moduleHelpContent = {
     planetExplorer: {
-        title: '🪐 Planet Explorer Guide',
+        title: 'Planet Explorer',
         sections: [
-            {
-                heading: 'Overview',
-                content: 'The Planet Explorer provides comprehensive planetary intelligence across all surveyed systems in the Star Atlas universe. Navigate between exploration and analytics modes to discover optimal resource extraction locations and strategic opportunities.'
-            },
-            {
-                heading: 'Explorer Tab - Navigation',
-                content: `
-                    <ul>
-                        <li><strong>Search Bar:</strong> Filter systems, planets, or resources by name in real-time</li>
-                        <li><strong>System Checkboxes (Left Sidebar):</strong> Toggle visibility of entire star systems to focus your search</li>
-                        <li><strong>Resource Checkboxes (Right Sidebar):</strong> Filter planets by specific resource availability</li>
-                        <li><strong>Planet Cards:</strong> Click any planet to view detailed composition, orbital data, and resource richness values</li>
-                    </ul>
-                `
-            },
-            {
-                heading: 'Analytics Tab - Resource Analytics',
-                content: `
-                    <p><strong>Regionally Limited Resources:</strong> Identifies resources that don't appear in all regions (determined by the first 3 characters of system names). Critical for regional trade strategy and supply chain planning.</p>
-                    <p><strong>Scarcest Resources:</strong> Highlights the rarest materials in the galaxy based on total deposit count. These ultra-rare resources often command premium value.</p>
-                    <p><strong>Highest Quality Resources:</strong> Ranks resources by average richness scores across all deposits. Higher richness = better extraction efficiency.</p>
-                    <p><strong>Top Resource Locations:</strong> Systems ranked by unique resource diversity and strategic scores. Ideal for identifying multi-resource extraction hubs.</p>
-                `
-            },
-            {
-                heading: 'Analytics Tab - Manufacturing',
-                content: `
-                    <p>Analyzes each planet's manufacturing capabilities by cross-referencing available resources with crafting recipes.</p>
-                    <p><strong>Self-Sufficiency Score:</strong> Percentage of recipes a planet can complete using only its local resources (no imports needed).</p>
-                    <p><strong>Specialization Categories:</strong> Identifies what types of items each planet excels at producing based on resource availability.</p>
-                    <p><strong>Craftable Recipes:</strong> Complete list of items manufacturable on each planet with resource breakdowns.</p>
-                `
-            },
-            {
-                heading: 'Analytics Tab - Territory',
-                content: `
-                    <p>Provides faction-level and regional planetary ownership analysis.</p>
-                    <p><strong>Faction Distribution:</strong> Shows how many planets each faction controls across the galaxy.</p>
-                    <p><strong>Regional Breakdowns:</strong> Analyzes planetary ownership patterns by galactic region for strategic planning.</p>
-                `
-            },
-            {
-                heading: 'Pro Tips',
-                content: `
-                    <ul>
-                        <li>Use resource filters to find planets containing multiple ingredients for complex recipes</li>
-                        <li>Cross-reference regionally limited resources with territory analytics to identify trade monopoly opportunities</li>
-                        <li>Combine manufacturing analytics with resource richness data to find optimal production facility locations</li>
-                        <li>Check strategic scores in Top Resource Locations to identify well-connected systems for logistics hubs</li>
-                    </ul>
-                `
-            }
+            { heading: 'What it is', content: 'Every system and planet in Galia (945 systems, 3,901 bodies) from the SAGE export: deposits with richness, faction, star type, starbase level, King and Core status, region risk zone and raw-tier cap.' },
+            { heading: 'Explorer tab', content: `
+                <ul>
+                    <li><strong>Finder:</strong> type any words to match the SAGE code, the lore name and the faction (<em>004 king</em>, <em>verzan</em>, <em>css oni</em>); the system list is grouped by region</li>
+                    <li><strong>Orrery:</strong> each system is drawn from its own orbit, angle and scale data; the star is coloured by type, planets by category, belts are dotted rings</li>
+                    <li><strong>System and planet views:</strong> click a planet row or an orrery body for its deposits; richness is shown as the value plus a bar against the richest deposit of the same resource in Galia (tier-1 ores run to 7.0, tiers 2-5 stay under 2.2)</li>
+                    <li><strong>Warp links:</strong> chips jump to the connected systems. Belts are marked "ships only" - no central hub, so no claim stake</li>
+                </ul>` },
+            { heading: 'Analytics tab', content: `
+                <p><strong>Resource analytics:</strong> deposits by planet category, by tier and by territory; a sortable, searchable resource atlas (tier, deposits, systems, regions, min / median / best richness) whose rows open the ten richest deposits; resources that are not in every region; the most diverse systems.</p>
+                <p><strong>Manufacturing:</strong> which planets hold the raws for the most recipes.</p>
+                <p><strong>Territory:</strong> the Galia map in faction colour with the top systems pinned, faction dominance per region.</p>` },
+            { heading: 'Tips', content: `
+                <ul>
+                    <li>Start from a recipe in the ClaimStake Explorer ("Where to stake for a recipe") and come here to read the planet itself</li>
+                    <li>The raw-tier cap on a region badge tells you which deposit tiers can exist there</li>
+                </ul>` }
         ]
     },
 
     shipExplorer: {
-        title: '🚀 Ship Explorer Guide',
+        title: 'Ship Explorer',
         sections: [
-            {
-                heading: 'Overview',
-                content: 'The Ship Explorer enables comprehensive fleet analysis by comparing ship specifications, configurations, and resource requirements. Toggle between ship and configuration views to optimize your fleet deployment strategy.'
-            },
-            {
-                heading: 'Explorer Tab - Ship View',
-                content: `
-                    <ul>
-                        <li><strong>View Toggle:</strong> Switch between Ships view (compare vessels) and Configurations view (compare loadouts)</li>
-                        <li><strong>Search & Filter:</strong> Find specific ships or configurations by name</li>
-                        <li><strong>Ship Selection:</strong> Check ships from the sidebar to add them to the comparison table</li>
-                        <li><strong>Comparison Table:</strong> Side-by-side attribute comparison including hull stats, cargo capacity, and component slots</li>
-                        <li><strong>Stat Search:</strong> Type above the Stat column (e.g. "cargo", "fuel") to show only matching stats</li>
-                        <li><strong>Changed Only:</strong> Tick the box next to "Stat" to show only the stats your selected configurations change</li>
-                        <li><strong>Stat Descriptions:</strong> Hover the (i) next to a stat to see what it means and its unit</li>
-                    </ul>
-                `
-            },
-            {
-                heading: 'Explorer Tab - Configuration View',
-                content: `
-                    <ul>
-                        <li><strong>Configuration Comparison:</strong> Compare different ship loadouts and their specifications</li>
-                        <li><strong>Component Analysis:</strong> Review installed components and their effects on ship performance</li>
-                        <li><strong>Attribute Breakdown:</strong> Detailed stats showing how components modify base ship attributes</li>
-                    </ul>
-                `
-            },
-            {
-                heading: 'Analytics Tab - Resource Analytics',
-                content: `
-                    <p>Analyzes the resource requirements for building ship configurations.</p>
-                    <p><strong>Configuration Costs:</strong> Complete material breakdown for each ship configuration showing all required resources.</p>
-                    <p><strong>Resource Aggregation:</strong> Identifies which resources are most commonly needed across multiple configurations.</p>
-                    <p><strong>Build Planning:</strong> Helps prioritize resource gathering for fleet construction projects.</p>
-                `
-            },
-            {
-                heading: 'Pro Tips',
-                content: `
-                    <ul>
-                        <li>Use configuration view to understand manufacturer design philosophies and loadout strategies</li>
-                        <li>Compare ships within the same class to identify the best option for your operational needs</li>
-                        <li>Check resource analytics before committing to fleet expansion plans</li>
-                        <li>Use the comparison table to identify ships with specific component slot requirements</li>
-                    </ul>
-                `
-            }
+            { heading: 'What it is', content: 'The 67 ships with their configurations and the 40+ stats the SAGE export tracks (cargo, combat, travel, mining, scanning, repair), with hull renders and a comparison table.' },
+            { heading: 'Explorer tab', content: `
+                <ul>
+                    <li><strong>Hull gallery:</strong> one card per ship with its render, size, role, class and four key stats; filter by size, manufacturer and role; a card adds the ship to the comparison</li>
+                    <li><strong>Ship view:</strong> drag the turntable to rotate the hull; the spec sheet compares each stat with the best ship of the same size</li>
+                    <li><strong>Comparison table:</strong> selected ships side by side; type above the Stat column to find a stat, tick <em>Changed only</em> to see only the stats the chosen configurations change; hover the (i) for what a stat means and its unit</li>
+                    <li><strong>Configurations:</strong> switch to compare loadouts and how components move each stat</li>
+                </ul>` },
+            { heading: 'Analytics tab', content: `
+                <p><strong>Fleet overview:</strong> hulls by size and role, leaders by cargo, hit points, mining rate, scan power, subwarp speed and warp distance.</p>
+                <p><strong>Configuration costs:</strong> the resources each configuration needs, with the components that take you to their recipes.</p>` },
+            { heading: 'Tips', content: `
+                <ul>
+                    <li>Compare within one size tier first; the bars are scaled to the best ship of that size</li>
+                    <li>A component's recipe opens in the Recipe Explorer planner, which gives the raw bill</li>
+                </ul>` }
         ]
     },
 
     recipeExplorer: {
-        title: '🧪 Recipe Explorer Guide',
+        title: 'Recipe Explorer',
         sections: [
-            {
-                heading: 'Overview',
-                content: 'The Recipe Explorer visualizes crafting dependency trees and analyzes manufacturing complexity. Search by recipe name or ingredient to understand production chains from raw materials to finished products.'
-            },
-            {
-                heading: 'Explorer Tab - Recipe Trees',
-                content: `
-                    <ul>
-                        <li><strong>Search Modes:</strong> Toggle between Recipe Name search (find specific items) and Ingredient search (find all recipes using a material)</li>
-                        <li><strong>Category Filters:</strong> Browse recipes by category to explore related manufacturing chains</li>
-                        <li><strong>Tree Visualization:</strong> Interactive dependency tree showing how raw materials flow through intermediate products to final items</li>
-                        <li><strong>Recipe Details:</strong> Click recipes to view construction time, tiers, and complete ingredient lists</li>
-                    </ul>
-                `
-            },
-            {
-                heading: 'Analytics Tab - Recipe Complexity',
-                content: `
-                    <p>Analyzes recipes by complexity, construction time, and resource requirements.</p>
-                    <p><strong>Most Complex Recipes:</strong> Identifies recipes requiring the most ingredients or processing steps.</p>
-                    <p><strong>Longest Build Times:</strong> Shows which items take the most time to manufacture.</p>
-                    <p><strong>Tier Distribution:</strong> Breaks down recipes by tier level for production planning.</p>
-                    <p><strong>Ingredient Usage:</strong> Identifies which resources are most frequently used across all recipes (every release status, since the release will be v2). Both lists show every raw, processed and component resource, 50 per page, with a search box beside each heading that filters by name and keeps the overall rank.</p>
-                `
-            },
-            {
-                heading: 'Pro Tips',
-                content: `
-                    <ul>
-                        <li>Use ingredient search to identify alternative recipes when a material becomes scarce</li>
-                        <li>Check dependency trees before establishing manufacturing facilities to ensure you can produce all intermediates</li>
-                        <li>Review construction times to prioritize early-stage production of long-build items</li>
-                        <li>Cross-reference with Planet Explorer to find locations with all raw materials for complex recipes</li>
-                    </ul>
-                `
-            }
+            { heading: 'What it is', content: 'A production planner over the 5,251 recipes: pick what you want to make and how many, and get every raw to gather, every intermediate to craft in build order, how long it takes and the whole chain as one graph.' },
+            { heading: 'Planner tab', content: `
+                <ul>
+                    <li><strong>Finder (left):</strong> search by output or by ingredient; chips for what a recipe makes (ship components, weapons, buildings, components, ingredients and so on), its tier and the starbase level it needs; five sorts. <strong>+</strong> adds a recipe to the plan</li>
+                    <li><strong>Plan (right):</strong> each recipe with an editable quantity. Click a recipe to show its chain alone in the graph, click it again for the whole plan. The plan survives a reload</li>
+                    <li><strong>The whole chain:</strong> one graph for the plan with total quantities on every link - drag to pan, wheel to zoom, hover a node to trace everything above and below it, click a node to open it</li>
+                    <li><strong>Raw bill and craft list:</strong> always the totals for every recipe in the plan. Raws are coloured claim-stake extractor versus fleet mining only; the craft list runs deepest first with crafts (units divided by output per craft, rounded up) and time</li>
+                    <li><strong>Headline numbers:</strong> raw kinds and units, intermediates and crafts, the critical path (everything in parallel), the sequential total, the highest starbase level any step needs, and the raws no claim stake can mine</li>
+                </ul>` },
+            { heading: 'Recipe sheet', content: '<p>Any finder row, graph node or craft-list name opens the recipe: its own chain, ingredients, build time, production steps, starbase level, planet types, research nodes, the other tiers of the same output, who uses the output, and an add-to-plan button. Links go to the Resources Explorer.</p>' },
+            { heading: 'Analytics tab', content: `
+                <p><strong>What the catalogue makes:</strong> recipes by output type, and each type by tier.</p>
+                <p><strong>Build time:</strong> how long one craft takes by output type; the longest crafts and the deepest chains.</p>
+                <p><strong>Where things are crafted:</strong> planet type by output type, starbase level required, faction-exclusive recipes.</p>
+                <p><strong>Ingredient demand:</strong> every resource ranked by how many recipes list it as a direct ingredient (each recipe once); category chips, 50 per page, search keeps the global rank; click a row for the recipes that use it.</p>
+                <p><strong>Gated recipes:</strong> exotic outputs and research-gated recipes.</p>` },
+            { heading: 'Tips', content: `
+                <ul>
+                    <li>Build times are the export's constructionTime read as seconds; ship components carry very large quantities per craft, so a plan of a few ship parts runs to days when crafted one at a time</li>
+                    <li>The Hub Explorer hands a whole hab build over here with one button</li>
+                </ul>` }
         ]
     },
 
     claimStakeExplorer: {
-        title: '🏗️ ClaimStake Explorer Guide',
+        title: 'ClaimStake Explorer',
         sections: [
-            {
-                heading: 'Overview',
-                content: 'The ClaimStake Explorer provides comprehensive building and facility analysis for planetary claim development. Compare structures, plan construction projects, and optimize facility placement with tier-aware filtering and resource calculations.'
-            },
-            {
-                heading: 'Explorer Tab - Building Search',
-                content: `
-                    <ul>
-                        <li><strong>Search & Filters:</strong> Find buildings by name and filter by tier, special properties, or functions</li>
-                        <li><strong>Tier Filtering:</strong> Browse buildings by tier level to match planet resource availability</li>
-                        <li><strong>Property Filters:</strong> Filter by "Comes with Stake," "Cannot Remove," or "Has Resource Extraction"</li>
-                        <li><strong>Function Filters:</strong> Find buildings that enable Processing Hubs, Storage Hubs, Extraction Hubs, or Farm Hubs</li>
-                        <li><strong>Building Cards:</strong> Detailed specifications including construction costs, slots, and capabilities</li>
-                    </ul>
-                `
-            },
-            {
-                heading: 'Analytics Tab - Facility Analysis',
-                content: `
-                    <p>Provides insights into building costs, efficiency, and strategic value.</p>
-                    <p><strong>Cost Analysis:</strong> Compares construction resource requirements across different building types and tiers.</p>
-                    <p><strong>Efficiency Metrics:</strong> Analyzes buildings by storage capacity, job slots, and resource extraction rates.</p>
-                    <p><strong>ROI Calculations:</strong> Helps identify the most cost-effective buildings for specific functions.</p>
-                `
-            },
-            {
-                heading: 'Construction Tab - Build Planning',
-                content: `
-                    <p>Plan complete facility builds with resource aggregation.</p>
-                    <p><strong>Build Queue:</strong> Add multiple buildings to create a construction plan.</p>
-                    <p><strong>Resource Totals:</strong> Automatically calculates total materials needed for your entire build.</p>
-                    <p><strong>Time Estimates:</strong> Shows total construction time for the planned facilities.</p>
-                `
-            },
-            {
-                heading: 'Pro Tips',
-                content: `
-                    <ul>
-                        <li>Use tier filters to match buildings with your planet's available resource tiers</li>
-                        <li>Check "Comes with Stake" buildings for cost-effective initial claim setups</li>
-                        <li>Plan extraction facilities around planets with high-richness resource deposits</li>
-                        <li>Use the Construction tab to calculate total resources before starting major builds</li>
-                    </ul>
-                `
-            }
+            { heading: 'What it is', content: 'Everything about claim stakes: the buildings, which tier of stake to buy, where each raw deposit is, which planet can feed a recipe, and a visual Stake Builder.' },
+            { heading: 'Explorer tab', content: `
+                <ul>
+                    <li><strong>Buildings:</strong> search and filter the hubs, extractors, processors, farms and infrastructure by tier, planet type and function; cards show slots, power, crew, storage and cost</li>
+                </ul>` },
+            { heading: 'Analytics tab', content: `
+                <p><strong>Which tier to buy:</strong> per planet type, what one tier-N stake holds once its hubs are up - slots, the hub set, one extractor and one processor at that tier, and the best lean stake as "extractors that fit" with the binding limit (slots, crew or power). Extractor crew grows as n cubed, so tiers 2-3 bind on crew.</p>
+                <p><strong>Deposit atlas:</strong> the 93 raws with stakeable-planet count, belt count, best richness, territory, and whether an extractor family exists; a row opens its ten richest planets and a Plan-stake button.</p>
+                <p><strong>Where to stake for a recipe:</strong> search any craftable output, expand it to raws, and rank every stakeable planet by coverage, then richness; filter by territory; hand a planet to the Stake Builder.</p>` },
+            { heading: 'Stake Builder tab', content: `
+                <ul>
+                    <li><strong>Pick a planet</strong> (searchable, faction and category chips; belts cannot hold a stake) and the stake you will buy: Standard or Cultivation, tier 1-5. A stake is bought per tier and holds that tier's buildings only</li>
+                    <li><strong>Catalogue with the rules:</strong> hubs unlock their family, extractors need their deposit on the planet, processors need every input on the planet (an in-plan input is flagged as a chain), the fuel processor needs a tier-3 stake</li>
+                    <li><strong>Pad and gauges:</strong> the isometric pad shows every building and the resource chains; gauges for slots, power and crew</li>
+                    <li><strong>Sheet:</strong> bill of materials with build time, net production per tick, build timeline, power budget, slots and crew by kind. Construct facility plays the build; Export PNG saves the pad and the sheets. The plan survives a reload</li>
+                </ul>` },
+            { heading: 'Tips', content: `
+                <ul>
+                    <li>Extraction is the bottleneck of every plan: a T1 processor eats 1 per tick, a T1 extractor makes 0.02, so the ledger goes negative the moment a processor is added - that is the data</li>
+                    <li>Six raws have no extractor family and some deposits exist only in belts; a fleet mines those</li>
+                </ul>` }
         ]
     },
 
     resourcesExplorer: {
-        title: '⚒️ Resources Explorer Guide',
+        title: 'Resources Explorer',
         sections: [
-            {
-                heading: 'Overview',
-                content: 'The Resources Explorer catalogues all materials in the Star Atlas economy. Search, filter, and analyze resources by category, tier, value, and usage to optimize trading and production strategies.'
-            },
-            {
-                heading: 'Explorer Tab - Resource Browser',
-                content: `
-                    <ul>
-                        <li><strong>Search:</strong> Find resources by name in real-time</li>
-                        <li><strong>Category Filters:</strong> Browse by resource type (raw materials, processed goods, components, etc.)</li>
-                        <li><strong>Tier Filters:</strong> Filter resources by tier level to match planet availability or recipe requirements</li>
-                        <li><strong>Resource Cards:</strong> View detailed information including base value, category, tier, and description</li>
-                    </ul>
-                `
-            },
-            {
-                heading: 'Analytics Tab - Value & Distribution',
-                content: `
-                    <p><strong>Most Valuable Resources:</strong> Ranks resources by base value for trading prioritization.</p>
-                    <p><strong>Category Distribution:</strong> Shows how resources are distributed across different categories.</p>
-                    <p><strong>Tier Analysis:</strong> Breaks down resource counts by tier level.</p>
-                    <p><strong>Rarity Metrics:</strong> Identifies which resources are least common in the economy.</p>
-                `
-            },
-            {
-                heading: 'Analytics Tab - Resource Flow',
-                content: `
-                    <p>Traces how resources are used across recipes and manufacturing chains.</p>
-                    <p><strong>Input Analysis:</strong> Shows which recipes consume each resource.</p>
-                    <p><strong>Output Tracking:</strong> Identifies which recipes produce each resource.</p>
-                    <p><strong>Conversion Paths:</strong> Maps how raw materials transform into processed goods.</p>
-                `
-            },
-            {
-                heading: 'Pro Tips',
-                content: `
-                    <ul>
-                        <li>Cross-reference valuable resources with Planet Explorer to find extraction locations</li>
-                        <li>Use Resource Flow analytics to identify bottleneck materials in production chains</li>
-                        <li>Filter by tier when planning facilities to ensure you can extract required materials locally</li>
-                        <li>Track input/output relationships to find profitable conversion opportunities</li>
-                    </ul>
-                `
-            }
+            { heading: 'What it is', content: 'All 3,526 resources (93 raw, 757 processed, 1,372 components, 1,304 advanced): where each comes from, what it is made of, who asks for it, and its whole supply chain as a graph.' },
+            { heading: 'Explorer tab', content: `
+                <ul>
+                    <li><strong>Cards:</strong> tier, the source line (a raw: planets, belts, best richness, planet types; crafted: the ingredients), steps from raw, and a demand bar (recipes that list it as a direct ingredient)</li>
+                    <li><strong>Filters:</strong> category, tier, comes-from (claim-stake extractor, fleet mining only, crafted); sort by use, reach, name, tier or steps from raw</li>
+                </ul>` },
+            { heading: 'Resource sheet', content: `
+                <ul>
+                    <li><strong>Supply chain:</strong> the deduplicated recipe tree down to raws, laid out in levels; drag to pan, wheel to zoom, hover a node to trace its path, click a node to open it (a back button keeps the trail). Below it the raw bill</li>
+                    <li><strong>Where it is found</strong> (raws): a galaxy map with the systems that carry the deposit lit by territory and sized by richness; planets, belts, best richness, extractor rate; planet types, regions, the richest bodies</li>
+                    <li><strong>How it is made</strong> (crafted): ingredients, build time, production steps, starbase level, planet types</li>
+                    <li><strong>Who asks for it:</strong> the largest consumers per craft and the product types</li>
+                </ul>` },
+            { heading: 'Analytics tab', content: `
+                <p><strong>The economy's shape:</strong> category by tier and tier by category.</p>
+                <p><strong>Steps from raw:</strong> how deep the chains run and how many ingredients recipes take.</p>
+                <p><strong>Demand:</strong> every resource ranked by direct recipe use, 50 per page, search keeps the rank.</p>
+                <p><strong>Raw backbone:</strong> the 93 deposits ranked by reach (how many crafted resources need them anywhere in their tree), raw kinds per planet type, and the raws no claim stake can mine.</p>
+                <p><strong>Data gaps:</strong> what the export leaves out, so a zero reads as a gap and not as a fact.</p>` },
+            { heading: 'Tips', content: `
+                <ul>
+                    <li>Base value and stack size are not shown: the export gives every resource a value of tier times ten and a stack of 100</li>
+                    <li>A raw with an extractor kit but deposits only in belts is still fleet-mined - no stake can sit on a belt</li>
+                </ul>` }
         ]
     },
 
     hubExplorer: {
-        title: '🏠 Hub Explorer Guide',
+        title: 'Hub Explorer',
         sections: [
-            {
-                heading: 'Overview',
-                content: 'The Hub Explorer specializes in habitat construction planning. Compare habitat modules, crafting stations, storage solutions, and create complete hab builds with resource calculations.'
-            },
-            {
-                heading: 'Hubs Tab - Habitat Modules',
-                content: `
-                    <ul>
-                        <li><strong>Habitat Tiers:</strong> Browse different habitat module tiers and their upgrade paths</li>
-                        <li><strong>Landing Pads:</strong> Compare landing pad options for ship docking</li>
-                        <li><strong>Decorative Enhancements:</strong> Explore aesthetic improvements and their benefits</li>
-                        <li><strong>Module Details:</strong> View construction costs, slots required, and capabilities for each module</li>
-                    </ul>
-                `
-            },
-            {
-                heading: 'Crafting Tab - Station Comparison',
-                content: `
-                    <p>Compare crafting stations across different sizes and efficiency levels.</p>
-                    <p><strong>Capacity Analysis:</strong> Shows how many concurrent jobs each station can handle.</p>
-                    <p><strong>Efficiency Ratings:</strong> Compares crafting speed and resource consumption across station types.</p>
-                    <p><strong>Space Requirements:</strong> Helps optimize station placement within limited hab slots.</p>
-                `
-            },
-            {
-                heading: 'Storage Tab - Capacity Calculator',
-                content: `
-                    <p>Calculate storage capacity and plan cargo infrastructure.</p>
-                    <p><strong>Storage Types:</strong> Compare different cargo storage options.</p>
-                    <p><strong>Capacity Planning:</strong> Determine how many storage units you need for operations.</p>
-                    <p><strong>Efficiency Metrics:</strong> Identifies the most space-efficient storage solutions.</p>
-                `
-            },
-            {
-                heading: 'Planner Tab - Build Planning',
-                content: `
-                    <ul>
-                        <li><strong>Add Buildings:</strong> Select modules, stations, and storage to create your custom hab plan</li>
-                        <li><strong>Resource Totals:</strong> Automatically calculates total construction materials needed</li>
-                        <li><strong>Slot Management:</strong> Tracks total slots used to ensure you don't exceed hab capacity</li>
-                        <li><strong>Time Estimates:</strong> Shows total construction time for your planned build</li>
-                    </ul>
-                `
-            },
-            {
-                heading: 'Pro Tips',
-                content: `
-                    <ul>
-                        <li>Plan habitat upgrades in advance using the Planner to ensure you have all resources</li>
-                        <li>Compare crafting station efficiency before committing to large station installations</li>
-                        <li>Balance storage capacity with production needs to avoid bottlenecks</li>
-                        <li>Use the resource totals in Planner to coordinate material gathering before construction</li>
-                    </ul>
-                `
-            }
-        ]
-    },
-
-    regionMapExplorer: {
-        title: '🗺️ Region Map Explorer Guide',
-        sections: [
-            {
-                heading: 'Overview',
-                content: 'The Region Map Explorer provides an interactive 2D visualization of all Galia regions. Click systems to view ownership, connections, and strategic positioning. Includes a Conquest Simulator for territorial planning.'
-            },
-            {
-                heading: 'Map Navigation',
-                content: `
-                    <ul>
-                        <li><strong>Interactive Canvas:</strong> Click and drag to pan, scroll to zoom in/out</li>
-                        <li><strong>System Selection:</strong> Click any system to view detailed information in the sidebar</li>
-                        <li><strong>Show Connections:</strong> Toggle to display/hide warp lane connections between systems</li>
-                        <li><strong>Highlight Connections:</strong> Enable to highlight only connections from the selected system</li>
-                        <li><strong>Show Labels:</strong> Toggle system name labels on/off for cleaner viewing</li>
-                        <li><strong>Reset View:</strong> Return to default zoom and position</li>
-                    </ul>
-                `
-            },
-            {
-                heading: 'System Information',
-                content: `
-                    <p>When you select a system, the sidebar displays:</p>
-                    <p><strong>Ownership:</strong> Current faction controlling the system (MUD, ONI, UST, or MRZ neutral).</p>
-                    <p><strong>Strategic Status:</strong> Shows if system is a King system (region capital), Core system, or regular territory.</p>
-                    <p><strong>Connections:</strong> Lists all directly connected systems via warp lanes.</p>
-                    <p><strong>Distance Info:</strong> Shows warp distances to neighboring systems for travel planning.</p>
-                `
-            },
-            {
-                heading: 'Conquest Simulator',
-                content: `
-                    <ul>
-                        <li><strong>Faction Selection:</strong> Choose MUD, ONI, or UST as the attacking faction</li>
-                        <li><strong>Conquer Systems:</strong> Click systems to assign them to your selected faction</li>
-                        <li><strong>Region Automation:</strong> Click region labels to automatically conquer all systems + neighbors (makes region SAFE)</li>
-                        <li><strong>Status Icons:</strong> King systems shown with crowns 👑, Core systems with stars ⭐</li>
-                        <li><strong>Requirements:</strong> Claim = King + 60% Core | Border→Neutral = 40% Core | Safe = All systems + neighbors</li>
-                        <li><strong>Reset:</strong> Clear all conquest changes and return to default ownership</li>
-                    </ul>
-                `
-            },
-            {
-                heading: 'Legend & Indicators',
-                content: `
-                    <p><strong>Faction Colors:</strong> Red (MUD), Blue (ONI), Orange (UST), Gray (MRZ Neutral)</p>
-                    <p><strong>Connection Lines:</strong> Cyan lines = intra-region connections, Magenta lines = inter-region connections</p>
-                    <p><strong>System Markers:</strong> Crown icon = King system (region capital), Star icon = Core system</p>
-                `
-            },
-            {
-                heading: 'Pro Tips',
-                content: `
-                    <ul>
-                        <li>Use the Conquest Simulator to plan faction expansion strategies before committing resources</li>
-                        <li>Highlight connections from border systems to identify strategic warp lanes</li>
-                        <li>Click region labels with a faction selected to quickly visualize full regional control</li>
-                        <li>Cross-reference with Planet Explorer to find resource-rich systems in strategic locations</li>
-                        <li>Use distance information to plan efficient supply routes between systems</li>
-                    </ul>
-                `
-            }
+            { heading: 'What it is', content: 'A crafting-hab builder: the 5 hab tiers, 4 crafting stations, 5 cargo storages, 4 landing pads and 3 decorations, with what each gives, what it costs, and what a build adds up to.' },
+            { heading: 'Builder tab', content: `
+                <ul>
+                    <li><strong>Catalogue (left):</strong> every hab asset with its four key numbers, the modules it needs, what it consumes (each tier eats the previous one) and the cumulative cost from nothing; "craft it" opens the asset's recipe in the Recipe Explorer</li>
+                    <li><strong>Build (right):</strong> one hab tier, then any number of stations, storages, pads and decorations with quantities. Gauges for slots (used against the hab's slots, red when over), storage, jobs and throughput (jobs times speed); the module bill; install and craft time. The build survives a reload</li>
+                    <li><strong>Raw bill for the whole build:</strong> opens the Recipe Explorer planner with every asset's recipe loaded</li>
+                </ul>` },
+            { heading: 'Ladders tab', content: '<p>Hab tiers (slots, storage, install from nothing, fee and XP, modules, the recipe), crafting stations (speed, jobs, throughput, slots), cargo storage (bonus, storage per slot), landing pads and decorations from their recipes.</p>' },
+            { heading: 'Tips', content: `
+                <ul>
+                    <li>Slots are the export's own figures: a station takes 8 / 64 / 216 / 512 and a storage 1 to 5; landing pads and decorations carry no slot figure and count as 0</li>
+                    <li>Install time is the hab export's time; craft time is the recipe's; both read as seconds</li>
+                </ul>` }
         ]
     }
 };
+
+// classic script: a top-level const is not a window property, so expose it explicitly for any reader that checks window
+window.moduleHelpContent = moduleHelpContent;

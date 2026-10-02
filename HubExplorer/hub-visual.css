@@ -1,0 +1,42 @@
+/* hub-visual.css - Hub Explorer (2026-10-01). Loaded after the shared ResourcesExplorer/resource-visual.css and
+   RecipeExplorer/recipe-visual.css (header, chips, cards, charts, plan items). Only the builder layout lives here. */
+
+.hb-layout { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(380px, 0.9fr); gap: 1.2rem; align-items: start; }
+.hb-catalogue { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
+.hb-section { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 0.9rem 1rem; }
+.hb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 0.7rem; }
+.hb-card { border: 1px solid var(--line); border-left: 3px solid var(--c); border-radius: 12px; padding: 0.7rem 0.8rem; background: rgba(255, 255, 255, 0.025); display: flex; flex-direction: column; gap: 0.45rem; min-width: 0; }
+.hb-card.in { border-color: rgba(126, 232, 164, 0.4); background: rgba(126, 232, 164, 0.05); border-left-color: var(--c); }
+.hb-head { display: flex; align-items: center; gap: 0.4rem; min-width: 0; }
+.hb-head b { font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 1.02rem; color: #fff; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hb-head .t { margin: 0; }
+.hb-size { font-style: normal; font-family: 'Orbitron', sans-serif; font-size: 0.56rem; letter-spacing: 0.1em; padding: 0.12rem 0.35rem; border-radius: 3px; border: 1px solid var(--line-strong); color: #fff; }
+.hb-head .rp-add { width: 30px; height: 30px; font-size: 0.6rem; }
+.hb-facts { margin: 0; grid-template-columns: repeat(4, 1fr); gap: 0.35rem; }
+.hb-facts div { padding: 0.35rem 0.4rem; }
+.hb-facts b { font-size: 0.8rem; }
+.hb-facts span { font-size: 0.56rem; letter-spacing: 0.08em; }
+.hb-line { font-size: 0.78rem; color: var(--text-secondary); line-height: 1.4; }
+.hb-prev { color: var(--warn); }
+.hb-link { font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--cyan); text-decoration: none; }
+.hb-link:hover { text-decoration: underline; }
+
+.hb-plan { position: sticky; top: 92px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 1rem; display: flex; flex-direction: column; gap: 0.9rem; max-height: calc(100vh - 104px); overflow: auto; }
+.hb-plan .rp-empty { background: none; border: none; padding: 0.5rem; }
+.hb-plan .rp-item { border-color: var(--line); background: rgba(255, 255, 255, 0.03); }
+.hb-plan .rp-item-name { cursor: default; }
+.hb-gauges { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+.hb-gauge { border: 1px solid var(--line); border-radius: 10px; padding: 0.55rem 0.7rem; background: rgba(255, 255, 255, 0.025); }
+.hb-gauge-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); }
+.hb-gauge-head b { font-family: 'Orbitron', sans-serif; font-size: 0.78rem; color: #fff; letter-spacing: 0; text-transform: none; }
+.hb-gauge-bar { position: relative; height: 8px; margin: 0.35rem 0 0.25rem; background: rgba(255, 255, 255, 0.06); border-radius: 3px; overflow: hidden; }
+.hb-gauge-bar b { position: absolute; left: 0; top: 0; height: 100%; border-radius: 3px; transition: width 0.3s; }
+.hb-gauge.over .hb-gauge-head b { color: var(--bad); }
+.hb-gauge small { font-size: 0.7rem; color: var(--text-muted); display: block; }
+.hb-sheet { grid-template-columns: 1fr; }
+.hb-plan .rx-panel { padding: 0.75rem 0.85rem; }
+.rx-note.warn { color: var(--warn); }
+.an-three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.2rem; margin-bottom: 1rem; }
+.an-three .ch h4 { margin-bottom: 0.4rem; }
+
+@media (max-width: 1100px) { .hb-layout { grid-template-columns: 1fr; } .hb-plan { position: static; max-height: none; } .an-three { grid-template-columns: 1fr; } }
