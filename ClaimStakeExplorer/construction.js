@@ -284,6 +284,14 @@
             return g;
         }
         deposits() { this.planetGrants(); return this._deposits; }
+        // owner rule 2026-10-03: the central hub only yields raws this planet has a deposit of (its list is per planet TYPE)
+        extOf(b) {
+            const e = Object.entries(b.resourceExtractionRate || {});
+            if (!b.comesWithStake || !this.plan) return e;
+            const d = this.deposits();
+            return e.filter(([k]) => d.has(k));
+        }
+        outputsOf(b) { return Object.entries(b.resourceRate || {}).filter(([, v]) => v > 0).map(([k]) => k).concat(this.extOf(b).map(([k]) => k)); }
         stakeGrants() {
             const g = new Set([this.plan.kind === 'cultivation' ? 'cultivation-stake-only' : 'standard-stake-only']);
             if (this.plan.kind === 'cultivation') g.add('organic-focused');
@@ -308,7 +316,7 @@
         }
         ctx() {
             const grants = new Set(), produced = new Set();
-            this.plan.items.forEach(i => { (i.b.addedTags || []).forEach(t => grants.add(t)); (KIND_GRANTS[kindOf(i.b)] || []).forEach(t => grants.add(t)); StakeData.outputs(i.b).forEach(o => produced.add(o)); });
+            this.plan.items.forEach(i => { (i.b.addedTags || []).forEach(t => grants.add(t)); (KIND_GRANTS[kindOf(i.b)] || []).forEach(t => grants.add(t)); this.outputsOf(i.b).forEach(o => produced.add(o)); });
             return { pg: this.planetGrants(), sg: this.stakeGrants(), grants, produced, deposits: this.deposits() };
         }
         status(b, ctx) {
@@ -340,7 +348,7 @@
             const sum = f => bs.reduce((a, b) => a + (f(b) || 0), 0);
             const prod = {}, cons = {}, cost = {};
             bs.forEach(b => {
-                Object.entries(b.resourceExtractionRate || {}).forEach(([k, v]) => { prod[k] = (prod[k] || 0) + v; });
+                this.extOf(b).forEach(([k, v]) => { prod[k] = (prod[k] || 0) + v; });
                 Object.entries(b.resourceRate || {}).forEach(([k, v]) => { if (v > 0) prod[k] = (prod[k] || 0) + v; else cons[k] = (cons[k] || 0) + -v; });
                 Object.entries(b.constructionCost || {}).forEach(([k, v]) => { cost[k] = (cost[k] || 0) + v; });
             });
@@ -603,7 +611,7 @@
         }
 
         hotDeposits(b) {
-            const want = new Set(b ? StakeData.inputs(b).concat(Object.keys(b.resourceExtractionRate || {})) : []);
+            const want = new Set(b ? StakeData.inputs(b).concat(this.extOf(b).map(([k]) => k)) : []);
             this.root.querySelectorAll('#sbDeposits .rtag').forEach(t => t.classList.toggle('hot', want.has(t.dataset.res)));
         }
 
@@ -613,7 +621,7 @@
             const tip = this.$('sbTip'), kind = kindOf(b);
             const st = this.plan ? this.status(b, this.ctx()) : { ok: false, missing: [], hubs: [], hard: true };
             const rows = [['Tier', 'T' + b.tier], ['Slots', b.slots], ['Power', (b.power > 0 ? '+' : '') + b.power], ['Crew needed', b.neededCrew || 0], ['Crew housed', b.crewSlots || 0], ['Storage', (b.storage || 0).toLocaleString()], ['Build time', b.constructionTime ? this.fmtTime(b.constructionTime) : 'with stake']];
-            const ext = Object.entries(b.resourceExtractionRate || {}), rate = Object.entries(b.resourceRate || {});
+            const ext = this.extOf(b), rate = Object.entries(b.resourceRate || {});
             tip.innerHTML = `
                 <button type="button" class="sb-tip-x" data-tip="close" aria-label="Close">&times;</button>
                 <div class="sb-tip-head">${T.thumbHTML(kind, 'tile-thumb lg')}<div><b>${esc(b.name)}</b><span>${esc(KIND_LABEL[kind])}${b.comesWithStake ? ' · comes with the stake' : ''}</span></div></div>
@@ -723,13 +731,12 @@
 
             // 4. production net per resource: positive right (cool), negative left (warm)
             // the central hub extracts every raw its planet type lists, passively, from the moment the stake exists - shown by default
-            const deps = this.deposits();
             const led = v.ledger.filter(r => !r.passive).concat(v.ledger.filter(r => r.passive));
             const nPassive = v.ledger.filter(r => r.passive).length;
-            const hubTag = r => r.passive ? `<i class="hubt" title="${deps.has(r.id) ? 'Passive output of the central hub' : 'Listed on the central hub, but this planet shows no ' + esc(r.name) + ' deposit - whether the hub still yields it is not in the export'}">${deps.has(r.id) ? 'HUB' : 'HUB?'}</i>` : '';
+            const hubTag = r => r.passive ? '<i class="hubt" title="Passive output of the central hub (only raws this planet has a deposit of)">HUB</i>' : '';
             const nmax = Math.max(0.001, ...led.map(r => Math.abs(r.net)));
             const nrow = led.map(r => { const w = Math.abs(r.net) / nmax * 50; return `<div class="ch-row${r.passive ? ' passive' : ''}"><span class="ch-lbl">${hubTag(r)}${esc(r.name)}</span><div class="ch-div"><i class="axis"></i>${r.net < 0 ? `<b class="neg" style="right:50%;width:${w}%">${tip(r.name + ': made +' + num(r.prod) + ', used -' + num(r.cons))}</b>` : `<b class="pos" style="left:50%;width:${w}%">${tip(r.name + ': made +' + num(r.prod) + ', used -' + num(r.cons))}</b>`}</div><span class="ch-val ${r.net < 0 ? 'neg' : 'pos'}">${(r.net > 0 ? '+' : '') + num(r.net)}</span></div>`; }).join('');
-            const prod = `<div class="sb-card ch"><h4>Net production per tick <span>${nPassive ? 'incl. ' + nPassive + ' from the central hub' : ''}</span></h4><div class="ch-key"><span><i class="k-neg"></i>deficit (haul in)</span><span><i class="k-pos"></i>surplus</span></div>${nrow || '<p class="sb-muted">Nothing is produced yet.</p>'}<p class="sb-foot">A negative net must be hauled in (or the chain runs faster than the extractor feeding it). Richness is not applied: the export has no yield formula. <b>HUB</b> rows are the central hub's passive extraction: it comes with the stake and yields every raw its planet type lists from day one; <b>HUB?</b> = listed on the hub but no deposit on this planet.</p></div>`;
+            const prod = `<div class="sb-card ch"><h4>Net production per tick <span>${nPassive ? 'incl. ' + nPassive + ' from the central hub' : ''}</span></h4><div class="ch-key"><span><i class="k-neg"></i>deficit (haul in)</span><span><i class="k-pos"></i>surplus</span></div>${nrow || '<p class="sb-muted">Nothing is produced yet.</p>'}<p class="sb-foot">A negative net must be hauled in (or the chain runs faster than the extractor feeding it). Richness is not applied: the export has no yield formula. <b>HUB</b> rows are the central hub's passive extraction: it comes with the stake and yields, from day one, each raw its planet type lists that this planet has a deposit of.</p></div>`;
 
             // 5. construction materials: the bill itself - every material as one-hue bars, plus the plan totals
             const cmax = Math.max(1, ...v.cost.map(([, q]) => q));

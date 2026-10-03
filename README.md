@@ -227,8 +227,8 @@ Plan claim stake construction and analyze building efficiency
   - the sheet is five always-on charts drawn as plain HTML bars (no Chart.js on this page any more), one row of
     three plus a row of two: bill of materials (with build time, storage and fuel burn), net production per tick
     (deficits in orange, made / used in the tooltip; since 2026-10-03 the central hub's passive extraction is listed by
-    default, each row tagged HUB, or HUB? when the planet has no deposit of that raw - for the no-kit raws such as
-    Zinc Ore the hub is the stake's only source), build timeline (gantt in build order, with the plan verdict),
+    default, each row tagged HUB; owner rule: the hub yields only the raws this planet has a deposit of, though its
+    list in buildings.json is per planet type - so a no-kit raw like Zinc Ore comes from the hub only where it is a deposit), build timeline (gantt in build order, with the plan verdict),
     power budget per building, slots and crew stacked by building kind; the kind palette passed the dataviz
     validator (CVD, lightness, contrast)
   - the plan survives a reload (localStorage)
