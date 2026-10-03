@@ -14,7 +14,7 @@
 
     const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const slug = n => String(n || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    const num = (v, d) => (typeof v === 'number' ? v.toLocaleString(undefined, { maximumFractionDigits: d == null ? 3 : d }) : '0');
+    const num = (v, d) => (typeof v === 'number' ? v.toLocaleString(undefined, { maximumFractionDigits: d == null ? (v && Math.abs(v) < 0.01 ? 4 : 3) : d }) : '0');
     const T = window.StakeTiles;
     const kindOf = T.kindOf, KIND_LABEL = T.KIND_LABEL, KIND_GROUP = T.KIND_GROUP;
 
@@ -722,10 +722,14 @@
             const timeline = `<div class="sb-card ch"><h4>Build timeline <span>${this.fmtTime(v.time)} sequential</span></h4>${trow}<div class="ch-row"><span class="ch-lbl"></span><div class="ch-axis">${ticks}</div><span class="ch-val"></span></div><div class="sb-verdict ${v.valid ? 'ok' : 'bad'}">${v.valid ? 'Plan is valid: slots, power and crew all fit.' : [!v.slotsOk ? `slots over by ${(v.slotsUsed - v.slotsMax).toLocaleString()}` : '', !v.powerOk ? `power short by ${(-v.power).toLocaleString()}` : '', !v.crewOk ? `crew short by ${v.crewNeeded - v.crewSlots}` : ''].filter(Boolean).join(' · ')}</div></div>`;
 
             // 4. production net per resource: positive right (cool), negative left (warm)
-            const led = v.ledger.filter(r => !r.passive || Math.abs(r.net) >= 0.01);
+            // the central hub extracts every raw its planet type lists, passively, from the moment the stake exists - shown by default
+            const deps = this.deposits();
+            const led = v.ledger.filter(r => !r.passive).concat(v.ledger.filter(r => r.passive));
+            const nPassive = v.ledger.filter(r => r.passive).length;
+            const hubTag = r => r.passive ? `<i class="hubt" title="${deps.has(r.id) ? 'Passive output of the central hub' : 'Listed on the central hub, but this planet shows no ' + esc(r.name) + ' deposit - whether the hub still yields it is not in the export'}">${deps.has(r.id) ? 'HUB' : 'HUB?'}</i>` : '';
             const nmax = Math.max(0.001, ...led.map(r => Math.abs(r.net)));
-            const nrow = led.map(r => { const w = Math.abs(r.net) / nmax * 50; return `<div class="ch-row"><span class="ch-lbl">${esc(r.name)}</span><div class="ch-div"><i class="axis"></i>${r.net < 0 ? `<b class="neg" style="right:50%;width:${w}%">${tip(r.name + ': made +' + num(r.prod) + ', used -' + num(r.cons))}</b>` : `<b class="pos" style="left:50%;width:${w}%">${tip(r.name + ': made +' + num(r.prod) + ', used -' + num(r.cons))}</b>`}</div><span class="ch-val ${r.net < 0 ? 'neg' : 'pos'}">${(r.net > 0 ? '+' : '') + num(r.net)}</span></div>`; }).join('');
-            const prod = `<div class="sb-card ch"><h4>Net production per tick <span>${v.ledger.length - led.length > 0 ? '+ ' + (v.ledger.length - led.length) + ' passive hub deposits' : ''}</span></h4><div class="ch-key"><span><i class="k-neg"></i>deficit (haul in)</span><span><i class="k-pos"></i>surplus</span></div>${nrow || '<p class="sb-muted">Nothing is produced yet.</p>'}<p class="sb-foot">A negative net must be hauled in (or the chain runs faster than the extractor feeding it). Richness is not applied: the export has no yield formula.</p></div>`;
+            const nrow = led.map(r => { const w = Math.abs(r.net) / nmax * 50; return `<div class="ch-row${r.passive ? ' passive' : ''}"><span class="ch-lbl">${hubTag(r)}${esc(r.name)}</span><div class="ch-div"><i class="axis"></i>${r.net < 0 ? `<b class="neg" style="right:50%;width:${w}%">${tip(r.name + ': made +' + num(r.prod) + ', used -' + num(r.cons))}</b>` : `<b class="pos" style="left:50%;width:${w}%">${tip(r.name + ': made +' + num(r.prod) + ', used -' + num(r.cons))}</b>`}</div><span class="ch-val ${r.net < 0 ? 'neg' : 'pos'}">${(r.net > 0 ? '+' : '') + num(r.net)}</span></div>`; }).join('');
+            const prod = `<div class="sb-card ch"><h4>Net production per tick <span>${nPassive ? 'incl. ' + nPassive + ' from the central hub' : ''}</span></h4><div class="ch-key"><span><i class="k-neg"></i>deficit (haul in)</span><span><i class="k-pos"></i>surplus</span></div>${nrow || '<p class="sb-muted">Nothing is produced yet.</p>'}<p class="sb-foot">A negative net must be hauled in (or the chain runs faster than the extractor feeding it). Richness is not applied: the export has no yield formula. <b>HUB</b> rows are the central hub's passive extraction: it comes with the stake and yields every raw its planet type lists from day one; <b>HUB?</b> = listed on the hub but no deposit on this planet.</p></div>`;
 
             // 5. construction materials: the bill itself - every material as one-hue bars, plus the plan totals
             const cmax = Math.max(1, ...v.cost.map(([, q]) => q));

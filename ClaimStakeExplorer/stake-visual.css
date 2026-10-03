@@ -277,6 +277,8 @@ main { padding: 1.2rem clamp(0.8rem, 2vw, 2rem); }
 .ch-div .axis { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: rgba(255, 255, 255, 0.25); }
 .ch-div b { position: absolute; top: 0; height: 100%; min-width: 2px; }
 .ch-div b.pos { border-radius: 0 4px 4px 0; } .ch-div b.neg { border-radius: 4px 0 0 4px; }
+.ch-row.passive .ch-div b.pos { background: rgba(42, 159, 207, 0.55); }
+.ch-lbl .hubt { font-style: normal; font-family: 'Orbitron', sans-serif; font-size: 0.5rem; letter-spacing: 0.04em; color: #2a9fcf; border: 1px solid rgba(42, 159, 207, 0.6); border-radius: 2px; padding: 0 0.2rem; margin-right: 0.3rem; vertical-align: 1px; }
 .ch-gantt b { position: absolute; top: 0; height: 100%; border-radius: 4px; outline: 2px solid var(--card); }
 .ch-axis { position: relative; height: 14px; border-top: 1px solid rgba(255, 255, 255, 0.15); }
 .ch-axis span { position: absolute; top: 2px; transform: translateX(-50%); font-family: 'Orbitron', sans-serif; font-size: 0.5rem; color: var(--text-dim); white-space: nowrap; }
