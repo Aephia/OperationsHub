@@ -56,6 +56,8 @@ card(os.path.join(ART, 'Land and Claim Stakes', 'STAKE3.jpg'), 'card_claimstake.
 card(os.path.join(ART, 'Land and Claim Stakes', 'CSSLM0.jpg'), 'card_hub.webp', box=(300, 0, 4096, 1750))
 card(os.path.join(RAW, 'Official', 'OGKANR_g02.jpg'), 'card_recipe.webp')
 card(os.path.join(ART, 'Posters and Collectibles', 'discovery-of-iris.jpg'), 'card_resources.webp', box=(0, 0, 2600, 2250))
+# Command Deck: the Armstrong IMP's bridge (official gallery)
+card(os.path.join(RAW, 'Official', 'IMP1_g03.jpeg'), 'card_deck.webp')
 
 # 4. planet crops from the Blender render (when present)
 if len(sys.argv) > 1 and os.path.exists(sys.argv[1]):

@@ -304,6 +304,67 @@ repeat the manufacturer. Files: `ShipExplorer/ship-visual.js`, `ship-visual.css`
 
 ---
 
+### 7. 🧭 **Command Deck**
+The module that joins the others (built 2026-10-04). `CommandDeck/deck-model.js` builds on the Resources and Recipe
+explorers' own models (so every count agrees with theirs) and adds three engines: the research tree, a same-tier
+claim-stake engine, and an empire coverage model. Three tabs, everything always visible, no Chart.js, no animation.
+
+- **Research tab:** the export's research tree, which no other module shows - 282 nodes on seven tracks drawn as one
+  SVG (a band per track, a node one column right of the deepest node it requires, an arrow per required research
+  tag; 12 nodes with no track and no numbers are left out, 40 that the export names but gives no numbers are drawn
+  dashed). **Path to...** takes a recipe, a stake building, a hull, a stake or hab tier or a node, lights the
+  prerequisite closure and prices it: the level each track must reach and the XP that takes (`levelThresholds`),
+  track points, ATLAS (node cost in base units / 10^8) and tokens. A recipe's path is the gates of its **whole
+  chain** (3,630 of the 5,251 recipes sit behind at least one gate; all 1,501 gated stake buildings are covered).
+  **A recipe's path also covers getting its raws**, by the player's choice of *claim stakes* (a fleet where no
+  stake can), *a mining fleet*, or *already in hand*: a stake adds the extractor's own gates (drill type, Mining
+  Gear T1, hardness, a faction-building node for a faction-locked kit) and the tier-1 stake node; any raw not
+  found in the player's own low-risk zone adds **zone access** (medium risk, or another faction's zone). The
+  player's faction is a chip on the page (default USTUR). For a USTUR player 54 of the 93 raws are in the home
+  low-risk zone, 35 only in medium risk and 4 only in another faction's zone. A level the path needs on a track
+  is written on that track's band (`LEVEL 8 NEEDED · 839 XP`) whether or not the path has a node there.
+  A node's sheet shows what it needs, what it grants and what it is a gate of. **My research** marks nodes
+  researched (localStorage): bills count only what is left and *Next nodes* ranks what is open by recipes gated.
+  Links in: `?recipe=<outputId|name>` (the Recipe Explorer's sheet has a *Research path* button), `?building=<id>`,
+  `?ship=<name>`, `?stake=<tier>`, `?hab=<id>`, `?node=<name>`
+- **Empire tab:** many stakes + mining fleets + the hab against one production plan. The plan **is** the Recipe
+  Explorer's plan (same localStorage key - edit it on either page); the hab jobs come from the Hub Explorer's saved
+  build. A stake is a planet + a tier: the planner ranks planets by how many of the bill's still-uncovered raws
+  they carry (count, then richness), fills the stake with every extractor that fits (hubs follow what is placed,
+  crew quarters and power plants are added until crew and power balance), and lets you move extractors between
+  raws and switch first-stage processors on (fed by the stake's own extraction). A fleet is a hull, a count, a raw
+  and a body. **Who supplies what** is the sheet: sources left, one row per bill line with the time to gather it
+  in the middle, the plan's recipes right; link width is the share of that line's supply or need. The bill stops
+  at anything a stake processor already makes. **Research this needs** totals the nodes behind the stake tiers,
+  every building placed, the hull sizes, zone access for each stake and fleet body, and the plan's recipes, and
+  lights them on the tree. Planet rows and stake cards carry the zone (low risk / medium risk / another faction's)
+- **Ships vs Stakes tab:** a hull's mining rate is per **second**, an extractor's is per **tick**, and no export
+  field gives the tick length - so the tab takes the tick as an input and shows where the answer flips: output per
+  hour against tick length on log-log axes (stake lines fall, hull lines are flat, they cross at the break-even
+  tick), the same per dollar, break-even ticks, the price a stake would need to match a hull per dollar at your
+  tick, what each asks of you (hold fill time and unloads a day against storage fill time), and **Measure your
+  tick** (one extractor, storage read twice an hour apart: tick = 3,600 x rate x richness / units gained)
+- **Inputs that are not in the data, and say so on the page:** the tick length (shown as "assumed" until set or
+  measured; one value for the Empire and Ships vs Stakes tabs), whether richness multiplies a stake's output (a
+  switch, on by default), and prices (the boxes start with asks quoted on 2026-10-04 and keep what you type).
+  **Zone access is an open point:** two nodes grant medium-risk access (*Medium Risk Building*, Building 1, and
+  *Contested Space Scanning*, Data Running 5), three grant enemy-zone access; the export does not say whether each
+  covers every activity, so the page uses the grant on the activity's own track, or else the cheapest, and names
+  the others. The export puts no research gate on what a ship may mine
+- **Owner rules applied:** a stake holds tier-N buildings only; a belt holds no stake; the central hub yields only
+  raws the planet has a deposit of; release status is never shown
+- **Data:** `Data/research-data.js`, from `JSON/research.json`, which `split-uber-export.js` now writes from the
+  export's `researchNodes`, `researchGateMap` (reduced to its AND-sets) and `levelThresholds`
+- **Check:** `node Test/command-deck-check.js` - 100 checks of the model against figures derived by other code in
+  two research reports (full-stake layouts, break-even ticks, fair prices, a research path), identities (the
+  bill equals the Recipe Explorer planner's) and a by-hand derivation of the raw-gathering paths from the raw
+  bundles; `--sabotage` corrupts three inputs and must fail
+
+**Use Case:** "what do I unlock, where do I stake, which hulls do I fly, and how long does the plan take" in one place.
+What comes next is in [Documentation/ANALYTICS-ROADMAP.md](Documentation/ANALYTICS-ROADMAP.md)
+
+---
+
 ## 🔬 Analytics Features
 
 ### Cross-Explorer Analytics Engine
@@ -341,6 +402,11 @@ All analytics are powered by the **CrossExplorerAnalytics** engine, combining da
    - Construction costs per configuration
    - Component breakdown and sourcing
    - Modified stats analysis
+
+6. **Cross-module planning** (Command Deck)
+   - Research path and bill for any recipe, building, hull or tier
+   - Empire coverage: stakes and fleets against a production plan's bill
+   - Ships versus stakes by tick length and by price
 
 ---
 
@@ -384,8 +450,17 @@ from the last code-named snapshot (git `27137dd^:JSON/planets.json` by default) 
 (`system.code`, `system.regionCode`, `planet.code`) and uses them for grouping, search and analytics
 regions. It is a frozen reference, not part of `npm run refresh`: re-run it only if the snapshot
 changes, and it refuses to write when any current system or region would be left without a code.
-The export also carries sections nothing here consumes yet (`missions`, `researchGateMap`,
-`cargoTypes`, ...); the split script lists them at the end of its run.
+The export also carries sections nothing here consumes yet (`missions`, `cargoTypes`, the scan patterns,
+`globalCombatConfig`, ...); the split script lists them at the end of its run.
+
+**Research data (Command Deck, 2026-10-04).** The split writes `JSON/research.json`, a projection of three export
+sections: `researchNodes` (nodes, connections, track names) as exported, `researchGateMap` reduced to its AND-sets
+(`{id: [research tags]}` for recipes, stake buildings, stake tiers and hab tiers), `levelThresholds` as
+`{track: [xp per level]}`, plus the cargo names of the token ids node costs use. Nothing in it is computed.
+`npm run refresh` turns it into `Data/research-data.js` (`window.researchData`). On 2026-10-04 that one bundle was
+generated on its own from the 2026-09-11 export (the other ten bundles were left untouched: a re-split of the same
+export reproduces every existing `JSON/` file byte for byte), so `REFRESH-REPORT.json` lists it from the next full
+refresh on.
 
 The split also writes `JSON/stat-descriptions.json` (Ship Explorer's stat tooltips) from
 `shipConfigurations.statDescriptions`. Ship Explorer loads it directly, no `npm run refresh` needed.
@@ -419,6 +494,7 @@ OperationsHub/
 ├── ClaimStakeExplorer/                 # Building & facility planning
 ├── HubExplorer/                        # Space hub construction
 ├── ShipExplorer/                       # Ship comparison & fleet
+├── CommandDeck/                        # Research tree, empire planner, ships vs stakes (joins the others)
 │
 ├── Utils/
 │   ├── CrossExplorerAnalytics.js      # Analytics engine
@@ -435,6 +511,7 @@ OperationsHub/
 │   ├── ship-components-data.js         # Ship components (8.2 MB)
 │   ├── resource-tier-data.js           # Resource tier analysis
 │   ├── system-codes-data.js            # Legacy SAGE system/region codes (see Data Pipeline)
+│   ├── research-data.js                # Research nodes, gate AND-sets, level thresholds (680 KB)
 │   └── REFRESH-REPORT.json             # Validation report
 │
 ├── JSON/                               # Raw JSON source files
@@ -479,6 +556,9 @@ npm test
 
 # Run specific test file
 node Test/test-recipes.js
+
+# Command Deck model against independently derived figures (100 checks; --sabotage must fail)
+node Test/command-deck-check.js
 ```
 
 **Coverage:**
@@ -571,6 +651,7 @@ node Test/test-recipes.js
 - **[USER-GUIDE.md](Documentation/USER-GUIDE.md)** - Complete user guide ⭐ START HERE
 - **[ANALYTICS-OVERVIEW.md](Documentation/ANALYTICS-OVERVIEW.md)** - Analytics architecture
 - **[IMPLEMENTATION-STATUS.md](Documentation/IMPLEMENTATION-STATUS.md)** - Feature status
+- **[ANALYTICS-ROADMAP.md](Documentation/ANALYTICS-ROADMAP.md)** - Cross-module analytics: what is built (Command Deck) and the seven that are next
 - **[RefreshData/IMPLEMENTATION-SUMMARY.md](RefreshData/IMPLEMENTATION-SUMMARY.md)** - Data pipeline details
 
 ---
@@ -629,7 +710,7 @@ MIT License - see [LICENSE](LICENSE) file for details
 
 ## 📊 Statistics
 
-- **Explorers:** 7 applications
+- **Modules:** 7 (six explorers and the Command Deck)
 - **Analytics Features:** 6 major systems
 - **Test Coverage:** 216 tests across 35 suites
 - **Data Points:** 4,261 total (planets, recipes, resources, buildings, ships)
@@ -638,7 +719,7 @@ MIT License - see [LICENSE](LICENSE) file for details
 
 ---
 
-**Last Updated:** September 10, 2026 (data refresh from the 2026-09-11 uber-export)
+**Last Updated:** October 4, 2026 (Command Deck; data from the 2026-09-11 uber-export)
 **Version:** 2.1
 **Status:** Production Ready 🚀
 

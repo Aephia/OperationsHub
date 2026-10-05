@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aephia Industries - Command Deck</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/jpeg" href="../Images/channels4_profile.jpg">
+    <link rel="stylesheet" href="../ResourcesExplorer/styles.css?v=20261001">
+    <link rel="stylesheet" href="../ResourcesExplorer/resource-visual.css?v=20261001d">
+    <link rel="stylesheet" href="../RecipeExplorer/recipe-visual.css?v=20261001d">
+    <link rel="stylesheet" href="deck.css?v=20261004d">
+</head>
+<body>
+    <div class="pe-sky" aria-hidden="true"></div>
+    <header>
+        <a class="brand" href="../index.html" title="Back to the Operations Hub">
+            <img src="../Images/channels4_profile.jpg" alt="">
+            <span><b>Aephia Industries</b><small>Operations Hub</small></span>
+        </a>
+        <h1>Command Deck</h1>
+        <nav class="navigation-tabs">
+            <button class="nav-tab active" data-tab="research">Research</button>
+            <button class="nav-tab" data-tab="empire">Empire</button>
+            <button class="nav-tab" data-tab="calc">Ships vs Stakes</button>
+        </nav>
+        <nav class="breadcrumb">
+            <a href="../index.html">Home</a> / Command Deck
+        </nav>
+    </header>
+
+    <main>
+        <div id="researchTab" class="tab-content active"><div id="cdResearch"></div></div>
+        <div id="empireTab" class="tab-content"><div id="cdEmpire"></div></div>
+        <div id="calcTab" class="tab-content"><div id="cdCalc"></div></div>
+    </main>
+
+    <script src="../SFX/sounds.js"></script>
+    <script src="../Utils/BaseApp.js?v=20250925-2142"></script>
+    <script src="../Data/resources-data.js?v=20260911"></script>
+    <script src="../Data/recipes-data.js?v=20260911"></script>
+    <script src="../Data/planet-data.js?v=20260911"></script>
+    <script src="../Data/buildings-data.js?v=20260911"></script>
+    <script src="../Data/ships-data.js?v=20260911"></script>
+    <script src="../Data/crafting-hab-data.js?v=20260911"></script>
+    <script src="../Data/research-data.js?v=20260911"></script>
+    <script src="../ResourcesExplorer/resource-model.js?v=20261001"></script>
+    <script src="../RecipeExplorer/recipe-model.js?v=20261001"></script>
+    <script src="../HubExplorer/hub-model.js?v=20261001"></script>
+    <script src="deck-model.js?v=20261004d"></script>
+    <script src="deck-store.js?v=20261004d"></script>
+    <script src="deck-research.js?v=20261004d"></script>
+    <script src="deck-empire.js?v=20261004d"></script>
+    <script src="deck-calc.js?v=20261004d"></script>
+    <script src="app.js?v=20261004d"></script>
+</body>
+</html>

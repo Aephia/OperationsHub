@@ -147,6 +147,42 @@ const moduleHelpContent = {
                     <li>Install time is the hab export's time; craft time is the recipe's; both read as seconds</li>
                 </ul>` }
         ]
+    },
+
+    commandDeck: {
+        title: 'Command Deck',
+        sections: [
+            { heading: 'What it is', content: 'The module that joins the others: the research tree, an empire planner over your stakes, fleets, hab and production plan, and a ships-versus-stakes calculator. It reads the same plan the Recipe Explorer holds and the same hab build the Hub Explorer holds.' },
+            { heading: 'Research tab', content: `
+                <ul>
+                    <li><strong>The tree:</strong> 282 nodes on seven tracks. A node sits one column right of the deepest node it requires; an arrow is a required research tag. The track chips jump to a band</li>
+                    <li><strong>Path to:</strong> type a recipe, a stake building, a hull, a stake or hab tier, or a node. The tree lights what you need and the panel prices it: the level each track must reach and the XP that takes, track points, ATLAS and tokens. For a recipe the path covers its whole chain from raws</li>
+                    <li><strong>Getting the raws:</strong> a recipe's path also covers its raws. Choose claim stakes, a mining fleet, or already in hand. Stakes add the extractor nodes on the Mining track and the tier-1 stake; a raw outside your own low-risk zone adds zone access. Set your faction with the chips next to the search box</li>
+                    <li><strong>Levels on other tracks:</strong> when the path needs a level on a track, that band says so (for example "LEVEL 8 NEEDED"), even if no node on it is needed</li>
+                    <li><strong>A node:</strong> click one for what it needs, what it grants, and how many recipes and stake buildings name it as a gate</li>
+                    <li><strong>My research:</strong> mark nodes researched (kept in this browser). Every bill then counts only what is left, and Next nodes ranks what you can research now</li>
+                </ul>` },
+            { heading: 'Empire tab', content: `
+                <ul>
+                    <li><strong>Production plan:</strong> the Recipe Explorer's plan. Add, remove or resize recipes on either page</li>
+                    <li><strong>Claim stakes:</strong> pick a tier and a planet; the planner ranks planets by how many still-missing raws they carry. A stake fills itself with every extractor that fits; move extractors between raws with the steppers and switch first-stage processors on</li>
+                    <li><strong>Mining fleets:</strong> a hull, a count, one raw and the body it mines. Fleets are the only source for raws no stake can extract</li>
+                    <li><strong>Who supplies what:</strong> sources on the left, one row per line of the bill with the time to gather it, the plan's recipes on the right. Hover anything to trace it</li>
+                    <li><strong>Research this needs:</strong> the nodes behind your stake tiers, buildings, hull sizes and recipes, with a button that lights them on the tree</li>
+                </ul>` },
+            { heading: 'Ships vs Stakes tab', content: `
+                <ul>
+                    <li>A hull's mining rate is per second and a stake's is per tick, so the answer depends on how long a tick lasts. The charts show output against tick length and the tick at which a stake and a hull are equal</li>
+                    <li>Type the asks you see on the market for output per dollar and for the price a stake would need to match a hull</li>
+                    <li><strong>Measure your tick:</strong> one extractor, storage read twice an hour apart; the button stores the result for the whole module</li>
+                </ul>` },
+            { heading: 'Tips', content: `
+                <ul>
+                    <li>The tick length is in no export field. Until you set or measure it the module says "assumed" beside the number</li>
+                    <li>The export has no prices; the price boxes start with asks quoted on 2026-10-04 and keep what you type</li>
+                    <li>How track XP and points are earned, the hardness of a deposit, and crew, food and fuel prices are not in the data</li>
+                </ul>` }
+        ]
     }
 };
 

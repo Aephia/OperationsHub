@@ -110,6 +110,14 @@ const DATA_TASKS = [
         outputJs: 'resource-type-tier-data.js',
         globalVar: 'resourceTypeTierData',
         schema: null // Simple lookup, no complex schema needed
+    },
+    {
+        // Command Deck (2026-10-04): research nodes, gate AND-sets, level thresholds - see split-uber-export.js
+        type: 'json',
+        source: 'research.json',
+        outputJs: 'research-data.js',
+        globalVar: 'researchData',
+        schema: null
     }
 ];
 

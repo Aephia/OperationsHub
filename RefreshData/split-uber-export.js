@@ -19,8 +19,13 @@
  * Also writes stat-descriptions.json (Ship Explorer's stat tooltips) from
  * shipConfigurations.statDescriptions - see stat-descriptions.js.
  *
+ * research.json (Command Deck, 2026-10-04) is a PROJECTION, not a verbatim copy: the research nodes, connections
+ * and track names as exported, the gate map reduced to its AND-sets ({id: [research tags]}; researchGateMap is
+ * 1.3 MB with per-recipe detail the hub does not read), the level thresholds as {track: [xp per level]}, and the
+ * cargo names of the few token ids that node costs reference. Nothing in it is computed.
+ *
  * Only datasets the explorers consume are written. The export also carries
- * sections nothing here reads yet (missions, researchGateMap, cargoTypes, ...);
+ * sections nothing here reads yet (missions, cargoTypes, scan patterns, ...);
  * they are listed at the end of the run so a new consumer knows they exist.
  */
 
@@ -98,6 +103,44 @@ const files = {
     'ship-formulas.json': pick(sc, ['version', 'timestamp', 'componentAttributes', 'classScalingFormulas', 'tierScalingFormulas'], 'shipConfigurations')
 };
 
+// research.json: nodes + gate AND-sets + level thresholds (see the header note)
+function researchProjection(u) {
+    const rn = u.researchNodes, gm = u.researchGateMap, lt = u.levelThresholds;
+    if (!rn || !gm || !lt) throw new Error('research: export is missing researchNodes / researchGateMap / levelThresholds');
+    const ands = (section, key) => {
+        const out = {};
+        for (const [k, v] of Object.entries(section || {})) {
+            if (Array.isArray(v.all) && v.all.length) out[key ? v[key] : k] = v.all;
+        }
+        return out;
+    };
+    const tokenNames = {};
+    for (const n of rn.nodes) {
+        for (const k of Object.keys((n.cost && n.cost.token_cost) || {})) {
+            tokenNames[k] = (u.cargoTypes && u.cargoTypes[k] && u.cargoTypes[k].name) || null;
+        }
+    }
+    const thresholds = {};
+    for (const [track, v] of Object.entries(lt.thresholds)) thresholds[track] = v.levels;
+    return {
+        exportDate: u.meta && u.meta.exportDate ? String(u.meta.exportDate).slice(0, 10) : null,
+        tracks: rn.tags,
+        nodes: rn.nodes,
+        connections: rn.connections,
+        tagToNode: gm._meta.tagToNode,
+        gates: {
+            recipeCount: Object.keys(gm.recipes).length,
+            recipes: ands(gm.recipes, 'outputId'),
+            buildings: ands(gm.buildings),
+            claimStakes: ands(gm.claimStakeDefinitions),
+            craftingHabs: ands(gm.craftingHabs)
+        },
+        thresholds,
+        tokenNames
+    };
+}
+files['research.json'] = researchProjection(uber);
+
 // ship-components: manifest + allComponents split in two halves (part1 also carries the tree)
 const half = Math.ceil(comps.allComponents.length / 2);
 files['ship-components.json'] = {
@@ -133,7 +176,7 @@ try {
     console.warn(`⚠️  stat-descriptions.json not updated: ${error.message}`);
 }
 
-const consumed = new Set(['meta', 'mapData', 'shipConfigurations', 'shipStats', 'recipes', 'resources', 'claimStakeBuildings', 'craftingHabs']);
+const consumed = new Set(['meta', 'mapData', 'shipConfigurations', 'shipStats', 'recipes', 'resources', 'claimStakeBuildings', 'craftingHabs', 'researchNodes', 'researchGateMap', 'levelThresholds']);
 const unused = Object.keys(uber).filter((k) => !consumed.has(k));
 console.log(`export ${uber.meta && uber.meta.exportDate} - sections not consumed by any explorer: ${unused.join(', ')}`);
 console.log('\nNext: npm run refresh');
