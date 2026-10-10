@@ -8,13 +8,15 @@ class RecipeExplorerApp extends BaseApp {
         const t0 = performance.now();
         const rm = new ResourceModel((window.resourcesData && window.resourcesData.resources) || [], (window.rawRecipeData && window.rawRecipeData.recipes) || [], window.planetData || { mapData: [], regionDefinitions: [] }, (window.rawBuildingData && window.rawBuildingData.buildings) || []);
         this.model = new RecipeModel(rm);
+        // the research path per recipe comes from the Command Deck's model over the same RecipeModel, so the two pages agree
+        this.research = window.CommandDeck && window.researchData ? new window.CommandDeck.ResearchModel(window.researchData, this.model, []) : null;
         this.data = this.model.recipes;
         console.log(`Recipe Explorer: ${this.data.length} recipes over ${rm.list.length} resources - models built in ${Math.round(performance.now() - t0)} ms`);
     }
 
     initializeModules() {
         if (!this.data.length) { console.error('Recipe Explorer: no recipes loaded'); return; }
-        this.modules.explorer = new RecipePlanner(this.model);
+        this.modules.explorer = new RecipePlanner(this.model, this.research);
         this.modules.analytics = new RecipeAnalytics(this.model, this.modules.explorer);
         window.recipePlanner = this.modules.explorer;
         document.addEventListener('visibilitychange', () => document.body.classList.toggle('is-hidden', document.hidden));

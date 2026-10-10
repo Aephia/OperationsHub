@@ -1,7 +1,7 @@
 // recipe-plan.js - Recipe Explorer, Planner tab (rebuilt 2026-10-01): the recipe finder (left) and the production plan
 // (right). Add recipes with a quantity; the sheet is always on: the raw bill, the craft list in build order, time,
 // where it can be crafted, and the aggregated chain graph (shared Utils/ChainGraph.js) with quantities on the edges.
-// A recipe sheet opens for any row or node: output, ingredients, facts, who uses it, add to plan. The plan survives
+// A recipe sheet opens for any row or node: output, ingredients, facts, the research to craft it, who uses it, add to plan. The plan survives
 // a reload (localStorage) and ?recipe=<id|name> adds one, ?search= pre-fills the finder.
 (function () {
     'use strict';
@@ -10,11 +10,12 @@
     const CAT = { raw: { label: 'Raw', color: '#dd7429' }, processed: { label: 'Processed', color: '#2a9fcf' }, component: { label: 'Component', color: '#2fa985' }, advanced: { label: 'Advanced', color: '#9476db' }, plan: { label: 'Plan', color: '#4fd8ff' } };
     const fmtTime = sec => { if (!sec) return '0 s'; if (sec < 60) return Math.round(sec) + ' s'; const m = Math.round(sec / 60); if (m < 60) return m + ' min'; const h = Math.floor(m / 60), mm = m % 60; if (h < 48) return h + ' h' + (mm ? ' ' + mm + ' min' : ''); return (h / 24).toFixed(1) + ' days'; };
     const num = v => (v || 0).toLocaleString();
+    const TRACK_COLOR = { CouncilRank: '#e8e3d3', Pilot: '#2fa985', Mining: '#dd7429', Building: '#a8842a', Crafting: '#9476db', DataRunner: '#2a9fcf', Combat: '#d9517c' };   // as on the Command Deck
     const PAGE = 100, KEY = 'recipeExplorer.plan.v1';
 
     class RecipePlanner {
-        constructor(model) {
-            this.m = model; this.rm = model.rm;
+        constructor(model, research) {
+            this.m = model; this.rm = model.rm; this.research = research || null;   // CommandDeck ResearchModel, or null without research-data.js
             this.filters = { q: '', mode: 'name', types: new Set(), tiers: new Set(), star: new Set(), sort: 'name' };
             this.shown = PAGE;
             this.items = this.load();
@@ -147,6 +148,7 @@
                             <div class="rp-crafts">${p.crafts.map(c => `<div class="rp-craft"><span class="d">${c.depth}</span><button type="button" class="nm rx-link" data-go="${esc(c.name)}">${c.res ? `<i class="t t${c.res.tier}">T${c.res.tier}</i>` : ''}${esc(c.name)}</button><span class="n">&times;${num(c.crafts)}<small>${num(c.units)} units</small></span><span class="bar"><b style="width:${(100 * c.time / maxCraft).toFixed(1)}%"></b></span><span class="n">${fmtTime(c.time)}<small>${fmtTime(c.each)} each</small></span></div>`).join('')}</div>
                             <p class="sb-foot">Build times are the export's <i>constructionTime</i> read as seconds. Critical path = the longest chain of build times from a raw to an output with every craft running in parallel; the sequential figure adds every craft up.</p>
                         </section>
+                        ${this.planResearchPanel(this.items)}
                     </div>
                 </div>`;
             const host = document.getElementById('rpGraph');
@@ -183,6 +185,52 @@
 
         closeSheet() { if (!this.overlay) return; this.overlay.remove(); this.overlay = null; this.current = null; this.history = []; document.removeEventListener('keydown', this._esc); document.body.classList.remove('rx-modal-open'); this.snd('closePopup'); }
 
+        // Research nodes (2026-10-10): the gate map's AND-sets closed over prerequisites, through the Command Deck's
+        // ResearchModel so both pages give the same path. Council Rank is named on its own line: it gates the crafting
+        // hab (Crafting Habs - Tier 1), never a recipe - no recipe's path holds a Council Rank node or level. Nodes marked
+        // researched on the Command Deck (same origin, its localStorage key) show a tick and leave the totals.
+        // Two places: a box beside the plan's raw bill (every recipe in the plan with its whole chain, since the plan
+        // crafts every intermediate) and the recipe sheet (the recipe alone, then what its chain adds).
+        researchKit() {
+            const R = this.research; if (!R) return null;
+            const start = R.start ? R.start.id : null;
+            let owned = new Set();
+            try { const v = JSON.parse(localStorage.getItem('commandDeck.research.v1') || 'null'); if (v && Array.isArray(v.owned)) owned = new Set(v.owned); } catch (e) { /* storage unavailable */ }
+            const track = k => (R.tracks.find(t => t.key === k) || { label: k }).label;
+            const lv = n => Object.entries(n.level).filter(([, v]) => v).map(([k, v]) => `${track(k)} L${v}`).join(', ');
+            const list = set => Array.from(set).filter(n => n.id !== start).sort((a, b) => a.depth - b.depth || a.order - b.order);
+            const row = n => `<a class="rx-ing rx-node${owned.has(n.id) ? ' done' : ''}" href="../CommandDeck/index.html?node=${encodeURIComponent(n.name)}" target="_blank" rel="noopener" style="--c:${TRACK_COLOR[n.track.key] || '#888'}" title="${esc(n.track.label)} node${lv(n) ? ' - needs ' + esc(lv(n)) : ''}. Open it on the Command Deck"><i></i><b>${owned.has(n.id) ? '✓ ' : ''}${esc(n.name)}</b><em>${lv(n) ? '' : esc(n.track.label)}</em><span>${esc(lv(n))}</span></a>`;
+            const sum = set => { const b = R.bill(set, new Set([start].concat(Array.from(owned)))); const parts = Object.entries(b.levels).filter(([, v]) => v).map(([k, v]) => `${track(k)} L${v}${b.xp[k] != null ? ` (${num(b.xp[k])} XP)` : ''}`); return b.todo ? `${b.todo} to research${parts.length ? ' · ' + parts.join(', ') : ''}` : 'all researched'; };
+            const habNode = Array.from(R.closure(R.habGate('hab-t1'))).find(n => n.id !== start);
+            const council = what => `<div class="rx-row"><h4>Council Rank</h4><p class="rx-where">${habNode ? `<b>${esc(habNode.name)}</b>${owned.has(habNode.id) ? ' ✓' : ''}, a hab to craft in (${lv(habNode) || 'Council Rank L0'}, free). ` : ''}No Council Rank node gates ${what}: that track gates stakes, hab tiers and fleets.</p></div>`;
+            return { R, list, row, sum, council };
+        }
+
+        planResearchPanel(items) {
+            const K = this.researchKit(); if (!K) return '';
+            const tags = new Set();
+            items.forEach(it => { const r = this.m.byId.get(it.id); if (r) K.R.chainGate(r).forEach(t => tags.add(t)); });
+            const set = K.R.closure(tags), nodes = K.list(set);
+            return `<section class="rx-panel rx-research rp-research">
+                <div class="rx-panel-head"><h3>Research nodes</h3><span>${nodes.length ? esc(K.sum(set)) : 'no research gate'}</span></div>
+                ${nodes.length ? `<div class="rx-ings">${nodes.map(K.row).join('')}</div>` : '<p class="rx-note">The gate map lists no research for this plan.</p>'}
+                ${K.council(items.length > 1 ? 'these recipes' : 'this recipe')}
+                <p class="sb-foot">Every recipe in the plan with its whole chain, prerequisites included. Click a node to open it on the Command Deck; nodes you mark researched there get a tick here.</p>
+            </section>`;
+        }
+
+        researchPanel(r) {
+            const K = this.researchKit(); if (!K) return '';
+            const own = K.R.closure(K.R.recipeGate(r.outputId)), chain = K.R.closure(K.R.chainGate(r));
+            const mine = K.list(own), extra = K.list(chain).filter(n => !own.has(n));
+            return `<section class="rx-panel rx-research">
+                <div class="rx-panel-head"><h3>Research to craft it</h3><span>${mine.length ? esc(K.sum(own)) : 'no research gate'}</span></div>
+                ${mine.length ? `<div class="rx-ings">${mine.map(K.row).join('')}</div>` : '<p class="rx-note">The gate map lists no research for this recipe.</p>'}
+                ${K.council('this recipe')}
+                ${extra.length ? `<div class="rx-row"><h4>Crafting the chain from raws adds ${extra.length}</h4><div class="rx-ings">${extra.map(K.row).join('')}</div><p class="rx-note">${esc(K.sum(chain))} for the whole chain.</p></div>` : ''}
+            </section>`;
+        }
+
         renderSheet(r) {
             const res = this.rm.byName.get(r.outputName);
             const dag = this.rm.dag(r.outputName);
@@ -207,13 +255,13 @@
                     </header>
                     <div class="rx-body">
                         <section class="rx-graph-wrap"><div class="rx-panel-head"><h3>Supply chain</h3><span>${dag.nodes.size > 1 ? `${num(dag.nodes.size - 1)} resources, ${num(dag.edges.length)} links, ${dag.depth} levels` : 'This recipe has no inputs.'}</span>${dag.nodes.size > 1 ? '<button type="button" class="sb-btn ghost" data-fit>Fit</button>' : ''}</div><div class="rx-graph rp-sheet-graph" id="rpSheetGraph"></div></section>
+                        ${this.researchPanel(r)}
                         <div class="rx-side">
                             <section class="rx-panel">
                                 <div class="rx-panel-head"><h3>Recipe</h3><span>makes ${r.outputQuantity} per craft</span></div>
                                 <div class="rx-ings">${(r.ingredients || []).map(i => { const ir = this.rm.byName.get(i.name); return `<button type="button" class="rx-ing" data-go="${esc(i.name)}" style="--c:${(ir && CAT[ir.category] || CAT.processed).color}"><i></i><b>${esc(i.name)}</b>${ir ? `<em class="t t${ir.tier}">T${ir.tier}</em>` : ''}<span>&times;${i.quantity}</span></button>`; }).join('') || '<p class="sb-muted">No ingredients: an extraction or basic recipe.</p>'}</div>
                                 <div class="rx-facts"><div><b>${fmtTime(r.constructionTime)}</b><span>build time</span></div><div><b>${r.productionSteps != null ? r.productionSteps : r.depth}</b><span>production steps</span></div><div><b>L${r.starbase}</b><span>starbase</span></div><div><b>${r.ingredientCount}</b><span>ingredients</span></div></div>
                                 ${where ? `<div class="rx-row"><h4>Crafted on</h4><p class="rx-where">${esc(where)}</p></div>` : ''}
-                                ${r.research_requirements && r.research_requirements.length ? `<div class="rx-row"><h4>Research nodes</h4><p class="rx-where">${r.research_requirements.map(x => esc(typeof x === 'object' ? (x.name || JSON.stringify(x)) : x)).join(', ')}</p></div>` : ''}
                                 ${variants.length ? `<div class="rx-row"><h4>Other tiers of this output</h4><div class="chips">${variants.map(v => `<button type="button" class="chip" data-open="${esc(v.outputId)}"><i class="t t${v.outputTier}">T${v.outputTier}</i>${esc(v.typeLabel)}</button>`).join('')}</div></div>` : ''}
                                 <div class="rx-actions">${res ? `<a class="sb-btn ghost" href="../ResourcesExplorer/index.html?r=${encodeURIComponent(r.outputName)}" target="_blank" rel="noopener">Open in Resources Explorer &rarr;</a>` : ''}<a class="sb-btn ghost" href="../CommandDeck/index.html?recipe=${encodeURIComponent(r.outputId)}" target="_blank" rel="noopener" title="The research nodes this recipe and its chain need, with levels, XP and ATLAS">Research path &rarr;</a></div>
                             </section>

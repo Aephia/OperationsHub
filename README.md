@@ -126,9 +126,17 @@ quantity expansion). The chain graph is the shared `Utils/ChainGraph.js`, the sa
     everything in parallel), the sequential total, the highest starbase level any step needs and the raws no claim
     stake can mine
 - **Recipe sheet** (any row, plan item or node): the recipe's own chain, ingredients, build time, production steps,
-  starbase level, planet types, research nodes, the other tiers of the same output, who uses the output, add to /
+  starbase level, planet types, the other tiers of the same output, who uses the output, add to /
   remove from the plan; links into the Resources Explorer. `?recipe=<outputId or name>` adds a recipe to the plan,
   `?search=` pre-fills the finder (both kept for cross-module links)
+- **Research nodes** box beside the Raw bill and Craft list (2026-10-10): every node the whole plan needs (each
+  recipe's full chain, as the plan crafts every intermediate), with the same rows, ticks and Council Rank line as below.
+- **Research to craft it** (on the sheet, directly under the supply-chain graph, 2026-10-10): every research node
+  the recipe needs (the gate map's AND-set plus prerequisites, through the Command Deck's `ResearchModel`, so both pages agree), each with its track level,
+  the XP total per track, and the extra nodes for crafting the whole chain from raws. A Council Rank line says what
+  that track contributes: only Crafting Habs - Tier 1 (a hab to craft in, free) - no recipe is gated by a Council Rank
+  node or level. Nodes marked researched on the Command Deck show a tick and drop out of the totals; each node links
+  to it there. Loads `Data/research-data.js` and `CommandDeck/deck-model.js`.
 - **Analytics tab (five always-on sections, HTML bars):** what the catalogue makes (by output type, and each type
   by tier); build time by output type with the longest crafts and deepest chains; where things are crafted (planet
   type × output type, starbase level, the 616 faction-exclusive recipes); **ingredient demand** (every resource
