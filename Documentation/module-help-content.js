@@ -153,14 +153,14 @@ const moduleHelpContent = {
     commandDeck: {
         title: 'Command Deck',
         sections: [
-            { heading: 'What it is', content: 'The module that joins the others: the research tree, an empire planner over your stakes, fleets, hab and production plan, and a ships-versus-stakes calculator. It reads the same plan the Recipe Explorer holds and the same hab build the Hub Explorer holds.' },
+            { heading: 'What it is', content: 'The module that joins the others: the research tree, an empire planner over your stakes, fleets, hab and production plan, a ships-versus-stakes calculator, and a Loadouts bench that compares hull configurations on hauling, mining, scanning, combat, fleet points and crafting cost. It reads the same plan the Recipe Explorer holds, the same hab build the Hub Explorer holds, and the same configuration maths the Ship Explorer uses.' },
             { heading: 'Research tab', content: `
                 <ul>
                     <li><strong>The tree:</strong> 282 nodes on seven tracks. A node sits one column right of the deepest node it requires; an arrow is a required research tag. The track chips jump to a band</li>
                     <li><strong>Path to:</strong> type a recipe, a stake building, a hull, a stake or hab tier, or a node. The tree lights what you need and the panel prices it: the level each track must reach and the XP that takes, track points, ATLAS and tokens. For a recipe the path covers its whole chain from raws</li>
                     <li><strong>Getting the raws:</strong> a recipe's path also covers its raws. Choose claim stakes, a mining fleet, or already in hand. Stakes add the extractor nodes on the Mining track and the tier-1 stake; a raw outside your own low-risk zone adds zone access. Set your faction with the chips next to the search box</li>
                     <li><strong>Levels on other tracks:</strong> when the path needs a level on a track, that band says so (for example "LEVEL 8 NEEDED"), even if no node on it is needed</li>
-                    <li><strong>A node:</strong> click one for what it needs, what it grants, and how many recipes and stake buildings name it as a gate</li>
+                    <li><strong>A node:</strong> click one for what it gives you - the export's own description, every effect in words (fleet cap +7 points, fly hulls up to Medium, crafting time -5 %, +5 % yield per level on 31 named asteroid resources), what it needs, how many recipes and stake buildings name it as a gate, and the nodes it leads to. A node the export describes but gives no effect says so</li>
                     <li><strong>My research:</strong> mark nodes researched (kept in this browser). Every bill then counts only what is left, and Next nodes ranks what you can research now</li>
                 </ul>` },
             { heading: 'Empire tab', content: `
@@ -169,6 +169,7 @@ const moduleHelpContent = {
                     <li><strong>Claim stakes:</strong> pick a tier and a planet; the planner ranks planets by how many still-missing raws they carry. A stake fills itself with every extractor that fits; move extractors between raws with the steppers and switch first-stage processors on</li>
                     <li><strong>Mining fleets:</strong> a hull, a count, one raw and the body it mines. Fleets are the only source for raws no stake can extract</li>
                     <li><strong>Who supplies what:</strong> sources on the left, one row per line of the bill with the time to gather it, the plan's recipes on the right. Hover anything to trace it</li>
+                    <li><strong>Hab schedule:</strong> the plan's crafts on your hab's real jobs (the Hub Explorer's saved build: the hab's job, each station's jobs at its speed, each storage's job bonus). One lane per job, a block per run of one craft, the critical path in gold, the busy share of each job. Below it: the path as a chain, a sentence saying whether the queue (crafts waiting for a free job) or the chain (crafts waiting for an input) sets the time, the busiest and idlest job, and the queue in start order. The tile shows the scheduled time with the lower bound beside it. Raws are taken as in hand; with no hab build saved, one job at 1x stands in</li>
                     <li><strong>Research this needs:</strong> the nodes behind your stake tiers, buildings, hull sizes and recipes, with a button that lights them on the tree</li>
                 </ul>` },
             { heading: 'Ships vs Stakes tab', content: `
@@ -176,6 +177,17 @@ const moduleHelpContent = {
                     <li>A hull's mining rate is per second and a stake's is per tick, so the answer depends on how long a tick lasts. The charts show output against tick length and the tick at which a stake and a hull are equal</li>
                     <li>Type the asks you see on the market for output per dollar and for the price a stake would need to match a hull</li>
                     <li><strong>Measure your tick:</strong> one extractor, storage read twice an hour apart; the button stores the result for the whole module</li>
+                </ul>` },
+            { heading: 'Loadouts tab', content: `
+                <ul>
+                    <li><strong>Loadouts:</strong> two to four cards, each a hull and one of its configurations (Tier One to Five, Cargo Boost, Fast Freight, Mining, damage kits and so on). The fitted components change the stats - the Ship Explorer's numbers. The same cards feed all five views below</li>
+                    <li><strong>Haul:</strong> cargo delivered an hour and fuel per unit against route length. A line steps down wherever that loadout needs one more jump, so a bigger hold with a shorter warp range can lose inside a band of distances and win outside it; every crossover is listed with its reason</li>
+                    <li><strong>Mine:</strong> fill the hold at mining rate times richness, haul it to the drop-off, repeat: ore delivered an hour, share of time spent mining, food and fuel per unit, ore per crew-hour</li>
+                    <li><strong>Scan:</strong> one scan per cooldown: SDU an hour, tokens an hour, SDU per token and per crew-hour; scan power is shown as the export describes it, a result multiplier</li>
+                    <li><strong>Fight:</strong> every pair fought with the game's own combat formula, 50 to 500 bouts with the first strike alternating: win share, draws, mean rounds. Re-roll to see the noise. <em>Show the formula</em> prints the formula as exported (it is JavaScript, run here unchanged); <em>Download</em> saves it</li>
+                    <li><strong>Fleet:</strong> hulls with counts against the Fleet Size cap of a Council Rank tier (points per class 1, 4, 9 ... 81): points used, totals, what still fits. A row can be sent to the cards, and <em>Research this fleet needs</em> lights the hull sizes and the Fleet Size tier on the Research tab</li>
+                    <li><strong>Cost:</strong> each configuration's components as recipes and raws, side by side, with a button that adds the recipes to your production plan</li>
+                    <li><strong>Route length</strong> (Haul, Mine, Fleet): neighbouring systems are about 1.1 apart, Foy to Eternity 10.2</li>
                 </ul>` },
             { heading: 'Tips', content: `
                 <ul>

@@ -4,7 +4,8 @@
 //   - a GOAL from anywhere in the hub (a recipe, a stake building, a stake tier, a hab tier, a hull to fly, a node,
 //     or the whole Empire tab) lights the prerequisite path and prices it: the level each track must reach and
 //     the XP that takes, points, ATLAS, tokens
-//   - a NODE shows what it needs, what it grants and what it is a gate of (recipes by type, stake buildings)
+//   - a NODE shows what it gives (the export's sentence, every grant in words, the nodes it leads to - 2026-10-06),
+//     what it needs, and what it is a gate of (recipes by type, stake buildings)
 //   - a RECIPE goal also covers getting its raws (the player's choice: claim stakes, a mining fleet, or raws
 //     already in hand): the extractor's gates and a tier-1 stake, and zone access when a raw is not found in the
 //     player's own low-risk zone. A level the path needs on a track is written on that track's band, whether or
@@ -21,14 +22,6 @@
     const TRACK_COLOR = { CouncilRank: '#e8e3d3', Pilot: '#2fa985', Mining: '#dd7429', Building: '#a8842a', Crafting: '#9476db', DataRunner: '#2a9fcf', Combat: '#d9517c' };
     const ABBR = { CouncilRank: 'Council', Pilot: 'Pilot', Mining: 'Mining', Building: 'Building', Crafting: 'Crafting', DataRunner: 'Data', Combat: 'Combat' };
     const KIND_LABEL = { recipe: 'Recipe', building: 'Stake building', stake: 'Claim stake', hab: 'Crafting hab', ship: 'Fly a hull', node: 'Research node', empire: 'Empire' };
-    const GRANT_LABEL = {
-        fleet_size: 'fleet size (points)', max_ship_size: 'largest hull', fleet_concurrency: 'fleets at once', max_residential_plots: 'residential plots',
-        max_productive_plots: 'productive plots', crafting_job_concurrency_bonus: 'crafting jobs', max_residential_plot_tier: 'residential plot tier',
-        max_productive_plot_tier: 'claim stake tier', security_zone_access: 'zone access', crafting_efficiency_modifier: 'crafting efficiency',
-        crafting_time_modifier: 'crafting time', subwarp_speed_modifier: 'subwarp speed', warp_speed_modifier: 'warp speed', enemy_faction_zone_access: 'enemy faction zones',
-        scan_power_modifier: 'scan power', scan_cool_down_modifier: 'scan cooldown', rare_mineral_discovery: 'rare mineral discovery', max_daily_streak_length: 'daily streak',
-        respawn_time_modifier: 'respawn time', warp_lane_fee_modifier: 'warp lane fee', cargo_categories: 'cargo categories'
-    };
     const trunc = (s, n) => (s.length > n ? s.slice(0, n - 1) + '…' : s);
 
     class ResearchTab {
@@ -209,7 +202,7 @@
             const nodes = m.nodes.map(n => {
                 const p = this.pos(n), owned = this.owned.has(n.id), avail = !owned && m.available(n, this.tags);
                 const cls = ['nd', owned ? 'owned' : avail ? 'avail' : 'locked', path.has(n) ? 'path' : '', this.sel === n.id ? 'sel' : '', n.hasData ? '' : 'nodata'].filter(Boolean).join(' ');
-                return `<g class="${cls}" data-node="${n.id}" transform="translate(${p.x},${p.y.toFixed(1)})" style="--tc:${TRACK_COLOR[n.track.key]}"><title>${esc(n.name)} - ${esc(this.levelText(n))}</title><rect x="${-PW / 2}" y="${-PH / 2}" width="${PW}" height="${PH}" rx="7"></rect><text y="-2">${esc(trunc(n.name, 22))}</text><text class="sub" y="11">${owned ? '✓ ' : ''}${esc(this.levelText(n))}</text></g>`;
+                return `<g class="${cls}" data-node="${n.id}" transform="translate(${p.x},${p.y.toFixed(1)})" style="--tc:${TRACK_COLOR[n.track.key]}"><title>${esc(n.name)} - ${esc(this.levelText(n))}${n.description ? '\n' + esc(this.m.constructor.fixText(n.description)) : ''}</title><rect x="${-PW / 2}" y="${-PH / 2}" width="${PW}" height="${PH}" rx="7"></rect><text y="-2">${esc(trunc(n.name, 22))}</text><text class="sub" y="11">${owned ? '✓ ' : ''}${esc(this.levelText(n))}</text></g>`;
             }).join('');
             this.svg.innerHTML = `<g class="bands">${bandRects}</g><g class="edges">${edges.join('')}</g><g class="edges top">${top.join('')}</g><g class="labels">${bandLabels}</g><g class="nodes">${nodes}</g>`;
             this.svg.classList.toggle('has-path', path.size > 0);
@@ -279,20 +272,24 @@
             if (n) {
                 const owned = this.owned.has(n.id), avail = m.available(n, this.tags), u = m.unlocks(n);
                 const missing = n.reqTags.filter(t => !this.tags.has(t)).map(t => m.nodeOfTag.get(t)).filter(Boolean);
-                const grants = Object.entries(n.grants).map(([k, v]) => `<li><span>${esc(GRANT_LABEL[k] || k.replace(/_/g, ' '))}</span><b>${esc(Array.isArray(v) ? v.length + ' kinds' : typeof v === 'number' && Math.abs(v) < 1 ? (v > 0 ? '+' : '') + (v * 100).toFixed(0) + ' %' : v)}</b></li>`).join('');
+                const b = m.benefit(n), gatesAny = u.recipes || u.buildings || u.stakes.length || u.habs.length;
+                const grants = b.grants.map(g => `<li>${esc(g.text)}${g.list && g.list.length ? `<small>${esc(g.list.join(', '))}</small>` : ''}</li>`).join('');
+                const benefit = `<div class="rx-benefit">${b.text ? `<p>${esc(b.text)}</p>` : ''}${grants ? `<ul class="cd-grants">${grants}</ul>` : ''}${!b.text && !grants && !gatesAny ? `<p class="rx-note">The export gives this node no description and no effect of its own${n.tags.length ? '; it is a step on the way to what it leads to' : ''}.</p>` : ''}</div>`;
+                const leads = b.leadsTo.length ? `<p class="rx-leads"><span>Leads to</span> ${b.leadsTo.map(c => `<button type="button" class="rx-link" data-node="${c.id}">${esc(c.name)}</button>`).join(', ')}</p>` : '';
                 const maxT = Math.max(1, ...u.byType.map(x => x[1]));
                 const tok = Object.entries(n.tokens).map(([k, v]) => `${num(v)} ${esc(m.tokenNames[k] || 'cargo #' + k)}`);
                 const pts = Object.entries(n.points).filter(([, v]) => v > 0).map(([k, v]) => `${v} ${ABBR[k] || k}`);
                 parts.push(`<section class="rx-panel cd-node" style="--tc:${TRACK_COLOR[n.track.key]}">
                     <div class="rx-panel-head"><h3>Node</h3><span>${esc(n.track.label)}${n.scalability ? ' · ' + esc(n.scalability.toLowerCase()) : ''}</span><button type="button" class="sb-btn ghost" data-act="close-node">Close</button></div>
                     <h2 class="cd-title">${esc(n.name)}</h2>
+                    ${benefit}
                     ${n.hasData ? `<div class="rx-facts"><div><b>${esc(this.levelText(n))}</b><span>level needed</span></div><div><b>${pts.join(', ') || '0'}</b><span>points</span></div><div><b>${num(n.atlas / window.CommandDeck.ATLAS_DECIMALS)}</b><span>ATLAS</span></div></div>
                         ${tok.length ? `<p class="rx-note">Tokens: ${tok.join(', ')}.</p>` : ''}
                         <p class="cd-state ${owned ? 'ok' : avail ? 'go' : 'no'}">${owned ? 'Researched.' : avail ? 'Every prerequisite is researched: this node is open (level permitting).' : `Locked: needs ${missing.map(x => `<button type="button" class="rx-link" data-node="${x.id}">${esc(x.name)}</button>`).join(', ') || 'a prerequisite'}.`}</p>`
                     : '<p class="rx-note">The export names this node but gives it no cost, requirement or effect yet.</p>'}
-                    ${grants ? `<ul class="cd-grants">${grants}</ul>` : ''}
-                    ${u.recipes || u.buildings || u.stakes.length || u.habs.length ? `<div class="ch"><h4>It is a gate of ${num(u.recipes)} recipes${u.buildings ? ` and ${num(u.buildings)} stake buildings` : ''}${u.stakes.length ? ', and of owning ' + u.stakes.map(s => esc(s.replace(/-/g, ' '))).join(', ') : ''}${u.habs.length ? ', and of ' + u.habs.map(s => esc(s.replace('hab-t', 'hab tier '))).join(', ') : ''}</h4>
-                        ${u.byType.slice(0, 9).map(([k, c]) => `<div class="ch-row"><span class="ch-lbl">${esc(k)}</span><div class="ch-bar"><b style="width:${(100 * c / maxT).toFixed(1)}%;background:${TRACK_COLOR[n.track.key]}"><span class="ct">${esc(k)}: ${num(c)} recipes</span></b></div><span class="ch-val">${num(c)}</span></div>`).join('')}</div>` : (n.hasData && n.tags.length ? '<p class="rx-note">No recipe or stake building names this node as a gate; it matters for what it grants or as a prerequisite.</p>' : '')}
+                    ${gatesAny ? `<div class="ch"><h4>It is a gate of ${[u.recipes ? `${num(u.recipes)} recipes` : '', u.buildings ? `${num(u.buildings)} stake buildings` : ''].filter(Boolean).join(' and ')}${u.stakes.length ? ', and of owning ' + u.stakes.map(s => esc(s.replace(/-/g, ' '))).join(', ') : ''}${u.habs.length ? ', and of ' + u.habs.map(s => esc(s.replace('hab-t', 'hab tier '))).join(', ') : ''}</h4>
+                        ${u.byType.slice(0, 9).map(([k, c]) => `<div class="ch-row"><span class="ch-lbl">${esc(k)}</span><div class="ch-bar"><b style="width:${(100 * c / maxT).toFixed(1)}%;background:${TRACK_COLOR[n.track.key]}"><span class="ct">${esc(k)}: ${num(c)} recipes</span></b></div><span class="ch-val">${num(c)}</span></div>`).join('')}</div>` : (n.hasData && n.tags.length && (b.text || grants) ? '<p class="rx-note">No recipe or stake building names this node as a gate.</p>' : '')}
+                    ${leads}
                     ${n.hasData ? `<div class="rx-actions">${owned ? (n === m.start ? '' : '<button type="button" class="sb-btn ghost" data-act="disown">Un-mark (and what needs it)</button>') : '<button type="button" class="sb-btn" data-act="own">Mark researched, with its prerequisites</button>'}${this.goal && this.goal.node === n ? '' : '<button type="button" class="sb-btn ghost" data-act="goal-node">Show its path</button>'}</div>` : ''}
                 </section>`);
             }

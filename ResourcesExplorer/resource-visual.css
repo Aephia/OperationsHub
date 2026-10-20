@@ -154,9 +154,6 @@ body.rx-modal-open { overflow: hidden; }
 .rx-bill h4, .rx-row h4 { font-size: 0.6rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-dim); margin: 0 0 0.35rem; font-weight: 600; }
 .rx-raw-portrait { height: 100%; display: grid; grid-template-columns: 160px minmax(0, 1fr); align-items: center; gap: 1.2rem; padding: 1rem 1.4rem; }
 .rx-raw-portrait p { color: var(--text-secondary); font-size: 0.95rem; line-height: 1.5; max-width: 560px; }
-.rx-ore { position: relative; width: 150px; height: 150px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--c) 70%, #fff), var(--c) 45%, #1a0d05 100%); box-shadow: 0 0 60px color-mix(in srgb, var(--c) 40%, transparent), inset -18px -14px 40px rgba(0, 0, 0, 0.7); animation: rx-breathe 4s ease-in-out infinite; }
-.rx-ore i { position: absolute; border-radius: 50%; background: rgba(0, 0, 0, 0.35); }
-.rx-ore i:nth-child(1) { width: 28px; height: 22px; left: 30%; top: 55%; } .rx-ore i:nth-child(2) { width: 16px; height: 14px; left: 62%; top: 32%; } .rx-ore i:nth-child(3) { width: 12px; height: 10px; left: 50%; top: 72%; }
 
 .rx-map { position: relative; border-radius: 10px; background: rgba(0, 0, 0, 0.4); border: 1px solid var(--line); overflow: hidden; margin-bottom: 0.7rem; }
 .rx-map-svg { width: 100%; height: auto; display: block; }
@@ -273,15 +270,20 @@ body.rx-modal-open { overflow: hidden; }
 @keyframes rx-node { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
 @keyframes rx-flow { to { stroke-dashoffset: -28; } }
 @keyframes rx-pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.35); opacity: 0.75; } }
-@keyframes rx-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
-body.is-hidden .cg-svg .ed, body.is-hidden .rx-map-svg .hot, body.is-hidden .rx-ore { animation-play-state: paused; }
+body.is-hidden .cg-svg .ed, body.is-hidden .rx-map-svg .hot { animation-play-state: paused; }
 @media (prefers-reduced-motion: reduce) {
-    .cg-svg .ed, .rx-map-svg .hot, .rx-ore, .rx-modal, .rx-sheet, .cg-svg .nd .in { animation: none !important; }
+    .cg-svg .ed, .rx-map-svg .hot, .rx-modal, .rx-sheet, .cg-svg .nd .in { animation: none !important; }
     .rc, .cg-svg { transition: none; }
 }
 
 /* -------------------------------------------------------- RESPONSIVE ---- */
 .rx-map-svg { max-height: 420px; }
+/* a raw's sheet leads with its map (2026-10-20): the map on the left at up to 66vh, the facts beside it */
+.rx-lead-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr); gap: 1.2rem; align-items: start; }
+.rx-lead .rx-map { margin-bottom: 0; }
+.rx-lead .rx-map-svg { max-height: 66vh; }
+.rx-how { color: var(--text-secondary); font-size: 0.92rem; line-height: 1.5; margin: 0 0 0.8rem; }
+.rx-side.one { grid-template-columns: minmax(0, 1fr); }
 @media (max-width: 1000px) {
     .an-two, .an-two.wide { grid-template-columns: 1fr; }
     .an-rk.raw { grid-template-columns: 36px minmax(120px, 1.2fr) minmax(100px, 1.3fr) 56px 90px; }
@@ -291,6 +293,7 @@ body.is-hidden .cg-svg .ed, body.is-hidden .rx-map-svg .hot, body.is-hidden .rx-
     .rx-layout { grid-template-columns: 1fr; }
     .rx-sidebar { position: static; max-height: none; }
     .rx-side { grid-template-columns: 1fr; }
+    .rx-lead-grid { grid-template-columns: minmax(0, 1fr); }
     .rx-raw-portrait { grid-template-columns: 1fr; text-align: center; justify-items: center; }
     .an-rk { grid-template-columns: 36px minmax(0, 1fr) minmax(90px, 1fr); }
     .an-rk > :nth-child(n+4) { display: none; }

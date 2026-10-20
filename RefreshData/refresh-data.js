@@ -118,6 +118,14 @@ const DATA_TASKS = [
         outputJs: 'research-data.js',
         globalVar: 'researchData',
         schema: null
+    },
+    {
+        // Command Deck Loadouts (2026-10-05): fleet points, combat scalars, flat ship rows, the combat formula
+        type: 'json',
+        source: 'combat.json',
+        outputJs: 'combat-data.js',
+        globalVar: 'combatData',
+        schema: null
     }
 ];
 

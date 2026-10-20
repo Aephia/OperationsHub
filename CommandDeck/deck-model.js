@@ -3,7 +3,7 @@
 //   recipes + resources + planets + buildings  (through ResourcesExplorer/resource-model.js and
 //             RecipeExplorer/recipe-model.js, the same models those explorers use, so counts agree)
 //   ships     (Data/ships-data.js)
-// Three engines, no invented scores:
+// Three engines here, no invented scores (a fourth, Loadout, lives in deck-loadout.js on the Ship Explorer calculator):
 //   ResearchModel - what a node needs (prerequisite closure, track levels -> XP, points, ATLAS, tokens) and what it
 //                   gates (recipes, stake buildings, stake tiers, hab tiers, ship sizes)
 //   StakeEngine   - one same-tier claim stake on one planet: hubs follow what is placed, crew quarters and power
@@ -164,7 +164,10 @@
             this.nodes.forEach(n => {
                 n.prereqs = n.reqTags.map(t => this.nodeOfTag.get(t)).filter(p => p && p !== n);
                 n.primary = n.prereqs[0] || (!n.hasData && n.parentId ? this.byId.get(n.parentId) || null : null);
+                n.children = [];
             });
+            // what a node opens: the nodes that require one of its tags (and the no-number nodes hung off it)
+            this.nodes.forEach(n => (n.prereqs.length ? n.prereqs : (n.primary ? [n.primary] : [])).forEach(p => p.children.push(n)));
             const depth = (n, trail) => {
                 if (n.depth != null) return n.depth;
                 if (trail.has(n)) return 0;
@@ -271,6 +274,58 @@
             return n;
         }
         available(node, tagSet) { return node.hasData && node.reqTags.every(t => tagSet.has(t)); }
+
+        // What a node gives the player, in words (2026-10-06): the export's own sentence, every
+        // character_value_changes grant as a sentence, and the nodes it opens. The export saved its descriptions
+        // through the wrong code page (an em dash arrives as "â€”", an apostrophe as "â€™"); repaired here, on
+        // display, so the data stays as exported.
+        static fixText(s) {
+            // the sequences are UTF-8 bytes read as cp1252: C3 A2 = "â", E2 80 = "â€" ...
+            return String(s || '').replace(/\s*(?:â€”|â€“)\s*/g, ' - ').replace(/â€™|â€˜/g, '\'')
+                .replace(/â€œ|â€\x9d/g, '"').replace(/â€¦/g, '...').replace(/Â /g, ' ').replace(/\s+-\s+-\s+/g, ' - ').trim();
+        }
+        grantText(key, v, node) {
+            const pct = x => (x > 0 ? '+' : '-') + Math.round(Math.abs(x) * 100) + ' %';
+            const perLevel = node && node.scalability === 'Unlimited';        // a prestige track: the grant repeats every level
+            const SIZE = { XxSmall: 'XX-Small', XSmall: 'X-Small', Small: 'Small', Medium: 'Medium', Large: 'Large', Capital: 'Capital', Commander: 'Commander', Titan: 'Titan' };
+            const ZONE = { MediumRiskZone: 'Travel into medium-risk zones (faction-owned or neutral)', HighRiskZone: 'Travel into high-risk zones' };
+            const n = x => Number(x).toLocaleString('en-US');
+            switch (key) {
+                case 'fleet_size': return { text: `Fleet cap +${n(v)} points` };
+                case 'max_ship_size': return { text: `Fly hulls up to ${SIZE[v] || v}` };
+                case 'fleet_concurrency': return { text: `Up to ${n(v)} fleets in operation at once` };
+                case 'max_residential_plots': return { text: perLevel ? `+${n(v)} residential (crafting-hab) plot${v === 1 ? '' : 's'} per level` : `Up to ${n(v)} residential (crafting-hab) plots` };
+                case 'max_productive_plots': return { text: perLevel ? `+${n(v)} productive (claim-stake) plot${v === 1 ? '' : 's'} per level` : `Up to ${n(v)} productive (claim-stake) plots` };
+                case 'max_residential_plot_tier': return { text: `Crafting habs up to tier ${v}` };
+                case 'max_productive_plot_tier': return { text: `Claim stakes up to tier ${v}` };
+                case 'crafting_job_concurrency_bonus': return { text: `+${n(v)} crafting job${v === 1 ? '' : 's'} running at once` };
+                case 'security_zone_access': return { text: ZONE[v] || `Zone access: ${v}` };
+                case 'enemy_faction_zone_access': return { text: 'Travel into enemy faction zones' };
+                case 'crafting_efficiency_modifier': return { text: `Crafting efficiency ${pct(v)}` };
+                case 'crafting_time_modifier': return { text: `Crafting time ${pct(v)}` };
+                case 'subwarp_speed_modifier': return { text: `Subwarp speed ${pct(v)}` };
+                case 'warp_speed_modifier': return { text: `Warp speed ${pct(v)}` };
+                case 'scan_power_modifier': return { text: `Scan power ${pct(v)}` };
+                case 'scan_cool_down_modifier': return { text: `Scan cooldown ${pct(v)}` };
+                case 'respawn_time_modifier': return { text: `Fleet respawn time ${pct(v)}` };
+                case 'warp_lane_fee_modifier': return { text: `Warp lane fees ${pct(v)}` };
+                case 'max_daily_streak_length': return { text: `Daily check-in streak up to ${n(v)} days` };
+                case 'cargo_categories': return { text: `Carry all ${Array.isArray(v) ? v.length : n(v)} cargo categories` };
+                case 'rare_mineral_discovery': {
+                    const ids = Object.keys(v || {}), f = ids.length ? v[ids[0]] : 1;
+                    const list = ids.map(id => this.tokenNames[id]).filter(Boolean);
+                    return { text: `${pct(f - 1)} yield${perLevel ? ' per level' : ''} on ${ids.length} asteroid-mined resources`, list };
+                }
+                default: return { text: `${key.replace(/_/g, ' ')}: ${typeof v === 'object' ? JSON.stringify(v) : v}`, raw: true };
+            }
+        }
+        benefit(node) {
+            return {
+                text: ResearchModel.fixText(node.description),
+                grants: Object.entries(node.grants).map(([k, v]) => this.grantText(k, v, node)),
+                leadsTo: node.children.slice().sort((a, b) => a.order - b.order)
+            };
+        }
 
         // ---- tree layout: one band per track, x = prerequisite depth, rows from a leaf-order walk of the in-track tree
         computeLayout() {
@@ -465,7 +520,7 @@
         // stake processor already makes). items: [{id, qty}]
         expand(items, stop) {
             const stopAt = stop || new Set();
-            const leaves = new Map(), crafts = new Map(), byItem = [];
+            const leaves = new Map(), crafts = new Map(), steps = new Map(), byItem = [];
             let sequential = 0;
             const walk = (name, qty, trail, viaRecipe, own) => {
                 const res = this.rm.byName.get(name), rec = viaRecipe || this.rm.recipeByName.get(name);
@@ -474,13 +529,89 @@
                 if (!craftable) { leaves.set(name, (leaves.get(name) || 0) + qty); own.set(name, (own.get(name) || 0) + qty); return; }
                 const n = Math.ceil(qty / (rec.outputQuantity || 1));
                 crafts.set(name, (crafts.get(name) || 0) + n); sequential += n * (rec.constructionTime || 0);
+                // the step the schedule needs: one craft's time, what one craft makes, what one craft takes
+                if (!steps.has(name)) steps.set(name, { name, each: rec.constructionTime || 0, outQ: rec.outputQuantity || 1, ings: rec.ingredients.map(i => ({ name: i.name, qty: i.quantity })) });
                 trail.add(name);
                 rec.ingredients.forEach(i => walk(i.name, i.quantity * n, trail, null, own));
                 trail.delete(name);
             };
             (items || []).forEach(it => { const rec = this.rc.byId.get(it.id); if (!rec) return; const own = new Map(); walk(rec.outputName, it.qty, new Set(), rec, own); byItem.push({ id: it.id, name: rec.outputName, qty: it.qty, leaves: own }); });
             let craftCount = 0; crafts.forEach(n => { craftCount += n; });
-            return { leaves, crafts, craftCount, sequential, byItem };
+            return { leaves, crafts, steps, craftCount, sequential, byItem };
+        }
+
+        // ---- hab schedule (2026-10-08): the plan's crafts placed on the hab's job lanes, in dependency order.
+        // plan: expand()'s result (crafts: Map name -> count, steps: Map name -> { each, outQ, ings }).
+        // hab:  { lanes: [{ label, speed }] } or { jobs: n } (n lanes at 1x). A lane runs one craft at a time and a
+        //       craft on it takes each / speed seconds. Raws are taken as in hand (gathering them is the bill).
+        // Rule: a craft may start when every crafted input it takes is in the pool (made - reserved >= the recipe's
+        // quantity) and a lane is free; the fastest free lane takes the ready craft with the longest tail (its own time
+        // plus the longest tail of anything that uses it); on a tie the kind the lane just ran, then more crafts left.
+        // Each start records
+        // what it waited for - an input finishing (the chain) or the lane's previous craft (the queue) - so the chain
+        // from the last craft back to time 0 is the critical path, and its waits say where the time went.
+        schedule(plan, hab) {
+            const EPS = 1e-9;
+            const src = hab && hab.lanes && hab.lanes.length ? hab.lanes : Array.from({ length: Math.max(1, Math.floor((hab && hab.jobs) || 1)) }, () => ({ speed: 1 }));
+            const lanes = src.map((l, i) => ({ i, label: l.label || `Job ${i + 1}`, speed: l.speed > 0 ? +l.speed : 1, freeAt: 0, last: null, busy: 0, jobs: [] }));
+            const counts = (plan && plan.crafts) || new Map(), steps = (plan && plan.steps) || new Map();
+            const types = [];
+            counts.forEach((n, name) => { const s = steps.get(name); if (n > 0 && s) types.push({ name, total: n, left: n, each: s.each || 0, outQ: s.outQ || 1, ings: [], raw: s.ings, made: 0, reserved: 0, doneAt: -1, doneNow: 0, lastDone: null, users: [], first: null, last: null, laneTime: 0, onPath: 0 }); });
+            const byName = new Map(types.map(t => [t.name, t]));
+            types.forEach(t => { t.ings = t.raw.filter(i => byName.has(i.name)).map(i => ({ ty: byName.get(i.name), qty: i.qty })); t.ings.forEach(i => i.ty.users.push(t)); delete t.raw; });
+            const memo = new Map(), tail = t => { if (memo.has(t.name)) return memo.get(t.name); memo.set(t.name, 0); const v = t.each + (t.users.length ? Math.max(...t.users.map(tail)) : 0); memo.set(t.name, v); return v; };
+            types.forEach(t => { t.tail = tail(t); });
+            const ready = t => t.left > 0 && t.ings.every(i => i.ty.made - i.ty.reserved >= i.qty - EPS);
+            const jobs = []; let left = types.reduce((a, t) => a + t.total, 0), t = 0, guard = 0, complete = true;
+            const finish = () => { let any = false; lanes.forEach(l => { const j = l.last; if (j && !j.done && j.end <= t + EPS) { j.done = true; const ty = byName.get(j.name); ty.made += ty.outQ; ty.doneNow += ty.outQ; ty.doneAt = t; ty.lastDone = j; ty.last = j.end; any = true; } }); return any; };
+            while (left > 0) {
+                if (++guard > 5e6) { complete = false; break; }
+                const done = finish();
+                let started = false;
+                const free = lanes.filter(l => l.freeAt <= t + EPS).sort((a, b) => b.speed - a.speed || a.i - b.i);
+                for (const lane of free) {
+                    const cands = types.filter(ready); if (!cands.length) break;
+                    const same = ty => (lane.last && lane.last.name === ty.name ? 1 : 0);          // on a tie, keep the kind the lane just ran
+                    cands.sort((a, b) => b.tail - a.tail || same(b) - same(a) || b.left - a.left || a.name.localeCompare(b.name));
+                    const ty = cands[0];
+                    let cause = { kind: t > 0 ? 'free' : 'start', job: null };
+                    ty.ings.forEach(i => { const s = i.ty; if (Math.abs(s.doneAt - t) <= EPS && s.made - s.reserved - s.doneNow < i.qty - EPS) cause = { kind: 'input', job: s.lastDone }; });
+                    if (cause.kind !== 'input' && lane.last && Math.abs(lane.last.end - t) <= EPS) cause = { kind: 'lane', job: lane.last };
+                    ty.ings.forEach(i => { i.ty.reserved += i.qty; });
+                    const job = { id: jobs.length, name: ty.name, lane: lane.i, k: ty.total - ty.left + 1, start: t, end: t + ty.each / lane.speed, cause, done: false };
+                    jobs.push(job); lane.jobs.push(job); lane.last = job; lane.freeAt = job.end; lane.busy += job.end - t;
+                    if (ty.first == null) ty.first = t; ty.laneTime += job.end - t; ty.left--; left--; started = true;
+                }
+                if (started || done) { if (lanes.some(l => l.last && !l.last.done && l.last.end <= t + EPS)) continue; if (started) continue; }
+                const busy = lanes.filter(l => l.last && !l.last.done);
+                if (!busy.length) { complete = false; break; }                          // nothing runs and nothing is ready: cannot happen on a DAG
+                const next = Math.min(...busy.map(l => l.last.end));
+                if (next > t + EPS) { t = next; types.forEach(ty => { ty.doneNow = 0; }); }
+            }
+            finish();
+            const makespan = jobs.length ? Math.max(...jobs.map(j => j.end)) : 0;
+            // the critical path: from the craft that finishes last, back through what each one waited for
+            const onPath = new Set(); const chain = [];
+            let cur = jobs.length ? jobs.reduce((a, j) => (j.end > a.end ? j : a), jobs[0]) : null;
+            while (cur) { onPath.add(cur.id); chain.unshift(cur); cur = cur.cause.job; }
+            const path = []; chain.forEach(j => { const seg = path[path.length - 1]; if (seg && seg.name === j.name && seg.lane === j.lane && Math.abs(seg.end - j.start) <= EPS && j.cause.kind === 'lane') { seg.n++; seg.end = j.end; } else path.push({ name: j.name, lane: j.lane, n: 1, start: j.start, end: j.end, kind: j.cause.kind }); byName.get(j.name).onPath += j.end - j.start; });
+            const pathBy = { input: 0, lane: 0, start: 0 }; chain.forEach(j => { pathBy[j.cause.kind === 'input' ? 'input' : j.cause.kind === 'lane' ? 'lane' : 'start'] += j.end - j.start; });
+            // runs: consecutive crafts of one kind on one lane, for drawing
+            lanes.forEach(l => { l.runs = []; l.jobs.forEach(j => { const r = l.runs[l.runs.length - 1]; if (r && r.name === j.name && Math.abs(r.end - j.start) <= EPS) { r.n++; r.end = j.end; r.path = r.path || onPath.has(j.id); } else l.runs.push({ name: j.name, n: 1, start: j.start, end: j.end, path: onPath.has(j.id) }); }); l.util = makespan > 0 ? l.busy / makespan : 0; });
+            const work = types.reduce((a, ty) => a + ty.total * ty.each, 0), speedSum = lanes.reduce((a, l) => a + l.speed, 0);
+            const byType = types.map(ty => ({ name: ty.name, crafts: ty.total, each: ty.each, outQ: ty.outQ, first: ty.first, last: ty.last, laneTime: ty.laneTime, onPath: ty.onPath, tail: ty.tail, needs: ty.ings.map(i => i.ty.name) })).sort((a, b) => a.first - b.first || b.tail - a.tail || a.name.localeCompare(b.name));
+            return { lanes: lanes.map(l => ({ i: l.i, label: l.label, speed: l.speed, busy: l.busy, util: l.util, jobs: l.jobs, runs: l.runs })), jobs, crafts: jobs.length, makespan, path, pathBy, byType, work, speedSum, parallel: speedSum > 0 ? work / speedSum : 0, chain: types.length ? Math.max(...types.map(ty => ty.tail)) : 0, complete };
+        }
+
+        // the Hub Explorer's saved build as job lanes: the hab's own jobs at 1x, each station's jobs at its speed, each
+        // storage's job bonus at 1x (the export gives a storage no speed). rows: HubModel.plan(items).rows
+        static lanesFromHab(rows) {
+            const lanes = [];
+            const list = (rows || []).filter(r => r && r.item);
+            list.filter(r => r.item.kind === 'hab').forEach(r => { for (let j = 0; j < (r.item.jobs || 0); j++) lanes.push({ label: `Hab T${r.item.tier || '?'}`, speed: 1, kind: 'hab' }); });
+            list.filter(r => r.item.kind === 'station').sort((a, b) => (b.item.speed || 1) - (a.item.speed || 1)).forEach(r => { for (let q = 0; q < r.it.qty; q++) for (let j = 0; j < (r.item.jobs || 0); j++) lanes.push({ label: `${r.item.size || ''} station${r.it.qty > 1 ? ' ' + (q + 1) : ''}`.trim(), speed: r.item.speed || 1, kind: 'station' }); });
+            list.filter(r => r.item.kind === 'storage').forEach(r => { for (let j = 0; j < (r.item.jobs || 0) * r.it.qty; j++) lanes.push({ label: `Storage T${r.item.tier || '?'} bonus`, speed: 1, kind: 'storage' }); });
+            return lanes;
         }
 
         // stakes: [{id, key, tier, alloc, procs}], fleets: [{id, ship, count, raw (name), richness}]

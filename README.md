@@ -176,7 +176,9 @@ bundles the page loads (resources, recipes, planets, buildings); nothing derived
   the carrying systems lit by territory colour and sized by richness, planets / belts / best richness / T1 extractor
   rate, territory, planet types, regions, the twelve richest bodies) or **How it is made** for anything crafted
   (ingredients, build time, production steps, starbase level, planet types), then **Who asks for it** (the largest
-  consumers per craft, live share, product types). Links into the Recipe Explorer (`?search=`), ClaimStake and
+  consumers per craft, live share, product types). **A raw's sheet has no chain section (2026-10-20):** it leads with
+  *Where it is found* at full width - the map on the left (up to 66% of the viewport height), how it is mined and the
+  facts beside it - then *Who asks for it*. Links into the Recipe Explorer (`?search=`), ClaimStake and
   Planet explorers; `?r=<name>` opens a sheet and `?search=` pre-fills the search for cross-module links
 - **Analytics tab (five always-on sections, HTML bars):** the economy's shape (category x tier, and tier x category);
   steps from raw (depth histogram and ingredients-per-recipe, both by category); **demand** (all
@@ -313,9 +315,10 @@ repeat the manufacturer. Files: `ShipExplorer/ship-visual.js`, `ship-visual.css`
 ---
 
 ### 7. 🧭 **Command Deck**
-The module that joins the others (built 2026-10-04). `CommandDeck/deck-model.js` builds on the Resources and Recipe
-explorers' own models (so every count agrees with theirs) and adds three engines: the research tree, a same-tier
-claim-stake engine, and an empire coverage model. Three tabs, everything always visible, no Chart.js, no animation.
+The module that joins the others (built 2026-10-04, Loadouts tab 2026-10-05). `CommandDeck/deck-model.js` builds
+on the Resources and Recipe explorers' own models (so every count agrees with theirs) and adds four engines: the
+research tree, a same-tier claim-stake engine, an empire coverage model, and a loadout engine (deck-loadout.js) on the Ship Explorer's
+configuration calculator. Four tabs, everything always visible, no Chart.js, no animation.
 
 - **Research tab:** the export's research tree, which no other module shows - 282 nodes on seven tracks drawn as one
   SVG (a band per track, a node one column right of the deepest node it requires, an arrow per required research
@@ -331,7 +334,12 @@ claim-stake engine, and an empire coverage model. Three tabs, everything always 
   player's faction is a chip on the page (default USTUR). For a USTUR player 54 of the 93 raws are in the home
   low-risk zone, 35 only in medium risk and 4 only in another faction's zone. A level the path needs on a track
   is written on that track's band (`LEVEL 8 NEEDED · 839 XP`) whether or not the path has a node there.
-  A node's sheet shows what it needs, what it grants and what it is a gate of. **My research** marks nodes
+  A node's sheet (2026-10-06) opens with **what it gives**: the export's own description (its mis-coded dashes and
+  apostrophes repaired on display, the data left as exported), every `character_value_changes` grant as a sentence
+  (`Fleet cap +7 points`, `Fly hulls up to Medium`, `Crafting time -5 %`, `+5 % yield per level on 31 asteroid-mined
+  resources` with the resources named from the export's cargo table, which `split-uber-export.js` now carries in
+  `tokenNames`), then what it needs, what it is a gate of, and **Leads to**: the nodes that require it. A node the
+  export names without a sentence or an effect says so instead of showing nothing. **My research** marks nodes
   researched (localStorage): bills count only what is left and *Next nodes* ranks what is open by recipes gated.
   Links in: `?recipe=<outputId|name>` (the Recipe Explorer's sheet has a *Research path* button), `?building=<id>`,
   `?ship=<name>`, `?stake=<tier>`, `?hab=<id>`, `?node=<name>`
@@ -345,13 +353,67 @@ claim-stake engine, and an empire coverage model. Three tabs, everything always 
   in the middle, the plan's recipes right; link width is the share of that line's supply or need. The bill stops
   at anything a stake processor already makes. **Research this needs** totals the nodes behind the stake tiers,
   every building placed, the hull sizes, zone access for each stake and fleet body, and the plan's recipes, and
-  lights them on the tree. Planet rows and stake cards carry the zone (low risk / medium risk / another faction's)
+  lights them on the tree. Planet rows and stake cards carry the zone (low risk / medium risk / another faction's).
+  **Hab schedule** (2026-10-08): the plan's crafts placed on the hab's real jobs - one lane per job (the hab's job
+  at 1x, each station job at its speed, each storage job bonus at 1x), a block per run of one craft, the critical
+  path in gold, the busy share of each job, then the path as a chain of segments marked *after a free job* or
+  *after an input*, a sentence saying whether the queue or the chain sets the time, and the queue in start order.
+  `Empire.schedule` in `deck-model.js` is a pure list scheduler with a pooled inventory (a craft starts when its
+  crafted inputs are in the pool and a lane is free; the fastest free lane takes the ready craft with the longest
+  tail). The tile shows the scheduled time with the lower bound (work / speed) beside it. Reference: Power
+  Regulation Module x100 on a T3 hab + S station + T3 storage (5 jobs) takes 88.4 min, 9.4 h on one job
 - **Ships vs Stakes tab:** a hull's mining rate is per **second**, an extractor's is per **tick**, and no export
   field gives the tick length - so the tab takes the tick as an input and shows where the answer flips: output per
   hour against tick length on log-log axes (stake lines fall, hull lines are flat, they cross at the break-even
   tick), the same per dollar, break-even ticks, the price a stake would need to match a hull per dollar at your
   tick, what each asks of you (hold fill time and unloads a day against storage fill time), and **Measure your
   tick** (one extractor, storage read twice an hour apart: tick = 3,600 x rate x richness / units gained)
+- **Loadouts tab:** one set of two to four **loadouts** (a hull + one of its 48 configurations - Tier One..Five,
+  Cargo Boost / Fast Freight / Mining / Scanning / Salvage / Repair / Rescue Min-Mid-Max, eight damage kits) shared by
+  six sub-tabs. Engine `CommandDeck/deck-loadout.js`: the Ship Explorer's `ShipConfigCalculator`
+  (`ShipExplorer/config-calculator.js` + `Data/ship-components-data.js` + `Data/ship-formulas-data.js`, loaded by this
+  page too; 3,756 components, 0 missing) applied to each hull's **flat stat row** (`Data/combat-data.js` `allShips`, 74
+  snake_case keys - the keys the calculator modifies and the keys the combat formula reads), so one fitted row serves
+  every view. The export's travel units are unstated, so every figure is a comparison under one reading.
+  - **Haul:** cargo delivered an hour and fuel per unit against route length (log-log, 0.5-60 map units; each line a
+    staircase that steps where that loadout needs one more jump), the at-distance table (jumps, times, cargo an hour,
+    hold, fuel, trips a tank, gain over the bare hull), every crossover with its reason, the eleven hauling stats
+    base -> fitted, the fit list. Round trip = straight line, ceil(d / range) jumps, spool before each, cooldown between
+    and before the return leg, unload + load at the loading rate, planet-exit fuel once. Reference, Tap: *Cargo Boost
+    Max* (hold x1.75, warp x1.2, range 12.16) hauls 222 k an hour at 10 units, 2.96x the bare Tap, and beats *Fast
+    Freight Max* (hold x1.39, warp x1.6, range 13.16, warp fuel x0.71) everywhere except the jump windows 12.2-13.2,
+    24.3-26.3, 36.5-39.5 and 48.6-52.7 units
+  - **Mine:** a cycle = fill the hold at mining rate x richness (richness is an input - the export has no yield
+    formula), haul it the route length, come back, repeat. Ore delivered an hour and the share of the cycle spent
+    mining against route length; at distance: rate, fill, cycle, ore an hour, food and fuel per unit, crew, ore per
+    crew-hour. Reference, Tap at 10 units, richness 1: *Mining Max* (rig x1.2 + 3.76/s, hold x1.55) 69.8 k an hour vs
+    *Cargo Boost Max* 52.7 k vs bare 36.0 k; no crossover - the rig wins at every length
+  - **Scan:** one scan per cooldown: SDU an hour, tokens an hour, SDU per token and per crew-hour, with scan power
+    shown as the export describes it ("a multiplier for scan results" - what it multiplies is not stated, so it is
+    not applied). Reference, Tap: bare 193 SDU every 732 s = 949 an hour; *Scanning Max* 1,606 an hour at 0.93 SDU
+    per token
+  - **Fight:** every pair fought with the export's own combat formula (`shipConfigurations.combatFormula`, a
+    JavaScript IIFE, v1) run headless N times (50-500, default 200) with the first strike alternating, default
+    consumables, no alpha or skill bonuses: win share bar, draw / mutual share, mean rounds; the combat stats base ->
+    fitted (a fit can set a stat the hull has at 0 - kinetic damage); **Show the formula** prints the 1,535-line source
+    as exported and **Download** saves it. Reference: Tap *Kinetic Damage Max* beats the
+    bare Tap 100 % in ~42 rounds; *Cargo Boost Max* (T5 shields + hull) also beats the bare Tap 100 %; a mirror match
+    splits within noise
+  - **Fleet:** a fleet of hulls + configurations with counts against the Council Rank **Fleet Size** cap (research
+    nodes: start 4, Tier 1..8 = 7 / 12 / 19 / 28 / 39 / 52 / 67 / 84). Points per hull from `globalCombatConfig.fleet_points`
+    (XXS 1 · XS 4 · S 9 · M 16 · L 25 · CAP 36 · CMD 49 · TTN 81; capacity points equal combat points except Titan 128
+    - the export does not say which the cap counts, combat points are used). Totals: points, hulls, crew, hold, cargo
+    and ore an hour on the Haul / Mine route, HP, SP, damage; "what still fits" per loadout; a row can be sent to the
+    loadout cards; **Research this fleet needs** hands the size nodes of every hull flown and the chosen Fleet Size
+    tier to the Research tab. The ship sheet of earlier research (IMP 5, Tap 3) is a different scale and is not used
+  - **Cost:** each fitted component matched to its recipe by name (`Cargo M T5`, `Power Core CAP T1`; a drone fit
+    names a hull with no tier and is priced at T1, said on the page), expanded with the Recipe Explorer's planner (all
+    statuses): recipes, crafts, raw units, critical path, a raw bill side by side, unpriced components listed, and
+    **Add these recipes to the production plan** (writes `recipeExplorer.plan.v1`). Reference: Tap *Cargo Boost Max* =
+    9 recipes, 1.18 M raw units of 53 kinds, Copper Ore 137.7 k on top
+  - **Data:** `JSON/combat.json` / `Data/combat-data.js` (`combatData`), a new projection in `split-uber-export.js`:
+    `globalCombatConfig.fleet_points` + `.combat`, `shipConfigurations.allShips`, `.combatFormula`,
+    `.combatSimulatorConsumables`. Link in: `?tab=vs`
 - **Inputs that are not in the data, and say so on the page:** the tick length (shown as "assumed" until set or
   measured; one value for the Empire and Ships vs Stakes tabs), whether richness multiplies a stake's output (a
   switch, on by default), and prices (the boxes start with asks quoted on 2026-10-04 and keep what you type).
@@ -363,12 +425,14 @@ claim-stake engine, and an empire coverage model. Three tabs, everything always 
   raws the planet has a deposit of; release status is never shown
 - **Data:** `Data/research-data.js`, from `JSON/research.json`, which `split-uber-export.js` now writes from the
   export's `researchNodes`, `researchGateMap` (reduced to its AND-sets) and `levelThresholds`
-- **Check:** `node Test/command-deck-check.js` - 100 checks of the model against figures derived by other code in
+- **Check:** `node Test/command-deck-check.js` - 140 checks of the model against figures derived by other code in
   two research reports (full-stake layouts, break-even ticks, fair prices, a research path), identities (the
-  bill equals the Recipe Explorer planner's) and a by-hand derivation of the raw-gathering paths from the raw
-  bundles; `--sabotage` corrupts three inputs and must fail
+  bill equals the Recipe Explorer planner's; loadout stats equal a fresh ShipConfigCalculator run), a by-hand
+  derivation of the raw-gathering paths from the raw bundles, the hauling maths by hand and the crossovers against a
+  direct scan of the two curves; `--sabotage` corrupts four inputs and must fail
 
-**Use Case:** "what do I unlock, where do I stake, which hulls do I fly, and how long does the plan take" in one place.
+**Use Case:** "what do I unlock, where do I stake, which hulls do I fly, how long does the plan take, and which
+fitting hauls, mines or fights best, what my fleet cap allows, and what the fit costs" in one place.
 What comes next is in [Documentation/ANALYTICS-ROADMAP.md](Documentation/ANALYTICS-ROADMAP.md)
 
 ---
@@ -470,6 +534,13 @@ generated on its own from the 2026-09-11 export (the other ten bundles were left
 export reproduces every existing `JSON/` file byte for byte), so `REFRESH-REPORT.json` lists it from the next full
 refresh on.
 
+**Combat data (Command Deck Loadouts, 2026-10-05).** The split also writes `JSON/combat.json`: `globalCombatConfig`'s
+`fleet_points` (points per class, combat and capacity) and `combat` scalars, `shipConfigurations.allShips` (the flat
+74-key stat row per hull the configuration calculator modifies and the combat formula reads), `combatFormula` (the
+simulator's JavaScript, 80 KB, run headless by the Loadouts tab) and `combatSimulatorConsumables`. `npm run refresh`
+turns it into `Data/combat-data.js` (`window.combatData`). Generated the same way: the other bundles differ from the
+committed ones only by their timestamp header and were left untouched.
+
 The split also writes `JSON/stat-descriptions.json` (Ship Explorer's stat tooltips) from
 `shipConfigurations.statDescriptions`. Ship Explorer loads it directly, no `npm run refresh` needed.
 A malformed section keeps the previous file and warns instead of failing the import. To regenerate
@@ -565,7 +636,7 @@ npm test
 # Run specific test file
 node Test/test-recipes.js
 
-# Command Deck model against independently derived figures (100 checks; --sabotage must fail)
+# Command Deck model against independently derived figures (175 checks; --sabotage must fail)
 node Test/command-deck-check.js
 ```
 
@@ -727,7 +798,7 @@ MIT License - see [LICENSE](LICENSE) file for details
 
 ---
 
-**Last Updated:** October 4, 2026 (Command Deck; data from the 2026-09-11 uber-export)
+**Last Updated:** October 8, 2026 (Command Deck Empire tab - hab schedule; data from the 2026-09-11 uber-export)
 **Version:** 2.1
 **Status:** Production Ready 🚀
 

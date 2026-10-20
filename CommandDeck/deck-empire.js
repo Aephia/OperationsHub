@@ -149,10 +149,13 @@
             const plain = this.empire.expand(items, new Set());                       // every craft, for processor hints
             this.intermediates = new Set(plain.crafts.keys());
             const srcById = new Map(cov.sources.map(x => [x.id, x]));
+            // the hab schedule: the plan's crafts (what a stake processor makes is not crafted) on the hab's job lanes
+            const hab = this.habLanes();
+            const sched = this.sched = this.empire.schedule(cov.expansion, hab.lanes.length ? { lanes: hab.lanes } : { jobs: 1 });
             this.root.innerHTML = `
                 ${settingsStrip({ faction: true })}
                 ${this.goalHTML(items)}
-                ${this.tilesHTML(items, cov)}
+                ${this.tilesHTML(items, cov, sched, hab)}
                 <div class="cd-empire">
                     <div class="cd-col">
                         ${this.stakesHTML(srcById)}
@@ -160,10 +163,28 @@
                     </div>
                     <div class="cd-col">
                         ${this.flowHTML(items, cov)}
+                        ${this.scheduleHTML(items, cov, sched, hab)}
                         ${this.researchHTML(items, cov)}
                     </div>
                 </div>`;
             this.renderPlanetResults(); this.renderGoalResults();
+        }
+
+        // the Hub Explorer's saved build as job lanes (hubExplorer.plan.v1: [{id, qty}] of hab items)
+        habLanes() {
+            const out = { lanes: [], rows: [], jobs: 0, label: '' };
+            try {
+                if (!window.HubModel || !window.craftingHabData) return out;
+                const hm = this.hubModel || (this.hubModel = new window.HubModel(window.craftingHabData, window.rawRecipeData.recipes, window.resourcesData.resources));
+                const hp = Store.read(HAB_KEY, []);
+                if (!Array.isArray(hp) || !hp.length) return out;
+                const p = hm.plan(hp.filter(i => i && hm.byId.has(i.id)));
+                out.rows = p.rows; out.jobs = p.jobs || 0; out.lanes = window.CommandDeck.Empire.lanesFromHab(p.rows);
+                const parts = [];
+                p.rows.forEach(({ it, item }) => { if (item.kind === 'hab') parts.push(`T${item.tier} hab`); else if (item.kind === 'station') parts.push(`${it.qty > 1 ? it.qty + ' × ' : ''}${item.size} station${it.qty > 1 ? 's' : ''} (${item.jobs} job${item.jobs === 1 ? '' : 's'} at ${num(item.speed || 1)}×${it.qty > 1 ? ' each' : ''})`); else if (item.kind === 'storage' && item.jobs) parts.push(`${it.qty > 1 ? it.qty + ' × ' : ''}T${item.tier} storage (+${item.jobs * it.qty} job${item.jobs * it.qty === 1 ? '' : 's'})`); });
+                out.label = parts.join(' + ');
+            } catch (e) { out.lanes = []; }
+            return out;
         }
 
         goalHTML(items) {
@@ -185,16 +206,14 @@
             box.innerHTML = hits.map(r => `<button type="button" data-goal-add="${esc(r.outputId)}"><em>${esc(r.typeLabel)}</em><b>${esc(r.outputName)} T${r.outputTier}</b></button>`).join('');
         }
 
-        tilesHTML(items, cov) {
+        tilesHTML(items, cov, sched, hab) {
             const s = Store.s, x = cov.expansion;
             const ext = cov.sources.filter(q => q.kind === 'stake').reduce((a, q) => a + q.prod.layout.extractors, 0);
             const hulls = this.fleets.reduce((a, f) => a + f.count, 0);
             const crew = this.fleets.reduce((a, f) => a + f.count * this.empire.shipByName.get(f.ship).crew, 0);
             const food = this.fleets.reduce((a, f) => a + f.count * this.empire.shipByName.get(f.ship).food, 0);
             const binding = cov.rows.filter(r => r.perHour > 0)[0];
-            // hab jobs from the Hub Explorer's saved build
-            let jobs = 0;
-            try { if (window.HubModel && window.craftingHabData) { const hm = this.hubModel || (this.hubModel = new window.HubModel(window.craftingHabData, window.rawRecipeData.recipes, window.resourcesData.resources)); const hp = Store.read(HAB_KEY, []); if (Array.isArray(hp) && hp.length) jobs = hm.plan(hp.filter(i => i && hm.byId.has(i.id))).jobs || 0; } } catch (e) { jobs = 0; }
+            const jobs = sched.lanes.length;
             // cost at the asks typed on the Ships vs Stakes tab
             let cost = 0, unpriced = 0;
             this.stakes.forEach(k => { const p = Store.stakePrice(k.tier); if (p) cost += p; else unpriced++; });
@@ -206,7 +225,7 @@
             if (items.length && cov.uncovered.length && binding) tiles.push([dur(cov.hours * 3600), `to gather what has a source - ${esc(binding.name)} is last`]);
             tiles.push([`${this.stakes.length}`, `claim stakes · ${ext} extractors`]);
             tiles.push([`${hulls}`, `mining hulls · ${crew} crew · ${num(food)} food / s`]);
-            if (items.length) tiles.push([num(x.craftCount), `crafts · ${dur(x.sequential)} one at a time${jobs > 1 ? ` · at best ${dur(x.sequential / jobs)} on your hab's ${jobs} jobs` : ''}`]);
+            if (items.length) tiles.push([dur(sched.makespan), `to craft ${num(x.craftCount)} crafts on ${hab.lanes.length ? `your hab's ${jobs} job${jobs === 1 ? '' : 's'}` : '1 job (no hab build saved)'} · ${dur(sched.parallel)} if every job ran in parallel`]);
             if (this.stakes.length || this.fleets.length) tiles.push([cost ? usd(cost) : '–', `at the asks you typed${unpriced ? ` · ${unpriced} without a price` : ''}`]);
             return `<div class="an-stats cd-stats">${tiles.map(([n, l, c]) => `<div class="an-stat${c ? ' ' + c : ''}"><b>${n}</b><span>${l}</span></div>`).join('')}</div>`;
         }
@@ -353,6 +372,52 @@
                 <div class="ch-key"><span><i style="background:${SRC_COLOR.stake}"></i>claim stake</span><span><i style="background:${SRC_COLOR.fleet}"></i>mining fleet</span><span><i style="background:#ffb86b"></i>the line gathered last</span><span><i style="background:#ff7a6b"></i>no source</span></div>
                 ${cov.stop.size ? `<p class="rx-note">The bill stops at ${Array.from(cov.stop).map(esc).join(', ')}: a stake processor already makes ${cov.stop.size > 1 ? 'them' : 'it'}, so the ore behind ${cov.stop.size > 1 ? 'them' : 'it'} is not billed again.</p>` : ''}
                 ${extraList.length ? `<p class="rx-note">Made but not in the bill, per hour: ${extraList.slice(0, 14).map(([n, v]) => `${esc(n)} ${num(v)}`).join(', ')}${extraList.length > 14 ? ` and ${extraList.length - 14} more` : ''}.</p>` : ''}
+            </section>`;
+        }
+
+        // ---- hab schedule (2026-10-08): one lane per job, crafts in dependency order, the critical path in gold
+        scheduleHTML(items, cov, S, hab) {
+            const head = (sub, extra) => `<div class="rx-panel-head"><h3>Hab schedule</h3><span>${sub}</span><a class="sb-btn ghost" href="../HubExplorer/index.html" target="_blank" rel="noopener">${extra || 'Open the Hub Explorer'}</a></div>`;
+            if (!items.length) return `<section class="rx-panel cd-sched">${head('the plan is empty')}<p class="rx-note">Add a recipe above: its crafts are placed on your hab's jobs here, one lane per job, each craft starting when its inputs are crafted, and the critical path says whether the queue or the chain sets the time.</p></section>`;
+            const habText = hab.lanes.length ? esc(hab.label) : 'no hab build saved, so one job at 1× stands in - build a hab in the Hub Explorer';
+            if (!S.crafts) return `<section class="rx-panel cd-sched">${head(`nothing to craft: every good in the plan is made by a stake processor · ${habText}`)}</section>`;
+            const W = 1040, LW = 150, RW = 58, TOP = 22, RH = 24, H = TOP + S.lanes.length * RH + 6, span = Math.max(S.makespan, 1e-9), plotW = W - LW - RW - 10;
+            const x = t => LW + plotW * t / span;
+            const colorOf = new Map(S.byType.map((ty, i) => [ty.name, CAT_COLOR[i % CAT_COLOR.length]]));
+            // axis: the largest step that gives at least four ticks
+            const STEPS = [1, 5, 10, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200, 14400, 21600, 43200, 86400, 172800, 604800, 2592000];
+            const step = STEPS.slice().reverse().find(v => span / v >= 4) || STEPS[0];
+            let axis = '';
+            for (let t = 0; t <= span + 1e-9; t += step) axis += `<line class="grid" x1="${x(t).toFixed(1)}" y1="${TOP - 4}" x2="${x(t).toFixed(1)}" y2="${H - 6}"></line><text class="ax" x="${x(t).toFixed(1)}" y="${TOP - 8}" text-anchor="${t === 0 ? 'start' : 'middle'}">${t === 0 ? '0' : esc(dur(t))}</text>`;
+            axis += `<line class="grid end" x1="${x(span).toFixed(1)}" y1="${TOP - 4}" x2="${x(span).toFixed(1)}" y2="${H - 6}"></line><text class="ax end" x="${x(span).toFixed(1)}" y="${TOP - 8}" text-anchor="end">${esc(dur(span))}</text>`;
+            const laneRows = S.lanes.map((l, i) => {
+                const y = TOP + i * RH;
+                const runs = l.runs.map(r => {
+                    const x0 = x(r.start), w = Math.max(1.5, x(r.end) - x0), label = w >= 44 ? trunc(r.name, Math.max(3, Math.floor((w - 8) / 6.4))) + (w >= 44 + 6.4 * (String(r.n).length + 2) ? ` ×${num(r.n)}` : '') : '';
+                    return `<g class="run${r.path ? ' path' : ''}" data-craft="${esc(r.name)}"><title>${esc(r.name)} × ${num(r.n)}: ${esc(dur(r.start))} → ${esc(dur(r.end))} (${esc(dur(r.end - r.start))}) on ${esc(l.label)}${r.path ? ' · on the critical path' : ''}</title><rect x="${x0.toFixed(1)}" y="${y + 3}" width="${w.toFixed(1)}" height="${RH - 6}" rx="3" fill="${colorOf.get(r.name)}"></rect>${label ? `<text x="${(x0 + 4).toFixed(1)}" y="${y + RH / 2 + 4}">${esc(label)}</text>` : ''}</g>`;
+                }).join('');
+                return `<g class="lane"><rect class="trk" x="${LW}" y="${y + 2}" width="${plotW}" height="${RH - 4}" rx="3"></rect><text class="ln" x="6" y="${y + RH / 2 + 4}">${esc(trunc(l.label, 20))}</text><text class="sp" x="${LW - 6}" y="${y + RH / 2 + 4}" text-anchor="end">${num(l.speed)}×</text>${runs}<text class="ut" x="${W - 6}" y="${y + RH / 2 + 4}" text-anchor="end">${(100 * l.util).toFixed(0)} %</text></g>`;
+            }).join('');
+            // the critical path, the bottleneck in words, the busiest and idlest lanes
+            const pathHTML = S.path.map(p => `<span class="cd-seg ${p.kind}"><i style="background:${colorOf.get(p.name)}"></i><b>${esc(p.name)}</b> ×${num(p.n)} <small>${esc(dur(p.end - p.start))}${p.kind === 'input' ? ' · after an input' : p.kind === 'lane' ? ' · after a free job' : ''}</small></span>`).join('<em>→</em>');
+            const onPath = S.byType.filter(t => t.onPath > 0).sort((a, b) => b.onPath - a.onPath)[0];
+            const busiest = S.lanes.slice().sort((a, b) => b.util - a.util)[0], idlest = S.lanes.slice().sort((a, b) => a.util - b.util)[0];
+            const queueWins = S.pathBy.lane > S.pathBy.input;
+            const verdict = S.lanes.length === 1
+                ? `One job: every craft queues behind the one before it, so the time is the work itself (${esc(dur(S.work))} at 1×).`
+                : queueWins
+                    ? `The queue sets the time: ${esc(dur(S.pathBy.lane))} of the ${esc(dur(S.makespan))} path is crafts that waited for a free job, ${esc(dur(S.pathBy.input))} crafts that waited for an input. More jobs shorten it; the chain alone would take ${esc(dur(S.chain))}.`
+                    : `The chain sets the time: ${esc(dur(S.pathBy.input))} of the ${esc(dur(S.makespan))} path is crafts that waited for an input, ${esc(dur(S.pathBy.lane))} crafts that waited for a free job. More jobs barely help; a faster station does. The chain alone takes ${esc(dur(S.chain))}.`;
+            const rows = S.byType.map(t => `<tr><th><i class="cd-dot" style="background:${colorOf.get(t.name)}"></i>${esc(t.name)}${t.needs.length ? `<small>needs ${esc(t.needs.join(', '))}</small>` : '<small>from raws</small>'}</th><td>${num(t.crafts)}</td><td>${esc(dur(t.each))}</td><td>${esc(dur(t.first))}</td><td>${esc(dur(t.last))}</td><td>${esc(dur(t.laneTime))}</td><td${t.onPath > 0 ? ' class="on"' : ''}>${t.onPath > 0 ? esc(dur(t.onPath)) : '–'}</td></tr>`).join('');
+            return `<section class="rx-panel cd-sched">
+                ${head(`${num(S.crafts)} crafts on ${S.lanes.length} job${S.lanes.length === 1 ? '' : 's'}: ${habText} · raws in hand · gold outline = the critical path · hover a block`)}
+                <div class="rx-facts cd-sched-facts"><div><b>${esc(dur(S.makespan))}</b><span>scheduled on your hab's jobs</span></div><div><b>${esc(dur(S.parallel))}</b><span>if every job ran in parallel (work ÷ speed)</span></div><div><b>${esc(dur(S.chain))}</b><span>the chain alone (unlimited jobs)</span></div><div><b>${(100 * S.lanes.reduce((a, l) => a + l.util, 0) / S.lanes.length).toFixed(0)} %</b><span>of the jobs' time busy</span></div></div>
+                <div class="cd-sched-wrap"><svg class="cd-gantt" viewBox="0 0 ${W} ${H}" role="img" aria-label="Job timeline: one lane per job, crafts in order">${axis}${laneRows}</svg></div>
+                ${S.complete ? '' : '<p class="rx-note warn">The schedule stopped early: a craft never had its inputs. Say so to the builder - this should not happen on a plan the planner expanded.</p>'}
+                <div class="cd-path"><h4>Critical path</h4><p class="cd-path-chain">${pathHTML}</p><p class="rx-note">${verdict}${onPath ? ` <b>${esc(onPath.name)}</b> holds ${esc(dur(onPath.onPath))} of the path.` : ''}${S.lanes.length > 1 ? ` Busiest job: ${esc(busiest.label)} at ${(100 * busiest.util).toFixed(0)} %; idlest: ${esc(idlest.label)} at ${(100 * idlest.util).toFixed(0)} %.` : ''}</p></div>
+                <h4 class="cd-sched-h">The queue · in start order</h4>
+                <div class="an-tablewrap"><table class="an-table cd-queue"><thead><tr><th>Craft</th><th>crafts</th><th>each at 1×</th><th>first start</th><th>last done</th><th>job time</th><th>on the path</th></tr></thead><tbody>${rows}</tbody></table></div>
+                <p class="rx-note">A job runs one craft at a time; a station's speed divides the craft time; a storage's job bonus is read as a 1× job (the export gives it no speed). A craft starts when its crafted inputs are in the pool, so the first of a kind can start before every input craft is done. Raws are taken as in hand: gathering them is the bill above. Build times are the export's <i>constructionTime</i> read as seconds, as the Recipe Explorer reads them.</p>
             </section>`;
         }
 

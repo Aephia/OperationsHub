@@ -1,11 +1,11 @@
 {
-  "timestamp": "2026-09-11T02:41:41.103Z",
+  "timestamp": "2026-10-07T00:02:13.372Z",
   "summary": {
-    "total": 10,
-    "successful": 10,
+    "total": 12,
+    "successful": 12,
     "failed": 0,
-    "withChanges": 5,
-    "withBreakingChanges": 2,
+    "withChanges": 2,
+    "withBreakingChanges": 0,
     "newFiles": 0
   },
   "details": [
@@ -15,26 +15,14 @@
       "outputFiles": [
         "recipes-data.js"
       ],
-      "changed": true,
-      "breaking": true,
-      "isNew": false,
+      "changed": false,
+      "breaking": false,
       "validationWarning": null,
       "error": null,
       "diff": {
-        "breaking": [
-          "Removed field: recipes[0].ingredients[0]",
-          "Removed field: recipes[0].ingredients[0].name",
-          "Removed field: recipes[0].ingredients[0].quantity"
-        ],
-        "additions": [
-          "Added field: recipes[0].c4_status (string)",
-          "Added field: recipes[0].c4_numerical_id (number)",
-          "Added field: recipes[0].min_starbase_level (string)"
-        ],
-        "modifications": [
-          "Added keys to recipes[0]: c4_status, c4_numerical_id, min_starbase_level"
-        ],
-        "isNew": false
+        "breaking": [],
+        "additions": [],
+        "modifications": []
       }
     },
     {
@@ -43,31 +31,14 @@
       "outputFiles": [
         "buildings-data.js"
       ],
-      "changed": true,
-      "breaking": true,
-      "isNew": false,
+      "changed": false,
+      "breaking": false,
       "validationWarning": null,
       "error": null,
       "diff": {
-        "breaking": [
-          "Removed keys from buildings[0].constructionCost: chromite-ore, copper, copper-ore",
-          "Removed field: buildings[0].constructionCost.chromite-ore",
-          "Removed field: buildings[0].constructionCost.copper",
-          "Removed field: buildings[0].constructionCost.copper-ore",
-          "Removed keys from buildings[0].c4_runtime.refund_amount: 309, 311, 1033",
-          "Removed field: buildings[0].c4_runtime.refund_amount.309",
-          "Removed field: buildings[0].c4_runtime.refund_amount.311",
-          "Removed field: buildings[0].c4_runtime.refund_amount.1033",
-          "Removed keys from claimStakeDefinitions[0]: defaultBuilding",
-          "Removed field: claimStakeDefinitions[0].defaultBuilding"
-        ],
-        "additions": [
-          "Added field: buildings[0].c4_status (string)"
-        ],
-        "modifications": [
-          "Added keys to buildings[0]: c4_status"
-        ],
-        "isNew": false
+        "breaking": [],
+        "additions": [],
+        "modifications": []
       }
     },
     {
@@ -92,24 +63,14 @@
       "outputFiles": [
         "resources-data.js"
       ],
-      "changed": true,
+      "changed": false,
       "breaking": false,
-      "isNew": false,
       "validationWarning": null,
       "error": null,
       "diff": {
         "breaking": [],
-        "additions": [
-          "Added field: resources[0].planet_types (array)",
-          "Added field: resources[0].faction (object)",
-          "Added field: resources[0].body_extractable (boolean)",
-          "Added field: resources[0].acquisition_source (string)",
-          "Added field: resources[0].c4_status (string)"
-        ],
-        "modifications": [
-          "Added keys to resources[0]: planet_types, faction, body_extractable, acquisition_source, c4_status"
-        ],
-        "isNew": false
+        "additions": [],
+        "modifications": []
       }
     },
     {
@@ -126,14 +87,8 @@
       "error": null,
       "diff": {
         "breaking": [],
-        "additions": [
-          "Added field: ships[0].configurations[0].components.Ship Component.Mining Rig (object)",
-          "Added field: ships[0].configurations[0].components.Ship Component.Mining Rig.items (array)",
-          "Added field: ships[0].configurations[0].components.Ship Component.Mining Rig.totalSlots (number)"
-        ],
-        "modifications": [
-          "Added keys to ships[0].configurations[0].components.Ship Component: Mining Rig"
-        ],
+        "additions": [],
+        "modifications": [],
         "isNew": false
       }
     },
@@ -218,35 +173,39 @@
         "additions": [],
         "modifications": []
       }
-    }
-  ],
-  "alerts": [
-    {
-      "level": "ERROR",
-      "file": "recipes.json",
-      "message": "Breaking schema changes detected in recipes.json",
-      "changes": [
-        "Removed field: recipes[0].ingredients[0]",
-        "Removed field: recipes[0].ingredients[0].name",
-        "Removed field: recipes[0].ingredients[0].quantity"
-      ]
     },
     {
-      "level": "ERROR",
-      "file": "buildings.json",
-      "message": "Breaking schema changes detected in buildings.json",
-      "changes": [
-        "Removed keys from buildings[0].constructionCost: chromite-ore, copper, copper-ore",
-        "Removed field: buildings[0].constructionCost.chromite-ore",
-        "Removed field: buildings[0].constructionCost.copper",
-        "Removed field: buildings[0].constructionCost.copper-ore",
-        "Removed keys from buildings[0].c4_runtime.refund_amount: 309, 311, 1033",
-        "Removed field: buildings[0].c4_runtime.refund_amount.309",
-        "Removed field: buildings[0].c4_runtime.refund_amount.311",
-        "Removed field: buildings[0].c4_runtime.refund_amount.1033",
-        "Removed keys from claimStakeDefinitions[0]: defaultBuilding",
-        "Removed field: claimStakeDefinitions[0].defaultBuilding"
-      ]
+      "file": "research.json",
+      "success": true,
+      "outputFiles": [
+        "research-data.js"
+      ],
+      "changed": false,
+      "breaking": false,
+      "validationWarning": null,
+      "error": null,
+      "diff": {
+        "breaking": [],
+        "additions": [],
+        "modifications": []
+      }
+    },
+    {
+      "file": "combat.json",
+      "success": true,
+      "outputFiles": [
+        "combat-data.js"
+      ],
+      "changed": false,
+      "breaking": false,
+      "validationWarning": null,
+      "error": null,
+      "diff": {
+        "breaking": [],
+        "additions": [],
+        "modifications": []
+      }
     }
-  ]
+  ],
+  "alerts": []
 }

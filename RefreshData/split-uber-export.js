@@ -114,11 +114,13 @@ function researchProjection(u) {
         }
         return out;
     };
+    // cargo names for every numeric cargo id a node mentions: token costs, and the resources a
+    // rare_mineral_discovery grant multiplies (2026-10-06, so the node sheet can name them)
     const tokenNames = {};
+    const nameCargo = k => { tokenNames[k] = (u.cargoTypes && u.cargoTypes[k] && u.cargoTypes[k].name) || null; };
     for (const n of rn.nodes) {
-        for (const k of Object.keys((n.cost && n.cost.token_cost) || {})) {
-            tokenNames[k] = (u.cargoTypes && u.cargoTypes[k] && u.cargoTypes[k].name) || null;
-        }
+        Object.keys((n.cost && n.cost.token_cost) || {}).forEach(nameCargo);
+        Object.keys((n.character_value_changes && n.character_value_changes.rare_mineral_discovery) || {}).forEach(nameCargo);
     }
     const thresholds = {};
     for (const [track, v] of Object.entries(lt.thresholds)) thresholds[track] = v.levels;
@@ -140,6 +142,25 @@ function researchProjection(u) {
     };
 }
 files['research.json'] = researchProjection(uber);
+
+// combat.json (Command Deck Loadouts, 2026-10-05): the fleet-point table and combat scalars (globalCombatConfig),
+// the flat per-ship stat rows the combat formula reads (shipConfigurations.allShips - 74 snake_case keys, the same
+// keys the configuration calculator modifies), the formula itself (a JavaScript IIFE, run headless by the deck),
+// and the simulator's default consumables.
+function combatProjection(u) {
+    const g = u.globalCombatConfig, s = u.shipConfigurations;
+    if (!g || !g.fleet_points || !s || !Array.isArray(s.allShips) || typeof s.combatFormula !== 'string') throw new Error('combat: export is missing globalCombatConfig.fleet_points / shipConfigurations.allShips / combatFormula');
+    return {
+        exportDate: u.meta && u.meta.exportDate ? String(u.meta.exportDate).slice(0, 10) : null,
+        fleetPoints: g.fleet_points,
+        combat: g.combat,
+        c4_status: g.c4_status,
+        allShips: s.allShips,
+        combatFormula: s.combatFormula,
+        consumables: s.combatSimulatorConsumables || null
+    };
+}
+files['combat.json'] = combatProjection(uber);
 
 // ship-components: manifest + allComponents split in two halves (part1 also carries the tree)
 const half = Math.ceil(comps.allComponents.length / 2);
@@ -176,7 +197,7 @@ try {
     console.warn(`⚠️  stat-descriptions.json not updated: ${error.message}`);
 }
 
-const consumed = new Set(['meta', 'mapData', 'shipConfigurations', 'shipStats', 'recipes', 'resources', 'claimStakeBuildings', 'craftingHabs', 'researchNodes', 'researchGateMap', 'levelThresholds']);
+const consumed = new Set(['meta', 'mapData', 'shipConfigurations', 'shipStats', 'recipes', 'resources', 'claimStakeBuildings', 'craftingHabs', 'researchNodes', 'researchGateMap', 'levelThresholds', 'globalCombatConfig']);
 const unused = Object.keys(uber).filter((k) => !consumed.has(k));
 console.log(`export ${uber.meta && uber.meta.exportDate} - sections not consumed by any explorer: ${unused.join(', ')}`);
 console.log('\nNext: npm run refresh');

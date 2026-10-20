@@ -1,5 +1,6 @@
 // resource-visual.js - the resource sheet (2026-10-01): a full-screen overlay with the supply-chain graph, the source
 // panel (galaxy map of the deposit for a raw, the recipe for anything crafted), the demand panel and the raw bill.
+// A raw's sheet (2026-10-20) has no chain section: it leads with the map, then the demand panel.
 // Graph: the deduplicated DAG from resource-model, laid out in layers (longest path from the output), one barycenter
 // pass per layer, pills coloured by category, bezier edges with a dashed-flow animation (CSS, paused when hidden).
 // Drag to pan, wheel to zoom, hover a node to light its whole upstream/downstream path, click a node to open it.
@@ -75,15 +76,17 @@
                         </div>
                     </header>
                     <div class="rx-body">
+                        ${r.category === 'raw' ? `${this.sourcePanel(r)}
+                        <aside class="rx-side one">${this.demandPanel(r)}</aside>` : `
                         <section class="rx-graph-wrap">
-                            <div class="rx-panel-head"><h3>Supply chain</h3><span>${r.category === 'raw' ? 'A raw has no chain under it; its map is on the right.' : (dag.nodes.size > 1 ? `${(dag.nodes.size - 1).toLocaleString()} resources, ${dag.edges.length.toLocaleString()} links, ${dag.depth} levels &middot; drag to pan, wheel to zoom, hover a node to trace it, click to open it` : 'This resource has no recipe in the export.')}</span>${dag.nodes.size > 1 ? '<button type="button" class="sb-btn ghost" data-fit>Fit</button>' : ''}</div>
-                            <div class="rx-graph" id="rxGraph">${dag.nodes.size > 1 ? '' : this.rawPortrait(r)}</div>
+                            <div class="rx-panel-head"><h3>Supply chain</h3><span>${dag.nodes.size > 1 ? `${(dag.nodes.size - 1).toLocaleString()} resources, ${dag.edges.length.toLocaleString()} links, ${dag.depth} levels &middot; drag to pan, wheel to zoom, hover a node to trace it, click to open it` : 'This resource has no recipe in the export.'}</span>${dag.nodes.size > 1 ? '<button type="button" class="sb-btn ghost" data-fit>Fit</button>' : ''}</div>
+                            ${dag.nodes.size > 1 ? '<div class="rx-graph" id="rxGraph"></div>' : ''}
                             ${bill.length ? `<div class="rx-bill"><h4>Raw bill &middot; ${bill.length} deposit${bill.length === 1 ? '' : 's'} under it</h4><div class="chips">${bill.map(b => `<button type="button" class="chip${b.res.extractor ? '' : ' fleet'}" data-go="${esc(b.res.name)}" title="${b.res.extractor ? 'claim-stake extractor exists' : 'fleet mining only'} - feeds ${b.parents} recipe${b.parents === 1 ? '' : 's'} in this chain"><i class="t t${b.res.tier}">T${b.res.tier}</i>${esc(b.res.name)}<small>&times;${b.parents}</small></button>`).join('')}</div></div>` : ''}
                         </section>
                         <aside class="rx-side">
                             ${this.sourcePanel(r)}
                             ${this.demandPanel(r)}
-                        </aside>
+                        </aside>`}
                     </div>
                 </div>`;
             if (dag.nodes.size > 1) this.drawGraph(dag);
@@ -91,23 +94,25 @@
             this.overlay.querySelector('.rx-sheet').scrollTop = 0;
         }
 
-        rawPortrait(r) {
-            const c = CAT.raw.color;
-            const how = r.stakeMinable ? `A claim stake on a planet that carries it can run a ${esc(r.name)} Extractor (${num(r.extractor.t1)} per tick at tier 1).`
+        howMined(r) {
+            return r.stakeMinable ? `A claim stake on a planet that carries it can run a ${esc(r.name)} Extractor (${num(r.extractor.t1)} per tick at tier 1).`
                 : r.beltOnly ? `It occurs only in asteroid belts${r.extractor ? ', and although an extractor kit exists' : ''}, no claim stake can sit on a belt, so a fleet mines it.`
                 : 'No extractor family exists for it in this export, so a fleet mines it (asteroid belts included).';
-            return `<div class="rx-raw-portrait"><div class="rx-ore" style="--c:${c}"><i></i><i></i><i></i></div><p>${esc(r.name)} is a raw deposit. ${how}</p></div>`;
         }
 
         // ------------------------------------------------------------- panels
+        // a raw has no chain under it, so its sheet leads with this panel: the map on the left, the facts on the right
         sourcePanel(r) {
             if (r.category === 'raw') {
                 const d = r.deposit;
-                if (!d) return '<section class="rx-panel"><div class="rx-panel-head"><h3>Where it is found</h3></div><p class="sb-muted">No planet on the map carries this deposit.</p></section>';
+                if (!d) return `<section class="rx-panel rx-lead"><div class="rx-panel-head"><h3>Where it is found</h3></div><p class="rx-how">${this.howMined(r)}</p><p class="sb-muted">No planet on the map carries this deposit.</p></section>`;
                 const terr = ['mud', 'oni', 'ustur'].filter(f => d.fac[f]).map(f => `<em class="f-${f}">${FAC_LABEL[f]} ${d.fac[f].toLocaleString()}</em>`).join('');
-                return `<section class="rx-panel">
+                return `<section class="rx-panel rx-lead">
                     <div class="rx-panel-head"><h3>Where it is found</h3><span>${d.systemList.length.toLocaleString()} of ${this.m.systems.length.toLocaleString()} systems</span></div>
+                    <div class="rx-lead-grid">
                     <div class="rx-map" id="rxMap"></div>
+                    <div class="rx-lead-info">
+                    <p class="rx-how">${this.howMined(r)}</p>
                     <div class="rx-facts">
                         <div><b>${d.planets.toLocaleString()}</b><span>planets</span></div>
                         <div><b>${d.belts.toLocaleString()}</b><span>asteroid belts</span></div>
@@ -119,6 +124,8 @@
                     ${d.regionList.length ? `<div class="rx-row"><h4>Regions</h4><p class="rx-regions">${d.regionList.slice(0, 8).map(g => `<span>${esc(g.name)}<small>${g.n}${g.safe ? '' : ' &middot; risk'}</small></span>`).join('')}${d.regionList.length > 8 ? `<span class="sb-muted">+${d.regionList.length - 8} more</span>` : ''}</p></div>` : ''}
                     <div class="rx-row"><h4>Richest bodies</h4><div class="rx-planets">${d.top.map(p => `<div class="rx-pl"><i class="pdot" style="--c:${PT_COLOR[p.cat]}"></i><b>${esc(p.name)}</b><span>${esc(p.system)}</span><em class="f-${p.terr}">${FAC_LABEL[p.terr] || ''}</em><span class="rv">${p.richness}${p.belt ? ' belt' : ''}</span></div>`).join('')}</div></div>
                     <div class="rx-actions"><a class="sb-btn" href="../ClaimStakeExplorer/index.html" title="Deposit atlas and Stake Builder">Plan a stake &rarr;</a><a class="sb-btn ghost" href="../PlanetExplorer/index.html">Planet Explorer &rarr;</a></div>
+                    </div>
+                    </div>
                 </section>`;
             }
             const rec = r.recipe;
@@ -145,7 +152,7 @@
             const byType = new Map(); r.consumers.forEach(x => byType.set(x.type || 'other', (byType.get(x.type || 'other') || 0) + 1));
             const types = Array.from(byType.entries()).sort((a, b) => b[1] - a[1]).slice(0, 6);
             return `<section class="rx-panel">
-                <div class="rx-panel-head"><h3>Who asks for it</h3><span>${r.demand ? `${r.demand.toLocaleString()} recipes` : 'nothing lists it as an ingredient'}</span></div>
+                <div class="rx-panel-head"><h3>Who asks for it</h3><span>${r.demand ? `${r.demand.toLocaleString()} recipe${r.demand === 1 ? '' : 's'}` : 'nothing lists it as an ingredient'}</span></div>
                 ${r.demand ? `
                 <div class="ch rx-cons">${top.map(x => `<div class="ch-row"><button type="button" class="ch-lbl rx-link" data-go="${esc(x.name)}" title="${esc(x.name)}">${esc(x.name)}</button><div class="ch-bar"><b style="width:${Math.round(100 * x.quantity / maxQ)}%"><span class="ct">${esc(x.name)}: &times;${num(x.quantity, 0)} per craft${x.tier ? ' &middot; T' + x.tier : ''}</span></b></div><span class="ch-val">&times;${num(x.quantity, 0)}</span></div>`).join('')}</div>
                 <p class="rx-note">Largest quantities per craft. ${r.demand > 8 ? `${(r.demand - 8).toLocaleString()} more recipes use it.` : ''}</p>
@@ -159,7 +166,7 @@
             this.graphView = new ChainGraph(host, {
                 onOpen: name => this.open(name),
                 sound: n => this.snd(n),
-                label: n => n.res ? `T${n.res.tier} · ${CAT[n.res.category] ? CAT[n.res.category].label : ''}${n.res.demand ? ' · ' + n.res.demand.toLocaleString() + ' uses' : ''}` : ''
+                label: n => n.res ? `T${n.res.tier} · ${CAT[n.res.category] ? CAT[n.res.category].label : ''}${n.res.demand ? ' · ' + n.res.demand.toLocaleString() + (n.res.demand === 1 ? ' use' : ' uses') : ''}` : ''
             });
             this.graphView.draw(dag);
         }

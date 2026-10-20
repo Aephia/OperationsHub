@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="../ResourcesExplorer/styles.css?v=20261001">
     <link rel="stylesheet" href="../ResourcesExplorer/resource-visual.css?v=20261001d">
     <link rel="stylesheet" href="../RecipeExplorer/recipe-visual.css?v=20261001d">
-    <link rel="stylesheet" href="deck.css?v=20261004d">
+    <link rel="stylesheet" href="deck.css?v=20261008">
 </head>
 <body>
     <div class="pe-sky" aria-hidden="true"></div>
@@ -25,6 +25,7 @@
             <button class="nav-tab active" data-tab="research">Research</button>
             <button class="nav-tab" data-tab="empire">Empire</button>
             <button class="nav-tab" data-tab="calc">Ships vs Stakes</button>
+            <button class="nav-tab" data-tab="vs">Loadouts</button>
         </nav>
         <nav class="breadcrumb">
             <a href="../index.html">Home</a> / Command Deck
@@ -35,6 +36,7 @@
         <div id="researchTab" class="tab-content active"><div id="cdResearch"></div></div>
         <div id="empireTab" class="tab-content"><div id="cdEmpire"></div></div>
         <div id="calcTab" class="tab-content"><div id="cdCalc"></div></div>
+        <div id="vsTab" class="tab-content"><div id="cdVs"></div></div>
     </main>
 
     <script src="../SFX/sounds.js"></script>
@@ -45,15 +47,21 @@
     <script src="../Data/buildings-data.js?v=20260911"></script>
     <script src="../Data/ships-data.js?v=20260911"></script>
     <script src="../Data/crafting-hab-data.js?v=20260911"></script>
-    <script src="../Data/research-data.js?v=20260911"></script>
+    <script src="../Data/research-data.js?v=20261006"></script>
+    <script src="../Data/ship-components-data.js?v=20260911"></script>
+    <script src="../Data/ship-formulas-data.js?v=20260911"></script>
+    <script src="../Data/combat-data.js?v=20261005"></script>
+    <script src="../ShipExplorer/config-calculator.js?v=20261005"></script>
     <script src="../ResourcesExplorer/resource-model.js?v=20261001"></script>
     <script src="../RecipeExplorer/recipe-model.js?v=20261001"></script>
     <script src="../HubExplorer/hub-model.js?v=20261001"></script>
-    <script src="deck-model.js?v=20261004d"></script>
+    <script src="deck-model.js?v=20261008"></script>
+    <script src="deck-loadout.js?v=20261005d"></script>
     <script src="deck-store.js?v=20261004d"></script>
-    <script src="deck-research.js?v=20261004d"></script>
-    <script src="deck-empire.js?v=20261004d"></script>
+    <script src="deck-research.js?v=20261006"></script>
+    <script src="deck-empire.js?v=20261008"></script>
     <script src="deck-calc.js?v=20261004d"></script>
-    <script src="app.js?v=20261004d"></script>
+    <script src="deck-vs.js?v=20261008a"></script>
+    <script src="app.js?v=20261005d"></script>
 </body>
 </html>
