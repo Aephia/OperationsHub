@@ -550,8 +550,11 @@
         // Each start records
         // what it waited for - an input finishing (the chain) or the lane's previous craft (the queue) - so the chain
         // from the last craft back to time 0 is the critical path, and its waits say where the time went.
+        // Batches (2026-10-24): a plan over MAX_JOBS crafts (one Ammo TTN T5 is 236 million) is placed in batches - a
+        // job is up to `batch` crafts of one kind, taking batch x each / speed and its inputs x batch - so the loop stays
+        // bounded. Each kind keeps at least one batch per lane; under the cap every batch is one craft, as before.
         schedule(plan, hab) {
-            const EPS = 1e-9;
+            const EPS = 1e-9, MAX_JOBS = 20000;
             const src = hab && hab.lanes && hab.lanes.length ? hab.lanes : Array.from({ length: Math.max(1, Math.floor((hab && hab.jobs) || 1)) }, () => ({ speed: 1 }));
             const lanes = src.map((l, i) => ({ i, label: l.label || `Job ${i + 1}`, speed: l.speed > 0 ? +l.speed : 1, freeAt: 0, last: null, busy: 0, jobs: [] }));
             const counts = (plan && plan.crafts) || new Map(), steps = (plan && plan.steps) || new Map();
@@ -561,9 +564,12 @@
             types.forEach(t => { t.ings = t.raw.filter(i => byName.has(i.name)).map(i => ({ ty: byName.get(i.name), qty: i.qty })); t.ings.forEach(i => i.ty.users.push(t)); delete t.raw; });
             const memo = new Map(), tail = t => { if (memo.has(t.name)) return memo.get(t.name); memo.set(t.name, 0); const v = t.each + (t.users.length ? Math.max(...t.users.map(tail)) : 0); memo.set(t.name, v); return v; };
             types.forEach(t => { t.tail = tail(t); });
-            const ready = t => t.left > 0 && t.ings.every(i => i.ty.made - i.ty.reserved >= i.qty - EPS);
-            const jobs = []; let left = types.reduce((a, t) => a + t.total, 0), t = 0, guard = 0, complete = true;
-            const finish = () => { let any = false; lanes.forEach(l => { const j = l.last; if (j && !j.done && j.end <= t + EPS) { j.done = true; const ty = byName.get(j.name); ty.made += ty.outQ; ty.doneNow += ty.outQ; ty.doneAt = t; ty.lastDone = j; ty.last = j.end; any = true; } }); return any; };
+            const crafts = types.reduce((a, t) => a + t.total, 0), batched = crafts > MAX_JOBS;
+            types.forEach(t => { t.batch = batched ? Math.max(1, Math.ceil(t.total / Math.max(lanes.length, Math.ceil(t.total * MAX_JOBS / crafts)))) : 1; });
+            const size = t => Math.min(t.batch, t.left);                                  // crafts in the kind's next job
+            const ready = t => t.left > 0 && t.ings.every(i => i.ty.made - i.ty.reserved >= i.qty * size(t) - EPS);
+            const jobs = []; let left = crafts, t = 0, guard = 0, complete = true;
+            const finish = () => { let any = false; lanes.forEach(l => { const j = l.last; if (j && !j.done && j.end <= t + EPS) { j.done = true; const ty = byName.get(j.name); ty.made += ty.outQ * j.n; ty.doneNow += ty.outQ * j.n; ty.doneAt = t; ty.lastDone = j; ty.last = j.end; any = true; } }); return any; };
             while (left > 0) {
                 if (++guard > 5e6) { complete = false; break; }
                 const done = finish();
@@ -573,14 +579,14 @@
                     const cands = types.filter(ready); if (!cands.length) break;
                     const same = ty => (lane.last && lane.last.name === ty.name ? 1 : 0);          // on a tie, keep the kind the lane just ran
                     cands.sort((a, b) => b.tail - a.tail || same(b) - same(a) || b.left - a.left || a.name.localeCompare(b.name));
-                    const ty = cands[0];
+                    const ty = cands[0], n = size(ty);
                     let cause = { kind: t > 0 ? 'free' : 'start', job: null };
-                    ty.ings.forEach(i => { const s = i.ty; if (Math.abs(s.doneAt - t) <= EPS && s.made - s.reserved - s.doneNow < i.qty - EPS) cause = { kind: 'input', job: s.lastDone }; });
+                    ty.ings.forEach(i => { const s = i.ty; if (Math.abs(s.doneAt - t) <= EPS && s.made - s.reserved - s.doneNow < i.qty * n - EPS) cause = { kind: 'input', job: s.lastDone }; });
                     if (cause.kind !== 'input' && lane.last && Math.abs(lane.last.end - t) <= EPS) cause = { kind: 'lane', job: lane.last };
-                    ty.ings.forEach(i => { i.ty.reserved += i.qty; });
-                    const job = { id: jobs.length, name: ty.name, lane: lane.i, k: ty.total - ty.left + 1, start: t, end: t + ty.each / lane.speed, cause, done: false };
+                    ty.ings.forEach(i => { i.ty.reserved += i.qty * n; });
+                    const job = { id: jobs.length, name: ty.name, lane: lane.i, k: ty.total - ty.left + 1, n, start: t, end: t + n * ty.each / lane.speed, cause, done: false };
                     jobs.push(job); lane.jobs.push(job); lane.last = job; lane.freeAt = job.end; lane.busy += job.end - t;
-                    if (ty.first == null) ty.first = t; ty.laneTime += job.end - t; ty.left--; left--; started = true;
+                    if (ty.first == null) ty.first = t; ty.laneTime += job.end - t; ty.left -= n; left -= n; started = true;
                 }
                 if (started || done) { if (lanes.some(l => l.last && !l.last.done && l.last.end <= t + EPS)) continue; if (started) continue; }
                 const busy = lanes.filter(l => l.last && !l.last.done);
@@ -594,13 +600,13 @@
             const onPath = new Set(); const chain = [];
             let cur = jobs.length ? jobs.reduce((a, j) => (j.end > a.end ? j : a), jobs[0]) : null;
             while (cur) { onPath.add(cur.id); chain.unshift(cur); cur = cur.cause.job; }
-            const path = []; chain.forEach(j => { const seg = path[path.length - 1]; if (seg && seg.name === j.name && seg.lane === j.lane && Math.abs(seg.end - j.start) <= EPS && j.cause.kind === 'lane') { seg.n++; seg.end = j.end; } else path.push({ name: j.name, lane: j.lane, n: 1, start: j.start, end: j.end, kind: j.cause.kind }); byName.get(j.name).onPath += j.end - j.start; });
+            const path = []; chain.forEach(j => { const seg = path[path.length - 1]; if (seg && seg.name === j.name && seg.lane === j.lane && Math.abs(seg.end - j.start) <= EPS && j.cause.kind === 'lane') { seg.n += j.n; seg.end = j.end; } else path.push({ name: j.name, lane: j.lane, n: j.n, start: j.start, end: j.end, kind: j.cause.kind }); byName.get(j.name).onPath += j.end - j.start; });
             const pathBy = { input: 0, lane: 0, start: 0 }; chain.forEach(j => { pathBy[j.cause.kind === 'input' ? 'input' : j.cause.kind === 'lane' ? 'lane' : 'start'] += j.end - j.start; });
             // runs: consecutive crafts of one kind on one lane, for drawing
-            lanes.forEach(l => { l.runs = []; l.jobs.forEach(j => { const r = l.runs[l.runs.length - 1]; if (r && r.name === j.name && Math.abs(r.end - j.start) <= EPS) { r.n++; r.end = j.end; r.path = r.path || onPath.has(j.id); } else l.runs.push({ name: j.name, n: 1, start: j.start, end: j.end, path: onPath.has(j.id) }); }); l.util = makespan > 0 ? l.busy / makespan : 0; });
+            lanes.forEach(l => { l.runs = []; l.jobs.forEach(j => { const r = l.runs[l.runs.length - 1]; if (r && r.name === j.name && Math.abs(r.end - j.start) <= EPS) { r.n += j.n; r.end = j.end; r.path = r.path || onPath.has(j.id); } else l.runs.push({ name: j.name, n: j.n, start: j.start, end: j.end, path: onPath.has(j.id) }); }); l.util = makespan > 0 ? l.busy / makespan : 0; });
             const work = types.reduce((a, ty) => a + ty.total * ty.each, 0), speedSum = lanes.reduce((a, l) => a + l.speed, 0);
             const byType = types.map(ty => ({ name: ty.name, crafts: ty.total, each: ty.each, outQ: ty.outQ, first: ty.first, last: ty.last, laneTime: ty.laneTime, onPath: ty.onPath, tail: ty.tail, needs: ty.ings.map(i => i.ty.name) })).sort((a, b) => a.first - b.first || b.tail - a.tail || a.name.localeCompare(b.name));
-            return { lanes: lanes.map(l => ({ i: l.i, label: l.label, speed: l.speed, busy: l.busy, util: l.util, jobs: l.jobs, runs: l.runs })), jobs, crafts: jobs.length, makespan, path, pathBy, byType, work, speedSum, parallel: speedSum > 0 ? work / speedSum : 0, chain: types.length ? Math.max(...types.map(ty => ty.tail)) : 0, complete };
+            return { lanes: lanes.map(l => ({ i: l.i, label: l.label, speed: l.speed, busy: l.busy, util: l.util, jobs: l.jobs, runs: l.runs })), jobs, crafts: crafts - left, batched, makespan, path, pathBy, byType, work, speedSum, parallel: speedSum > 0 ? work / speedSum : 0, chain: types.length ? Math.max(...types.map(ty => ty.tail)) : 0, complete };
         }
 
         // the Hub Explorer's saved build as job lanes: the hab's own jobs at 1x, each station's jobs at its speed, each

@@ -338,6 +338,15 @@ check('M x1 makes 4, T x4 take 1 each, 3 jobs: M alone first (2 lanes idle), 3 T
 const s0 = empire.schedule({ crafts: new Map(), steps: new Map() }, { jobs: 3 });
 check('an empty plan: 0 s, 0 crafts, 3 empty lanes, no path', [s0.makespan, s0.crafts, s0.lanes.length, s0.path.length, s0.parallel, s0.chain], [0, 0, 3, 0, 0, 0]);
 check('an empty plan through expand(): the same', (s => [s.makespan, s.crafts])(empire.schedule(empire.expand([], new Set()), { jobs: 2 })), [0, 0]);
+// batches (2026-10-24): over 20,000 crafts a job carries a batch of one kind - 400k crafts once overflowed the stack and
+// one Ammo TTN T5 (236 million crafts) hung the page
+const bigFlat = empire.schedule(mk([['X', 100000, 1, 1]]), { jobs: 1 });
+check('100,000 X (1 s) on 1 job: batched, every craft placed, 100,000 s, at most 20,000 jobs', [bigFlat.batched, bigFlat.crafts, bigFlat.makespan, bigFlat.jobs.length <= 20000, bigFlat.complete], [true, 100000, 100000, true, true]);
+const bigChain = empire.schedule(mk([['A', 600000, 10, 1], ['B', 300000, 20, 1, [['A', 2]]]]), { jobs: 4 });
+check('  A x600k -> B x300k (2 A each) on 4 jobs: complete, 900k crafts, within 1 % of work / 4 = 3,000,000 s', [bigChain.complete, bigChain.crafts, Math.abs(bigChain.makespan / 3e6 - 1) < 0.01], [true, 900000, true]);
+const ammo = rc.byId.get('ammo-ttn-t5'), AX = empire.expand([{ id: ammo.outputId, qty: 1 }], new Set());
+const ammoT0 = Date.now(), A1 = empire.schedule(AX, { jobs: 1 }), ammoMs = Date.now() - ammoT0;
+check('  the real Ammo TTN T5 x1 on 1 job: every craft placed, = every craft in sequence, under 5 s', [A1.complete, A1.crafts === AX.craftCount, Math.abs(A1.makespan / AX.sequential - 1) < 1e-9, ammoMs < 5000], [true, true, true, true]);
 // the real plan (Power Regulation Module x100, nothing stopped at a processor)
 const X = empire.expand(prmItems, new Set()), P1 = empire.schedule(X, { jobs: 1 }), P3 = empire.schedule(X, { lanes: [{ label: 'Hab T3', speed: 1 }, { label: 'S station', speed: 1.5 }, { label: 'S station', speed: 1.5 }] }), PN = empire.schedule(X, { jobs: X.craftCount });
 check('PRM x100: expand keeps a step per craft kind, with its time, output and inputs', [X.steps.size === X.crafts.size, X.steps.get('Power Regulation Module').each, X.steps.get('Power Regulation Module').ings.length > 0], [true, prm.constructionTime, true]);
