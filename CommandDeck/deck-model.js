@@ -589,7 +589,7 @@
                 if (next > t + EPS) { t = next; types.forEach(ty => { ty.doneNow = 0; }); }
             }
             finish();
-            const makespan = jobs.length ? Math.max(...jobs.map(j => j.end)) : 0;
+            const makespan = jobs.reduce((a, j) => (j.end > a ? j.end : a), 0);            // no spread: a big plan has 100k+ jobs and overflows the stack
             // the critical path: from the craft that finishes last, back through what each one waited for
             const onPath = new Set(); const chain = [];
             let cur = jobs.length ? jobs.reduce((a, j) => (j.end > a.end ? j : a), jobs[0]) : null;
