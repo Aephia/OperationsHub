@@ -30,6 +30,14 @@
         'Oceanic Planet':     { base: '#2f8cff', lit: '#bfe0ff', dark: '#0b2a5c', slug: 'oceanic' }
     };
 
+    // Cycles sprites (Tools/planets/render_planets.py -> pack_planets.py): <slug>_<v>_{128,384}.webp, 3 variants per
+    // category, star_<type>_384.webp with the halo baked in. A planet's radius is PLANET_R of the sprite's half-size; a
+    // star's disc is STAR_R of it. The renders are lit from the upper-left (light arrives from screen angle LIGHT_DEG).
+    const ART = '../Images/planets/';
+    const PLANET_R = 0.68, STAR_R = 1 / 2.6, LIGHT_DEG = -145;
+    const variantOf = p => { const s = String(p.name || p.code || ''); let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h) % 3; };
+    const planetArt = (p, slug, px) => `${ART}${slug}_${variantOf(p)}_${px}.webp`;
+
     function esc(s) {
         return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     }
@@ -55,12 +63,6 @@
         const O0 = 0.75, O1 = 8.25;
         const ring = (i, orbit) => rMin + (rMax - rMin) * Math.min(1, Math.max(0, ((orbit || O0) - O0) / (O1 - O0)));
 
-        let defs = `<radialGradient id="${id}-star" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="${ss.core}"/><stop offset="0.45" stop-color="${ss.glow}"/><stop offset="1" stop-color="${ss.glow}" stop-opacity="0"/></radialGradient>`;
-        Object.keys(CATEGORY_STYLE).forEach(k => {
-            const c = CATEGORY_STYLE[k];
-            defs += `<radialGradient id="${id}-${c.slug}" cx="35%" cy="32%" r="70%"><stop offset="0" stop-color="${c.lit}"/><stop offset="0.45" stop-color="${c.base}"/><stop offset="1" stop-color="${c.dark}"/></radialGradient>`;
-        });
-
         let rings = '', bodies = '', labels = '';
         const placed = [];   // label anchors already used, to nudge neighbours apart
         sorted.forEach((p, i) => {
@@ -79,8 +81,11 @@
                 bodies += `<g class="orb${hi}" data-planet="${p._i}"${spin}><circle class="belt" cx="${C}" cy="${C}" r="${r.toFixed(1)}" stroke="${cs.base}" stroke-dasharray="${dash}" stroke-width="${(1.5 + (p.scale || 0.2) * 4).toFixed(1)}"><title>${name} - Asteroid Belt</title></circle></g>`;
             } else {
                 const pr = Math.max(2.5, S * 0.012 + (p.scale || 0.2) * S * 0.052);
-                const gas = cat === 'Gas Giant' ? `<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="${(pr * 1.9).toFixed(1)}" ry="${(pr * 0.55).toFixed(1)}" transform="rotate(-18 ${x.toFixed(1)} ${y.toFixed(1)})" fill="none" stroke="${cs.lit}" stroke-opacity="0.55" stroke-width="1"/>` : '';
-                bodies += `<g class="orb${hi}" data-planet="${p._i}"${spin}>${gas}<circle class="body" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${pr.toFixed(1)}" fill="url(#${id}-${cs.slug})"><title>${name} - ${esc(cat)}</title></circle></g>`;
+                // the sprite (rings baked in) turned so its lit side faces this system's star; the transparent circle
+                // on top carries the title and the hover / highlight stroke
+                const h = pr / PLANET_R, toStar = a * 180 / Math.PI + 180;
+                const img = `<image href="${planetArt(p, cs.slug, 128)}" x="${(x - h).toFixed(1)}" y="${(y - h).toFixed(1)}" width="${(2 * h).toFixed(1)}" height="${(2 * h).toFixed(1)}" transform="rotate(${(toStar - LIGHT_DEG).toFixed(1)} ${x.toFixed(1)} ${y.toFixed(1)})"/>`;
+                bodies += `<g class="orb${hi}" data-planet="${p._i}"${spin}>${img}<circle class="body" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${pr.toFixed(1)}" fill="transparent"><title>${name} - ${esc(cat)}</title></circle></g>`;
             }
             if (o.labels) {
                 const lx = C + (r + 10) * Math.cos(a);
@@ -95,17 +100,19 @@
             }
         });
 
-        const starG = `<circle class="star-glow" cx="${C}" cy="${C}" r="${(starR * 2.6).toFixed(1)}" fill="url(#${id}-star)" opacity="0.55"/><circle class="star-core" cx="${C}" cy="${C}" r="${starR.toFixed(1)}" fill="${ss.core}"><title>${esc(star.name || 'Star')}</title></circle>`;
-        return `<svg class="orrery${o.animate ? ' live' : ''}" viewBox="0 0 ${S} ${S}" width="${S}" height="${S}" role="img" aria-label="${esc(system.name)} system map"><defs>${defs}</defs>${rings}${starG}${bodies}${labels}</svg>`;
+        const sh = starR / STAR_R, st = STAR_STYLE[star.type] ? star.type : 2;
+        const starG = `<image class="star-art" href="${ART}star_${st}_384.webp" x="${(C - sh).toFixed(1)}" y="${(C - sh).toFixed(1)}" width="${(2 * sh).toFixed(1)}" height="${(2 * sh).toFixed(1)}"/><circle class="star-core" cx="${C}" cy="${C}" r="${starR.toFixed(1)}" fill="transparent"><title>${esc(star.name || 'Star')}</title></circle>`;
+        return `<svg class="orrery${o.animate ? ' live' : ''}" viewBox="0 0 ${S} ${S}" width="${S}" height="${S}" role="img" aria-label="${esc(system.name)} system map">${rings}${starG}${bodies}${labels}</svg>`;
     }
 
-    /** A CSS planet portrait (sphere with a lit side); category drives the palette, gas giants get bands. */
+    /** A rendered planet portrait: the Cycles sprite for the category (variant by name), sized so the PLANET is
+     *  `size` px across; rings and atmosphere spill past the box (overflow visible). */
     function planetSphereHTML(planet, size) {
         const cat = getPlanetCategory(planet.type);
         const cs = CATEGORY_STYLE[cat] || CATEGORY_STYLE['Barren Planet'];
-        const px = size || 140;
-        const style = `--p-lit:${cs.lit};--p-base:${cs.base};--p-dark:${cs.dark};width:${px}px;height:${px}px`;
-        return `<div class="sphere sphere-${cs.slug}" style="${style}" aria-hidden="true"><i class="sphere-tex"></i><i class="sphere-shade"></i></div>`;
+        // a belt sprite has no disc to match: it fills the box instead of spilling past it
+        const px = size || 140, img = cs.slug === 'belt' ? px : px / PLANET_R, off = (img - px) / 2;
+        return `<div class="sphere sphere-${cs.slug}" style="width:${px}px;height:${px}px" aria-hidden="true"><img src="${planetArt(planet, cs.slug, 384)}" alt="" loading="lazy" decoding="async" style="width:${img.toFixed(0)}px;height:${img.toFixed(0)}px;margin:-${off.toFixed(0)}px"></div>`;
     }
 
     window.Orrery = { renderOrrerySVG, planetSphereHTML, STAR_STYLE, CATEGORY_STYLE };

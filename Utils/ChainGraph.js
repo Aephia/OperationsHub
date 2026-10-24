@@ -9,12 +9,18 @@
 
     const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const CAT_LABEL = { raw: 'Raw', processed: 'Processed', component: 'Component', advanced: 'Advanced' };
+    const ICON = 30;   // px, the rendered form icon inside a pill when ResourceIcons.js is loaded
 
     class ChainGraph {
         // opts: { onOpen(name), sound(name), label(node) -> second line text, edgeLabel(edge) -> title, kMax }
         constructor(host, opts) {
             this.host = host; this.opts = opts || {};
             this.g = null;
+        }
+
+        labelOf(n) {
+            const l = this.opts.label ? this.opts.label(n) : (n.res ? `T${n.res.tier} · ${CAT_LABEL[n.res.category] || ''}` : '');
+            return l == null ? '' : String(l);
         }
 
         // dag: { root, nodes: Map(name -> {name, res, leaf}), edges: [{from, to, quantity, label?}] }
@@ -27,7 +33,8 @@
             visit(dag.root); order.reverse();
             order.forEach(n => { (kids.get(n) || []).forEach(e => { layer.set(e.to, Math.max(layer.get(e.to) || 0, (layer.get(n) || 0) + 1)); }); });
             const rows = []; layer.forEach((l, n) => { (rows[l] = rows[l] || []).push(n); });
-            const W = n => Math.min(176, Math.max(92, 14 + 7.2 * n.length)), GAP = 16, ROW = 92;
+            // width fits the wider of the two lines (name at 12.5 px, the sub line at 9.5 px), plus the icon
+            const W = n => { const d = dag.nodes.get(n), sub = this.labelOf({ name: n, res: d && d.res, data: d }); return Math.min(176, Math.max(92, 14 + 7.2 * n.length, 16 + 5.0 * sub.length)) + (window.ResourceIcons ? ICON : 0); }, GAP = 16, ROW = 92;
             const pos = new Map();
             rows.forEach(row => row.sort());
             const place = row => { const widths = row.map(W); const total = widths.reduce((a, b) => a + b, 0) + GAP * (row.length - 1); let x = -total / 2; row.forEach((n, i) => { pos.set(n, { x: x + widths[i] / 2, w: widths[i] }); x += widths[i] + GAP; }); };
@@ -44,7 +51,7 @@
         draw(dag) {
             const host = this.host, L = this.layout(dag), H = 40, PAD = 24;
             const byName = new Map(L.nodes.map(n => [n.name, n]));
-            const label = this.opts.label || (n => n.res ? `T${n.res.tier} · ${CAT_LABEL[n.res.category] || ''}` : '');
+            const label = n => this.labelOf(n);
             const edges = dag.edges.map(e => {
                 const a = byName.get(e.from), b = byName.get(e.to); if (!a || !b) return '';
                 const x1 = a.x, y1 = a.y + H / 2, x2 = b.x, y2 = b.y - H / 2, c = (y2 - y1) * 0.5;
@@ -56,7 +63,10 @@
                 const cat = (n.res && n.res.category) || (n.data && n.data.cat) || 'processed';
                 const text = n.name.length > 24 ? n.name.slice(0, 23) + '…' : n.name;
                 const sub = label(n);
-                return `<g class="nd cat-${cat}${n.layer === 0 ? ' root' : ''}" data-name="${esc(n.name)}" transform="translate(${n.x.toFixed(1)},${n.y.toFixed(1)})"><g class="in" style="animation-delay:${Math.min(1200, n.layer * 70)}ms"><rect x="${(-n.w / 2).toFixed(1)}" y="${-H / 2}" width="${n.w.toFixed(1)}" height="${H}" rx="9"/><text class="nm" y="${sub ? -2 : 5}">${esc(text)}</text>${sub ? `<text class="tr" y="13">${esc(sub)}</text>` : ''}<title>${esc(n.name)}</title></g></g>`;
+                // form icon (Utils/ResourceIcons.js) at the pill's left; the text centres in what is left
+                const icon = window.ResourceIcons && CAT_LABEL[cat] ? `<image class="ic" href="${window.ResourceIcons.url(n.name, cat)}" x="${(-n.w / 2 + 4).toFixed(1)}" y="${-ICON / 2 + 1}" width="${ICON}" height="${ICON}"/>` : '';
+                const tx = icon ? (ICON / 2).toFixed(1) : 0;
+                return `<g class="nd cat-${cat}${n.layer === 0 ? ' root' : ''}" data-name="${esc(n.name)}" transform="translate(${n.x.toFixed(1)},${n.y.toFixed(1)})"><g class="in" style="animation-delay:${Math.min(1200, n.layer * 70)}ms"><rect x="${(-n.w / 2).toFixed(1)}" y="${-H / 2}" width="${n.w.toFixed(1)}" height="${H}" rx="9"/>${icon}<text class="nm" x="${tx}" y="${sub ? -2 : 5}">${esc(text)}</text>${sub ? `<text class="tr" x="${tx}" y="13">${esc(sub)}</text>` : ''}<title>${esc(n.name)}</title></g></g>`;
             }).join('');
             const vbW = (L.maxX - L.minX) + PAD * 2, vbH = L.height + PAD * 2;
             host.innerHTML = `<svg class="cg-svg" viewBox="${(L.minX - PAD).toFixed(1)} ${-PAD - H / 2} ${vbW.toFixed(1)} ${vbH.toFixed(1)}"><g class="edges">${edges}</g><g class="nodes">${nodes}</g></svg>`;

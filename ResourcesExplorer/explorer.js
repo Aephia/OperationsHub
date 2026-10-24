@@ -106,7 +106,7 @@
                 : `${c.label} &middot; ${r.depth} step${r.depth === 1 ? '' : 's'} from raw`;
             const pct = Math.round(100 * r.demand / this.m.maxDemand);
             return `<article class="rc" data-name="${esc(r.name)}" style="--c:${c.color}">
-                <div class="rc-head"><i class="t t${r.tier}">T${r.tier}</i><b class="rc-name">${esc(r.name)}</b></div>
+                <div class="rc-head">${window.ResourceIcons ? `<img class="rc-ic" src="${window.ResourceIcons.url(r.name, r.category)}" alt="" loading="lazy" decoding="async">` : ''}<i class="t t${r.tier}">T${r.tier}</i><b class="rc-name">${esc(r.name)}</b></div>
                 <div class="rc-kind">${kind}</div>
                 <div class="rc-line">${this.line(r)}</div>
                 <div class="rc-demand"><span>${r.demand ? `used by <b>${r.demand.toLocaleString()}</b> recipe${r.demand === 1 ? '' : 's'}` : 'not an ingredient anywhere'}${r.category === 'raw' && r.reach ? ` &middot; reaches <b>${r.reach.toLocaleString()}</b>` : ''}</span><i class="bar"><b style="width:${pct}%"></b></i></div>

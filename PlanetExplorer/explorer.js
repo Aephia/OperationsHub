@@ -696,7 +696,7 @@ class PlanetExplorer extends BaseExplorer {
             const info = this.resourceInfo.get(resource.name) || {};
             return `
             <div class="resource-card">
-                <div class="resource-name">${tier ? `<b class="t t${tier}">T${tier}</b>` : ''}${resource.name}</div>
+                <div class="resource-name">${window.ResourceIcons ? `<img class="res-ic" src="${window.ResourceIcons.url(resource.name, 'raw')}" alt="" loading="lazy" decoding="async">` : ''}${tier ? `<b class="t t${tier}">T${tier}</b>` : ''}${resource.name}</div>
                 <div class="resource-richness">Richness <b>${resource.richness}</b> <span class="muted">of ${max} best · ${pct}%</span></div>
                 <div class="richness-bar"><div class="richness-fill" style="width: ${pct}%"></div></div>
                 <div class="resource-type-id">${info.category || 'raw'}${info.faction ? ` · ${info.faction} exclusive` : ''}</div>

@@ -58,6 +58,27 @@ image set is ~570 KB of WebP (`Images/landing/`).
 python Tools/landing/pack_landing.py <out.png>
 ```
 
+**Planet sprites and resource icons** (2026-10-23, both fully procedural, no source assets, renders go to a scratch dir):
+
+```bash
+B="C:\Program Files\Blender Foundation\Blender 5.2\blender.exe"
+# 7 planet categories x 3 variants, 3 belt clusters, 5 star discs (512 px, ~1 min) -> Images/planets/ (53 webp, ~450 KB)
+"$B" -b -P Tools/planets/render_planets.py -- <dir> 512 128 [name ...]
+python Tools/planets/pack_planets.py <dir>          # 384 px portraits, 128 px orrery bodies, stars get the halo here
+# 19 resource forms: 5 raw + 14 crafted x 3 category accents (256 px, ~1 min) -> Images/icons/ (47 webp, ~190 KB)
+"$B" -b -P Tools/icons/render_icons.py -- <dir> 256 128 [form ...]
+python Tools/icons/pack_icons.py <dir>
+```
+
+- `PlanetExplorer/orrery.js` draws each planet as its sprite (variant picked by a hash of the name), **rotated so the
+  lit side faces the system's star**; a transparent circle on top keeps the title and the hover / highlight ring. A
+  planet's radius is 0.68 of its sprite's half-size (rings and atmosphere sit in the margin); a star's disc is 1/2.6.
+  `planetSphereHTML` (planet modal, system rows, Stake Builder) shows the 384 px sprite.
+- `Utils/ResourceIcons.js` maps every one of the 3,526 resources to a form from its name (ship modules by family,
+  then keywords, first rule wins; the raw forms are ore / crystal / gas / flora / exotic). Used by the ChainGraph pills
+  (Resources sheet, Recipe plan), the resource cards and sheet header, and the Planet Explorer deposit cards. To
+  review the mapping, classify the whole export and read the names under each form before changing a rule.
+
 **Module Guides** (the button on every card) read `Documentation/module-help-content.js`, rewritten 2026-10-01 for
 the rebuilt modules. They had been dead since the landing redesign: the file declares the table with a top-level
 `const`, which is not a `window` property, and the click handler tested `window.moduleHelpContent` first; the handler

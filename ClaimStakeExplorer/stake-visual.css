@@ -94,19 +94,10 @@ main { padding: 1.2rem clamp(0.8rem, 2vw, 2rem); }
 .buildings-header h2 { font-size: 1.3rem; }
 
 
-/* planet sphere portrait (same rules as the Planet Explorer's planet-visual.css) */
-.sphere { position: relative; border-radius: 50%; flex: none;
-    background: radial-gradient(circle at 34% 30%, var(--p-lit) 0%, var(--p-base) 38%, var(--p-dark) 100%);
-    box-shadow: inset -12px -10px 30px rgba(0, 0, 0, 0.75), 0 0 30px color-mix(in srgb, var(--p-base) 45%, transparent); overflow: hidden; }
-.sphere i { position: absolute; inset: 0; border-radius: 50%; display: block; }
-.sphere-tex { opacity: 0.35; background: repeating-radial-gradient(circle at 60% 70%, transparent 0 7px, rgba(0, 0, 0, 0.25) 7px 9px); }
-.sphere-gas .sphere-tex { opacity: 0.5; background: repeating-linear-gradient(-14deg, rgba(0, 0, 0, 0.22) 0 6px, transparent 6px 14px, rgba(255, 255, 255, 0.08) 14px 18px, transparent 18px 26px); }
-.sphere-ice .sphere-tex { opacity: 0.35; background: repeating-linear-gradient(-10deg, rgba(255, 255, 255, 0.12) 0 8px, transparent 8px 20px); }
-.sphere-oceanic .sphere-tex { opacity: 0.55; background: radial-gradient(circle at 30% 60%, rgba(80, 200, 120, 0.7) 0 9%, transparent 11%), radial-gradient(circle at 65% 35%, rgba(80, 200, 120, 0.6) 0 12%, transparent 14%), radial-gradient(circle at 55% 75%, rgba(255, 255, 255, 0.5) 0 6%, transparent 8%); }
-.sphere-terrestrial .sphere-tex { opacity: 0.55; background: radial-gradient(circle at 40% 45%, rgba(40, 110, 220, 0.75) 0 16%, transparent 18%), radial-gradient(circle at 70% 70%, rgba(40, 110, 220, 0.7) 0 10%, transparent 12%), radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.5) 0 7%, transparent 9%); }
-.sphere-volcanic .sphere-tex { opacity: 0.7; background: radial-gradient(circle at 45% 60%, rgba(255, 200, 60, 0.9) 0 3%, transparent 5%), radial-gradient(circle at 65% 35%, rgba(255, 120, 30, 0.8) 0 4%, transparent 6%), repeating-radial-gradient(circle at 50% 50%, transparent 0 11px, rgba(0, 0, 0, 0.35) 11px 13px); }
-.sphere-dark .sphere-tex { opacity: 0.6; background: radial-gradient(circle at 60% 40%, rgba(130, 140, 255, 0.35) 0 5%, transparent 7%), radial-gradient(circle at 35% 65%, rgba(130, 140, 255, 0.25) 0 4%, transparent 6%); }
-.sphere-shade { background: radial-gradient(circle at 70% 75%, rgba(0, 0, 0, 0.55), transparent 60%); }
+/* planet portrait (orrery.js planetSphereHTML, 2026-10-23): a Cycles sprite (Tools/planets) larger than the box,
+   so rings and atmosphere spill past it */
+.sphere { position: relative; flex: none; overflow: visible; }
+.sphere img { display: block; pointer-events: none; }
 
 /* ----------------------------------------------------- STAKE BUILDER ---- */
 #constructionContent { padding: 0 !important; }

@@ -66,7 +66,7 @@
                     <button type="button" class="rx-x" data-close aria-label="Close">&times;</button>
                     <header class="rx-head">
                         ${this.history.length ? `<button type="button" class="sb-btn ghost rx-back" data-back>&larr; ${esc(this.history[this.history.length - 1])}</button>` : ''}
-                        <div class="rx-title"><i class="t t${r.tier}">T${r.tier}</i><h2>${esc(r.name)}</h2></div>
+                        <div class="rx-title">${window.ResourceIcons ? `<img class="rx-ic" src="${window.ResourceIcons.url(r.name, r.category)}" alt="">` : ''}<i class="t t${r.tier}">T${r.tier}</i><h2>${esc(r.name)}</h2></div>
                         <div class="rx-badges">
                             <span class="badge" style="--c:${c.color}"><i></i>${c.label}</span>
                             <span class="badge">${r.category === 'raw' ? (r.stakeMinable ? 'claim-stake extractor' : (r.beltOnly ? 'belts only: fleet mining' : 'fleet mining only')) : (r.recipe && r.ingredients.length ? `${r.depth} step${r.depth === 1 ? '' : 's'} from raw` : 'no recipe')}</span>

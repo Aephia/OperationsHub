@@ -123,7 +123,7 @@ header .navigation-tabs { grid-area: tabs; justify-content: center; }
 /* orrery */
 .orrery .orb-ring { fill: none; stroke: rgba(120, 200, 255, 0.16); stroke-width: 1; }
 .orrery .belt { fill: none; stroke-linecap: round; opacity: 0.9; }
-.orrery .star-core { filter: drop-shadow(0 0 6px rgba(255, 240, 200, 0.9)); }
+.orrery .star-art, .orrery image { pointer-events: none; }
 .orrery .orb.dim { opacity: 0.22; }
 .orrery .orb.hi .body { stroke: #fff; stroke-width: 1.5; }
 .orrery .orb { cursor: pointer; transform-origin: 50% 50%; transform-box: view-box; }
@@ -170,28 +170,16 @@ header .navigation-tabs { grid-area: tabs; justify-content: center; }
 .resource-details { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.7rem; }
 .resource-card { padding: 0.8rem 0.9rem; border-radius: 10px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.03); }
 .resource-name { font-weight: 700; color: #fff; font-size: 1rem; }
+.resource-name .res-ic { width: 30px; height: 30px; vertical-align: middle; margin: -6px 2px -6px -4px; }
 .resource-richness { font-size: 0.85rem; color: var(--text-secondary); margin: 0.25rem 0; }
 .richness-bar { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
 .richness-fill { height: 100%; background: linear-gradient(90deg, #2c7bff, var(--cyan)); }
 .resource-type-id { font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); margin-top: 0.35rem; }
 
-/* planet sphere portrait: lit sphere, category palette, bands for gas giants, rock for belts */
-.sphere { position: relative; border-radius: 50%; flex: none;
-    background: radial-gradient(circle at 34% 30%, var(--p-lit) 0%, var(--p-base) 38%, var(--p-dark) 100%);
-    box-shadow: inset -12px -10px 30px rgba(0, 0, 0, 0.75), 0 0 30px color-mix(in srgb, var(--p-base) 45%, transparent); overflow: hidden; }
-.sphere i { position: absolute; inset: 0; border-radius: 50%; display: block; }
-.sphere-tex { opacity: 0.35; background: repeating-radial-gradient(circle at 60% 70%, transparent 0 7px, rgba(0, 0, 0, 0.25) 7px 9px); }
-.sphere-gas .sphere-tex { opacity: 0.5; background: repeating-linear-gradient(-14deg, rgba(0, 0, 0, 0.22) 0 6px, transparent 6px 14px, rgba(255, 255, 255, 0.08) 14px 18px, transparent 18px 26px); }
-.sphere-ice .sphere-tex { opacity: 0.35; background: repeating-linear-gradient(-10deg, rgba(255, 255, 255, 0.12) 0 8px, transparent 8px 20px); }
-.sphere-oceanic .sphere-tex { opacity: 0.55; background: radial-gradient(circle at 30% 60%, rgba(80, 200, 120, 0.7) 0 9%, transparent 11%), radial-gradient(circle at 65% 35%, rgba(80, 200, 120, 0.6) 0 12%, transparent 14%), radial-gradient(circle at 55% 75%, rgba(255, 255, 255, 0.5) 0 6%, transparent 8%); }
-.sphere-terrestrial .sphere-tex { opacity: 0.55; background: radial-gradient(circle at 40% 45%, rgba(40, 110, 220, 0.75) 0 16%, transparent 18%), radial-gradient(circle at 70% 70%, rgba(40, 110, 220, 0.7) 0 10%, transparent 12%), radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.5) 0 7%, transparent 9%); }
-.sphere-volcanic .sphere-tex { opacity: 0.7; background: radial-gradient(circle at 45% 60%, rgba(255, 200, 60, 0.9) 0 3%, transparent 5%), radial-gradient(circle at 65% 35%, rgba(255, 120, 30, 0.8) 0 4%, transparent 6%), repeating-radial-gradient(circle at 50% 50%, transparent 0 11px, rgba(0, 0, 0, 0.35) 11px 13px); }
-.sphere-dark .sphere-tex { opacity: 0.6; background: radial-gradient(circle at 60% 40%, rgba(130, 140, 255, 0.35) 0 5%, transparent 7%), radial-gradient(circle at 35% 65%, rgba(130, 140, 255, 0.25) 0 4%, transparent 6%); }
-.sphere-belt { background: none; box-shadow: none; overflow: visible; }
-.sphere-belt .sphere-tex { background: radial-gradient(circle, var(--p-base) 0 9%, transparent 10%) 20% 40% / 30% 30% no-repeat, radial-gradient(circle, var(--p-lit) 0 6%, transparent 7%) 60% 25% / 24% 24% no-repeat, radial-gradient(circle, var(--p-base) 0 11%, transparent 12%) 70% 70% / 36% 36% no-repeat, radial-gradient(circle, var(--p-dark) 0 7%, transparent 8%) 35% 75% / 26% 26% no-repeat, radial-gradient(circle, var(--p-lit) 0 5%, transparent 6%) 85% 50% / 20% 20% no-repeat; opacity: 1; }
-.sphere-belt .sphere-shade { display: none; }
-.sphere-shade { background: radial-gradient(circle at 34% 30%, transparent 40%, rgba(0, 0, 0, 0.55) 100%); }
-
+/* planet portrait (orrery.js planetSphereHTML, 2026-10-23): a Cycles sprite (Tools/planets) larger than the box,
+   so rings and atmosphere spill past it */
+.sphere { position: relative; flex: none; overflow: visible; }
+.sphere img { display: block; pointer-events: none; }
 .sysmodal-visual, .sysmodal-visual .orrery, .sys-visual .orrery { overflow: visible; }
 @media (max-width: 1200px) {
     .explorer-layout { grid-template-columns: 1fr; }
