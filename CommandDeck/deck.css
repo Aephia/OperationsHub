@@ -4,7 +4,7 @@
 
 [hidden] { display: none !important; }
 main { overflow-x: clip; }                                   /* a hover tooltip near the right edge must not widen the page */
-.cd-side .ct, .cd-bars .ct { white-space: normal; width: max-content; max-width: 250px; text-align: left; line-height: 1.3; left: 0; transform: none; z-index: 5; }
+.cd-side .ct { white-space: normal; width: max-content; max-width: 250px; text-align: left; line-height: 1.3; left: 0; transform: none; z-index: 5; }
 .cd-stats { margin-bottom: 1rem; }
 .cd-stats .an-stat b small { font-family: 'Rajdhani', sans-serif; font-size: 0.8rem; font-weight: 500; color: var(--text-muted); }
 .cd-stats .an-stat.warn b { color: var(--warn); }
@@ -24,7 +24,7 @@ main { overflow-x: clip; }                                   /* a hover tooltip 
 /* ------------------------------------------------- settings strip + inputs */
 .cd-strip, .cd-inputs { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1.1rem; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 0.75rem 1rem; margin-bottom: 1rem; }
 .cd-tick { display: inline-flex; align-items: center; gap: 0.5rem; }
-.cd-tick span, .cd-inputs label > span, .cd-prices > span { font-family: 'Orbitron', sans-serif; font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--cyan); }
+.cd-tick span, .cd-inputs label > span { font-family: 'Orbitron', sans-serif; font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--cyan); }
 .cd-tick input { width: 110px; text-align: right; font-family: 'Orbitron', sans-serif; font-size: 0.8rem; }
 .cd-tick em { font-style: normal; color: var(--text-muted); }
 .cd-flag { font-size: 0.66rem; letter-spacing: 0.12em; text-transform: uppercase; padding: 0.2rem 0.5rem; border-radius: 5px; border: 1px solid var(--line); }
@@ -36,10 +36,6 @@ main { overflow-x: clip; }                                   /* a hover tooltip 
 .cd-strip-note b { color: var(--text-secondary); }
 .cd-inputs label { display: inline-flex; align-items: center; gap: 0.5rem; }
 .cd-inputs select.sb-input { width: auto; min-width: 210px; }
-.cd-prices { display: flex; flex-wrap: wrap; align-items: center; gap: 0.45rem 0.8rem; }
-.cd-prices label { gap: 0.3rem; font-size: 0.82rem; color: var(--text-secondary); }
-.cd-prices input { width: 84px; padding: 0.35rem 0.5rem; text-align: right; font-family: 'Orbitron', sans-serif; font-size: 0.7rem; }
-.cd-prices .t { margin-right: 0; }
 
 /* ------------------------------------------------------------- finder */
 .cd-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1rem; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 0.7rem 1rem; margin-bottom: 1rem; }
@@ -134,7 +130,6 @@ main { overflow-x: clip; }                                   /* a hover tooltip 
 .cd-done { font-style: normal; color: var(--ok); margin-left: 0.3rem; }
 
 /* ------------------------------------------------------------- charts */
-.cd-charts, .cd-bars, .cd-attn { margin-bottom: 1rem; }
 .cd-chart { display: block; width: 100%; height: auto; }
 .cd-chart .grid { stroke: rgba(255, 255, 255, 0.07); stroke-width: 1; }
 .cd-chart .ax { fill: #8fa0bd; font-family: 'Orbitron', sans-serif; font-size: 9px; }
@@ -146,7 +141,6 @@ main { overflow-x: clip; }                                   /* a hover tooltip 
 .cd-chart .mark { stroke: #fff; stroke-width: 1.2; stroke-dasharray: 2 4; }
 .cd-chart .lb.mk { fill: #fff; font-size: 11px; }
 .cd-chart .dotx { stroke: #04060f; stroke-width: 1.2; }
-.cd-bars .ch-row { grid-template-columns: 124px minmax(0, 1fr) 84px; }
 .cd-measure-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.7rem; margin-bottom: 0.8rem; }
 .cd-measure-grid label { display: flex; flex-direction: column; gap: 0.3rem; }
 .cd-measure-grid span { font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); }
@@ -207,10 +201,11 @@ main { overflow-x: clip; }                                   /* a hover tooltip 
 .hb-gauge-bar b { position: absolute; left: 0; top: 0; height: 100%; border-radius: 3px; }
 .hb-gauge.over .hb-gauge-head b { color: var(--bad); }
 .hb-gauge small { font-size: 0.7rem; color: var(--text-muted); display: block; line-height: 1.35; }
-.cd-alloc { display: flex; flex-direction: column; gap: 0.08rem; max-height: 250px; overflow: auto; }
-.cd-alloc-row { display: grid; grid-template-columns: minmax(0, 1fr) 46px 86px 78px 82px; gap: 0.4rem; align-items: center; font-size: 0.8rem; color: var(--text-muted); padding: 0.1rem 0.2rem; border-radius: 5px; }
+.cd-alloc { display: grid; grid-template-columns: minmax(6.5rem, 1fr) auto auto auto minmax(3.6rem, auto); column-gap: 0.4rem; row-gap: 0.08rem; align-content: start; max-height: 250px; overflow: auto; }
+.cd-alloc > .rx-note { grid-column: 1 / -1; }
+.cd-alloc-row { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; font-size: 0.8rem; color: var(--text-muted); padding: 0.1rem 0.2rem; border-radius: 5px; }
 .cd-alloc-row.on { color: var(--text-secondary); background: rgba(79, 216, 255, 0.05); }
-.cd-alloc-row .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cd-alloc-row .nm { overflow-wrap: anywhere; line-height: 1.2; }
 .cd-alloc-row .nm.need { color: #fff; font-weight: 600; }
 .cd-alloc-row .nm.need::before { content: '◆ '; color: var(--warn); font-size: 0.6rem; }
 .cd-alloc-row .rk, .cd-alloc-row .rt, .cd-alloc-row .ot { font-family: 'Orbitron', sans-serif; font-size: 0.58rem; text-align: right; white-space: nowrap; }
@@ -388,12 +383,11 @@ main { overflow-x: clip; }                                   /* a hover tooltip 
 @media (max-width: 760px) {
     .vs-lo { max-width: none; }
     .cd-measure-grid { grid-template-columns: 1fr; }
-    .cd-alloc-row { grid-template-columns: minmax(0, 1fr) 40px 78px 70px; }
+    .cd-alloc { grid-template-columns: minmax(6.5rem, 1fr) auto auto auto; }
     .cd-alloc-row .rt { display: none; }
     .cd-results button { grid-template-columns: 1fr; gap: 0; }
     .cd-inputs label { width: 100%; flex-wrap: wrap; }
     .cd-inputs select.sb-input { min-width: 0; width: 100%; }
-    .cd-prices label { width: auto; }
     #cdEmpire .rx-panel-head span { flex-basis: 100%; order: 3; }
 }
 
@@ -403,7 +397,7 @@ main { overflow-x: clip; }                                   /* a hover tooltip 
 .vs-h { text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7); }
 .cd-me { flex-wrap: wrap; }
 .vs-body, .vs-grid > *, .vs-charts > *, .rx-panel, .an-section, .an-two > *, .an-three > * { min-width: 0; }
-.vs-body .an-tablewrap, .cd-attn .an-tablewrap { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.vs-body .an-tablewrap, .cd-alltiers .an-tablewrap { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 @media (max-width: 760px) {
     .vs-strip .cd-me, .cd-strip .cd-me { flex: 1 1 100%; }
     .vs-fleet th select.sb-input { min-width: 120px; }
@@ -509,3 +503,68 @@ main { overflow-x: clip; }                                   /* a hover tooltip 
 .cd-ledger .gbar.last b { background: #ffb86b; }
 .cd-ledger .nosrc { color: var(--bad); font-family: 'Rajdhani', sans-serif; font-size: 0.8rem; }
 .cd-ledger .an-table thead th small { letter-spacing: 0.02em; text-transform: none; font-weight: 400; }
+/* Ships vs Stakes (reworked 2026-10-26): the verdict first, the pair head to head, one chart, the rest folded */
+.cd-inputs .chips { display: inline-flex; align-items: center; gap: 0.3rem; }
+.cd-inputs-lbl { font-family: 'Orbitron', sans-serif; font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--cyan); margin-right: 0.3rem; }
+.cd-fold { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 0 1rem; margin-bottom: 1rem; }
+.cd-fold > summary { display: flex; align-items: baseline; gap: 0.8rem; padding: 0.75rem 0; cursor: pointer; list-style: none; }
+.cd-fold > summary::-webkit-details-marker { display: none; }
+.cd-fold > summary::before { content: '\25B8'; color: var(--cyan); font-size: 0.8rem; transition: transform 0.15s; }
+.cd-fold[open] > summary::before { transform: rotate(90deg); }
+.cd-fold > summary b { font-family: 'Orbitron', sans-serif; font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--cyan); font-weight: 600; white-space: nowrap; }
+.cd-fold > summary span { font-size: 0.84rem; color: var(--text-muted); }
+.cd-fold[open] { padding-bottom: 0.9rem; }
+.cd-fold .an-tablewrap { margin-bottom: 0.6rem; }
+.cd-fold tr.on th, .cd-fold tr.on td { background: rgba(79, 216, 255, 0.06); }
+.cd-fold td.pos { color: var(--ok); }
+.cd-fold td.ask input { width: 90px; padding: 0.25rem 0.45rem; text-align: right; font-family: 'Orbitron', sans-serif; font-size: 0.68rem; }
+.cd-verdict { background: var(--card); border: 1px solid var(--line-strong); border-left: 4px solid #ff9f6b; border-radius: 14px; padding: 1rem 1.2rem; margin-bottom: 1rem; }
+.cd-verdict.stake { border-left-color: #ffd36b; }
+.cd-verdict-ctx { margin: 0 0 0.3rem; font-family: 'Orbitron', sans-serif; font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-dim); }
+.cd-verdict h2 { margin: 0 0 0.55rem; font-family: 'Rajdhani', sans-serif; font-size: 1.7rem; font-weight: 600; color: #fff; line-height: 1.15; }
+.cd-verdict h2 b { color: #ff9f6b; font-weight: 700; }
+.cd-verdict.stake h2 b { color: #ffd36b; }
+.cd-verdict ul { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.25rem; }
+.cd-verdict li { font-size: 0.95rem; color: var(--text-secondary); line-height: 1.4; }
+.cd-verdict li b { color: #fff; }
+.cd-verdict li b.hull { color: #ff9f6b; } .cd-verdict li b.stake { color: #ffd36b; }
+.cd-duel { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 0.8rem; align-items: stretch; margin-bottom: 1rem; }
+.cd-duel-vs { align-self: center; font-family: 'Orbitron', sans-serif; font-size: 0.8rem; letter-spacing: 0.2em; color: var(--text-dim); text-transform: uppercase; }
+.cd-duel-card { position: relative; display: grid; grid-template-columns: 150px minmax(0, 1fr); grid-template-areas: "art head" "art list"; gap: 0.2rem 1rem; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 0.9rem 1rem; }
+.cd-duel-card.win { border-color: rgba(126, 232, 164, 0.55); box-shadow: 0 0 0 1px rgba(126, 232, 164, 0.18) inset; }
+.cd-duel-card.win::after { content: 'mines more'; position: absolute; top: 0.7rem; right: 0.9rem; font-family: 'Orbitron', sans-serif; font-size: 0.55rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ok); }
+.cd-duel-art { grid-area: art; position: relative; display: flex; align-items: center; justify-content: center; min-height: 130px; border-radius: 10px; background: radial-gradient(circle at 50% 45%, rgba(79, 216, 255, 0.12), transparent 70%); }
+.cd-duel-art img { max-width: 100%; max-height: 150px; object-fit: contain; filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.6)); }
+.cd-duel-art .t { position: absolute; left: 0.3rem; top: 0.3rem; }
+.cd-duel-head { grid-area: head; padding-right: 5.5rem; display: flex; flex-direction: column; }
+.cd-duel-head small { font-family: 'Orbitron', sans-serif; font-size: 0.55rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-dim); }
+.cd-duel-head b { font-family: 'Rajdhani', sans-serif; font-size: 1.25rem; font-weight: 700; color: #fff; }
+.cd-duel-card dl { grid-area: list; margin: 0.3rem 0 0; display: flex; flex-direction: column; gap: 0.22rem; }
+.cd-duel-card dl > div { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 0.5rem; align-items: baseline; }
+.cd-duel-card dt { font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); }
+.cd-duel-card dd { margin: 0; font-size: 0.86rem; color: var(--text-secondary); }
+.cd-duel-card .big dd b { font-family: 'Orbitron', sans-serif; font-size: 1.05rem; color: #fff; }
+.cd-duel-card dd input { width: 110px; padding: 0.25rem 0.5rem; text-align: right; font-family: 'Orbitron', sans-serif; font-size: 0.7rem; }
+.cd-onechart { margin-bottom: 1rem; }
+.cd-onechart .an-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.cd-onechart .chips { display: inline-flex; gap: 0.3rem; }
+.cd-chart[data-tick-chart] { cursor: ew-resize; touch-action: none; user-select: none; }
+.cd-chart .hitarea { fill: transparent; }
+.cd-chart .ln.dim, .cd-chart .lb.dim { opacity: 0.28; }
+.cd-chart .ln.sel { stroke-width: 3.2; }
+.cd-chart .ln.flat.sel { stroke-width: 2.4; }
+.cd-chart .lb.eq { fill: #fff; font-size: 11px; }
+@media (max-width: 1000px) {
+    .cd-duel { grid-template-columns: 1fr; }
+    .cd-duel-vs { justify-self: center; }
+}
+@media (max-width: 560px) {
+    .cd-duel-card { grid-template-columns: 1fr; grid-template-areas: "art" "head" "list"; }
+    .cd-verdict h2 { font-size: 1.35rem; }
+}
+.cd-extstep { display: inline-flex; align-items: center; gap: 0.3rem; margin-right: 0.45rem; vertical-align: middle; }
+.cd-extstep b { font-family: 'Orbitron', sans-serif; font-size: 0.85rem; color: #fff; min-width: 1.4rem; text-align: center; }
+.cd-extstep button { width: 24px; height: 24px; border-radius: 6px; border: 1px solid var(--line-strong); background: rgba(79, 216, 255, 0.12); color: #fff; cursor: pointer; font-size: 0.9rem; line-height: 1; padding: 0; }
+.cd-extstep button:hover:not(:disabled) { background: rgba(79, 216, 255, 0.3); }
+.cd-extstep button:disabled { opacity: 0.25; cursor: default; }
+.cd-duel-card dd small { font-size: 0.76rem; color: var(--text-muted); }

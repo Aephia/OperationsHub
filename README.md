@@ -418,11 +418,21 @@ configuration calculator. Four tabs, everything always visible, no Chart.js, no 
   tail). The tile shows the scheduled time with the lower bound (work / speed) beside it. Reference: Power
   Regulation Module x100 on a T3 hab + S station + T3 storage (5 jobs) takes 88.4 min, 9.4 h on one job
 - **Ships vs Stakes tab:** a hull's mining rate is per **second**, an extractor's is per **tick**, and no export
-  field gives the tick length - so the tab takes the tick as an input and shows where the answer flips: output per
-  hour against tick length on log-log axes (stake lines fall, hull lines are flat, they cross at the break-even
-  tick), the same per dollar, break-even ticks, the price a stake would need to match a hull per dollar at your
-  tick, what each asks of you (hold fill time and unloads a day against storage fill time), and **Measure your
-  tick** (one extractor, storage read twice an hour apart: tick = 3,600 x rate x richness / units gained)
+  field gives the tick length - so the tab takes the tick as an input. Reworked 2026-10-26 to lead with the
+  decision: pick a raw, any hull with a mining rate (61 of 67; the Tap by default) and its **configuration** (the
+  48 fits, applied by the Loadouts engine - Default equals the base row), a stake tier (T1-T5 chips) and, on the
+  stake card, **how many extractors** (1 to the most that fit, kept per tier; crew quarters and power plants follow
+  the count - a T5 copper stake needs one power plant at every count, so its fuel stays 114.4 a tick while crew falls
+  895 -> 395 at 3 extractors),
+  and a **verdict** says it in words ("One IMP Tap
+  mines what 33.8 T5 stakes do" at a 60 s tick), the tick at which it flips, the same per dollar, and what each asks
+  of you (unload every 28 min against storage full in 4.2 days, no pilot). Below it the two go **head to head** as
+  cards with their art (`Images/ships` via its manifest, `Images/stake/extractor.webp`), the asks typed on the cards;
+  then **one chart** (units / h or per dollar, log-log, ONLY the chosen hull and stake tier - no default miners or
+  tiers - with their equal point marked) that you
+  drag or click to set the tick. **Measure your tick** (one extractor, storage read twice an hour apart: tick =
+  3,600 x rate x richness / units gained) folds open right under the tick setting; **Every tier and hull** folds
+  away the break-even ticks, fair prices and the hold / storage / fuel / food / crew tables.
 - **Loadouts tab:** one set of two to four **loadouts** (a hull + one of its 48 configurations - Tier One..Five,
   Cargo Boost / Fast Freight / Mining / Scanning / Salvage / Repair / Rescue Min-Mid-Max, eight damage kits) shared by
   six sub-tabs. Engine `CommandDeck/deck-loadout.js`: the Ship Explorer's `ShipConfigCalculator`

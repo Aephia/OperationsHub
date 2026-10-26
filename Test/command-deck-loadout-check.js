@@ -97,9 +97,30 @@ try { ct.render(); } catch (e) { console.log('RENDER ERR', e.message, e.stack.sp
 const html = safe(() => { ct.render(); return ct.root.innerHTML; });
 check('the stake table has the fuel columns', [/fuel per tick/.test(html), /fuel per unit/.test(html)], [true, true]);
 const refOpts = (html.match(/data-ref>([\s\S]*?)<\/select>/) || [, ''])[1].match(/<option/g) || [];
-check('"Compare against" lists the three Miner-spec hulls only', refOpts.length, 3);
+// owner rule 2026-10-26: any hull can be picked, not just the Miner spec - every hull with a mining rate (61 of 67)
+check('the Hull select lists every hull with a mining rate', refOpts.length, empire.miners.length);
+check('  that is 61 hulls, not the 3 Miner-spec ones', empire.miners.length, 61);
 STORE.s.calc.ref = 'Busan The Last Stand mk. VIII';
-check('  a saved non-miner falls back to the Tap', safe(() => ct.compute().ref.name), 'Armstrong IMP Tap');
+check('  a saved non-Miner-spec hull that mines is kept', safe(() => ct.compute().ref.name), 'Busan The Last Stand mk. VIII');
+STORE.s.calc.ref = 'Starbase - Tier 0';
+check('  a saved hull with no mining rate falls back to the Tap', safe(() => ct.compute().ref.name), 'Armstrong IMP Tap');
+// owner rule 2026-10-26: the hull takes a configuration, the stake an extractor count
+const ctL = new CalcTab(root(), { se, empire, rm, loadout: LO });
+check('hull config: Default equals the base row (Tap 19.192 / s, hold 32,270)', safe(() => { const f = ctL.fitted('Armstrong IMP Tap', 'Default'); return [f.rate, f.cargo, f.cfg]; }), [19.192, 32270, 'Default']);
+check('  Mining Max fits the Tap to 27.54 / s (Loadouts engine; the research skill records 27.54)', safe(() => ctL.fitted('Armstrong IMP Tap', 'Mining Max').rate), v => near(v, 27.54, 0.01));
+check('  an unknown config name falls back to Default', safe(() => ctL.fitted('Armstrong IMP Tap', 'No Such Fit').cfg), 'Default');
+check('  the Tap offers its 48 configurations', safe(() => ctL.fitted('Armstrong IMP Tap', 'Default').cfgs.length), 48);
+STORE.s.calc.cfg = 'Mining Max';
+check('  compute() uses the saved config: the verdict hull mines 27.54 / s', safe(() => ctL.compute().ref.rate), v => near(v, 27.54, 0.01));
+STORE.s.calc.cfg = 'Default';
+const s3 = se.stakeWith(5, 'copper-ore', 3), s7 = se.fullStake(5, 'copper-ore');
+check('stake extractors: a T5 with 3 of 7 extractors makes 3 x 4.86 = 14.58 a tick, same storage, less crew', s3 && [s3.k, s3.max, Math.round(s3.perTick * 100) / 100, s3.storage === s7.storage, s3.crew < s7.crew], [3, 7, 14.58, true, true]);
+check('  asking for 99 clamps to the 7 that fit; 0 or none means full', [se.stakeWith(5, 'copper-ore', 99).k, se.stakeWith(5, 'copper-ore', 0).k, se.stakeWith(5, 'copper-ore').k], [7, 7, 7]);
+// one power plant serves 1..7 T5 extractors, so the stake burns the same fuel at every count (crew falls 125 each)
+check('  fuel: 3 extractors burn the same 114.4 a tick as 7 (still one power plant); crew 395 vs 895', safe(() => [s3.npp, s7.npp, Math.abs(ct.stakeFuel(s3, 'copper-ore').fuel - ct.stakeFuel(s7, 'copper-ore').fuel) < 1e-9, s3.crew, s7.crew]), [1, 1, true, 395, 895]);
+STORE.s.calc.tier = 5; STORE.s.calc.ext = { 5: 3 };
+check('  compute() uses the saved count for the chosen tier', safe(() => { const c = ct.compute(); return [c.stake.tier, c.stake.k, c.tiers.find(x => x.tier === 5).k]; }), [5, 3, 7]);
+STORE.s.calc.ext = {};
 STORE.s.calc.ref = 'Armstrong IMP Tap';
 const pt = safe(() => ct.planetTypes('copper-ore', 1));
 check('measure tick: Terrestrial hub adds a 0.002 a tick passive on Copper Ore, Barren adds none', safe(() => [pt.get('Terrestrial'), pt.get('Barren')]), [0.002, 0]);

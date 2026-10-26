@@ -546,15 +546,28 @@
         }
 
         // the reference "full stake": every extractor that fits, all on one raw (stats are the same on every planet type)
-        fullStake(tier, raw) {
-            const planet = { slug: 'terrestrial', cat: 0, faction: 'oni', stakeable: true, deposits: new Map([[raw, { name: raw, richness: 1 }]]) };
-            const cands = this.extractors.get(raw + '|' + tier) || [];
-            const b = cands[0] || null; if (!b) return null;
-            const fake = Object.assign({}, planet, { cat: PT_TAG.findIndex(t => (b.requiredTags || []).includes(t)) }); if (fake.cat < 0) fake.cat = 0; fake.slug = PT_SLUG[fake.cat];
-            const fac = (b.requiredTags || []).find(t => FACTION.includes(t)); if (fac) fake.faction = fac;
-            let k = 0, L = this.layout(fake, tier, {}, []);
-            for (let n = 1; n < 5000; n++) { const t = this.layout(fake, tier, { [raw]: n }, []); if (!t.ok) break; k = n; L = t; }
-            return { tier, raw, k, rate: b.resourceExtractionRate[raw], perTick: k * b.resourceExtractionRate[raw], storage: L.storage, ncq: L.ncq, npp: L.npp, used: L.used, S: L.S, crew: L.crewNeed };
+        fullStake(tier, raw) { const s = this.stakeBase(tier, raw); return s && this.stakeWith(tier, raw, s.max); }
+        // the same stake with n of those extractors (1..max): fewer extractors, less crew, power and fuel; storage is the
+        // hubs' and does not change
+        stakeWith(tier, raw, n) {
+            const s = this.stakeBase(tier, raw); if (!s) return null;
+            const k = Math.max(1, Math.min(s.max, Math.floor(n) || s.max)), L = this.layout(s.fake, tier, { [raw]: k }, []);
+            return { tier, raw, k, max: s.max, rate: s.rate, perTick: k * s.rate, storage: L.storage, ncq: L.ncq, npp: L.npp, used: L.used, S: L.S, crew: L.crewNeed };
+        }
+        // a planet the extractor stands on, and how many fit (cached per tier and raw)
+        stakeBase(tier, raw) {
+            const key = tier + '|' + raw, memo = this._stakeBase || (this._stakeBase = new Map());
+            if (memo.has(key)) return memo.get(key);
+            const b = (this.extractors.get(raw + '|' + tier) || [])[0] || null;
+            let out = null;
+            if (b) {
+                const fake = { slug: 'terrestrial', cat: Math.max(0, PT_TAG.findIndex(t => (b.requiredTags || []).includes(t))), faction: (b.requiredTags || []).find(t => FACTION.includes(t)) || 'oni', stakeable: true, deposits: new Map([[raw, { name: raw, richness: 1 }]]) };
+                fake.slug = PT_SLUG[fake.cat];
+                let max = 0; for (let n = 1; n < 5000; n++) { if (!this.layout(fake, tier, { [raw]: n }, []).ok) break; max = n; }
+                if (max) out = { fake, rate: b.resourceExtractionRate[raw], max };
+            }
+            memo.set(key, out);
+            return out;
         }
     }
     StakeEngine.HUB_LABEL = HUB_LABEL; StakeEngine.PT_NAME = PT_NAME;

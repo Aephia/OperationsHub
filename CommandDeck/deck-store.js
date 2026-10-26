@@ -18,7 +18,7 @@
     const DEFAULTS = {
         tick: 60, tickSource: 'assumed', richness: true, faction: 'ustur', gather: 'stake',
         prices: { ships: { 'Armstrong IMP Tap': 160, 'Armstrong IMP': 2500 }, stakes: { 3: 176, 4: 415, 5: 1925 } },
-        calc: { raw: 'copper-ore', ref: 'Armstrong IMP Tap' }
+        calc: { raw: 'copper-ore', ref: 'Armstrong IMP Tap', tier: 5, cfg: 'Default', ext: {} }
     };
     const clone = o => JSON.parse(JSON.stringify(o));
 
@@ -39,6 +39,9 @@
                     if (v.prices && obj(v.prices.stakes)) d.prices.stakes = v.prices.stakes;
                     if (v.calc && v.calc.raw) d.calc.raw = v.calc.raw;
                     if (v.calc && v.calc.ref) d.calc.ref = v.calc.ref;
+                    if (v.calc && [1, 2, 3, 4, 5].includes(v.calc.tier)) d.calc.tier = v.calc.tier;
+                    if (v.calc && typeof v.calc.cfg === 'string' && v.calc.cfg.length < 64) d.calc.cfg = v.calc.cfg;
+                    if (v.calc && obj(v.calc.ext)) [1, 2, 3, 4, 5].forEach(t => { const n = Math.floor(+v.calc.ext[t]); if (n >= 1 && n < 5000) d.calc.ext[t] = n; });
                 }
             } catch (e) { /* storage unavailable or corrupt: defaults */ }
             return d;
@@ -97,7 +100,7 @@
             <span class="cd-flag ${s.tickSource === 'assumed' ? 'warn' : 'ok'}">${TICK_SOURCE[s.tickSource] || esc(s.tickSource)}</span>
             ${o.richness === false ? '' : `<label class="cd-check"><input type="checkbox" data-richness ${s.richness ? 'checked' : ''}><span>Multiply stake output by deposit richness (assumed, not in the data)</span></label>`}
             ${o.faction ? factionChips() : ''}
-            <p class="cd-strip-note">A stake's rate is <b>per tick</b>, a ship's is <b>per second</b>, and the tick length is in no export field. Every number on this tab that compares the two uses the value above. ${measureHere ? 'Measure the tick in the panel at the bottom.' : 'Measure the tick on the Ships vs Stakes tab.'}</p>
+            <p class="cd-strip-note">A stake's rate is <b>per tick</b>, a ship's is <b>per second</b>, and the tick length is in no export field. Every number on this tab that compares the two uses the value above. ${measureHere ? 'Measure it just below.' : 'Measure the tick on the Ships vs Stakes tab.'}</p>
         </section>`;
     }
     function bindStrip(root) {
