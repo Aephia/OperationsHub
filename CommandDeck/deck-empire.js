@@ -14,7 +14,8 @@
 (function () {
     'use strict';
 
-    const { esc, num, dur, usd, snd, settingsStrip, bindStrip, ZONE_TEXT } = window.DeckUI;
+    const { esc, num, dur, usd, snd, recipeName, recipeLabel, settingsStrip, bindStrip, ZONE_TEXT } = window.DeckUI;
+    const plural = (n, one, many) => `${num(n)} ${n === 1 ? one : (many || one + 's')}`;
     const Store = window.DeckStore;
     const KEY = 'commandDeck.empire.v1', PLAN_KEY = 'recipeExplorer.plan.v1', HAB_KEY = 'hubExplorer.plan.v1';
     const CAT_COLOR = ['#3fae79', '#e2512b', '#b7a58a', '#9a9a9a', '#d99a4e', '#7fd0ff', '#6b70b8', '#2f8cff'];
@@ -23,13 +24,26 @@
     const ZONE_RANK = { own: 0, medium: 1, enemy: 2, high: 3 };
     const trunc = (s, n) => (s.length > n ? s.slice(0, n - 1) + '…' : s);
     let seq = 0; const uid = p => p + Date.now().toString(36) + (seq++).toString(36);
+    // schedule axis steps in seconds: clock-friendly up to half a year, then 1-2-5 x 10^k years with no upper bound
+    const YEAR = 365 * 86400;
+    const NICE = [0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200, 10800, 21600, 43200, 86400, 172800, 432000, 604800, 1209600, 2592000, 5184000, 7776000, 15552000];
+    const axisStep = span => {
+        if (!(span > 0) || !isFinite(span)) return span > 0 ? span : 1;
+        const s = NICE.find(v => span / v <= 10); if (s) return s;
+        for (let k = YEAR; ; k *= 10) for (const m of [1, 2, 5]) if (span / (m * k) <= 10) return m * k;
+    };
 
     class EmpireTab {
         constructor(root, ctx) {
             this.root = root; this.ctx = ctx; this.se = ctx.se; this.empire = ctx.empire; this.rc = ctx.rc; this.rm = ctx.rm;
-            const saved = Store.read(KEY, {});
-            this.stakes = (saved.stakes || []).filter(s => s && this.se.planetByKey.has(s.key) && s.tier >= 1 && s.tier <= 5).map(s => ({ id: s.id || uid('s'), key: s.key, tier: s.tier, alloc: s.alloc || {}, procs: s.procs || [] }));
-            this.fleets = (saved.fleets || []).filter(f => f && this.empire.shipByName.has(f.ship)).map(f => ({ id: f.id || uid('f'), ship: f.ship, count: Math.max(1, +f.count || 1), raw: f.raw || '', richness: +f.richness || 1, body: f.body || '' }));
+            // saved bytes are untrusted (2026-10-25): every shape checked, ids re-made unless plain word characters (they
+            // land unescaped in data- attributes), stakes kept only on a planet that exists and can hold one
+            const saved = Store.read(KEY, {}) || {};
+            const arr = v => (Array.isArray(v) ? v : []), obj = v => v && typeof v === 'object' && !Array.isArray(v), str = v => (typeof v === 'string' ? v : '');
+            const idOr = (v, p) => (typeof v === 'string' && /^[\w-]{1,40}$/.test(v) ? v : uid(p));
+            this.stakes = arr(saved.stakes).filter(s => obj(s) && [1, 2, 3, 4, 5].includes(+s.tier) && this.se.planetByKey.has(s.key) && this.se.planetByKey.get(s.key).stakeable)
+                .map(s => ({ id: idOr(s.id, 's'), key: s.key, tier: +s.tier, alloc: obj(s.alloc) ? Object.fromEntries(Object.entries(s.alloc).filter(([, n]) => +n > 0).map(([k, n]) => [k, Math.floor(+n)])) : {}, procs: arr(s.procs).filter(x => typeof x === 'string') }));
+            this.fleets = arr(saved.fleets).filter(f => obj(f) && this.empire.shipByName.has(f.ship)).map(f => ({ id: idOr(f.id, 'f'), ship: f.ship, count: Math.max(1, Math.min(999, Math.floor(+f.count) || 1)), raw: str(f.raw), richness: +f.richness > 0 ? +f.richness : 1, body: str(f.body) }));
             this.add = { q: '', tier: 5, fac: 'all' };
             this.goalQ = '';
             bindStrip(root); this.bind();
@@ -90,10 +104,6 @@
             });
         }
 
-        neededRaws() {                                              // bill lines, uncovered first
-            const c = this.cov; if (!c) return [];
-            return c.rows.map(r => r.name);
-        }
         addStake(key) {
             const planet = this.se.planetByKey.get(key); if (!planet || !planet.stakeable) return;
             const s = { id: uid('s'), key, tier: this.add.tier, alloc: {}, procs: [] };
@@ -180,9 +190,10 @@
                 if (!Array.isArray(hp) || !hp.length) return out;
                 const p = hm.plan(hp.filter(i => i && hm.byId.has(i.id)));
                 out.rows = p.rows; out.jobs = p.jobs || 0; out.lanes = window.CommandDeck.Empire.lanesFromHab(p.rows);
-                const parts = [];
-                p.rows.forEach(({ it, item }) => { if (item.kind === 'hab') parts.push(`T${item.tier} hab`); else if (item.kind === 'station') parts.push(`${it.qty > 1 ? it.qty + ' × ' : ''}${item.size} station${it.qty > 1 ? 's' : ''} (${item.jobs} job${item.jobs === 1 ? '' : 's'} at ${num(item.speed || 1)}×${it.qty > 1 ? ' each' : ''})`); else if (item.kind === 'storage' && item.jobs) parts.push(`${it.qty > 1 ? it.qty + ' × ' : ''}T${item.tier} storage (+${item.jobs * it.qty} job${item.jobs * it.qty === 1 ? '' : 's'})`); });
-                out.label = parts.join(' + ');
+                // every part names its own jobs, and the parts add up to the lane count shown with them
+                const parts = [], jobs = n => plural(n, 'job');
+                p.rows.forEach(({ it, item }) => { if (item.kind === 'hab') parts.push(`T${item.tier} hab (${jobs(item.jobs || 0)} at 1×)`); else if (item.kind === 'station') parts.push(`${it.qty > 1 ? it.qty + ' × ' : ''}${item.size} station${it.qty > 1 ? 's' : ''} (${jobs(item.jobs * it.qty)} at ${num(item.speed || 1)}×)`); else if (item.kind === 'storage' && item.jobs) parts.push(`${it.qty > 1 ? it.qty + ' × ' : ''}T${item.tier} storage (${jobs(item.jobs * it.qty)} at 1×)`); });
+                out.label = parts.join(' + ') + ` = ${jobs(out.lanes.length)}`;
             } catch (e) { out.lanes = []; }
             return out;
         }
@@ -191,7 +202,7 @@
             return `<section class="rx-panel cd-goalbar">
                 <div class="rx-panel-head"><h3>Production plan</h3><span>${items.length ? `${items.length} recipe${items.length > 1 ? 's' : ''} - the same plan the Recipe Explorer holds` : 'empty - add a recipe, or build the plan in the Recipe Explorer'}</span><a class="sb-btn ghost" href="../RecipeExplorer/index.html" target="_blank" rel="noopener">Open the planner</a></div>
                 <div class="rp-items">
-                    ${items.map(it => { const r = this.rc.byId.get(it.id); return `<div class="rp-item"><span class="rp-item-name"><i class="t t${r.outputTier}">T${r.outputTier}</i>${esc(r.outputName)}<small>${esc(r.typeLabel)}</small></span><label>&times;<input type="number" min="1" max="100000" value="${it.qty}" data-goal-qty="${esc(it.id)}"></label><button type="button" class="rp-x" data-goal-remove="${esc(it.id)}" title="Remove from the plan">&times;</button></div>`; }).join('')}
+                    ${items.map(it => { const r = this.rc.byId.get(it.id); return `<div class="rp-item"><span class="rp-item-name"><i class="t t${r.outputTier}">T${r.outputTier}</i>${esc(recipeName(r))}<small>${esc(r.typeLabel)}</small></span><label>&times;<input type="number" min="1" max="100000" value="${it.qty}" data-goal-qty="${esc(it.id)}"></label><button type="button" class="rp-x" data-goal-remove="${esc(it.id)}" title="Remove from the plan">&times;</button></div>`; }).join('')}
                     <div class="cd-find cd-goalfind"><input type="search" class="sb-input" id="cdeGoalFind" placeholder="Add a recipe to the plan…" autocomplete="off" spellcheck="false" value="${esc(this.goalQ)}"><div class="cd-results" id="cdeGoalResults" hidden></div></div>
                 </div>
             </section>`;
@@ -203,7 +214,7 @@
             const have = new Set(this.items().map(i => i.id));
             const hits = this.rc.recipes.filter(r => !have.has(r.outputId) && words.every(w => r.outputName.toLowerCase().includes(w))).sort((a, b) => a.outputName.length - b.outputName.length || a.outputName.localeCompare(b.outputName) || a.outputTier - b.outputTier).slice(0, 12);
             box.hidden = !hits.length;
-            box.innerHTML = hits.map(r => `<button type="button" data-goal-add="${esc(r.outputId)}"><em>${esc(r.typeLabel)}</em><b>${esc(r.outputName)} T${r.outputTier}</b></button>`).join('');
+            box.innerHTML = hits.map(r => `<button type="button" data-goal-add="${esc(r.outputId)}"><em>${esc(r.typeLabel)}</em><b>${esc(recipeLabel(r))}</b></button>`).join('');
         }
 
         tilesHTML(items, cov, sched, hab) {
@@ -223,10 +234,10 @@
             else if (cov.uncovered.length) tiles.push([`${cov.uncovered.length} <small>of ${cov.rows.length}</small>`, 'bill lines with no source', 'warn']);
             else tiles.push([dur(cov.hours * 3600), `to gather the whole bill${binding ? ' - ' + esc(binding.name) + ' is last' : ''}`]);
             if (items.length && cov.uncovered.length && binding) tiles.push([dur(cov.hours * 3600), `to gather what has a source - ${esc(binding.name)} is last`]);
-            tiles.push([`${this.stakes.length}`, `claim stakes · ${ext} extractors`]);
-            tiles.push([`${hulls}`, `mining hulls · ${crew} crew · ${num(food)} food / s`]);
-            if (items.length) tiles.push([dur(sched.makespan), `to craft ${num(x.craftCount)} crafts on ${hab.lanes.length ? `your hab's ${jobs} job${jobs === 1 ? '' : 's'}` : '1 job (no hab build saved)'} · ${dur(sched.parallel)} if every job ran in parallel`]);
-            if (this.stakes.length || this.fleets.length) tiles.push([cost ? usd(cost) : '–', `at the asks you typed${unpriced ? ` · ${unpriced} without a price` : ''}`]);
+            tiles.push([`${this.stakes.length}`, `claim stake${this.stakes.length === 1 ? '' : 's'} · ${plural(ext, 'extractor')}`]);
+            tiles.push([`${hulls}`, `mining hull${hulls === 1 ? '' : 's'} · ${num(crew)} crew · ${num(food)} food / s`]);
+            if (items.length) tiles.push([dur(sched.makespan), `to craft ${plural(x.craftCount, 'craft')} on ${hab.lanes.length ? `your hab's ${plural(jobs, 'job')}` : '1 job (no hab build saved)'}`]);
+            if (this.stakes.length || this.fleets.length) tiles.push([cost ? usd(cost) : '–', `at the asks on the Ships vs Stakes tab${unpriced ? ` · ${unpriced} without a price` : ''}`]);
             return `<div class="an-stats cd-stats">${tiles.map(([n, l, c]) => `<div class="an-stat${c ? ' ' + c : ''}"><b>${n}</b><span>${l}</span></div>`).join('')}</div>`;
         }
 
@@ -241,7 +252,7 @@
             const rows = this.cov ? this.cov.rows : [];
             const ext = this.se.extractable(p, tier);
             const chips = ext.map(x => ({ x, row: rows.find(r => r.name === x.name) })).filter(o => o.row).sort((a, b) => (a.row.perHour > 0) - (b.row.perHour > 0) || b.x.richness - a.x.richness).slice(0, 6)
-                .map(o => `<span class="cd-raw${o.row.perHour > 0 ? '' : ' need'}">${esc(o.x.name)} <b>×${num(o.x.richness)}</b></span>`).join('');
+                .map(o => `<span class="cd-raw${o.row.perHour > 0 ? '' : ' need'}" title="${esc(o.x.name)}">${esc(o.x.name)} <b>×${num(o.x.richness)}</b></span>`).join('');
             return `<button type="button" class="cd-planet" data-stake-add="${esc(p.key)}"><i class="pdot" style="--c:${CAT_COLOR[p.cat]}"></i><b>${esc(p.name)}</b><small>${esc(p.system)} · ${esc(p.catName)} · <span class="f-${p.faction}">${FAC_LABEL[p.faction]}</span> · ${this.zoneBadge(p)}</small><span class="cd-raws">${chips || `<span class="sb-muted">${ext.length} extractable raws, none in the bill</span>`}</span></button>`;
         }
         suggestions() {
@@ -278,12 +289,13 @@
             const a = this.add;
             const cards = this.stakes.map(s => this.stakeCard(s, srcById.get(s.id))).join('');
             return `<section class="rx-panel cd-stakes">
-                <div class="rx-panel-head"><h3>Claim stakes</h3><span>${this.stakes.length ? `${this.stakes.length} placed` : 'none yet'}</span>${this.stakes.length || this.fleets.length ? '<button type="button" class="sb-btn ghost" data-clear-empire>Clear all</button>' : ''}</div>
+                <div class="rx-panel-head"><h3>Claim stakes</h3><span>${this.stakes.length ? `${this.stakes.length} placed` : 'none yet'}</span>${this.stakes.length || this.fleets.length ? '<button type="button" class="sb-btn ghost" data-clear-empire>Clear stakes and fleets</button>' : ''}</div>
                 <div class="cd-addstake">
                     <div class="chips">${[1, 2, 3, 4, 5].map(t => `<button type="button" class="chip${a.tier === t ? ' on' : ''}" data-add-tier="${t}"><i class="t t${t}">T${t}</i>${num(this.se.slots[t])} slots</button>`).join('')}</div>
-                    <div class="chips">${[['all', 'All'], ['mud', 'MUD'], ['oni', 'ONI'], ['ustur', 'USTUR']].map(([k, l]) => `<button type="button" class="chip${a.fac === k ? ' on' : ''}" data-add-fac="${k}">${l}</button>`).join('')}</div>
+                    <div class="chips"><span class="sb-muted">Planet faction</span>${[['all', 'All'], ['mud', 'MUD'], ['oni', 'ONI'], ['ustur', 'USTUR']].map(([k, l]) => `<button type="button" class="chip${a.fac === k ? ' on' : ''}" data-add-fac="${k}">${l}</button>`).join('')}</div>
                     <input type="search" class="sb-input" id="cdePlanetFind" placeholder="Search a planet or system to stake…" autocomplete="off" spellcheck="false" value="${esc(a.q)}">
                     <div class="cd-planets" id="cdePlanetResults"></div>
+                    <p class="rx-note">Key: an orange raw chip is a bill line no stake or fleet supplies yet; ◆ before a raw on a stake marks a raw in the bill.</p>
                 </div>
                 ${cards}
             </section>`;
@@ -303,7 +315,7 @@
                 <div class="cd-stake-head"><i class="t t${s.tier}">T${s.tier}</i><b>${esc(planet.name)}</b><small>${esc(planet.system)} · ${esc(planet.catName)} · <span class="f-${planet.faction}">${FAC_LABEL[planet.faction]}</span> · ${this.zoneBadge(planet)}</small><button type="button" class="rp-x" data-stake-remove="${s.id}" title="Remove this stake">&times;</button></div>
                 <div class="hb-gauge${L.ok ? '' : ' over'}"><div class="hb-gauge-head"><span>Slots</span><b>${num(L.used)} / ${num(L.S)}</b></div><div class="hb-gauge-bar"><b style="width:${pct.toFixed(1)}%;background:#4fd8ff"></b></div><small>${L.extractors} extractors${L.processors ? ` · ${L.processors} processor${L.processors > 1 ? 's' : ''}` : ''} · ${L.ncq} crew quarters · ${L.npp} power plant${L.npp === 1 ? '' : 's'} · ${L.hubs.map(h => esc(window.CommandDeck.StakeEngine.HUB_LABEL[h])).join(', ')} · crew ${num(L.crewNeed)} / ${num(L.crewCap)}</small></div>
                 <div class="cd-alloc">
-                    ${ext.map(x => { const n = s.alloc[x.raw] || 0, out = (p.extracted.get(x.raw) || 0); return `<div class="cd-alloc-row${n ? ' on' : ''}"><span class="nm${inBill(x.name) ? ' need' : ''}" title="${inBill(x.name) ? 'in the bill' : 'not in the bill'}">${esc(x.name)}</span><span class="rk">×${num(x.richness)}</span><span class="rt">${num(x.rate)} / tick</span><span class="st"><button type="button" data-alloc="${s.id}|${esc(x.raw)}|-1" ${n ? '' : 'disabled'} aria-label="One fewer ${esc(x.name)} extractor">−</button><b>${n}</b><button type="button" data-alloc="${s.id}|${esc(x.raw)}|1" ${anyRoom ? '' : 'disabled'} aria-label="One more ${esc(x.name)} extractor">+</button></span><span class="ot">${n ? num(out) + ' / tick' : ''}</span></div>`; }).join('') || '<p class="rx-note">No raw on this planet has an extractor a stake of this tier can run.</p>'}
+                    ${ext.map(x => { const n = s.alloc[x.raw] || 0, out = (p.extracted.get(x.raw) || 0); return `<div class="cd-alloc-row${n ? ' on' : ''}"><span class="nm${inBill(x.name) ? ' need' : ''}" title="${esc(x.name)} - ${inBill(x.name) ? 'in the bill' : 'not in the bill'}">${esc(x.name)}</span><span class="rk">×${num(x.richness)}</span><span class="rt">${num(x.rate)} / tick</span><span class="st"><button type="button" data-alloc="${s.id}|${esc(x.raw)}|-1" ${n ? '' : 'disabled'} aria-label="One fewer ${esc(x.name)} extractor">−</button><b>${n}</b><button type="button" data-alloc="${s.id}|${esc(x.raw)}|1" ${anyRoom ? '' : 'disabled'} aria-label="One more ${esc(x.name)} extractor">+</button></span><span class="ot">${n ? num(out) + ' / tick' : ''}</span></div>`; }).join('') || '<p class="rx-note">No raw on this planet has an extractor a stake of this tier can run.</p>'}
                 </div>
                 ${shown.length ? `<div class="cd-procs"><span>Processors</span>${shown.map(b => { const on = s.procs.includes(b.id); const row = on && p.procs.find(r => r.b.id === b.id); return `<button type="button" class="chip${on ? ' on' : ''}" data-proc="${s.id}|${esc(b.id)}" title="${esc(this.se.inputs(b).map(([k, v]) => `${-v} ${this.se.resName(k)}`).join(' + '))} → ${esc(this.se.outputs(b).map(([k, v]) => `${v} ${this.se.resName(k)}`).join(' + '))} per tick">${esc(procOut(b).join(', '))}${row ? `<small>${num(row.makes[0].out)} of ${num(row.makes[0].rate)} / tick · ${(100 * row.fed).toFixed(0)} % fed</small>` : ''}</button>`; }).join('')}</div>` : ''}
                 <div class="cd-stake-foot"><span>${Array.from(p.passive.keys()).length ? `Hub passive: ${Array.from(p.passive.entries()).map(([k, v]) => `${esc(this.se.resName(k))} ${num(v)}`).join(', ')} / tick. ` : ''}${p.fuel ? `Burns ${num(p.fuel)} fuel / tick.` : ''}${procs.length > shown.length ? ` ${procs.length - shown.length} other first-stage processors could run here; none makes anything in the plan.` : ''}</span><button type="button" class="sb-btn ghost" data-stake-auto="${s.id}">Re-fill</button></div>
@@ -352,8 +364,9 @@
             const recNodes = recs.map((x, i) => { const y = spread(recs.length, i); return `<g class="fn rec" data-flow="rec|${esc(x.id)}" data-rec="${esc(x.id)}" transform="translate(${QX},${(y - 11).toFixed(1)})"><rect width="${QW}" height="22" rx="5"></rect><text x="8" y="15">${esc(trunc(x.name, 24))} ×${num(x.qty)}</text></g>`; }).join('');
             const resNodes = rows.map((r, i) => {
                 const y = rowY(i), ok = r.perHour > 0, w = ok ? Math.max(2, BARW * r.hours / maxH) : 0;
-                const kind = !r.res ? 'unknown' : r.res.category !== 'raw' ? 'made' : r.res.stakeMinable ? 'stake' : 'fleetonly';
-                const hint = kind === 'made' ? 'made by a stake processor' : kind === 'fleetonly' ? 'fleet only: no stake can extract it' : kind === 'unknown' ? 'not a resource in the export' : 'stake or fleet';
+                // a non-raw line is either stopped at a stake processor's product or has no recipe with ingredients (Ink)
+                const kind = !r.res ? 'unknown' : r.res.category === 'raw' ? (r.res.stakeMinable ? 'stake' : 'fleetonly') : cov.stop.has(r.name) ? 'made' : 'norecipe';
+                const hint = kind === 'made' ? 'made by a stake processor' : kind === 'fleetonly' ? 'fleet only: no stake can extract it' : kind === 'unknown' ? 'not a resource in the export' : kind === 'norecipe' ? 'no recipe in the export makes it from ingredients' : 'stake or fleet';
                 return `<g class="fr${ok ? '' : ' none'}${ok && i === rows.findIndex(q => q.perHour > 0) ? ' last' : ''}" data-flow="res|${i}" data-res="${i}" transform="translate(${RX},${(y - RH / 2).toFixed(1)})"><title>${esc(r.name)}: need ${num(r.need)}${ok ? `, supply ${num(r.perHour)} per hour, gathered in ${dur(r.hours * 3600)}` : ', no source'} (${hint})</title>
                     <rect class="bg" width="${NAMEW + BARW + VALW}" height="${RH - 3}" y="1.5" rx="4"></rect>
                     <text class="nm" x="8" y="${RH / 2 + 4}">${r.res ? '' : '? '}${esc(trunc(r.name, 23))}</text>
@@ -361,34 +374,33 @@
                     ${ok ? `<rect class="bar" x="${NAMEW}" y="${RH / 2 - 4}" width="${w.toFixed(1)}" height="8" rx="2"></rect>` : ''}
                     <text class="vl" x="${NAMEW + BARW + VALW - 8}" y="${RH / 2 + 4}" text-anchor="end">${ok ? dur(r.hours * 3600) : (kind === 'fleetonly' ? 'needs a fleet' : 'no source')}</text></g>`;
             }).join('');
-            // what the sources make that the plan does not use
-            const used = new Set(rows.map(r => r.name)), extra = new Map();
-            srcs.forEach(x => x.supply.forEach((v, name) => { if (!used.has(name)) extra.set(name, (extra.get(name) || 0) + v); }));
-            const extraList = Array.from(extra.entries()).sort((a, b) => b[1] - a[1]);
             return `<section class="rx-panel cd-flowpanel">
                 <div class="rx-panel-head"><h3>Who supplies what</h3><span>${rows.length} bill lines · the bar is the time to gather that line at a ${dur(cov.tick)} tick, longest first · hover anything to trace it</span></div>
                 <div class="cd-flow-head"><span style="width:${(100 * (RX - 4) / W).toFixed(1)}%">Stakes and fleets</span><span style="width:${(100 * (QX - RX) / W).toFixed(1)}%">The bill: resource · time to gather</span><span>The plan</span></div>
                 <div class="cd-flow-wrap"><svg class="cd-flow" viewBox="0 0 ${W} ${H}" role="img" aria-label="Sources, bill lines and the recipes that need them">${links}${srcNodes}${resNodes}${recNodes}</svg></div>
                 <div class="ch-key"><span><i style="background:${SRC_COLOR.stake}"></i>claim stake</span><span><i style="background:${SRC_COLOR.fleet}"></i>mining fleet</span><span><i style="background:#ffb86b"></i>the line gathered last</span><span><i style="background:#ff7a6b"></i>no source</span></div>
-                ${cov.stop.size ? `<p class="rx-note">The bill stops at ${Array.from(cov.stop).map(esc).join(', ')}: a stake processor already makes ${cov.stop.size > 1 ? 'them' : 'it'}, so the ore behind ${cov.stop.size > 1 ? 'them' : 'it'} is not billed again.</p>` : ''}
-                ${extraList.length ? `<p class="rx-note">Made but not in the bill, per hour: ${extraList.slice(0, 14).map(([n, v]) => `${esc(n)} ${num(v)}`).join(', ')}${extraList.length > 14 ? ` and ${extraList.length - 14} more` : ''}.</p>` : ''}
-            </section>`;
+                ${cov.stop.size ? `<p class="rx-note">The bill stops at ${Array.from(cov.stop).map(esc).join(', ')}: a stake processor already makes ${cov.stop.size > 1 ? 'them' : 'it'}, so the ore behind ${cov.stop.size > 1 ? 'them' : 'it'} is not billed again.</p>` : ''}            </section>`;
         }
 
         // ---- hab schedule (2026-10-08): one lane per job, crafts in dependency order, the critical path in gold
         scheduleHTML(items, cov, S, hab) {
             const head = (sub, extra) => `<div class="rx-panel-head"><h3>Hab schedule</h3><span>${sub}</span><a class="sb-btn ghost" href="../HubExplorer/index.html" target="_blank" rel="noopener">${extra || 'Open the Hub Explorer'}</a></div>`;
             if (!items.length) return `<section class="rx-panel cd-sched">${head('the plan is empty')}<p class="rx-note">Add a recipe above: its crafts are placed on your hab's jobs here, one lane per job, each craft starting when its inputs are crafted, and the critical path says whether the queue or the chain sets the time.</p></section>`;
-            const habText = hab.lanes.length ? esc(hab.label) : 'no hab build saved, so one job at 1× stands in - build a hab in the Hub Explorer';
+            const habText = hab.lanes.length ? esc(hab.label) : 'one job at 1× (no hab build saved - build a hab in the Hub Explorer)';
             if (!S.crafts) return `<section class="rx-panel cd-sched">${head(`nothing to craft: every good in the plan is made by a stake processor · ${habText}`)}</section>`;
             const W = 1040, LW = 150, RW = 58, TOP = 22, RH = 24, H = TOP + S.lanes.length * RH + 6, span = Math.max(S.makespan, 1e-9), plotW = W - LW - RW - 10;
             const x = t => LW + plotW * t / span;
             const colorOf = new Map(S.byType.map((ty, i) => [ty.name, CAT_COLOR[i % CAT_COLOR.length]]));
-            // axis: the largest step that gives at least four ticks
-            const STEPS = [1, 5, 10, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200, 14400, 21600, 43200, 86400, 172800, 604800, 2592000];
-            const step = STEPS.slice().reverse().find(v => span / v >= 4) || STEPS[0];
-            let axis = '';
-            for (let t = 0; t <= span + 1e-9; t += step) axis += `<line class="grid" x1="${x(t).toFixed(1)}" y1="${TOP - 4}" x2="${x(t).toFixed(1)}" y2="${H - 6}"></line><text class="ax" x="${x(t).toFixed(1)}" y="${TOP - 8}" text-anchor="${t === 0 ? 'start' : 'middle'}">${t === 0 ? '0' : esc(dur(t))}</text>`;
+            // axis: the smallest "nice" step that gives at most ten ticks (so 4-11), no upper bound on the step (a big
+            // plan runs for centuries; a 30-day cap once drew 3,181 labels); a label that repeats, or crowds the end, is dropped
+            const step = axisStep(span);
+            let axis = ''; const seen = new Set([dur(span)]);
+            for (let k = 0; k * step <= span + 1e-9; k++) {
+                const t = k * step, lab = t === 0 ? '0' : dur(t);
+                if (seen.has(lab) || (t > 0 && x(span) - x(t) < 40)) continue;
+                seen.add(lab);
+                axis += `<line class="grid" x1="${x(t).toFixed(1)}" y1="${TOP - 4}" x2="${x(t).toFixed(1)}" y2="${H - 6}"></line><text class="ax" x="${x(t).toFixed(1)}" y="${TOP - 8}" text-anchor="${t === 0 ? 'start' : 'middle'}">${esc(lab)}</text>`;
+            }
             axis += `<line class="grid end" x1="${x(span).toFixed(1)}" y1="${TOP - 4}" x2="${x(span).toFixed(1)}" y2="${H - 6}"></line><text class="ax end" x="${x(span).toFixed(1)}" y="${TOP - 8}" text-anchor="end">${esc(dur(span))}</text>`;
             const laneRows = S.lanes.map((l, i) => {
                 const y = TOP + i * RH;
@@ -402,6 +414,7 @@
             const pathHTML = S.path.map(p => `<span class="cd-seg ${p.kind}"><i style="background:${colorOf.get(p.name)}"></i><b>${esc(p.name)}</b> ×${num(p.n)} <small>${esc(dur(p.end - p.start))}${p.kind === 'input' ? ' · after an input' : p.kind === 'lane' ? ' · after a free job' : ''}</small></span>`).join('<em>→</em>');
             const onPath = S.byType.filter(t => t.onPath > 0).sort((a, b) => b.onPath - a.onPath)[0];
             const busiest = S.lanes.slice().sort((a, b) => b.util - a.util)[0], idlest = S.lanes.slice().sort((a, b) => a.util - b.util)[0];
+            const uneven = S.lanes.length > 1 && Math.round(100 * busiest.util) !== Math.round(100 * idlest.util);   // equal lanes: nothing to name
             const queueWins = S.pathBy.lane > S.pathBy.input;
             const verdict = S.lanes.length === 1
                 ? `One job: every craft queues behind the one before it, so the time is the work itself (${esc(dur(S.work))} at 1×).`
@@ -410,36 +423,52 @@
                     : `The chain sets the time: ${esc(dur(S.pathBy.input))} of the ${esc(dur(S.makespan))} path is crafts that waited for an input, ${esc(dur(S.pathBy.lane))} crafts that waited for a free job. More jobs barely help; a faster station does. The chain alone takes ${esc(dur(S.chain))}.`;
             const rows = S.byType.map(t => `<tr><th><i class="cd-dot" style="background:${colorOf.get(t.name)}"></i>${esc(t.name)}${t.needs.length ? `<small>needs ${esc(t.needs.join(', '))}</small>` : '<small>from raws</small>'}</th><td>${num(t.crafts)}</td><td>${esc(dur(t.each))}</td><td>${esc(dur(t.first))}</td><td>${esc(dur(t.last))}</td><td>${esc(dur(t.laneTime))}</td><td${t.onPath > 0 ? ' class="on"' : ''}>${t.onPath > 0 ? esc(dur(t.onPath)) : '–'}</td></tr>`).join('');
             return `<section class="rx-panel cd-sched">
-                ${head(`${num(S.crafts)} crafts on ${S.lanes.length} job${S.lanes.length === 1 ? '' : 's'}: ${habText} · raws in hand · gold outline = the critical path · hover a block`)}
+                ${head(`${plural(S.crafts, 'craft')} on ${habText} · raws in hand · gold outline = the critical path · hover a block`)}
                 <div class="rx-facts cd-sched-facts"><div><b>${esc(dur(S.makespan))}</b><span>scheduled on your hab's jobs</span></div><div><b>${esc(dur(S.parallel))}</b><span>if every job ran in parallel (work ÷ speed)</span></div><div><b>${esc(dur(S.chain))}</b><span>the chain alone (unlimited jobs)</span></div><div><b>${(100 * S.lanes.reduce((a, l) => a + l.util, 0) / S.lanes.length).toFixed(0)} %</b><span>of the jobs' time busy</span></div></div>
                 <div class="cd-sched-wrap"><svg class="cd-gantt" viewBox="0 0 ${W} ${H}" role="img" aria-label="Job timeline: one lane per job, crafts in order">${axis}${laneRows}</svg></div>
-                ${S.complete ? '' : '<p class="rx-note warn">The schedule stopped early: a craft never had its inputs. Say so to the builder - this should not happen on a plan the planner expanded.</p>'}
-                <div class="cd-path"><h4>Critical path</h4><p class="cd-path-chain">${pathHTML}</p><p class="rx-note">${verdict}${onPath ? ` <b>${esc(onPath.name)}</b> holds ${esc(dur(onPath.onPath))} of the path.` : ''}${S.lanes.length > 1 ? ` Busiest job: ${esc(busiest.label)} at ${(100 * busiest.util).toFixed(0)} %; idlest: ${esc(idlest.label)} at ${(100 * idlest.util).toFixed(0)} %.` : ''}</p></div>
+                ${S.complete ? '' : '<p class="rx-note warn">The schedule stopped early: a craft never had its inputs. Please report this plan.</p>'}
+                <div class="cd-path"><h4>Critical path</h4><p class="cd-path-chain">${pathHTML}</p><p class="rx-note">${verdict}${onPath ? ` <b>${esc(onPath.name)}</b> holds ${esc(dur(onPath.onPath))} of the path.` : ''}${uneven ? ` Busiest job: ${esc(busiest.label)} at ${(100 * busiest.util).toFixed(0)} %; idlest: ${esc(idlest.label)} at ${(100 * idlest.util).toFixed(0)} %.` : ''}</p></div>
                 <h4 class="cd-sched-h">The queue · in start order</h4>
                 <div class="an-tablewrap"><table class="an-table cd-queue"><thead><tr><th>Craft</th><th>crafts</th><th>each at 1×</th><th>first start</th><th>last done</th><th>job time</th><th>on the path</th></tr></thead><tbody>${rows}</tbody></table></div>
-                <p class="rx-note">A job runs one craft at a time; a station's speed divides the craft time; a storage's job bonus is read as a 1× job (the export gives it no speed). A craft starts when its crafted inputs are in the pool, so the first of a kind can start before every input craft is done. Raws are taken as in hand: gathering them is the bill above. Build times are the export's <i>constructionTime</i> read as seconds, as the Recipe Explorer reads them.</p>
+                <p class="rx-note">A job runs one craft at a time; a station's speed divides the craft time; a storage's job bonus is read as a 1× job (the export gives it no speed). A craft starts when its crafted inputs are in the pool, so the first of a kind can start before every input craft is done. Raws are taken as in hand: gathering them is the bill above. Build times are the export's <i>constructionTime</i> read as seconds, as the Recipe Explorer reads them. Research bonuses (Rapid Fabrication, Station Expansion) are not applied.</p>
             </section>`;
         }
 
         // ---- research the whole thing needs
-        researchHTML(items, cov) {
-            const R = this.ctx.research; if (!R) return '';
+        // the research the stakes, fleets and plan need: stake tiers, every building placed, hull sizes, the Fleet Size
+        // tier the largest fleet needs (count x capacity points; each fleet row is one fleet), zone access, and the
+        // plan's recipe chains. Without arguments it builds the coverage itself (the Research tab asks on a faction change).
+        researchNeed(items, cov) {
+            const R = this.ctx.research; if (!R) return null;
+            items = items || this.items();
+            cov = cov || this.empire.coverage(items, this.stakes, this.fleets, { tick: Store.s.tick, richness: Store.s.richness });
             const run = new Set(), craft = new Set(), zones = new Map();
             const zone = (body, prefer) => { if (!body) return; const cls = R.zoneClass(body, Store.s.faction), n = R.zoneGrant(cls, prefer); if (n) { n.tags.forEach(t => run.add(t)); zones.set(cls + '|' + n.name, { cls, n }); } };
             cov.sources.forEach(x => {
                 if (x.kind === 'stake') { R.stakeGate(x.tier).forEach(t => run.add(t)); x.prod.layout.items.forEach(it => R.buildingGate(it.b.id).forEach(t => run.add(t))); zone(x.planet, 'Building'); }
                 else { R.shipGate({ sizeTier: x.ship.size }).forEach(t => run.add(t)); const f = this.fleets.find(q => q.id === x.id); zone(f && this.se.planetByKey.get(f.body), 'Mining'); }
             });
+            const fp = this.empire.fleetPoints(this.fleets), ladder = R.fleetLadder(), top = ladder.length ? ladder[ladder.length - 1].cap : 0;
+            const rung = fp.max ? R.fleetSizeFor(fp.max) || null : null;
+            if (rung) rung.node.tags.forEach(t => run.add(t)); else if (fp.max > top && ladder.length) ladder[ladder.length - 1].node.tags.forEach(t => run.add(t));
             items.forEach(it => { const r = this.rc.byId.get(it.id); if (r) R.chainGate(r).forEach(t => craft.add(t)); });
             const all = new Set([...run, ...craft]);
-            this.lastResearch = { tags: Array.from(all), sub: `${this.stakes.length} stake${this.stakes.length === 1 ? '' : 's'}, ${this.fleets.length} fleet${this.fleets.length === 1 ? '' : 's'} and the plan's recipes` };
-            if (!all.size) return '';
+            return { run, craft, zones, fleet: { fp, rung, top }, tags: Array.from(all), sub: `${plural(this.stakes.length, 'stake')}, ${plural(this.fleets.length, 'fleet')} and the plan's recipes` };
+        }
+        researchHTML(items, cov) {
+            const R = this.ctx.research; if (!R) return '';
+            const need = this.researchNeed(items, cov), { run, craft, zones, fleet } = need;
+            this.lastResearch = { tags: need.tags, sub: need.sub };
+            if (!need.tags.length) return '';
+            const fp = fleet.fp, warns = fp.rows.filter(r => r.warn.length);
+            const fleetNote = fp.max ? `<p class="rx-note${fp.max > fleet.top || warns.length ? ' warn' : ''}">Fleet Size: the largest fleet counts ${num(fp.max)} capacity points (hull count × class points; a Titan counts 128)${fp.rows.length > 1 ? `; all ${plural(fp.rows.length, 'fleet')} together ${num(fp.sum)} (the export does not say whether the cap is per fleet or across fleets)` : ''}.${fleet.rung ? ` That takes ${esc(fleet.rung.node.name)} (a cap of ${num(fleet.rung.cap)}).` : ` That is above the top cap of ${num(fleet.top)}: split the fleet.`}${warns.length ? ' Too many large hulls in one fleet: ' + warns.map(r => `${esc(r.ship)} - ${r.warn.map(esc).join(', ')}`).join('; ') + '.' : ''}${fp.unknown ? ` ${plural(fp.unknown, 'fleet')} with no class in the points table not counted.` : ''}</p>` : '';
             const owned = this.ctx.app && this.ctx.app.researchTab ? this.ctx.app.researchTab.owned : new Set(R.start ? [R.start.id] : []);
             const T = window.CommandDeck.ResearchModel.TRACK_BY_KEY;
-            const line = (label, tags) => { if (!tags.size) return ''; const b = R.bill(R.closure(tags), owned); const lv = Object.entries(b.levels).filter(([, v]) => v > 0).sort((a, c) => (b.xp[c[0]] || 0) - (b.xp[a[0]] || 0)); return `<div class="cd-res-line"><h4>${label}</h4><div class="rx-facts"><div><b>${b.todo}</b><span>nodes to research</span></div><div><b>${num(b.atlas)}</b><span>ATLAS</span></div><div><b>${b.rows.length - b.todo}</b><span>already researched</span></div></div>${lv.length ? `<p class="rx-note">Levels: ${lv.map(([k, v]) => `${esc((T.get(k) || { label: k }).label)} L${v}${b.xp[k] != null ? ' (' + num(b.xp[k]) + ' XP)' : ''}`).join(', ')}.</p>` : ''}</div>`; };
+            const line = (label, tags) => { if (!tags.size) return ''; const b = R.bill(R.closure(tags), owned); const lv = Object.entries(b.levels).filter(([, v]) => v > 0).sort((a, c) => (b.xp[c[0]] || 0) - (b.xp[a[0]] || 0)); return `<div class="cd-res-line"><h4>${label}</h4><div class="rx-facts"><div><b>${b.todo}</b><span>node${b.todo === 1 ? '' : 's'} to research</span></div><div><b>${num(b.atlas)}</b><span>ATLAS</span></div><div><b>${b.rows.filter(r => r.owned && r.node !== R.start).length}</b><span>already researched</span></div></div>${lv.length ? `<p class="rx-note">Levels: ${lv.map(([k, v]) => `${esc((T.get(k) || { label: k }).label)} L${v}${b.xp[k] != null ? ' (' + num(b.xp[k]) + ' XP)' : ''}`).join(', ')}.${b.levels.CouncilRank ? ' (Council Rank levels cost 1 XP each in the export.)' : ''}</p>` : ''}</div>`; };
             return `<section class="rx-panel cd-res">
-                <div class="rx-panel-head"><h3>Research this needs</h3><span>from the gate map: stake tiers, every building placed, hull sizes, zone access, and the plan's recipes</span><button type="button" class="sb-btn" data-show-research>Show on the tree</button></div>
+                <div class="rx-panel-head"><h3>Research this needs</h3><span>from the gate map: stake tiers, every building placed, hull sizes, fleet size, zone access, and the plan's recipes</span><button type="button" class="sb-btn" data-show-research>Show on the tree</button></div>
                 <div class="cd-res-two">${line('To run the stakes and fleets', run)}${line('To craft the plan yourself', craft)}</div>
+                ${fleetNote}
                 ${zones.size ? `<p class="rx-note">Zone access counted for a ${Store.s.faction.toUpperCase()} player: ${Array.from(zones.values()).map(z => `${ZONE_TEXT[z.cls]} → ${esc(z.n.name)}`).join('; ')}. Several nodes grant the same access; the one on the activity's own track, or else the cheapest, is used.</p>` : ''}
             </section>`;
         }

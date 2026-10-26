@@ -2,43 +2,44 @@
 // (Data/ships-data.js `configurations`, 48 per hull). The Ship Explorer's ShipConfigCalculator (ShipExplorer/
 // config-calculator.js with Data/ship-components-data.js + Data/ship-formulas-data.js) turns the fitted components into
 // modified stats; this engine works on the FLAT stat row of each hull (Data/combat-data.js `allShips`, 74 snake_case
-// keys - the keys the calculator modifies and the keys the export's combat formula reads) and answers five questions:
+// keys - the keys the calculator modifies and the keys the export's combat formula reads) and offers:
 //   stats    the fitted row: base, modified, multiplier per stat, the fitted components
-//   trip     hauling: one round trip of d map units (jumps, times, fuel) and cargo delivered an hour
-//   mine     mining: fill the hold at the rate x richness, haul it d units, repeat - ore delivered an hour, food and
-//            fuel per unit, crew
+//   trip     hauling: one round trip of d AU (jumps, times, fuel) and cargo delivered an hour
+//   mine     mining: fill the hold at the rate x richness, haul it d AU, repeat - ore delivered an hour, food and fuel per
+//            unit, crew
+//   scan     SDU and Toolkits an hour from the scan cooldown
 //   fight    combat: the export's own combat formula (shipConfigurations.combatFormula, a JavaScript IIFE) run
 //            headless N times with the first striker alternating - win share and mean rounds
-//   cost     what the configuration's components cost to craft: each component -> its recipe by name -> the Recipe
-//            Explorer's expansion to raws
-//   points   fleet points of the hull's class (globalCombatConfig.fleet_points) for the fleet cap
-// Units: the export's travel units are unstated (map units per second, fuel per map unit), so every figure here is a
-// COMPARISON between loadouts under one reading. The combat formula is stochastic (hit rolls); N fights give a share.
+//   cost     what the configuration's components cost to craft: each component -> its recipe by name (case-insensitive;
+//            a generic weapon is priced as its cheapest variant) -> the Recipe Explorer's expansion to raws
+//   points   fleet-capacity points of the hull's class (globalCombatConfig.fleet_points) against the Fleet Size cap
+// Units are the export's (JSON/stat-descriptions.json): speeds AU/s, warp range AU, fuel per AU, hold CU. The combat
+// formula is stochastic (hit rolls); N fights give a share.
 (function () {
     'use strict';
 
-    const CLASS_TOKEN = { 1: 'XXS', 2: 'XS', 3: 'S', 4: 'M', 5: 'L', 6: 'CAP', 7: 'CMD', 8: 'CLASS8', 9: 'TTN' };
     const CLASS_NAME = { 1: 'XXSmall', 2: 'XSmall', 3: 'Small', 4: 'Medium', 5: 'Large', 6: 'Capital', 7: 'Commander', 8: 'Class 8', 9: 'Titan' };
     const RECIPE_CLASS = { XXXS: 'XXXS', XXS: 'XXS', XS: 'XS', S: 'S', M: 'M', L: 'L', CAP: 'CAP', CMD: 'CMD', 'Class 8': 'CLASS8', TTN: 'TTN' };
+    const OUTPUT_TYPE = { 'Ship Weapons': 'SHIP_WEAPONS', Missiles: 'MISSILES', Countermeasures: 'COUNTERMEASURES', 'Ship Component': 'SHIP_COMPONENTS', 'Ship Module': 'SHIP_MODULES', Drones: 'DRONE' };
     const MODULE_ALIAS = { 'Cargo Module': 'Cargo', 'Fuel Module': 'Fuel', 'Ammo Module': 'Ammo', 'Passenger Module': 'Passenger' };
     // the stats shown on each sub-tab: [key, label, unit, lowerIsBetter]
     const HAUL_STATS = [
-        ['cargo_capacity', 'Hold', 'cargo units', false], ['fuel_capacity', 'Tank', 'fuel', false],
-        ['warp_speed', 'Warp speed', 'units/s', false], ['max_warp_distance', 'Warp range', 'units per jump', false],
-        ['warp_spool_time', 'Spool', 's', true], ['warp_cool_down', 'Cooldown', 's', true], ['warp_fuel_consumption', 'Warp fuel', 'per unit', true],
-        ['subwarp_speed', 'Subwarp speed', 'units/s', false], ['subwarp_fuel_consumption', 'Subwarp fuel', 'per unit', true],
-        ['planet_exit_fuel', 'Planet exit', 'fuel', true], ['loading_rate', 'Loading', 'units/s', false]
+        ['cargo_capacity', 'Hold', 'CU', false], ['fuel_capacity', 'Tank', 'CU', false],
+        ['warp_speed', 'Warp speed', 'AU/s', false], ['max_warp_distance', 'Warp range', 'AU per jump', false],
+        ['warp_spool_time', 'Spool', 's', true], ['warp_cool_down', 'Cooldown', 's', true], ['warp_fuel_consumption', 'Warp fuel', 'per AU', true],
+        ['subwarp_speed', 'Subwarp speed', 'AU/s', false], ['subwarp_fuel_consumption', 'Subwarp fuel', 'per AU', true],
+        ['planet_exit_fuel', 'Planet exit', 'fuel per SG', true], ['loading_rate', 'Loading', 'CU/s', false]
     ];
     const MINE_STATS = [
         ['asteroid_mining_rate', 'Mining rate', 'units/s', false], ['asteroid_mining_food_rate', 'Food while mining', 'per s', true],
-        ['asteroid_mining_ammo_rate', 'Ammo while mining', 'per s', true], ['cargo_capacity', 'Hold', 'cargo units', false],
-        ['required_crew', 'Crew', '', true], ['warp_speed', 'Warp speed', 'units/s', false], ['max_warp_distance', 'Warp range', 'units', false],
-        ['warp_fuel_consumption', 'Warp fuel', 'per unit', true], ['loading_rate', 'Loading', 'units/s', false]
+        ['asteroid_mining_ammo_rate', 'Ammo while mining', 'per s', true], ['cargo_capacity', 'Hold', 'CU', false],
+        ['required_crew', 'Crew', '', true], ['warp_speed', 'Warp speed', 'AU/s', false], ['max_warp_distance', 'Warp range', 'AU', false],
+        ['warp_fuel_consumption', 'Warp fuel', 'per AU', true], ['loading_rate', 'Loading', 'CU/s', false]
     ];
     const SCAN_STATS = [
         ['scan_power', 'Scan power', 'result multiplier', false], ['sduPerScan', 'SDU per scan', '', false], ['scan_cool_down', 'Scan cooldown', 's', true],
-        ['scan_cost', 'Scan cost', 'tokens', true], ['required_crew', 'Crew', '', true], ['cargo_capacity', 'Hold', 'cargo units', false],
-        ['subwarp_speed', 'Subwarp speed', 'units/s', false], ['max_warp_distance', 'Warp range', 'units', false], ['stealth_power', 'Stealth', '', false]
+        ['scan_cost', 'Scan cost', 'Toolkits', true], ['required_crew', 'Crew', '', true], ['cargo_capacity', 'Hold', 'CU', false],
+        ['subwarp_speed', 'Subwarp speed', 'AU/s', false], ['max_warp_distance', 'Warp range', 'AU', false], ['stealth_power', 'Stealth', '', false]
     ];
     const FIGHT_STATS = [
         ['hit_points', 'Hull', 'HP', false], ['shield_points', 'Shields', 'SP', false], ['shield_recharge_rate', 'Shield recharge', '/s', false],
@@ -70,7 +71,7 @@
                     const category = p.Category || ctx.category || null;
                     const componentType = p['Ship Component'] || p['Ship Modules'] || p['Damage Type'] || p['Countermeasure'] || p['Missiles'] || p['Drone Type'] || p['Drones'] || ctx.componentType || null;
                     const className = p.Class || ctx.className || null, tierName = p.Tier || ctx.tierName || null;
-                    if (node.id != null) this.componentsById[String(node.id)] = { id: node.id, name: node.name || componentType || `Component ${node.id}`, properties: p, category, componentType, className, tierName };
+                    if (node.id != null) this.componentsById[String(node.id)] = { id: node.id, name: node.name || componentType || `Component ${node.id}`, properties: p, category, componentType, className, tierName, cadence: p['Firing Cadences'] || '' };
                     (node.children || []).forEach(ch => walk(ch, { category, componentType, className, tierName }));
                 };
                 tree.forEach(r => walk(r, {}));
@@ -93,7 +94,8 @@
         }
         configsOf(shipName) { const s = this.byName.get(shipName); return s ? (s.configurations || []).map(c => c.name) : []; }
         classOf(ship) { return ship.row.Class || ship.class || 0; }
-        pointsOf(ship) { const p = this.points.get(this.classOf(ship)); return p ? p.combat_points : null; }
+        // the Fleet Size cap counts "fleet-capacity points" (capacity_points: equal to combat points in every class but Titan, 128 vs 81)
+        pointsOf(ship) { const p = this.points.get(this.classOf(ship)); return p ? p.capacity_points : null; }
 
         // ---- the fitted row
         stats(shipName, cfgName) {
@@ -108,8 +110,8 @@
                 this.statKeys.forEach(k => { const d = r.details[k]; if (d && d.modifiedValue != null) { mod[k] = d.modifiedValue; mult[k] = base[k] ? d.modifiedValue / base[k] : 1; } });
             }
             const items = [];
-            if (cfg) Object.entries(cfg.components || {}).forEach(([cat, types]) => Object.entries(types || {}).forEach(([type, v]) => { (v && v.items || []).forEach(id => { const c = this.componentsById[String(id)] || {}; items.push({ id, category: cat, type, name: c.name || type, cls: c.className || '', tier: c.tierName || '' }); }); }));
-            const fit = new Map(); items.forEach(it => { const k = `${it.name}|${it.cls}|${it.tier}`; const f = fit.get(k) || { name: it.name, type: it.type, category: it.category, cls: it.cls, tier: it.tier, n: 0 }; f.n++; fit.set(k, f); });
+            if (cfg) Object.entries(cfg.components || {}).forEach(([cat, types]) => Object.entries(types || {}).forEach(([type, v]) => { (v && v.items || []).forEach(id => { const c = this.componentsById[String(id)] || {}; items.push({ id, category: cat, type, name: c.name || type, cls: c.className || '', tier: c.tierName || '', cadence: c.cadence || '' }); }); }));
+            const fit = new Map(); items.forEach(it => { const k = `${it.name}|${it.cls}|${it.tier}|${it.cadence}`; const f = fit.get(k) || { name: it.name, type: it.type, category: it.category, cls: it.cls, tier: it.tier, cadence: it.cadence, n: 0 }; f.n++; fit.set(k, f); });
             const out = { ship, cfg, name: cfgName || 'Default', label: `${ship.name} · ${cfgName || 'Default'}`, size: CLASS_NAME[this.classOf(ship)] || ship.sizeTier, cls: this.classOf(ship), points: this.pointsOf(ship), base, mod, mult, fit: Array.from(fit.values()), slots: cfg ? `${cfg.summary.totalFilled}/${cfg.summary.totalSlots}` : '0/0' };
             this._cache.set(key, out);
             return out;
@@ -186,13 +188,34 @@
         }
 
         // ---- cost: the configuration's components as recipes and raws
+        // recipe names are matched case-insensitively (the component says "EMP", the recipe "Emp"); a generic weapon
+        // ("Kinetic", "Energy") has no recipe of its own, so it is priced as its cheapest variant (Burst, Cannon ...)
+        recipeNamed(name) {
+            if (!this._lc) { this._lc = new Map(); this.rc.rm.recipeByName.forEach((r, n) => { const k = n.toLowerCase(); if (!this._lc.has(k)) this._lc.set(k, r); }); }
+            return this._lc.get(name.toLowerCase()) || null;
+        }
+        rawUnitsOf(rec) { const x = this.rc.expand([{ id: rec.outputId, qty: 1 }]); let u = 0; x.raws.forEach(q => { u += q; }); return u; }
+        variantOf(base, cls, tier) {
+            const pre = base.toLowerCase() + ' ', suf = ` ${cls} ${tier}`.toLowerCase(), key = pre + '|' + suf;
+            this._var = this._var || new Map();
+            if (this._var.has(key)) return this._var.get(key);
+            let best = null, n = 0;
+            this.rc.rm.recipeByName.forEach((rec, nm) => {
+                const l = nm.toLowerCase();
+                if (rec.outputType !== 'SHIP_WEAPONS' || !l.startsWith(pre) || !l.endsWith(suf) || l.slice(pre.length, l.length - suf.length).includes(' ')) return;
+                n++; const u = this.rawUnitsOf(rec); if (!best || u < best.u) best = { rec, u };
+            });
+            const out = best ? { rec: best.rec, of: n } : null; this._var.set(key, out); return out;
+        }
+        // a fit's recipe must be of the fit's own kind (a weapon is never priced by a missile or a countermeasure)
         cost(st) {
             const out = { recipes: [], unpriced: [], raws: new Map(), crafts: 0, found: 0 };
             if (!this.rc || !st) return out;
             const items = [];
             st.fit.forEach(f => {
                 const cls = RECIPE_CLASS[f.cls] || f.cls, tier = f.tier || '';
-                const names = [];
+                const names = [], kind = OUTPUT_TYPE[f.category] || null;
+                if (f.category === 'Ship Weapons' && f.cadence && cls && tier) names.push(`${f.type} ${f.cadence} ${cls} ${tier}`);
                 if (f.category === 'Drones') { names.push(`${f.name} T1`, f.name); }
                 else {
                     const base = MODULE_ALIAS[f.type] || f.name || f.type;
@@ -200,8 +223,10 @@
                     if (tier) names.push(`${base} ${tier}`);
                     names.push(base);
                 }
-                const rec = names.map(n => this.rc.rm.recipeByName.get(n)).find(Boolean);
-                if (rec) items.push({ id: rec.outputId, qty: f.n, fit: f, name: rec.outputName, assumed: f.category === 'Drones' ? 'tier assumed T1' : '' });
+                let rec = null, assumed = f.category === 'Drones' ? 'tier assumed T1' : '';
+                for (const n of names) { const r = this.recipeNamed(n); if (r && (!kind || r.outputType === kind)) { rec = r; break; } }
+                if (!rec && f.category === 'Ship Weapons' && cls && tier) { const v = f.cadence ? null : this.variantOf(MODULE_ALIAS[f.type] || f.name || f.type, cls, tier); if (v) { rec = v.rec; assumed = `variant assumed: cheapest of ${v.of}`; } }
+                if (rec) items.push({ id: rec.outputId, qty: f.n, fit: f, name: rec.outputName, assumed });
                 else out.unpriced.push(f);
             });
             if (items.length) {
@@ -217,7 +242,7 @@
         }
     }
     Loadout.HAUL_STATS = HAUL_STATS; Loadout.MINE_STATS = MINE_STATS; Loadout.FIGHT_STATS = FIGHT_STATS; Loadout.SCAN_STATS = SCAN_STATS;
-    Loadout.CLASS_TOKEN = CLASS_TOKEN; Loadout.CLASS_NAME = CLASS_NAME;
+    Loadout.CLASS_NAME = CLASS_NAME;
     window.CommandDeck = window.CommandDeck || {};
     window.CommandDeck.Loadout = Loadout;
 })();

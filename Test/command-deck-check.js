@@ -42,6 +42,7 @@ const empire = new Empire(se, rc, D.ships.ships);
 let pass = 0, fail = 0;
 const near = (a, b, tol) => a != null && Math.abs(a - b) <= (tol == null ? 1e-9 : tol) * Math.max(1, Math.abs(b));
 function check(label, got, want, tol) {
+    if (typeof got === 'function') { try { got = got(); } catch (e) { got = 'THREW: ' + e.message; } }   // a lazy value: a throw is a FAIL, not a crash
     const ok = typeof want === 'number' ? near(got, want, tol) : JSON.stringify(got) === JSON.stringify(want);
     if (ok) pass++; else fail++;
     console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}: ${typeof got === 'number' ? got : JSON.stringify(got)}${ok ? '' : '  (expected ' + JSON.stringify(want) + ')'}`);
@@ -300,7 +301,8 @@ check('  the Fleet Size CAP is cumulative: 4, 11, 23 .. 312, and every tier\'s d
 //          sentence, the nodes it leads to - read against the raw export fields in JSON/research.json
 const RAW = require(path.join(ROOT, 'JSON/research.json')).nodes, rawOf = name => RAW.find(n => n.name === name);
 const B = name => research.benefit(research.byName.get(name));
-check('Fleet Size - Tier 1: fleet_size 7 reads as one sentence', [B('Fleet Size - Tier 1').grants.map(g => g.text), rawOf('Fleet Size - Tier 1').character_value_changes.fleet_size], [['Fleet cap +7 points'], 7]);
+// 2026-10-25 (FIX-SPEC A11): the grant sentence also names the running total
+check('Fleet Size - Tier 1: fleet_size 7 reads as one sentence, with the cumulative cap', [B('Fleet Size - Tier 1').grants.map(g => g.text), rawOf('Fleet Size - Tier 1').character_value_changes.fleet_size], [['Fleet cap +7 points (11 in total)'], 7]);
 check('  its description is the export\'s own sentence', B('Fleet Size - Tier 1').text, rawOf('Fleet Size - Tier 1').description.trim());
 check('  Medium Ships: max_ship_size Medium -> fly hulls up to Medium', B('Medium Ships').grants.map(g => g.text), ['Fly hulls up to Medium']);
 check('  Contested Space Scanning: MediumRiskZone in words', B('Contested Space Scanning').grants.map(g => g.text), ['Travel into medium-risk zones (faction-owned or neutral)']);
@@ -308,7 +310,9 @@ check('  Warp Lane Fee Reduction: a -0.25 modifier reads as -25 %', B('Warp Lane
 const rmd = B('Rare Mineral Discoveries').grants[0], rmdRaw = rawOf('Rare Mineral Discoveries').character_value_changes.rare_mineral_discovery;
 check('  Rare Mineral Discoveries: +5 % per level on the 31 resources the export lists, every one named from its cargo table', [rmd.text, rmd.list.length, rmd.list.includes('Abyssal Energy Crystals')], [`+5 % yield per level on ${Object.keys(rmdRaw).length} asteroid-mined resources`, Object.keys(rmdRaw).length, true]);
 check('  Residential Expansion (Unlimited): +1 plot per level, not "up to 1"', B('Residential Expansion').grants.map(g => g.text), ['+1 residential (crafting-hab) plot per level']);
-check('  Fleet Concurrency - Tier 1: the mis-coded em dash is repaired on display and left in the data', [/â€/.test(B('Fleet Concurrency - Tier 1').text), B('Fleet Concurrency - Tier 1').text.includes('Phase 1.5a add - was C4-only'), /â€/.test(rawOf('Fleet Concurrency - Tier 1').description)], [false, true, true]);
+// 2026-10-25 (FIX-SPEC A11): the editor's "Phase 1.5a add - was C4-only" sentence is now dropped on display - the repair
+// is checked on fixText, the drop on the shown text
+check('  Fleet Concurrency - Tier 1: the mis-coded em dash is repaired on display and left in the data; the release note is not shown', [/â€/.test(ResearchModel.fixText(rawOf('Fleet Concurrency - Tier 1').description)), ResearchModel.fixText(rawOf('Fleet Concurrency - Tier 1').description).includes('Phase 1.5a add - was C4-only'), B('Fleet Concurrency - Tier 1').text.includes('Phase'), /â€/.test(rawOf('Fleet Concurrency - Tier 1').description)], [false, true, false, true]);
 check('  no description survives with code-page damage', research.nodes.filter(n => /â€|Â /.test(research.benefit(n).text)).length, 0);
 check('  every grant key the export uses has a sentence (no raw-key fallback)', research.nodes.flatMap(n => research.benefit(n).grants).filter(g => g.raw).length, 0);
 check('  Hull Integrity leads to Novice Hull Integrity; Freelance Pilot opens 7 nodes; a leaf opens none', [B('Hull Integrity').leadsTo.map(c => c.name), B('Freelance Pilot').leadsTo.length, B('Elite Hull Integrity').leadsTo.length], [['Novice Hull Integrity'], 7, 0]);
@@ -371,6 +375,53 @@ const HP = HM.plan([{ id: 'hab-t3', qty: 1 }, { id: 'hab-crafting-station-s', qt
 const LN = Empire.lanesFromHab(HP.rows);
 check('T3 hab + S station + T3 storage: 5 lanes = the Hub Explorer\'s 5 jobs; speeds 1, 1.5 x3, 1', [LN.length, HP.jobs, LN.map(l => l.speed)], [5, 5, [1, 1.5, 1.5, 1.5, 1]]);
 check('  no build: no lanes', Empire.lanesFromHab([]), []);
+
+// ---- 13. audit fixes (2026-10-25, FIX-SPEC section A). Each check here FAILS on the code before the fix (values are
+//          lazy so a missing method reads as a FAIL, not a crash); A1 on the old code takes minutes - see the hand-in.
+// A2: a recipe's chain is ITS OWN ingredients, not the default recipe of its output name (318 names repeat)
+const oph3 = rc.byId.get('oceanic-processing-hub-t3'), cl2 = rc.byId.get('component-crystal-lattice-2');
+check('A2 Oceanic Processing Hub T3: its own chain needs 4 research nodes (the name\'s T1 default needs none)', () => Array.from(research.closure(research.chainGate(oph3))).map(n => n.name).sort(), ['Advanced Recipe Unlock', 'Complex Crafting', 'Freelance Crafter', 'Starting Node']);
+check('  all-faction Crystal Lattice T3 (Hydrogen + Rochinol): its raws, not the MUD-only Diamond variant\'s', () => research.gather(cl2, 'ustur', 'stake', se).rows.map(r => r.res.name).sort(), ['Hydrogen', 'Rochinol']);
+check('  over all 5,251 recipes the chain walk = Empire.expand (crafted kinds and raw leaves)', () => rc.recipes.filter(r => { const x = empire.expand([{ id: r.outputId, qty: 1 }], new Set()), c = research.chainOf(r); return [...x.crafts.keys()].filter(n => n !== r.outputName).sort().join('|') !== c.crafted.map(q => q.outputName).sort().join('|') || [...x.leaves.keys()].filter(n => (rm.byName.get(n) || {}).category === 'raw').sort().join('|') !== [...c.raws.keys()].sort().join('|'); }).length, 0);
+// A3: a raw as the goal is gathered, not crafted
+const cuOre = rc.byId.get('copper-ore');
+check('A3 Copper Ore as a goal: no crafting gate, and the raw itself is routed (a stake for USTUR)', () => [Array.from(research.chainGate(cuOre)), research.gather(cuOre, 'ustur', 'stake', se).rows.map(r => r.res.name + '/' + r.route)], [[], ['Copper Ore/stake']]);
+// A4 / A9: capacity points against the cumulative Fleet Size cap; composition limits per fleet
+const EP = new Empire(se, rc, D.ships.ships, load('Data/combat-data.js').fleetPoints);
+const titan = EP.ships.find(s => s.size === 'Titan'), cap = EP.ships.find(s => s.size === 'Capital');
+check('A4 a Titan counts 128 capacity points (combat 81), a Capital 36', () => [EP.capacityPoints(titan.name), EP.capacityPoints(cap.name)], [128, 36]);
+check('  3 Capitals (108) need Fleet Size - Tier 5 (cap 109); 1 Titan (128) Tier 6 (161); 313 points: above the top cap', () => [research.fleetSizeFor(EP.fleetPoints([{ ship: cap.name, count: 3 }]).max).node.name, research.fleetSizeFor(EP.fleetPoints([{ ship: titan.name, count: 1 }]).max).node.name, research.fleetSizeFor(313)], ['Fleet Size - Tier 5', 'Fleet Size - Tier 6', null]);
+check('  the largest fleet sets the tier, the sum is reported; 2 Titans in one fleet break max_titans', () => (f => [f.max, f.sum, f.rows[0].warn.length > 0, f.rows[1].warn.length])(EP.fleetPoints([{ ship: titan.name, count: 2 }, { ship: cap.name, count: 1 }])), [256, 292, true, 0]);
+// the tabs, loaded with no DOM (their prototypes only) - deck-store reads no localStorage in node
+load('CommandDeck/deck-store.js'); load('CommandDeck/deck-research.js'); load('CommandDeck/deck-empire.js');
+const RTab = Object.create(window.DeckResearchTab.prototype); RTab.m = research; RTab.ctx = { rc, se, ships: D.ships.ships };
+// A5: an extractor goal includes the hubs a stake lays out for it
+check('A5 copper-ore-extractor-t3 goal: 17 nodes / 4,900 ATLAS with the hubs\' Structural Complexity (was 12 / 3,150)', () => (b => [b.todo, b.atlas])(research.bill(research.closure(RTab.makeGoal('building', 'copper-ore-extractor-t3').tags), new Set([research.start.id]))), [17, 4900]);
+// round 1: a building no planet can feed (a second-stage processor) still counts the hubs its tags name
+// (a processor's own gate already holds its tier's Structural Complexity; a cultivation farm's does not: 11 -> 16 nodes)
+check('  steel-processor-t3 and magmaroot-farm-t3 (no planet feeds them): hubs from their tags; the farm path is 16 nodes', () => { const g = RTab.makeGoal('building', 'steel-processor-t3'), f = RTab.makeGoal('building', 'magmaroot-farm-t3'); return [g.site, research.closure(g.tags).has(research.nodeOfTag.get(research.buildingGate('terrestrial-processing-hub-t3')[0])), f.site, research.closure(f.tags).size]; }, ['tags', true, 'tags', 16]);
+// round 1: the Empire fleet note reads as sentences (a missing space once ran "128).That takes")
+check('A4 Empire fleet note: "... 128). That takes Fleet Size - Tier 6 (a cap of 161)."', () => { const t = Object.assign(Object.create(window.DeckEmpireTab.prototype), { ctx: { research }, empire: EP, se, rc, stakes: [], fleets: [{ id: 'f1', ship: titan.name, count: 1 }] }); const h = t.researchHTML([], { sources: [] }).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' '); return [/\)\.\S/.test(h), /128\)\. That takes Fleet Size - Tier 6 \(a cap of 161\)\./.test(h)]; }, [false, true]);
+// A10: search caps and says so, "t3" finds "tier 3", no starbase hulls, no doubled tier
+check('A10 search "ammo": 14 shown of 46; "claim t3" finds the tier-3 stake; no Starbase pseudo-ship; no "T5 T5" label', () => { const s = RTab.search('ammo'); return [s.length, s.total, RTab.search('claim t3').map(x => x.label).includes('Claim Stake Tier 3'), RTab.search('starbase').length, RTab.index.filter(x => /T(\d+) T\1$/.test(x.label)).length]; }, [14, 46, true, 0, 0]);
+check('  recipe labels: "Ammo L T5" stays, "Power Regulation Module" gets its tier', () => [window.DeckUI.recipeLabel(rc.recipes.find(r => r.outputName === 'Ammo L T5')), window.DeckUI.recipeLabel(prm)], ['Ammo L T5', 'Power Regulation Module T' + prm.outputTier]);
+// round 1: only a suffix equal to the recipe's own tier is dropped - "Pearce T1" is a tier-5 hull recipe
+check('  "Pearce T1" at tier 5: the chip name keeps "Pearce T1", the label is "Pearce T1 T5"', () => { const r = rc.recipes.find(x => x.outputName === 'Pearce T1' && x.outputTier === 5); return [window.DeckUI.recipeName(r), window.DeckUI.recipeLabel(r)]; }, ['Pearce T1', 'Pearce T1 T5']);
+// A11 / A12: no editor notes or upgrade wording on display; the two doubled node names told apart
+check('A11 no shown description carries an editor note or "Upgrades to Tier 5"', () => research.nodes.filter(n => /Phase \d|C4-only|universe\.json|TODO|Combat v2:|Upgrades to Tier 5/.test(research.benefit(n).text)).map(n => n.name), []);
+// round 1: the combat notes keep their stat; the plot sentence fits the node kind
+check('  the five Combat v2 nodes keep a stat sentence with no editor note', () => ['Fire Control', 'Targeting Optics', 'Minor Critical Multiplier', 'Major Critical Multiplier', 'Elite Critical Multiplier'].map(n => B(n).text), ['Raises hit chance; the export gives no magnitude yet.', 'Raises aim; the export gives no magnitude yet.'].concat(Array(3).fill('Raises the critical-hit multiplier; the export gives no magnitude yet.')));
+check('  plot nodes: Claim Stakes, Crafting Habs and Commercial Plot each read in their own words', () => ['Claim Stakes - Tier 2', 'Crafting Habs - Tier 1', 'Commercial Plot - T1'].map(n => B(n).text), ['Unlocks tier size of plots a player is able to own. Lets you own claim stakes of this tier; a stake is bought at its tier and never upgraded.', 'Unlocks tier size of plots a player is able to own. Lets you own crafting habs of this tier.', 'Unlocks tier size of plots a player is able to own. Base tier is free for all but not productive.']);
+check('A12 every drawn node has its own name; the bare name still resolves', () => [new Set(research.nodes.map(n => n.name)).size, research.byName.get('Enemy Faction Scanning') === research.byName.get('Enemy Faction Scanning (after Contested Space Scanning)')], [research.nodes.length, true]);
+// A1: the schedule axis has a few ticks however long the plan runs (a 30-day cap drew 3,181 labels, 447 MB, 116 s)
+check('A1 Ammo TTN T5 x1000: schedule + HTML under 2 s; axis lines (grid + end) at most 14', () => {
+    const items = [{ id: 'ammo-ttn-t5', qty: 1000 }], x = empire.expand(items, new Set()), t0 = Date.now();
+    const html = window.DeckEmpireTab.prototype.scheduleHTML.call({}, items, { expansion: x }, empire.schedule(x, { jobs: 1 }), { lanes: [], label: '' }), ms = Date.now() - t0, lines = (html.match(/class="grid( end)?"/g) || []).length;
+    console.log(`      (A1: ${ms} ms, ${lines} axis lines, ${html.length} bytes)`);
+    return [ms < 2000, lines <= 14];
+}, [true, true]);
+// A7: a belt's failed layout still has the fields a stake card reads
+check('A7 a belt layout: not ok, and hubs / crew fields present', () => (L => [L.ok, Array.isArray(L.hubs), L.ncq, L.crewNeed])(se.layout(se.planets.find(p => p.cat === 3), 2, {}, [])), [false, true, 0, 0]);
 
 console.log(`\n${pass} PASS, ${fail} FAIL${SABOTAGE ? ' (sabotage run: failures are expected)' : ''}`);
 process.exit(fail ? 1 : 0);

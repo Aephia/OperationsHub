@@ -30,12 +30,13 @@
                 const v = JSON.parse(localStorage.getItem(KEY) || 'null');
                 if (v && typeof v === 'object') {
                     if (v.tick > 0) d.tick = +v.tick;
-                    if (v.tickSource) d.tickSource = v.tickSource;
+                    if (['assumed', 'set', 'measured'].includes(v.tickSource)) d.tickSource = v.tickSource;   // saved bytes are untrusted: known labels only
                     if (typeof v.richness === 'boolean') d.richness = v.richness;
                     if (['mud', 'oni', 'ustur'].includes(v.faction)) d.faction = v.faction;
                     if (['stake', 'fleet', 'hand'].includes(v.gather)) d.gather = v.gather;
-                    if (v.prices && v.prices.ships) d.prices.ships = v.prices.ships;
-                    if (v.prices && v.prices.stakes) d.prices.stakes = v.prices.stakes;
+                    const obj = x => x && typeof x === 'object' && !Array.isArray(x);
+                    if (v.prices && obj(v.prices.ships)) d.prices.ships = v.prices.ships;
+                    if (v.prices && obj(v.prices.stakes)) d.prices.stakes = v.prices.stakes;
                     if (v.calc && v.calc.raw) d.calc.raw = v.calc.raw;
                     if (v.calc && v.calc.ref) d.calc.ref = v.calc.ref;
                 }
@@ -75,7 +76,10 @@
     };
     const usd = v => (v == null || !isFinite(v) ? '–' : '$' + num(v, v < 10 ? 2 : 0));
     const snd = n => { if (window.spaceSounds && window.spaceSounds[n]) window.spaceSounds[n](); };
-    const tickLabel = s => `${num(s.tick, s.tick < 10 ? 3 : 1)} s`;
+    // a recipe's name without a trailing copy of its own tier ("Ammo L T5" at T5 -> "Ammo L"; "Pearce T1" at T5 stays),
+    // and the name with its tier once ("Ammo L T5", not "Ammo L T5 T5"; "Pearce T1 T5")
+    const recipeName = r => { const suf = ' T' + r.outputTier; return r.outputName.endsWith(suf) ? r.outputName.slice(0, -suf.length) : r.outputName; };
+    const recipeLabel = r => `${recipeName(r)} T${r.outputTier}`;
     const TICK_SOURCE = { assumed: 'assumed - not measured', set: 'set by you', measured: 'measured by you' };
     const FACTIONS = [['mud', 'MUD'], ['oni', 'ONI'], ['ustur', 'USTUR']];
     const factionChips = () => `<span class="cd-me"><span>My faction</span>${FACTIONS.map(([k, l]) => `<button type="button" class="chip${Store.s.faction === k ? ' on' : ''}" data-faction="${k}"><i style="background:var(--${k === 'ustur' ? 'ust' : k})"></i>${l}</button>`).join('')}</span>`;
@@ -84,19 +88,22 @@
     // the settings strip both tabs show: tick length (number + quick picks) and the richness switch
     function settingsStrip(opts) {
         const s = Store.s, o = opts || {};
+        // measureHere: the strip sits on the Ships vs Stakes tab, whose bottom panel measures the tick
+        const measureHere = !!o.measureHere;
         const picks = [1, 6, 60, 600, 3600];
         return `<section class="cd-strip" data-strip>
             <label class="cd-tick"><span>Stake tick length</span><input type="number" class="sb-input" min="0.001" step="any" value="${s.tick}" data-tick aria-label="Stake tick length in seconds"><em>s</em></label>
             <div class="chips">${picks.map(p => `<button type="button" class="chip${s.tick === p ? ' on' : ''}" data-tick-pick="${p}">${p >= 3600 ? '1 h' : p >= 60 ? (p / 60) + ' min' : p + ' s'}</button>`).join('')}</div>
-            <span class="cd-flag ${s.tickSource === 'assumed' ? 'warn' : 'ok'}">${TICK_SOURCE[s.tickSource] || s.tickSource}</span>
-            ${o.richness === false ? '' : `<label class="cd-check"><input type="checkbox" data-richness ${s.richness ? 'checked' : ''}><span>stake output × deposit richness</span></label>`}
+            <span class="cd-flag ${s.tickSource === 'assumed' ? 'warn' : 'ok'}">${TICK_SOURCE[s.tickSource] || esc(s.tickSource)}</span>
+            ${o.richness === false ? '' : `<label class="cd-check"><input type="checkbox" data-richness ${s.richness ? 'checked' : ''}><span>Multiply stake output by deposit richness (assumed, not in the data)</span></label>`}
             ${o.faction ? factionChips() : ''}
-            <p class="cd-strip-note">A stake's rate is <b>per tick</b>, a ship's is <b>per second</b>, and the tick length is in no export field. Every number on this tab that compares the two uses the value above${o.richness === false ? '' : '; how richness scales a stake is not in the data either'}. Measure the tick on the Ships vs Stakes tab.</p>
+            <p class="cd-strip-note">A stake's rate is <b>per tick</b>, a ship's is <b>per second</b>, and the tick length is in no export field. Every number on this tab that compares the two uses the value above. ${measureHere ? 'Measure the tick in the panel at the bottom.' : 'Measure the tick on the Ships vs Stakes tab.'}</p>
         </section>`;
     }
     function bindStrip(root) {
         root.addEventListener('change', e => {
-            const t = e.target.closest('[data-tick]'); if (t) { Store.setTick(t.value, 'set'); return; }
+            // an invalid entry (0, -5, abc) is not taken: the box goes back to the tick in use (a valid one may be clamped)
+            const t = e.target.closest('[data-tick]'); if (t) { Store.setTick(t.value, 'set'); if (+t.value !== Store.s.tick) t.value = Store.s.tick; return; }
             const r = e.target.closest('[data-richness]'); if (r) { Store.setRichness(r.checked); }
         });
         root.addEventListener('click', e => {
@@ -106,5 +113,5 @@
     }
 
     window.DeckStore = Store;
-    window.DeckUI = { esc, num, dur, usd, snd, tickLabel, settingsStrip, bindStrip, factionChips, PRICE_DATE, TICK_SOURCE, FACTIONS, ZONE_TEXT };
+    window.DeckUI = { esc, num, dur, usd, snd, recipeName, recipeLabel, settingsStrip, bindStrip, factionChips, PRICE_DATE, TICK_SOURCE, FACTIONS, ZONE_TEXT };
 })();

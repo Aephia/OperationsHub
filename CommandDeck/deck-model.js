@@ -39,6 +39,8 @@
     const TRACK_BY_LABEL = new Map(TRACKS.map(t => [t.label, t]));
     const SIZE_VALUE = { XXS: 'XxSmall', XS: 'XSmall', Small: 'Small', Medium: 'Medium', Large: 'Large', Capital: 'Capital', Commander: 'Commander', Titan: 'Titan' };
     const ATLAS_DECIMALS = 1e8;                                    // the ATLAS mint has 8 decimals; costs are in base units
+    const DEV_NOTE = /Phase \d|C4-only|universe\.json|TODO|Combat v2:/;          // editor notes in node descriptions
+    const COMBAT_STAT = { hit_chance: 'hit chance', aim_ability: 'aim', crit_multiplier: 'the critical-hit multiplier' };
     const slug = n => String(n || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
     // ------------------------------------------------------------------------------------------------ research
@@ -84,7 +86,6 @@
             const list = this.zoneGrants[cls] || [];
             return list.find(n => n.track.key === preferTrackKey) || list[0] || null;
         }
-        zoneTags(cls, preferTrackKey) { const n = this.zoneGrant(cls, preferTrackKey); return n ? n.tags : []; }
 
         // How a player of `faction` gets one raw, and the research that takes.
         //   mode 'stake': a tier-1 claim stake where one can extract it (the least research a stake needs: the
@@ -120,14 +121,30 @@
             out.why = 'no deposit in the map data';
             return out;
         }
-        // every raw under a recipe, each with its route; tags = the research all of it takes
+        // The chain under THIS recipe (2026-10-25): the root is the recipe itself and each ingredient resolves by name
+        // the way Empire.expand resolves it (rm.recipeByName). 318 output names have several recipes, so the name's
+        // DAG (rm.dag) is another recipe's chain for every variant. crafted: the recipes under the root; raws: Map
+        // name -> resource; isRaw: the root itself is a raw (a "recipe" with no ingredients, e.g. Copper Ore).
+        chainOf(recipe) {
+            const rm = this.rc.rm, crafted = [], raws = new Map(), seen = new Set([recipe.outputName]);
+            const root = rm.byName.get(recipe.outputName), isRaw = !!(root && root.category === 'raw');
+            const walk = rec => (rec.ingredients || []).forEach(i => {
+                if (seen.has(i.name)) return;                                     // once per name; also the cycle guard
+                seen.add(i.name);
+                const res = rm.byName.get(i.name), r = rm.recipeByName.get(i.name);
+                if (res && res.category === 'raw') { raws.set(i.name, res); return; }
+                if (r && r.ingredients && r.ingredients.length) { crafted.push(r); walk(r); }
+            });
+            if (isRaw) raws.set(recipe.outputName, root); else walk(recipe);
+            return { crafted, raws, isRaw };
+        }
+        // every raw under a recipe (the raw itself when the goal is a raw), each with its route; tags = the research
+        // all of it takes
         gather(recipe, faction, mode, se) {
             const rows = [], tags = new Set();
             if (!this.rc || mode === 'hand') return { rows, tags, mode };
-            const rm = this.rc.rm;
-            rm.dag(recipe.outputName).nodes.forEach(node => {
-                if (!node.res || node.res.category !== 'raw' || node.name === recipe.outputName) return;
-                const r = this.rawRoute(node.res, faction, mode, se); rows.push(r); r.tags.forEach(t => tags.add(t));
+            this.chainOf(recipe).raws.forEach(res => {
+                const r = this.rawRoute(res, faction, mode, se); rows.push(r); r.tags.forEach(t => tags.add(t));
             });
             const rank = { own: 0, medium: 1, enemy: 2, high: 3 };
             rows.sort((a, b) => (a.route === 'none') - (b.route === 'none') || (rank[a.cls] || 0) - (rank[b.cls] || 0) || (a.route === 'fleet') - (b.route === 'fleet') || a.res.name.localeCompare(b.res.name));
@@ -156,7 +173,6 @@
                 });
             });
             this.byId = new Map(this.nodes.map(n => [n.id, n]));
-            this.byName = new Map(this.nodes.map(n => [n.name, n]));
             this.nodeOfTag = new Map();
             this.nodes.forEach(n => n.tags.forEach(t => this.nodeOfTag.set(t, n)));
             // prerequisites: the nodes that grant the required tags (the real gate); a node with no numbers hangs
@@ -178,6 +194,17 @@
                 return n.depth;
             };
             this.nodes.forEach(n => depth(n, new Set()));
+            // two names are used twice (Enemy Faction Scanning, Deep Space Scanning - once after Contested Space Scanning,
+            // once after Regional Tiers): those get their prerequisite as a suffix. byName keeps the bare name as a
+            // fallback (the first such node) for old links; links by id are exact
+            const uses = new Map(); this.nodes.forEach(n => uses.set(n.name, (uses.get(n.name) || 0) + 1));
+            this.byName = new Map();
+            this.nodes.forEach(n => {
+                n.baseName = n.name;
+                if (uses.get(n.name) > 1) n.name = `${n.baseName} (after ${n.primary ? n.primary.name : n.track.label})`;
+            });
+            this.nodes.forEach(n => this.byName.set(n.name, n));
+            this.nodes.forEach(n => { if (!this.byName.has(n.baseName)) this.byName.set(n.baseName, n); });
             this.start = this.nodes.find(n => n.tags.includes(0)) || null;
             this.tracks = TRACKS.filter(t => this.nodes.some(n => n.track === t));
         }
@@ -225,23 +252,20 @@
                 atlas += n.atlas;
             });
             const xp = {}; Object.entries(levels).forEach(([k, v]) => { xp[k] = this.xpFor(k, v); });
-            return { rows, todo, levels, xp, points, tokens, atlasBase: atlas, atlas: atlas / ATLAS_DECIMALS };
+            return { rows, todo, levels, xp, points, tokens, atlas: atlas / ATLAS_DECIMALS };
         }
 
         ownedTags(ownedIds) { const s = new Set(); (ownedIds || []).forEach(id => { const n = this.byId.get(id); if (n) n.tags.forEach(t => s.add(t)); }); return s; }
 
         // ---- gates of things
         recipeGate(outputId) { return this.gate.recipes[outputId] || []; }
-        // craft it yourself from raws: the gates of every recipe in the chain (resolved the way the hub resolves chains)
+        // craft it yourself from raws: the gates of this recipe and of every recipe in its own chain (chainOf). A raw
+        // is gathered, not crafted: its "recipe" gate does not apply.
         chainGate(recipe) {
-            const tags = new Set(this.recipeGate(recipe.outputId));
-            if (!this.rc) return tags;
-            const rm = this.rc.rm;
-            rm.dag(recipe.outputName).nodes.forEach(node => {
-                if (node.name === recipe.outputName) return;
-                const r = rm.recipeByName.get(node.name);
-                if (r && r.ingredients && r.ingredients.length) this.recipeGate(r.outputId).forEach(t => tags.add(t));
-            });
+            if (!this.rc) return new Set(this.recipeGate(recipe.outputId));
+            const c = this.chainOf(recipe);
+            const tags = new Set(c.isRaw ? [] : this.recipeGate(recipe.outputId));
+            c.crafted.forEach(r => this.recipeGate(r.outputId).forEach(t => tags.add(t)));
             return tags;
         }
         buildingGate(id) { return this.gate.buildings[id] || []; }
@@ -258,10 +282,11 @@
             if (this.rc) recipes.forEach(id => { const r = this.rc.byId.get(id); const k = r ? r.typeLabel : 'Other'; byType.set(k, (byType.get(k) || 0) + 1); });
             const stakes = Object.entries(this.gate.claimStakes).filter(([, tags]) => tags.some(t => node.tags.includes(t))).map(([id]) => id);
             const habs = Object.entries(this.gate.craftingHabs).filter(([, tags]) => tags.some(t => node.tags.includes(t))).map(([id]) => id);
-            return { recipes: recipes.size, buildings: buildings.size, byType: Array.from(byType.entries()).sort((a, b) => b[1] - a[1]), stakes, habs, recipeIds: recipes };
+            return { recipes: recipes.size, buildings: buildings.size, byType: Array.from(byType.entries()).sort((a, b) => b[1] - a[1]), stakes, habs };
         }
-        // recipes whose every gate is held
-        craftable(tagSet) {
+        // recipes whose every gate is held. skip(recipe): leave a recipe out of the count (needs the recipe model)
+        craftable(tagSet, skip) {
+            if (skip && this.rc) return this.rc.recipes.filter(r => !skip(r) && this.recipeGate(r.outputId).every(t => tagSet.has(t))).length;
             let n = this.recipeCount - this.gatedRecipes;
             Object.values(this.gate.recipes).forEach(tags => { if (tags.every(t => tagSet.has(t))) n++; });
             return n;
@@ -284,6 +309,20 @@
             return String(s || '').replace(/\s*(?:â€”|â€“)\s*/g, ' - ').replace(/â€™|â€˜/g, '\'')
                 .replace(/â€œ|â€\x9d/g, '"').replace(/â€¦/g, '...').replace(/Â /g, ' ').replace(/\s+-\s+-\s+/g, ' - ').trim();
         }
+        // what the page shows (2026-10-25): fixText, then the editor's working notes dropped sentence by sentence
+        // (release phases, TODOs, file names - owner rule: release status is never surfaced), and the plot sentence
+        // that reads as if a stake were upgraded replaced (owner rule: a stake is bought at its tier, never upgraded)
+        // name: the node's name - the plot sentence is replaced to fit it (claim stakes, crafting habs; other plots keep
+        // their text minus "Upgrades to Tier 5"). A "Combat v2: <stat> (magnitude TODO ...)" note keeps its stat in words.
+        static cleanText(s, name) {
+            const PLOT = /Base tier is free for all but not productive\.\s*Upgrades to Tier 5\.?/g;
+            let t = ResearchModel.fixText(s);
+            if (/^Claim Stakes\b/.test(name || '')) t = t.replace(PLOT, 'Lets you own claim stakes of this tier; a stake is bought at its tier and never upgraded.');
+            else if (/^Crafting Habs\b/.test(name || '')) t = t.replace(PLOT, 'Lets you own crafting habs of this tier.');
+            else t = t.replace(/\s*Upgrades to Tier 5\.?/g, '');
+            t = t.replace(/Combat v2:\s*([a-z_]+)(?: tier)?\s*\(magnitude TODO[^)]*\)\.?/g, (m, k) => `Raises ${COMBAT_STAT[k] || k.replace(/_/g, ' ')}; the export gives no magnitude yet.`);
+            return t.split(/(?<=[.!?])\s+/).filter(x => x && !DEV_NOTE.test(x)).join(' ').trim();
+        }
         grantText(key, v, node) {
             const pct = x => (x > 0 ? '+' : '-') + Math.round(Math.abs(x) * 100) + ' %';
             const perLevel = node && node.scalability === 'Unlimited';        // a prestige track: the grant repeats every level
@@ -291,7 +330,7 @@
             const ZONE = { MediumRiskZone: 'Travel into medium-risk zones (faction-owned or neutral)', HighRiskZone: 'Travel into high-risk zones' };
             const n = x => Number(x).toLocaleString('en-US');
             switch (key) {
-                case 'fleet_size': return { text: `Fleet cap +${n(v)} points` };
+                case 'fleet_size': return { text: `Fleet cap +${n(v)} points${node ? ` (${n(this.fleetCapAt(node))} in total)` : ''}` };
                 case 'max_ship_size': return { text: `Fly hulls up to ${SIZE[v] || v}` };
                 case 'fleet_concurrency': return { text: `Up to ${n(v)} fleets in operation at once` };
                 case 'max_residential_plots': return { text: perLevel ? `+${n(v)} residential (crafting-hab) plot${v === 1 ? '' : 's'} per level` : `Up to ${n(v)} residential (crafting-hab) plots` };
@@ -319,9 +358,18 @@
                 default: return { text: `${key.replace(/_/g, ' ')}: ${typeof v === 'object' ? JSON.stringify(v) : v}`, raw: true };
             }
         }
+        // the Fleet Size cap once this node is held: the grants ADD up (each tier's description quotes the running total)
+        fleetCapAt(node) { let c = 0; this.closureOfNode(node).forEach(n => { c += +n.grants.fleet_size || 0; }); return c; }
+        // the cap ladder, smallest first: the Starting Node's cap, then every node that raises it
+        fleetLadder() {
+            if (!this._ladder) this._ladder = this.nodes.filter(n => n.grants.fleet_size).map(n => ({ node: n, cap: this.fleetCapAt(n) })).sort((a, b) => a.cap - b.cap);
+            return this._ladder;
+        }
+        // the smallest rung whose cap holds `points` (null above the top rung)
+        fleetSizeFor(points) { return this.fleetLadder().find(r => r.cap >= points) || null; }
         benefit(node) {
             return {
-                text: ResearchModel.fixText(node.description),
+                text: ResearchModel.cleanText(node.description, node.baseName || node.name),
                 grants: Object.entries(node.grants).map(([k, v]) => this.grantText(k, v, node)),
                 leadsTo: node.children.slice().sort((a, b) => a.order - b.order)
             };
@@ -413,6 +461,15 @@
                 return true;                                                         // hub and central-hub tags: the layout adds the hub
             });
         }
+        // the hubs a building's placement tags name, plus the storage hub every layout adds, at its tier, on a planet of
+        // the type it names (else any stakeable one) - no deposit or input check. For a goal no planet can feed
+        // (second-stage processors, cultivation farms); a hub's gate is the same on every planet type in the export.
+        hubsFor(b) {
+            const pt = (b.requiredTags || []).find(t => t.endsWith('-planet'));
+            const planet = this.planets.find(p => p.stakeable && (!pt || PT_TAG[p.cat] === pt)); if (!planet) return [];
+            const kinds = new Set(['storage-hub']); (b.requiredTags || []).forEach(t => { if (HUB_FOR[t]) kinds.add(HUB_FOR[t]); });
+            return Array.from(kinds).map(k => this.infra(planet, k, b.tier)).filter(Boolean);
+        }
         extractorFor(planet, raw, tier) { return (this.extractors.get(raw + '|' + tier) || []).find(b => this.usable(b, planet, tier)) || null; }
         // raws this planet lets a tier-N stake extract, and the first-stage processors it lets it run
         extractable(planet, tier) { const out = []; planet.deposits.forEach((d, raw) => { const b = this.extractorFor(planet, raw, tier); if (b) out.push({ raw, name: d.name, richness: d.richness, b, rate: b.resourceExtractionRate[raw] }); }); return out; }
@@ -423,7 +480,7 @@
         layout(planet, tier, alloc, procs, opts) {
             const o = Object.assign({ storage: true }, opts || {});
             const S = this.slots[tier], central = this.infra(planet, 'central-hub', tier);
-            if (!central || !planet.stakeable) return { ok: false, reason: 'no stake can stand here', S, used: 0, items: [], extractors: 0, processors: 0 };
+            if (!central || !planet.stakeable) return { ok: false, reason: 'no stake can stand here', S, used: 0, items: [], extractors: 0, processors: 0, hubs: [], ncq: 0, npp: 0, crewNeed: 0, crewCap: 0, power: 0, storage: 0 };
             const items = [];                                                        // {b, n, role}
             Object.entries(alloc || {}).forEach(([raw, n]) => { if (n > 0) { const b = this.extractorFor(planet, raw, tier); if (b) items.push({ b, n, role: 'extractor', raw }); } });
             (procs || []).forEach(id => { const b = this.by.get(id); if (b && this.usable(b, planet, tier)) items.push({ b, n: 1, role: 'processor' }); });
@@ -475,7 +532,7 @@
                 if (it.role === 'central') Object.entries(it.b.resourceExtractionRate || {}).forEach(([raw, v]) => { if (planet.deposits.has(raw)) passive.set(raw, v * mult(raw)); });   // owner rule 2026-10-03
             });
             const avail = new Map(ext); passive.forEach((v, k) => avail.set(k, (avail.get(k) || 0) + v));
-            const gross = new Map(avail), made = new Map(), procRows = [];
+            const made = new Map(), procRows = [];
             L.items.filter(it => it.role === 'processor').forEach(it => {
                 const ins = this.inputs(it.b), outs = this.outputs(it.b);
                 const f = ins.length ? Math.min(1, ...ins.map(([k, v]) => (avail.get(k) || 0) / -v)) : 0;
@@ -485,7 +542,7 @@
             });
             const net = new Map(); avail.forEach((v, k) => { if (v > 1e-12) net.set(k, v); }); made.forEach((v, k) => net.set(k, (net.get(k) || 0) + v));
             let fuel = 0; L.items.forEach(it => { const v = (it.b.resourceRate || {}).fuel; if (v < 0) fuel += -v * it.n; });
-            return { layout: L, net, gross, extracted: ext, passive, made, procs: procRows, fuel };
+            return { layout: L, net, extracted: ext, passive, made, procs: procRows, fuel };
         }
 
         // the reference "full stake": every extractor that fits, all on one raw (stats are the same on every planet type)
@@ -504,8 +561,11 @@
 
     // ------------------------------------------------------------------------------------------------- empire
     class Empire {
-        constructor(stakeEngine, recipeModel, ships) {
+        // fleetPoints: Data/combat-data.js fleetPoints ({ classes, composition_limits }); optional
+        constructor(stakeEngine, recipeModel, ships, fleetPoints) {
             this.se = stakeEngine; this.rc = recipeModel; this.rm = recipeModel.rm;
+            this.pointClass = new Map(((fleetPoints && fleetPoints.classes) || []).map(c => [c.class, c]));
+            this.limits = (fleetPoints && fleetPoints.composition_limits) || {};
             this.ships = (ships || []).map(s => ({
                 name: s.name, size: s.sizeTier, spec: s.spec, crew: (s.crew && s.crew.required) || 0,
                 rate: (s.stats && s.stats.mining && s.stats.mining.asteroidMiningRate) || 0,
@@ -514,6 +574,28 @@
             }));
             this.shipByName = new Map(this.ships.map(s => [s.name, s]));
             this.miners = this.ships.filter(s => s.rate > 0).sort((a, b) => b.rate - a.rate || a.name.localeCompare(b.name));
+        }
+
+        // Fleet-capacity points (2026-10-25): what a hull counts against the Fleet Size cap - the export's
+        // capacity_points, which differ from combat_points only for a Titan (128 vs 81). null: no class row.
+        capacityPoints(shipName) {
+            const s = this.shipByName.get(shipName); if (!s) return null;
+            const c = this.pointClass.get(SIZE_VALUE[s.size] || String(s.size || '').replace(/\s+/g, ''));
+            return c ? c.capacity_points : null;
+        }
+        // each fleet row is one fleet: count x capacity points against the cap, and the composition limits
+        // (max_titans, max_commanders_plus_titans) checked per fleet. fleets: [{id, ship, count}]
+        fleetPoints(fleets) {
+            const L = this.limits, rows = (fleets || []).map(f => {
+                const s = this.shipByName.get(f.ship), n = Math.max(1, +f.count || 1), p = this.capacityPoints(f.ship);
+                const titans = s && s.size === 'Titan' ? n : 0, big = s && (s.size === 'Titan' || s.size === 'Commander') ? n : 0;
+                const warn = [];
+                if (L.max_titans != null && titans > L.max_titans) warn.push(`${titans} Titans (at most ${L.max_titans} a fleet)`);
+                if (L.max_commanders_plus_titans != null && big > L.max_commanders_plus_titans) warn.push(`${big} Commander and Titan hulls (at most ${L.max_commanders_plus_titans} a fleet)`);
+                return { id: f.id, ship: f.ship, count: n, each: p, points: p == null ? null : p * n, warn };
+            });
+            const known = rows.filter(r => r.points != null);
+            return { rows, max: known.reduce((a, r) => Math.max(a, r.points), 0), sum: known.reduce((a, r) => a + r.points, 0), unknown: rows.length - known.length };
         }
 
         // the plan's bill, expanded like the Recipe Explorer's planner but stopping at anything in `stop` (goods a
@@ -664,8 +746,6 @@
     // cancels). Everything else follows from the tick length.
     const Calc = {
         breakEvenTick(perTick, perSec) { return perSec > 0 ? perTick / perSec : null; },                // tick at which they are equal
-        perHourStake(perTick, tick) { return perTick * 3600 / tick; },
-        perHourShip(perSec) { return perSec * 3600; },
         breakEvenTickPerDollar(perTick, stakePrice, perSec, shipPrice) { return perSec > 0 && stakePrice > 0 && shipPrice > 0 ? (perTick / stakePrice) / (perSec / shipPrice) : null; },
         fairPrice(perTick, tick, perSec, shipPrice) { return perSec > 0 && shipPrice > 0 ? (perTick / tick) / (perSec / shipPrice) : null; },   // stake price that matches the ship per dollar
         measuredTick(rate, richness, unitsPerHour) { return unitsPerHour > 0 ? 3600 * rate * richness / unitsPerHour : null; }

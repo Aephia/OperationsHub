@@ -5,6 +5,7 @@
 //     break-even tick; the same per dollar once prices are typed in
 //   - break-even ticks, per hull/deed and per dollar; the price a stake would need to match the hull per dollar
 //   - what each asks of the player: hold fill time and unload trips for a hull, storage fill time for a stake
+//   - what a stake burns: fuel per tick and per unit mined (the export's power plant fuel rate, not verified in play)
 //   - "measure your tick": one extractor, storage read twice an hour apart
 // The reference stake is the fullest same-tier layout (storage hub + extraction hub + every extractor that fits,
 // crew quarters and power plants as needed), all extractors on the chosen raw. Hull and stake are compared on the
@@ -19,6 +20,8 @@
     const SHIP_COLOR = '#ff9f6b';
     const CORE = ['Armstrong IMP', 'Armstrong IMP Tap', 'Armstrong IMP Tip'];
     const short = n => n.replace(/^Armstrong /, '');
+    const art = n => (/^([aeiou]|8\d*(\D|$)|11(\D|$)|18(\D|$))/i.test(n) ? 'an' : 'a');
+    const usdF = v => (v != null && v > 0 && v < 0.01 ? '< $0.01' : usd(v));
     const log10 = Math.log10;
 
     class CalcTab {
@@ -26,7 +29,7 @@
             this.root = root; this.se = ctx.se; this.empire = ctx.empire; this.rm = ctx.rm;
             // raws a stake can extract at every tier
             this.raws = this.rm.list.filter(r => r.category === 'raw' && [1, 2, 3, 4, 5].every(t => (this.se.extractors.get(r.id + '|' + t) || []).length)).sort((a, b) => a.name.localeCompare(b.name));
-            this.measure = { tier: 1, richness: 1, units: '' };
+            this.measure = { tier: 3, richness: 1, units: '', ptype: '' };
             bindStrip(root); this.bind();
             Store.on(() => { if (this.visible()) this.render(); else this.stale = true; });
             this.stale = true;
@@ -45,6 +48,16 @@
                 const m = e.target.closest('[data-measure]'); if (!m) return;
                 this.measure[m.dataset.measure] = m.value; this.renderMeasure();
             });
+            // the strip's own handler puts the box back to the tick in use; read what was typed first (capture phase) so we can say so
+            this.root.addEventListener('change', e => { const t = e.target.closest('[data-tick]'); if (t) this.typedTick = parseFloat(t.value); }, true);
+            this.root.addEventListener('change', e => {
+                const t = e.target.closest('[data-tick]'); if (!t) return;
+                const v = this.typedTick, used = Store.s.tick, clamped = v > 0 && Math.abs(v - used) > 1e-9;
+                const box = this.root.querySelector('[data-tick]') || t;      // a good value re-rendered the tab: use the live box
+                box.value = used;
+                const old = box.parentNode.querySelector('.cd-clamp'); if (old) old.remove();
+                if (!(v > 0) || clamped) box.parentNode.insertAdjacentHTML('beforeend', `<em class="cd-clamp">${v > 0 ? 'clamped to' : 'not a number, using'} ${used}</em>`);
+            });
             this.root.addEventListener('click', e => {
                 const use = e.target.closest('[data-use-tick]'); if (use && this.measured > 0) { snd('success'); Store.setTick(this.measured, 'measured'); }
             });
@@ -52,11 +65,30 @@
 
         compute() {
             const s = Store.s, raw = this.raws.find(r => r.id === s.calc.raw) || this.raws.find(r => r.id === 'copper-ore') || this.raws[0];
-            const refName = this.empire.shipByName.has(s.calc.ref) ? s.calc.ref : 'Armstrong IMP Tap';
+            const refShip = this.empire.shipByName.get(s.calc.ref), refName = refShip && refShip.spec === 'Miner' ? s.calc.ref : 'Armstrong IMP Tap';
             const names = Array.from(new Set([refName].concat(CORE))).filter(n => this.empire.shipByName.has(n));
             const ships = names.map(n => this.empire.shipByName.get(n)).sort((a, b) => b.rate - a.rate);
-            const tiers = [1, 2, 3, 4, 5].map(t => this.se.fullStake(t, raw.id)).filter(Boolean);
+            const tiers = [1, 2, 3, 4, 5].map(t => this.se.fullStake(t, raw.id)).filter(Boolean).map(t => Object.assign(t, this.stakeFuel(t, raw.id)));
             return { s, raw, ref: this.empire.shipByName.get(refName), ships, tiers, tick: s.tick };
+        }
+
+        // fuel the full stake burns per tick (power plants and hubs), from the Stake Engine's production on a real planet
+        // that can host the extractor; the export gives the rate per tick only
+        stakeFuel(t, raw) {
+            for (const p of this.se.planets) {
+                if (!p.stakeable) continue;
+                const pl = Object.assign({}, p, { deposits: new Map([[raw, { name: raw, richness: 1 }]]) });      // the raw is on the planet by assumption, as in fullStake
+                if (!this.se.extractorFor(pl, raw, t.tier)) continue;
+                const pr = this.se.production(pl, t.tier, { [raw]: t.k }, [], { richness: false });
+                if (pr.layout.ok && pr.layout.npp === t.npp && pr.layout.ncq === t.ncq) return { fuel: pr.fuel, fuelPerUnit: t.perTick > 0 ? pr.fuel / t.perTick : null };
+            }
+            return { fuel: null, fuelPerUnit: null };
+        }
+        // planet types that can host a stake on this raw, with the central hub's passive trickle of it per tick
+        planetTypes(raw, tier) {
+            const out = new Map();
+            this.se.planets.forEach(p => { if (!p.stakeable || !p.deposits.has(raw) || out.has(p.catName)) return; const pr = this.se.production(p, tier, { [raw]: 1 }, [], { richness: false }); out.set(p.catName, pr.passive.get(raw) || 0); });
+            return out;
         }
 
         // log-log chart. series: [{label, color, perTick}] fall as 1/tick; flats: [{label, value}] are horizontal
@@ -79,7 +111,7 @@
             series.forEach(sr => {
                 const a = sr.perTick * 3600 / X0, b = sr.perTick * 3600 / X1, end = ends.find(o => o.sr === sr);
                 lines += `<line class="ln" x1="${px(X0).toFixed(1)}" y1="${py(a).toFixed(1)}" x2="${px(X1).toFixed(1)}" y2="${py(b).toFixed(1)}" style="stroke:${sr.color}"><title>${esc(sr.label)}</title></line><text class="lb" x="${px(X1) + 6}" y="${(end.ly + 4).toFixed(1)}" style="fill:${sr.color}">${esc(sr.label)}</text>`;
-                flats.forEach(f => { const x = sr.perTick * 3600 / f.value; if (x >= X0 && x <= X1) dots += `<circle class="dotx" cx="${px(x).toFixed(1)}" cy="${py(f.value).toFixed(1)}" r="3.6" style="fill:${sr.color}"><title>${esc(sr.label)} = ${esc(f.label)} at a ${dur(x)} tick</title></circle>`; });
+                flats.forEach(f => { const x = sr.perTick * 3600 / f.value; if (x >= X0 && x <= X1) dots += `<circle class="dotx" cx="${px(x).toFixed(1)}" cy="${py(f.value).toFixed(1)}" r="3.6" style="fill:${sr.color}"><title>${esc(sr.label)} = ${esc(f.label)} at ${art(dur(x))} ${dur(x)} tick</title></circle>`; });
             });
             // hull labels in the right margin, pushed apart when two rates are close
             const fl = flats.map(f => ({ f, y: py(f.value) })).sort((a, b) => a.y - b.y);
@@ -97,7 +129,7 @@
             const bars = (rows, fmt, color) => { const max = Math.max(1e-12, ...rows.filter(r => r.v != null).map(r => r.v)); return rows.map(r => `<div class="ch-row"><span class="ch-lbl">${r.l}</span><div class="ch-bar">${r.v == null ? '' : `<b style="width:${Math.max(0.6, 100 * r.v / max).toFixed(1)}%;background:${r.c || color}"><span class="ct">${esc(r.tip || '')}</span></b>`}</div><span class="ch-val">${r.v == null ? (r.none || '–') : fmt(r.v)}</span></div>`).join(''); };
 
             // tiles: at this tick, what one full stake is worth in reference hulls
-            const tiles = tiers.map(t => { const hulls = t.perTick / tick / ref.rate; return `<div class="an-stat"><b>${num(hulls)}</b><span>${esc(short(ref.name))}s one full <i class="t t${t.tier}">T${t.tier}</i> stake equals</span></div>`; }).join('');
+            const tiles = tiers.map(t => { const hulls = t.perTick / tick / ref.rate; return `<div class="an-stat"><b>${num(hulls)}</b><span>${esc(short(ref.name))}s = one full <i class="t t${t.tier}">T${t.tier}</i> stake at your ${dur(tick)} tick</span></div>`; }).join('');
 
             // charts
             const unitsChart = this.chart(tiers.map(t => ({ label: 'T' + t.tier, color: TIER_COLOR[t.tier], perTick: t.perTick })), ships.map(h => ({ label: short(h.name), value: h.rate * 3600 })), tick, 'units per hour');
@@ -106,54 +138,60 @@
 
             // break-even bars against the reference hull
             const beRows = tiers.map(t => { const v = Calc.breakEvenTick(t.perTick, ref.rate); return { l: `<i class="t t${t.tier}">T${t.tier}</i>${t.k} extractors`, v, c: TIER_COLOR[t.tier], tip: `A full T${t.tier} stake (${t.k} extractors, ${num(t.perTick)} per tick) equals one ${ref.name} (${num(ref.rate)} per second) when a tick lasts ${dur(v)}` }; });
-            const beUsdRows = tiers.map(t => { const sp = Store.stakePrice(t.tier); const v = Calc.breakEvenTickPerDollar(t.perTick, sp, ref.rate, refPrice); return { l: `<i class="t t${t.tier}">T${t.tier}</i>${sp ? usd(sp) : 'no price'}`, v, c: TIER_COLOR[t.tier], none: 'no price', tip: v == null ? '' : `Per dollar, a T${t.tier} stake at ${usd(sp)} equals a ${ref.name} at ${usd(refPrice)} when a tick lasts ${dur(v)}` }; });
+            const beUsdRows = tiers.map(t => { const sp = Store.stakePrice(t.tier); const v = Calc.breakEvenTickPerDollar(t.perTick, sp, ref.rate, refPrice); return { l: `<i class="t t${t.tier}">T${t.tier}</i>${sp ? usd(sp) : 'no price'}`, v, c: TIER_COLOR[t.tier], none: 'no price', tip: v == null ? '' : `Per dollar, a T${t.tier} stake at ${usd(sp)} equals ${art(ref.name)} ${ref.name} at ${usd(refPrice)} when a tick lasts ${dur(v)}` }; });
             const fairRows = []; tiers.forEach(t => {
                 const sp = Store.stakePrice(t.tier), fair = Calc.fairPrice(t.perTick, tick, ref.rate, refPrice);
-                fairRows.push({ l: `<i class="t t${t.tier}">T${t.tier}</i>fair`, v: fair, c: TIER_COLOR[t.tier], none: 'no hull price', tip: fair == null ? '' : `At a ${dur(tick)} tick a T${t.tier} stake gives the same output per dollar as a ${ref.name} at ${usd(refPrice)} if it costs ${usd(fair)}` });
+                fairRows.push({ l: `<i class="t t${t.tier}">T${t.tier}</i>fair`, v: fair, c: TIER_COLOR[t.tier], none: 'no hull price', tip: fair == null ? '' : `At ${art(dur(tick))} ${dur(tick)} tick a T${t.tier} stake gives the same output per dollar as ${art(ref.name)} ${ref.name} at ${usd(refPrice)} if it costs ${usdF(fair)}` });
                 if (sp) fairRows.push({ l: `<i class="t t${t.tier}">T${t.tier}</i>ask`, v: sp, c: 'rgba(255,255,255,0.35)', tip: `Ask you typed: ${usd(sp)}` });
             });
             const wins = tiers.filter(t => Calc.breakEvenTick(t.perTick, ref.rate) >= tick).map(t => 'T' + t.tier);
             const winsUsd = tiers.filter(t => { const v = Calc.breakEvenTickPerDollar(t.perTick, Store.stakePrice(t.tier), ref.rate, refPrice); return v != null && v >= tick; }).map(t => 'T' + t.tier);
 
+            const pts = this.planetTypes(raw.id, +this.measure.tier || 3);
+            if (!pts.has(this.measure.ptype)) this.measure.ptype = pts.size ? pts.keys().next().value : '';
+            const ptypeOpts = Array.from(pts.keys()).map(k => `<option value="${esc(k)}"${k === this.measure.ptype ? ' selected' : ''}>${esc(k)}</option>`).join('');
+            const passTypes = Array.from(pts.entries()).filter(([, v]) => v > 0).map(([k]) => k);
+            const exRate = t => ((this.se.extractors.get(raw.id + '|' + t) || [{}])[0].resourceExtractionRate || {})[raw.id] || 0;
             this.root.innerHTML = `
-                ${settingsStrip({ richness: false })}
+                ${settingsStrip({ richness: false, measureHere: true })}
                 <section class="cd-inputs">
                     <label><span>Raw mined</span><select class="sb-input" data-raw>${this.raws.map(r => `<option value="${esc(r.id)}"${r.id === raw.id ? ' selected' : ''}>${esc(r.name)} (T${r.tier})</option>`).join('')}</select></label>
-                    <label><span>Compare against</span><select class="sb-input" data-ref>${this.empire.miners.map(h => `<option value="${esc(h.name)}"${h.name === ref.name ? ' selected' : ''}>${esc(h.name)} - ${num(h.rate)} /s</option>`).join('')}</select></label>
+                    <label><span>Compare against</span><select class="sb-input" data-ref>${this.empire.miners.filter(h => h.spec === 'Miner').map(h => `<option value="${esc(h.name)}"${h.name === ref.name ? ' selected' : ''}>${esc(h.name)} - ${num(h.rate)} /s</option>`).join('')}</select></label>
                     <div class="cd-prices"><span>Asks in USD</span>
                         ${ships.map(h => `<label>${esc(short(h.name))}<input type="number" class="sb-input" min="0" step="any" value="${Store.shipPrice(h.name) || ''}" placeholder="–" data-price-ship="${esc(h.name)}"></label>`).join('')}
                         ${[1, 2, 3, 4, 5].map(t => `<label><i class="t t${t}">T${t}</i><input type="number" class="sb-input" min="0" step="any" value="${Store.stakePrice(t) || ''}" placeholder="–" data-price-stake="${t}"></label>`).join('')}
                     </div>
-                    <p class="cd-strip-note">The export has no prices. The boxes start with asks quoted on ${PRICE_DATE} (Tap, IMP, T3 to T5); type today's and they stay in this browser. Hull and stake are compared on the same deposit, so richness cancels.</p>
+                    <p class="cd-strip-note">The export has no prices. The boxes start with asks quoted on ${PRICE_DATE} (Tap, IMP, T3 to T5); type today's and they stay in this browser. Hull and stake are compared on the same deposit; richness cancels if it scales both alike (not in the data). Hardness slows the hull, so these break-even ticks are a lower bound.</p>
                 </section>
                 <div class="an-stats cd-stats"><div class="an-stat"><b>${num(ref.rate * 3600)}</b><span>${esc(raw.name)} per hour, one ${esc(short(ref.name))}</span></div>${tiles}</div>
                 <div class="an-two cd-charts">
-                    <section class="an-section"><div class="an-head"><h3>Output per hour, by tick length</h3><p>A full stake of each tier on ${esc(raw.name)} against the hulls. Stake lines fall as the tick gets longer; a hull does not care. A dot is where they are equal. Both axes are logarithmic.</p></div>${unitsChart}</section>
+                    <section class="an-section"><div class="an-head"><h3>Output per hour, by tick length</h3><p>A full stake of each tier on ${esc(raw.name)} against the hulls. Stake lines fall as the tick gets longer; a hull does not care. A dot is where they are equal. Both axes are logarithmic. A stake line runs off the left edge below 0.01 s - see the break-even bars.</p></div>${unitsChart}</section>
                     <section class="an-section"><div class="an-head"><h3>The same, per dollar</h3><p>Each line divided by the ask you typed. Tiers and hulls with no price are left out.</p></div>${usdChart}</section>
                 </div>
                 <div class="an-three cd-bars">
                     <section class="an-section"><div class="an-head"><h3>Break-even tick</h3><p>The tick length at which one full stake mines what one ${esc(short(ref.name))} does. The stake wins only if the real tick is <b>shorter</b>.</p></div><div class="ch">${bars(beRows, dur)}</div><p class="rx-note">${wins.length ? `At your ${dur(tick)} tick: ${wins.join(', ')} out-mine${wins.length === 1 ? 's' : ''} one ${esc(short(ref.name))}.` : `At your ${dur(tick)} tick no single stake out-mines one ${esc(short(ref.name))}.`}</p></section>
-                    <section class="an-section"><div class="an-head"><h3>Break-even tick, per dollar</h3><p>The same once price is counted: stake output per dollar equals the ${esc(short(ref.name))}'s at this tick.</p></div><div class="ch">${refPrice ? bars(beUsdRows, dur) : `<p class="rx-note">Type an ask for the ${esc(short(ref.name))}.</p>`}</div>${refPrice ? `<p class="rx-note">${winsUsd.length ? `At your ${dur(tick)} tick: ${winsUsd.join(', ')} beat${winsUsd.length === 1 ? 's' : ''} the ${esc(short(ref.name))} per dollar.` : `At your ${dur(tick)} tick the ${esc(short(ref.name))} gives more output per dollar than every priced stake.`}</p>` : ''}</section>
-                    <section class="an-section"><div class="an-head"><h3>What a stake should cost</h3><p>The price at which a stake matches the ${esc(short(ref.name))} per dollar <b>at your tick</b>, beside the ask. Mining output only.</p></div><div class="ch">${refPrice ? bars(fairRows, usd) : `<p class="rx-note">Type an ask for the ${esc(short(ref.name))}.</p>`}</div><p class="rx-note">The gap is what the ask charges for what a hull cannot do: no pilot time, no food, several raws at once, processors.</p></section>
+                    <section class="an-section"><div class="an-head"><h3>Break-even tick, per dollar</h3><p>The tick length at which a stake's output per dollar equals the ${esc(short(ref.name))}'s. A shorter real tick = the stake is the better buy.</p></div><div class="ch">${refPrice ? bars(beUsdRows, dur) : `<p class="rx-note">Type an ask for the ${esc(short(ref.name))}.</p>`}</div>${refPrice ? `<p class="rx-note">${winsUsd.length ? `At your ${dur(tick)} tick: ${winsUsd.join(', ')} beat${winsUsd.length === 1 ? 's' : ''} the ${esc(short(ref.name))} per dollar.` : `At your ${dur(tick)} tick the ${esc(short(ref.name))} gives more output per dollar than every priced stake.`}</p>` : ''}</section>
+                    <section class="an-section"><div class="an-head"><h3>What a stake should cost</h3><p>The price at which a stake matches the ${esc(short(ref.name))} per dollar <b>at your tick</b>, beside the ask. Mining output only, before upkeep: the stake burns fuel (see below).</p></div><div class="ch">${refPrice ? bars(fairRows, usdF) : `<p class="rx-note">Type an ask for the ${esc(short(ref.name))}.</p>`}</div><p class="rx-note">The gap pays for no pilot time, several raws at once and processors. The stake burns ${tiers.length && tiers[tiers.length - 1].fuel != null ? `${num(tiers[tiers.length - 1].fuel)} fuel a tick at T${tiers[tiers.length - 1].tier} (power plant + central hub)` : 'fuel'}.</p></section>
                 </div>
                 <div class="an-two cd-attn">
                     <section class="an-section"><div class="an-head"><h3>What each asks of you</h3><p>A hull stops when its hold is full; a stake stops when its storage is. Storage is the central hub plus the storage hub.</p></div>
-                        <div class="an-tablewrap"><table class="an-table"><thead><tr><th>Hull</th><th>per second</th><th>hold</th><th>hold full in</th><th>unloads a day</th><th>food per unit</th><th>crew</th></tr></thead><tbody>
+                        <div class="an-tablewrap"><table class="an-table"><thead><tr><th>Hull</th><th>per second</th><th>hold</th><th>hold full in</th><th>hold fills a day (no travel)</th><th>food per unit</th><th>crew</th></tr></thead><tbody>
                             ${ships.map(h => `<tr><th>${esc(h.name)}</th><td>${num(h.rate)}</td><td>${num(h.cargo)}</td><td>${dur(h.cargo / h.rate)}</td><td>${num(86400 / (h.cargo / h.rate), 1)}</td><td>${num(h.food / h.rate, 4)}</td><td>${h.crew}</td></tr>`).join('')}
                         </tbody></table></div>
-                        <div class="an-tablewrap"><table class="an-table"><thead><tr><th>Stake</th><th>extractors</th><th>per tick</th><th>storage</th><th>ticks to fill</th><th>full in, at your tick</th><th>crew</th></tr></thead><tbody>
-                            ${tiers.map(t => `<tr><th><span class="t t${t.tier}">T${t.tier}</span> ${num(t.used)} of ${num(t.S)} slots</th><td>${t.k}</td><td>${num(t.perTick)}</td><td>${num(t.storage)}</td><td>${num(t.storage / t.perTick, 0)}</td><td>${dur(t.storage / t.perTick * tick)}</td><td>${num(t.crew)}</td></tr>`).join('')}
+                        <div class="an-tablewrap"><table class="an-table"><thead><tr><th>Stake</th><th>extractors</th><th>per tick</th><th>fuel per tick</th><th>fuel per unit</th><th>storage</th><th>ticks to fill</th><th>full in, at your tick</th><th>crew</th></tr></thead><tbody>
+                            ${tiers.map(t => `<tr><th><span class="t t${t.tier}">T${t.tier}</span> ${num(t.used)} of ${num(t.S)} slots</th><td>${t.k}</td><td>${num(t.perTick)}</td><td>${t.fuel == null ? '–' : num(t.fuel)}</td><td>${t.fuelPerUnit == null ? '–' : num(t.fuelPerUnit, 2)}</td><td>${num(t.storage)}</td><td>${num(t.storage / t.perTick, 0)}</td><td>${dur(t.storage / t.perTick * tick)}</td><td>${num(t.crew)}</td></tr>`).join('')}
                         </tbody></table></div>
-                        <p class="rx-note">Hold and food are the hull's figures in the export; no stake building carries a food field. Mining rate is at richness 1; the game also divides by a hardness the export does not list.</p>
+                        <p class="rx-note">Hold and food are the hull's figures in the export; no stake building carries a food field. Stake fuel is the export's power plant rate per tick, unverified in play; a hull's fuel depends on the route (Loadouts tab). Mining rate is at richness 1; the game also divides by a hardness the export does not list.</p>
                     </section>
-                    <section class="an-section cd-measure"><div class="an-head"><h3>Measure your tick</h3><p>Build one extractor, read the stake's storage, read it again an hour later. Tick length = 3,600 × rate × richness ÷ units gained.</p></div>
+                    <section class="an-section cd-measure"><div class="an-head"><h3>Measure your tick</h3><p>Build one extractor, read the stake's storage, read it again an hour later. Tick length = 3,600 × rate × richness ÷ units gained. A T1 extractor gains little (about ${num(3600 * exRate(1) / tick, 1)} an hour at your ${dur(tick)} tick); a T3 or better reads cleanly (about ${num(3600 * exRate(3) / tick, 0)} an hour).</p></div>
                         <div class="cd-measure-grid">
+                            <label><span>Planet type</span><select class="sb-input" data-measure="ptype">${ptypeOpts}</select></label>
                             <label><span>Extractor tier</span><select class="sb-input" data-measure="tier">${[1, 2, 3, 4, 5].map(t => `<option value="${t}"${+this.measure.tier === t ? ' selected' : ''}>T${t}</option>`).join('')}</select></label>
                             <label><span>Deposit richness</span><input type="number" class="sb-input" min="0" step="any" value="${esc(this.measure.richness)}" data-measure="richness"></label>
                             <label><span>${esc(raw.name)} gained in one hour</span><input type="number" class="sb-input" min="0" step="any" value="${esc(this.measure.units)}" placeholder="units" data-measure="units"></label>
                         </div>
                         <div id="cdMeasureOut"></div>
-                        <p class="rx-note">Uses the raw chosen above. It assumes richness multiplies the rate; if the answer changes with a second deposit of different richness, that assumption is wrong and worth knowing.</p>
+                        <p class="rx-note">Uses the raw chosen above. The planet type matters because the central hub of some planet types adds a small passive trickle of this raw on top of the extractor${passTypes.length ? ` (${passTypes.join(', ')})` : ' (none for this raw)'}. It assumes richness multiplies the rate; if the answer changes with a second deposit of different richness, that assumption is wrong and worth knowing.</p>
                     </section>
                 </div>`;
             this.renderMeasure();
@@ -162,9 +200,10 @@
         renderMeasure() {
             const out = this.root.querySelector('#cdMeasureOut'); if (!out || !this.c) return;
             const tier = +this.measure.tier || 1, b = (this.se.extractors.get(this.c.raw.id + '|' + tier) || [])[0];
-            const rate = b ? b.resourceExtractionRate[this.c.raw.id] : 0, rich = parseFloat(this.measure.richness) || 0, units = parseFloat(this.measure.units) || 0;
+            const pass = this.planetTypes(this.c.raw.id, tier).get(this.measure.ptype) || 0;
+            const rate = b ? b.resourceExtractionRate[this.c.raw.id] + pass : 0, rich = parseFloat(this.measure.richness) || 0, units = parseFloat(this.measure.units) || 0;
             this.measured = Calc.measuredTick(rate, rich, units);
-            out.innerHTML = `<div class="rx-facts"><div><b>${num(rate)}</b><span>per tick, one T${tier} extractor</span></div><div><b>${this.measured ? dur(this.measured) : '–'}</b><span>tick length</span></div></div>${this.measured ? `<div class="rx-actions"><button type="button" class="sb-btn" data-use-tick>Use ${dur(this.measured)} as my tick</button></div>` : ''}`;
+            out.innerHTML = `<div class="rx-facts"><div><b>${num(rate)}</b><span>per tick, one T${tier} extractor${pass ? ` + ${num(pass)} hub trickle` : ''}</span></div><div><b>${this.measured ? dur(this.measured) : '–'}</b><span>tick length</span></div></div>${this.measured ? `<div class="rx-actions"><button type="button" class="sb-btn" data-use-tick>Use ${dur(this.measured)} as my tick</button></div>` : ''}`;
         }
     }
 

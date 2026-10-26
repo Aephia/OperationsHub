@@ -1,8 +1,9 @@
 // app.js - Command Deck bootstrap (2026-10-04). Builds the shared models once (the Resources and Recipe explorers'
-// own models, so every count here matches theirs), then the four tabs (Loadouts added 2026-10-05: five sub-tabs on the
-// Ship Explorer's ShipConfigCalculator + component bundles + the combat bundle; engine in deck-loadout.js).
+// own models, so every count here matches theirs), then the four tabs: Research, Empire, Ships vs Stakes (calc) and
+// Loadouts (vs; on the Ship Explorer's ShipConfigCalculator + component bundles + the combat bundle, engine in deck-loadout.js).
 // Cross-module links IN:  ?tab=research|empire|calc|vs
-//                         ?recipe=<outputId or name>  ?building=<id>  ?ship=<name>  ?stake=<tier>  ?hab=<id>  ?node=<name>
+//                         ?recipe=<outputId or name>  ?building=<id>  ?ship=<name>  ?stake=<tier>  ?hab=<id>
+//                         ?node=<id> (a name still resolves; a name used by two nodes takes its "(after ...)" suffix)
 //                         (each opens the Research tab with that goal lit)
 class CommandDeckApp extends BaseApp {
     constructor() { super(); this.currentTab = 'research'; this.init(); }
@@ -17,7 +18,7 @@ class CommandDeckApp extends BaseApp {
         this.rc = new RecipeModel(this.rm);
         this.research = new D.ResearchModel(window.researchData, this.rc, this.ships);
         this.se = new D.StakeEngine(buildings, this.rm, window.planetData);
-        this.empire = new D.Empire(this.se, this.rc, this.ships);
+        this.empire = new D.Empire(this.se, this.rc, this.ships, window.combatData && window.combatData.fleetPoints);
         this.loadout = new D.Loadout(this.ships, window.shipComponentsData, window.shipFormulasData, window.ShipConfigCalculator, window.combatData, this.rc);
         this.data = this.research.nodes;
         console.log(`Command Deck: ${this.research.nodes.length} research nodes, ${this.se.planets.length} bodies, ${this.empire.miners.length} mining hulls, ${this.rc.recipes.length} recipes`);

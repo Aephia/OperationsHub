@@ -355,3 +355,15 @@ main { overflow-x: clip; }                                   /* a hover tooltip 
     .cd-prices label { width: auto; }
     #cdEmpire .rx-panel-head span { flex-basis: 100%; order: 3; }
 }
+
+/* ---- 2026-10-25 audit fixes */
+.cd-tick em.cd-clamp { color: var(--warn); font-size: 0.78rem; }
+.vs-table thead th, .vs-stats thead th, .vs-table tbody th small { color: var(--text-secondary); }
+.vs-h { text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7); }
+.cd-me { flex-wrap: wrap; }
+.vs-body, .vs-grid > *, .vs-charts > *, .rx-panel, .an-section, .an-two > *, .an-three > * { min-width: 0; }
+.vs-body .an-tablewrap, .cd-attn .an-tablewrap { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+@media (max-width: 760px) {
+    .vs-strip .cd-me, .cd-strip .cd-me { flex: 1 1 100%; }
+    .vs-fleet th select.sb-input { min-width: 120px; }
+}
