@@ -1,7 +1,7 @@
 # Cross-module analytics roadmap
 
-Written 2026-10-04 for Siphaawal (Aephia Industries), extended 2026-10-05 and 2026-10-08. Eleven analytics that join data across the hub's modules.
-Seven are built, in the **Command Deck** module (1, 2, 3, 6, 7, 11 - the last three as sub-tabs of one Loadouts tab - and 9 inside the Empire tab); two were built and dropped (4, 5); one was skipped after its data check (8); one is next (10). Every item says what question it answers,
+Written 2026-10-04 for Siphaawal (Aephia Industries), extended 2026-10-05, 2026-10-08 and 2026-10-26. Twelve analytics that join data across the hub's modules.
+Eight are built, in the **Command Deck** module (1, 2, 3, 6, 7, 11 - the last three as sub-tabs of one Loadouts tab - and 9 and 12 inside the Empire tab); two were built and dropped (4, 5); one was skipped after its data check (8); one is next (10). Every item says what question it answers,
 which data it joins, how it is drawn, and what has to be checked before it is built.
 
 Data for all of it is the SAGE uber-export of 2026-09-11. Counts below belong to that export.
@@ -21,6 +21,7 @@ Data for all of it is the SAGE uber-export of 2026-09-11. Counts below belong to
 | 9 | Hab schedule | **Built 2026-10-08** inside the Empire tab (a pure `Empire.schedule` in `deck-model.js`, runs headless) | Command Deck, Empire tab |
 | 10 | What changed between exports | Next | Landing page or its own page |
 | 11 | Loadouts: haul, mine, fight, fleet, cost with configurations | **Built 2026-10-05** (Siphaawal's ask after 4 and 5, then "add all 4 as sub tabs") | Command Deck, Loadouts tab |
+| 12 | Empire map + ledger: place stakes, give fleets jobs (mine / haul / supply), read made / burned / moved per hour | **Built 2026-10-26** (Siphaawal's ask: "a calculator to see how things will look if I do something"); replaces the top of the Empire tab. Unlike item 5 it is a what-if over the player's own plan, not a readout | Command Deck, Empire tab |
 
 ## Rules every item follows
 

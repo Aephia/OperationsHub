@@ -364,17 +364,51 @@ configuration calculator. Four tabs, everything always visible, no Chart.js, no 
   researched (localStorage): bills count only what is left and *Next nodes* ranks what is open by recipes gated.
   Links in: `?recipe=<outputId|name>` (the Recipe Explorer's sheet has a *Research path* button), `?building=<id>`,
   `?ship=<name>`, `?stake=<tier>`, `?hab=<id>`, `?node=<name>`
+- **Empire tab layout (2026-10-26): inputs first, then what they add up to.** Three fold-away steps - **1 What to
+  make** (recipes), **2 Claim stakes** (search a planet or system by name; each result shows its plan raws and five
+  buttons **T1-T5** that place a stake of that tier - dashed = a tier above the system's starbase level, every tier-N
+  kit carries `min_starbase_level` Level N; no suggestions, no tier picker - owner rule 2026-10-26, "less to explain";
+  the stake cards below), **3 Fleets** (*+ Mining fleet*, *+ Haul run*,
+  *+ R4 supply*, one card per fleet). Each step's closed line summarises it (bill lines covered; stakes,
+  extractors and output; fleets by job and fuel), and the open/closed state is remembered per viewer. Below them:
+  the map, the ledger, the tiles, then the hab schedule and research at full width.
+- **Empire map + ledger** (`CommandDeck/deck-map.js`): the galaxy map is OUTPUT ONLY (owner, 2026-10-26) - 945
+  systems, north up, starbase size = level, the three CSS as stars, drawing what steps 1-3 hold: stake pins, mining
+  diamonds, dashed routes per job, step 2's search hits and a ring on the system open in step 2. Drag pans, wheel
+  zooms, *Fit* resets, hover names. **Planet-level zoom:** once a system's radius (0.42 map units, less where a
+  neighbour is closer) reaches 26 px on screen it opens into its orrery - the Blender/Cycles star and planet sprites
+  of `Images/planets/` through `PlanetExplorer/orrery.js` (its sprite helpers are exported for this), rings by the
+  export's orbit, bodies at its angle, belts as dashed rings, names past 110 px - up to 60 systems at once; stake
+  pins sit on their planet and routes start there. The one click the map answers is a planet: it opens a read-only
+  card (rendered portrait, category, faction, zone, stakeable, starbase, distance to your CSS, orbit; deposits with
+  icon, tier and richness against the galaxy best, which stake tiers can extract each, and the plan's need; your
+  stakes and fleets there). Escape, x or a click outside closes it. Every fleet has a job: **mine** (raw at a body; with a drop-off it
+  runs the full cycle - fill at rate x richness, fly there and back - via `Loadout.mine`), **haul** (the stake's
+  whole output to a system, default your CSS) or **R4 supply** (from a starbase, default the stake's nearest, the four
+  basics - Fuel, Food, Ammunition, Repair Kit - for the stake's BASE: its own buildings (fuel; the export lists no
+  other stake upkeep), its haul runs (their road fuel) and every mining fleet whose drop-off is the stake's system
+  (fuel, food, ammo per cycle); a fleet dropping off at a starbase restocks there and its R4 shows as burned, to buy
+  there. The run's hold is shared over the four basics by need). A run
+  flies only for what is there: haulers share the stake's output by capacity and burn fuel per unit moved
+  (`Empire.ops` in `deck-model.js`; distances are straight lines between systems read as AU, hulls fly Default).
+  The default hauler is the smallest hull class that keeps up alone, then the least fuel per unit. The **ledger**
+  under the map (it absorbed *Who supplies what* on 2026-10-26): per resource made / burned / net per hour, what the
+  plan needs, the time to gather it as a bar (orange = gathered last; "needs a fleet" where no stake can extract it),
+  who supplies it and which plan recipes use it, shortfalls first; the note when the bill stops at a stake
+  processor's product; alerts in words (fuel or food burned and not made; a stake whose haulers fall behind, when its
+  storage is full and how many more of that hull would keep up); per-stake storage and fuel, per-fleet trips. Checks:
+  `Test/command-deck-check.js` section 14 (M1-M7, closed-form trip maths from the flat stat row).
 - **Empire tab:** many stakes + mining fleets + the hab against one production plan. The plan **is** the Recipe
   Explorer's plan (same localStorage key - edit it on either page); the hab jobs come from the Hub Explorer's saved
-  build. A stake is a planet + a tier: the planner ranks planets by how many of the bill's still-uncovered raws
-  they carry (count, then richness), fills the stake with every extractor that fits (hubs follow what is placed,
+  build. A stake is a planet + a tier, placed in step 2, where planets are ranked by how many of the bill's
+  still-uncovered raws they carry (count, then your zone first, then richness). The planner fills the stake with every extractor that fits (hubs follow what is placed,
   crew quarters and power plants are added until crew and power balance), and lets you move extractors between
   raws and switch first-stage processors on (fed by the stake's own extraction). A fleet is a hull, a count, a raw
-  and a body. **Who supplies what** is the sheet: sources left, one row per bill line with the time to gather it
-  in the middle, the plan's recipes right; link width is the share of that line's supply or need. The bill stops
-  at anything a stake processor already makes. **Research this needs** totals the nodes behind the stake tiers,
-  every building placed, the hull sizes, zone access for each stake and fleet body, and the plan's recipes, and
-  lights them on the tree. Planet rows and stake cards carry the zone (low risk / medium risk / another faction's).
+  and a body (and a job - see the map + ledger above, which also carry what the old *Who supplies what* flow chart
+  showed). The bill stops at anything a stake processor already makes. **Research this needs** totals the nodes behind the stake tiers,
+  every building placed, the hull sizes, zone access for each stake and fleet body, and the plan's recipes, lists
+  every node still to research (prerequisites included) per category in three columns - Council Rank, Pilot, Mining,
+  Building, Crafting... with the track level each one asks - and lights them on the tree. Planet rows and stake cards carry the zone (low risk / medium risk / another faction's).
   **Hab schedule** (2026-10-08): the plan's crafts placed on the hab's real jobs - one lane per job (the hab's job
   at 1x, each station job at its speed, each storage job bonus at 1x), a block per run of one craft, the critical
   path in gold, the busy share of each job, then the path as a chain of segments marked *after a free job* or
@@ -819,7 +853,7 @@ MIT License - see [LICENSE](LICENSE) file for details
 
 ---
 
-**Last Updated:** October 8, 2026 (Command Deck Empire tab - hab schedule; data from the 2026-09-11 uber-export)
+**Last Updated:** October 26, 2026 (Command Deck Empire map + ledger; data from the 2026-09-11 uber-export)
 **Version:** 2.1
 **Status:** Production Ready 🚀
 

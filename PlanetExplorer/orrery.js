@@ -115,5 +115,6 @@
         return `<div class="sphere sphere-${cs.slug}" style="width:${px}px;height:${px}px" aria-hidden="true"><img src="${planetArt(planet, cs.slug, 384)}" alt="" loading="lazy" decoding="async" style="width:${img.toFixed(0)}px;height:${img.toFixed(0)}px;margin:-${off.toFixed(0)}px"></div>`;
     }
 
-    window.Orrery = { renderOrrerySVG, planetSphereHTML, STAR_STYLE, CATEGORY_STYLE };
+    // the sprite helpers are shared with the Command Deck's Empire map (planet-level zoom, 2026-10-26)
+    window.Orrery = { renderOrrerySVG, planetSphereHTML, STAR_STYLE, CATEGORY_STYLE, planetArt, ART, PLANET_R, STAR_R, LIGHT_DEG };
 })();

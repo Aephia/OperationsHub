@@ -19,6 +19,7 @@ class CommandDeckApp extends BaseApp {
         this.research = new D.ResearchModel(window.researchData, this.rc, this.ships);
         this.se = new D.StakeEngine(buildings, this.rm, window.planetData);
         this.empire = new D.Empire(this.se, this.rc, this.ships, window.combatData && window.combatData.fleetPoints);
+        this.galaxy = new D.Galaxy(window.planetData);
         this.loadout = new D.Loadout(this.ships, window.shipComponentsData, window.shipFormulasData, window.ShipConfigCalculator, window.combatData, this.rc);
         this.data = this.research.nodes;
         console.log(`Command Deck: ${this.research.nodes.length} research nodes, ${this.se.planets.length} bodies, ${this.empire.miners.length} mining hulls, ${this.rc.recipes.length} recipes`);
@@ -26,7 +27,7 @@ class CommandDeckApp extends BaseApp {
 
     initializeModules() {
         if (!this.research.nodes.length) console.error('Command Deck: no research data loaded (Data/research-data.js)');
-        const ctx = { app: this, rm: this.rm, rc: this.rc, se: this.se, empire: this.empire, research: this.research, ships: this.ships, loadout: this.loadout };
+        const ctx = { app: this, rm: this.rm, rc: this.rc, se: this.se, empire: this.empire, galaxy: this.galaxy, research: this.research, ships: this.ships, loadout: this.loadout };
         this.researchTab = new DeckResearchTab(document.getElementById('cdResearch'), this.research, ctx);
         this.empireTab = new DeckEmpireTab(document.getElementById('cdEmpire'), ctx);
         this.calcTab = new DeckCalcTab(document.getElementById('cdCalc'), ctx);

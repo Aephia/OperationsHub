@@ -9,6 +9,8 @@
 //     to gather it, the plan's recipes on the right; link width = share of that line's supply / of its need
 // A stake here is laid out automatically: the hubs its buildings need, the storage hub, crew quarters and power
 // plants until crew and power balance; the player chooses the extractors and first-stage processors.
+// The top of the tab (2026-10-26) is the Empire map (deck-map.js): stakes are placed and fleets formed there, each
+// fleet with a job (mine / haul / supply), and the ledger under it gives made, burned and moved per hour.
 // What it does not do: second-stage processors (nothing on a planet satisfies their placement tag), hardness, and
 // any price the player has not typed.
 (function () {
@@ -17,10 +19,10 @@
     const { esc, num, dur, usd, snd, recipeName, recipeLabel, settingsStrip, bindStrip, ZONE_TEXT } = window.DeckUI;
     const plural = (n, one, many) => `${num(n)} ${n === 1 ? one : (many || one + 's')}`;
     const Store = window.DeckStore;
+    const OPEN_KEY = 'commandDeck.empire.open.v1';
     const KEY = 'commandDeck.empire.v1', PLAN_KEY = 'recipeExplorer.plan.v1', HAB_KEY = 'hubExplorer.plan.v1';
     const CAT_COLOR = ['#3fae79', '#e2512b', '#b7a58a', '#9a9a9a', '#d99a4e', '#7fd0ff', '#6b70b8', '#2f8cff'];
     const FAC_LABEL = { oni: 'ONI', mud: 'MUD', ustur: 'USTUR' };
-    const SRC_COLOR = { stake: '#2a9fcf', fleet: '#dd7429' };
     const ZONE_RANK = { own: 0, medium: 1, enemy: 2, high: 3 };
     const trunc = (s, n) => (s.length > n ? s.slice(0, n - 1) + '…' : s);
     let seq = 0; const uid = p => p + Date.now().toString(36) + (seq++).toString(36);
@@ -43,10 +45,17 @@
             const idOr = (v, p) => (typeof v === 'string' && /^[\w-]{1,40}$/.test(v) ? v : uid(p));
             this.stakes = arr(saved.stakes).filter(s => obj(s) && [1, 2, 3, 4, 5].includes(+s.tier) && this.se.planetByKey.has(s.key) && this.se.planetByKey.get(s.key).stakeable)
                 .map(s => ({ id: idOr(s.id, 's'), key: s.key, tier: +s.tier, alloc: obj(s.alloc) ? Object.fromEntries(Object.entries(s.alloc).filter(([, n]) => +n > 0).map(([k, n]) => [k, Math.floor(+n)])) : {}, procs: arr(s.procs).filter(x => typeof x === 'string') }));
-            this.fleets = arr(saved.fleets).filter(f => obj(f) && this.empire.shipByName.has(f.ship)).map(f => ({ id: idOr(f.id, 'f'), ship: f.ship, count: Math.max(1, Math.min(999, Math.floor(+f.count) || 1)), raw: str(f.raw), richness: +f.richness > 0 ? +f.richness : 1, body: str(f.body) }));
-            this.add = { q: '', tier: 5, fac: 'all' };
+            // a fleet's job (2026-10-26): mine (raw at body, dest = drop-off system or ''), haul / supply (stake `from` <-> dest)
+            const G = ctx.galaxy, sysOr = v => (typeof v === 'string' && G && G.byKey.has(v) ? v : '');
+            this.fleets = arr(saved.fleets).filter(f => obj(f) && this.empire.shipByName.has(f.ship)).map(f => ({ id: idOr(f.id, 'f'), task: ['haul', 'supply'].includes(f.task) ? f.task : 'mine', ship: f.ship, count: Math.max(1, Math.min(999, Math.floor(+f.count) || 1)), raw: str(f.raw), richness: +f.richness > 0 ? +f.richness : 1, body: str(f.body), dest: sysOr(f.dest), from: str(f.from) }))
+                .filter(f => f.task === 'mine' || this.stakes.some(s => s.id === f.from));
+            this.add = { q: '' };
+            // which input steps are open: a per-viewer convenience, all open the first time
+            const op = Store.read(OPEN_KEY, {}) || {};
+            this.open = { plan: op.plan !== false, stakes: op.stakes !== false, fleets: op.fleets !== false };
             this.goalQ = '';
             bindStrip(root); this.bind();
+            this.map = G && window.DeckEmpireMap ? new window.DeckEmpireMap(this) : null;
             Store.on(() => { if (this.visible()) this.render(); else this.stale = true; });
             this.stale = true;
         }
@@ -60,18 +69,32 @@
         bind() {
             const root = this.root;
             root.addEventListener('input', e => {
-                if (e.target.id === 'cdePlanetFind') { this.add.q = e.target.value; this.renderPlanetResults(); }
                 if (e.target.id === 'cdeGoalFind') { this.goalQ = e.target.value; this.renderGoalResults(); }
+                if (e.target.id === 'cdePlanetFind') { this.add.q = e.target.value; this.renderPlanetResults(); if (this.map) { this.map.q = this.add.q; this.map.redraw(); } }
             });
+            // 'toggle' does not bubble: listen in the capture phase
+            root.addEventListener('toggle', e => { const d = e.target; if (d.dataset && d.dataset.step) { this.open[d.dataset.step] = d.open; Store.write(OPEN_KEY, this.open); } }, true);
             root.addEventListener('change', e => {
                 const t = e.target;
                 if (t.dataset.goalQty) { const items = this.items(); const it = items.find(i => i.id === t.dataset.goalQty); if (it) { it.qty = Math.max(1, Math.min(100000, parseInt(t.value, 10) || 1)); this.saveItems(items); this.render(); } return; }
                 const f = t.dataset.fleet && this.fleets.find(x => x.id === t.dataset.fleet);
                 if (f) {
-                    if (t.dataset.field === 'ship') f.ship = t.value;
-                    if (t.dataset.field === 'count') f.count = Math.max(1, Math.min(999, parseInt(t.value, 10) || 1));
-                    if (t.dataset.field === 'raw') { f.raw = t.value; const b = this.bodies(f.raw)[0]; f.body = b ? b.key : ''; f.richness = b ? b.richness : 1; }
-                    if (t.dataset.field === 'body') { const b = this.bodies(f.raw).find(x => x.key === t.value); if (b) { f.body = b.key; f.richness = b.richness; } }
+                    const G = this.ctx.galaxy, field = t.dataset.field;
+                    if (field === 'ship') f.ship = t.value;
+                    if (field === 'count') f.count = Math.max(1, Math.min(999, parseInt(t.value, 10) || 1));
+                    // a new body keeps a drop-off, moved to the new body's nearest starbase
+                    const redrop = () => { if (f.dest && G) { const p = this.se.planetByKey.get(f.body), n = p && G.nearestStarbase(p.sysKey); f.dest = n ? n.sys.key : ''; } };
+                    if (field === 'raw') { f.raw = t.value; const b = this.bodies(f.raw)[0]; f.body = b ? b.key : ''; f.richness = b ? b.richness : 1; redrop(); }
+                    if (field === 'body') { const b = this.bodies(f.raw).find(x => x.key === t.value); if (b) { f.body = b.key; f.richness = b.richness; redrop(); } }
+                    if (field === 'dest') f.dest = G && G.byKey.has(t.value) ? t.value : '';
+                    if (field === 'from' && this.stakes.some(s => s.id === t.value)) f.from = t.value;
+                    if (field === 'task') {
+                        const task = ['haul', 'supply'].includes(t.value) ? t.value : 'mine';
+                        if (task !== 'mine' && !this.stakes.length) { snd('error'); t.value = f.task; return; }
+                        f.task = task;
+                        if (task === 'mine') { const raw = f.raw || this.defaultRaw(), b = this.bodies(raw)[0]; Object.assign(f, this.miningDefaults(raw, f.body || (b ? b.key : ''))); }
+                        else { if (!this.stakes.some(s => s.id === f.from)) f.from = this.stakes[0].id; f.dest = this.haulDest(task, f.from); }
+                    }
                     this.save(); this.render();
                 }
             });
@@ -80,33 +103,23 @@
                 let el;
                 if ((el = q('[data-goal-add]'))) { const items = this.items(); if (!items.some(i => i.id === el.dataset.goalAdd)) items.push({ id: el.dataset.goalAdd, qty: 1 }); this.saveItems(items); this.goalQ = ''; snd('success'); this.render(); return; }
                 if ((el = q('[data-goal-remove]'))) { this.saveItems(this.items().filter(i => i.id !== el.dataset.goalRemove)); snd('deselect'); this.render(); return; }
-                if ((el = q('[data-add-tier]'))) { this.add.tier = +el.dataset.addTier; snd('select'); this.render(); return; }
-                if ((el = q('[data-add-fac]'))) { this.add.fac = el.dataset.addFac; snd('select'); this.render(); return; }
-                if ((el = q('[data-stake-add]'))) { this.addStake(el.dataset.stakeAdd); return; }
-                if ((el = q('[data-stake-remove]'))) { this.stakes = this.stakes.filter(s => s.id !== el.dataset.stakeRemove); snd('deselect'); this.save(); this.render(); return; }
+                if ((el = q('[data-stake-remove]'))) { const id = el.dataset.stakeRemove; this.stakes = this.stakes.filter(s => s.id !== id); this.fleets = this.fleets.filter(f => f.task === 'mine' || f.from !== id); snd('deselect'); this.save(); this.render(); return; }
                 if ((el = q('[data-stake-auto]'))) { const s = this.stakes.find(x => x.id === el.dataset.stakeAuto); if (s) { this.refill(s); snd('select'); this.save(); this.render(); } return; }
                 if ((el = q('[data-alloc]'))) { const [id, raw, d] = el.dataset.alloc.split('|'); this.bump(id, raw, +d); return; }
                 if ((el = q('[data-proc]'))) { const [id, pid] = el.dataset.proc.split('|'); this.toggleProc(id, pid); return; }
                 if ((el = q('[data-fleet-add]'))) { this.addFleet(); return; }
+                if ((el = q('[data-run-add]'))) { const task = el.dataset.runAdd, s = this.stakes.find(k => !this.fleets.some(f => f.task === task && f.from === k.id)) || this.stakes[0]; if (s) this.addHaulFleet(task, s.id); return; }
+                if ((el = q('[data-stake-add]'))) { const [key, t] = el.dataset.stakeAdd.split('|'); this.addStake(key, +t); return; }
                 if ((el = q('[data-fleet-remove]'))) { this.fleets = this.fleets.filter(f => f.id !== el.dataset.fleetRemove); snd('deselect'); this.save(); this.render(); return; }
                 if ((el = q('[data-show-research]'))) { if (this.ctx.app && this.lastResearch) { snd('click'); this.ctx.app.showResearchGoal('empire', this.lastResearch); } return; }
                 if ((el = q('[data-clear-empire]'))) { this.stakes = []; this.fleets = []; snd('deselect'); this.save(); this.render(); return; }
             });
-            // flow chart hover: light the links of the node under the pointer
-            root.addEventListener('pointerover', e => {
-                const n = e.target.closest('[data-flow]'); const svg = root.querySelector('.cd-flow'); if (!svg) return;
-                svg.querySelectorAll('.hi').forEach(x => x.classList.remove('hi'));
-                svg.classList.toggle('tracing', !!n);
-                if (!n) return;
-                const [kind, id] = n.dataset.flow.split('|');
-                svg.querySelectorAll(`[data-${kind}="${CSS.escape(id)}"]`).forEach(x => x.classList.add('hi'));
-                n.classList.add('hi');
-            });
         }
 
-        addStake(key) {
+        addStake(key, tier) {
             const planet = this.se.planetByKey.get(key); if (!planet || !planet.stakeable) return;
-            const s = { id: uid('s'), key, tier: this.add.tier, alloc: {}, procs: [] };
+            if (![1, 2, 3, 4, 5].includes(tier)) return;
+            const s = { id: uid('s'), key, tier, alloc: {}, procs: [] };
             this.refill(s);
             this.stakes.push(s); snd('success'); this.save(); this.render();
         }
@@ -141,13 +154,51 @@
             }
             snd('select'); this.save(); this.render();
         }
-        addFleet() {
+        // the raw a new mining fleet takes: a bill line no stake can extract and nothing supplies, else any unsupplied one
+        defaultRaw() {
             const rows = this.cov ? this.cov.rows.filter(r => r.res && r.res.category === 'raw') : [];
             const target = rows.find(r => r.perHour <= 0 && !r.res.stakeMinable) || rows.find(r => r.perHour <= 0) || rows[0];
-            const raw = target ? target.name : (this.rm.list.find(r => r.category === 'raw') || { name: '' }).name;
-            const body = this.bodies(raw)[0];
-            const ship = this.empire.miners.find(m => !this.fleets.some(f => f.ship === m.name)) || this.empire.miners[0];
-            this.fleets.push({ id: uid('f'), ship: ship.name, count: 1, raw, richness: body ? body.richness : 1, body: body ? body.key : '' });
+            return target ? target.name : (this.rm.list.find(r => r.category === 'raw') || { name: '' }).name;
+        }
+        addFleet() {
+            const raw = this.defaultRaw(), body = this.bodies(raw)[0];
+            this.fleets.push(Object.assign({ id: uid('f'), task: 'mine', count: 1, from: '' }, this.miningDefaults(raw, body ? body.key : '')));
+            snd('success'); this.save(); this.render();
+        }
+        // a mining fleet: the strongest miner not yet in a fleet, the body's richness, a drop-off at its nearest starbase
+        miningDefaults(raw, bodyKey) {
+            const p = this.se.planetByKey.get(bodyKey), d = p && this.empire.rm && p.deposits.get(window.CommandDeck.slug(raw));
+            const ship = this.empire.miners.find(m => !this.fleets.some(f => f.task === 'mine' && f.ship === m.name)) || this.empire.miners[0];
+            const near = p && this.ctx.galaxy ? this.ctx.galaxy.nearestStarbase(p.sysKey) : null;
+            return { ship: ship.name, raw: raw || '', body: p ? p.key : '', richness: d ? d.richness : 1, dest: near ? near.sys.key : '' };
+        }
+        addMiningFleet(raw, bodyKey) {
+            if (!this.se.planetByKey.has(bodyKey)) return;
+            this.fleets.push(Object.assign({ id: uid('f'), task: 'mine', count: 1, from: '' }, this.miningDefaults(raw, bodyKey)));
+            snd('success'); this.save(); this.render();
+        }
+        // haul: to the faction's CSS (the market); supply: from the stake's nearest starbase
+        haulDest(task, stakeId) {
+            const G = this.ctx.galaxy, s = this.stakes.find(x => x.id === stakeId), p = s && this.se.planetByKey.get(s.key); if (!G || !p) return '';
+            const css = task === 'haul' ? G.css(Store.s.faction) : null, near = G.nearestStarbase(p.sysKey);
+            return css ? css.key : near ? near.sys.key : '';
+        }
+        statsOf(name) { const x = this.ctx.loadout && this.ctx.loadout.stats(name, null); return x ? x.mod : null; }
+        // the default hauler for a run of d AU that must move `need` units an hour: the smallest hull class (fleet-capacity
+        // points) that keeps up alone with a tank that lasts the round trip, then the least fuel per unit; if no hull
+        // keeps up alone, the one that moves the most
+        bestHauler(d, need) {
+            const LO = window.CommandDeck.Loadout; if (!this.ctx.loadout || !LO) return this.empire.ships[0].name;
+            const c = this.ctx.loadout.ships.filter(s => this.empire.shipByName.has(s.name)).map(s => { const st = this.statsOf(s.name), t = st && LO.trip(st, d, 'warp'); return t && t.tankOk ? { name: s.name, t, pts: this.empire.capacityPoints(s.name) == null ? 1e9 : this.empire.capacityPoints(s.name) } : null; }).filter(Boolean);
+            const ok = c.filter(x => x.t.perHour >= need);
+            if (ok.length) return ok.sort((a, b) => a.pts - b.pts || a.t.fuelPerUnit - b.t.fuelPerUnit || a.name.localeCompare(b.name))[0].name;
+            return c.length ? c.sort((a, b) => b.t.perHour - a.t.perHour || a.name.localeCompare(b.name))[0].name : this.empire.ships[0].name;
+        }
+        addHaulFleet(task, stakeId) {
+            const s = this.stakes.find(x => x.id === stakeId), G = this.ctx.galaxy; if (!s || !G) return;
+            const dest = this.haulDest(task, stakeId), d = G.dist(this.se.planetByKey.get(s.key).sysKey, dest);
+            const r = this.ops && this.ops.stakes.find(x => x.id === stakeId), need = r ? (task === 'haul' ? r.out : r.fuel) : 0;
+            this.fleets.push({ id: uid('f'), task, ship: this.bestHauler(d || 0, need), count: 1, raw: '', richness: 1, body: '', from: stakeId, dest });
             snd('success'); this.save(); this.render();
         }
 
@@ -155,29 +206,42 @@
         render() {
             this.stale = false;
             const s = Store.s, items = this.items();
-            const cov = this.cov = this.empire.coverage(items, this.stakes, this.fleets, { tick: s.tick, richness: s.richness });
+            // operations first: a mining fleet with a drop-off supplies what its whole cycle delivers, not its rate at the body
+            const ops = this.ops = this.empire.ops(this.stakes, this.fleets, { tick: s.tick, richness: s.richness, galaxy: this.ctx.galaxy, stats: n => this.statsOf(n) });
+            const opsById = new Map(ops.fleets.map(r => [r.id, r]));
+            if (this.map) this.map.ops = ops;                                         // step 2's system card reads it before the map draws
+            const cov = this.cov = this.empire.coverage(items, this.stakes, this.fleets, { tick: s.tick, richness: s.richness, fleetPerSec: f => { const r = opsById.get(f.id); return r && r.dest ? r.perHour / 3600 : null; } });
             const plain = this.empire.expand(items, new Set());                       // every craft, for processor hints
             this.intermediates = new Set(plain.crafts.keys());
             const srcById = new Map(cov.sources.map(x => [x.id, x]));
             // the hab schedule: the plan's crafts (what a stake processor makes is not crafted) on the hab's job lanes
             const hab = this.habLanes();
             const sched = this.sched = this.empire.schedule(cov.expansion, hab.lanes.length ? { lanes: hab.lanes } : { jobs: 1 });
+            // inputs first (three steps that fold away), then what they add up to: the map, the ledger, the sheets
+            const names = items.slice(0, 3).map(it => { const r = this.rc.byId.get(it.id); return `${esc(recipeName(r))} ×${num(it.qty)}`; }).join(', ') + (items.length > 3 ? ` and ${items.length - 3} more` : '');
+            const ext = cov.sources.filter(q => q.kind === 'stake').reduce((a, q) => a + q.prod.layout.extractors, 0), made = ops.stakes.reduce((a, r) => a + r.out, 0);
+            const byTask = t => this.fleets.filter(f => f.task === t).length, fuel = ops.ledger.get('Fuel');
             this.root.innerHTML = `
                 ${settingsStrip({ faction: true })}
-                ${this.goalHTML(items)}
+                <div class="cd-build">
+                    ${this.stepHTML('plan', 1, 'What to make', items.length ? `${names} · ${cov.covered} of ${cov.rows.length} bill lines have a source` : 'pick the recipes you want to craft', this.goalHTML(items), items.length > 0)}
+                    ${this.stepHTML('stakes', 2, 'Claim stakes', this.stakes.length ? `${plural(this.stakes.length, 'stake')} · ${plural(ext, 'extractor')} · ${num(made)} units / h` : 'search a planet and place a stake', this.stakesHTML(srcById), this.stakes.length > 0)}
+                    ${this.stepHTML('fleets', 3, 'Fleets', this.fleets.length ? `${[[byTask('mine'), 'mining'], [byTask('haul'), 'haul'], [byTask('supply'), 'supply']].filter(([n]) => n).map(([n, l]) => `${n} ${l}`).join(' · ')}${fuel && fuel.burned ? ` · ${num(fuel.burned)} fuel / h burned in all` : ''}` : 'form fleets and give each a job', this.fleetsHTML(cov), this.fleets.length > 0)}
+                </div>
+                ${this.map ? this.map.html(ops) + this.map.ledgerHTML(ops, cov) : ''}
                 ${this.tilesHTML(items, cov, sched, hab)}
-                <div class="cd-empire">
-                    <div class="cd-col">
-                        ${this.stakesHTML(srcById)}
-                        ${this.fleetsHTML(cov)}
-                    </div>
-                    <div class="cd-col">
-                        ${this.flowHTML(items, cov)}
-                        ${this.scheduleHTML(items, cov, sched, hab)}
-                        ${this.researchHTML(items, cov)}
-                    </div>
+                <div class="cd-sheets">
+                    ${this.scheduleHTML(items, cov, sched, hab)}
+                    ${this.researchHTML(items, cov)}
                 </div>`;
-            this.renderPlanetResults(); this.renderGoalResults();
+            this.renderGoalResults(); this.renderPlanetResults();
+        }
+        // one input step: a fold-away section whose closed line says what is in it
+        stepHTML(key, n, title, summary, body, done) {
+            return `<details class="cd-stage${done ? ' done' : ''}" data-step="${key}"${this.open[key] !== false ? ' open' : ''}>
+                <summary><i class="cd-stage-n">${done ? '✓' : n}</i><b>${title}</b><span>${summary}</span><em class="cd-stage-chev" aria-hidden="true"></em></summary>
+                <div class="cd-stage-body">${body}</div>
+            </details>`;
         }
 
         // the Hub Explorer's saved build as job lanes (hubExplorer.plan.v1: [{id, qty}] of hab items)
@@ -199,13 +263,13 @@
         }
 
         goalHTML(items) {
-            return `<section class="rx-panel cd-goalbar">
-                <div class="rx-panel-head"><h3>Production plan</h3><span>${items.length ? `${items.length} recipe${items.length > 1 ? 's' : ''} - the same plan the Recipe Explorer holds` : 'empty - add a recipe, or build the plan in the Recipe Explorer'}</span><a class="sb-btn ghost" href="../RecipeExplorer/index.html" target="_blank" rel="noopener">Open the planner</a></div>
+            return `<div class="cd-goalbar">
+                <p class="rx-note">The recipes you want to craft, and how many. This is the same plan the Recipe Explorer holds: edit it here or there. <a href="../RecipeExplorer/index.html" target="_blank" rel="noopener">Open the planner</a></p>
                 <div class="rp-items">
                     ${items.map(it => { const r = this.rc.byId.get(it.id); return `<div class="rp-item"><span class="rp-item-name"><i class="t t${r.outputTier}">T${r.outputTier}</i>${esc(recipeName(r))}<small>${esc(r.typeLabel)}</small></span><label>&times;<input type="number" min="1" max="100000" value="${it.qty}" data-goal-qty="${esc(it.id)}"></label><button type="button" class="rp-x" data-goal-remove="${esc(it.id)}" title="Remove from the plan">&times;</button></div>`; }).join('')}
                     <div class="cd-find cd-goalfind"><input type="search" class="sb-input" id="cdeGoalFind" placeholder="Add a recipe to the plan…" autocomplete="off" spellcheck="false" value="${esc(this.goalQ)}"><div class="cd-results" id="cdeGoalResults" hidden></div></div>
                 </div>
-            </section>`;
+            </div>`;
         }
         renderGoalResults() {
             const box = this.root.querySelector('#cdeGoalResults'); if (!box) return;
@@ -247,58 +311,36 @@
         zoneWord(p) { const z = this.zoneOf(p); return z === 'own' ? '' : z === 'enemy' ? ' · ' + FAC_LABEL[p.zone.faction] + ' zone' : ' · ' + z + ' risk'; }
         zoneBadge(p) { const z = this.zoneOf(p); return `<span class="cd-zone ${z}">${z === 'own' ? 'low risk' : z === 'enemy' ? 'low risk, ' + FAC_LABEL[p.zone.faction] + ' zone' : z + ' risk'}</span>`; }
 
-        // ---- stakes
-        planetRow(p, tier) {
+        // ---- stakes: search a planet by name, place a stake of any tier on it (the map only draws the result)
+        // a planet in the stake search: its plan raws, and one Place button per stake tier
+        planetRow(p) {
             const rows = this.cov ? this.cov.rows : [];
-            const ext = this.se.extractable(p, tier);
-            const chips = ext.map(x => ({ x, row: rows.find(r => r.name === x.name) })).filter(o => o.row).sort((a, b) => (a.row.perHour > 0) - (b.row.perHour > 0) || b.x.richness - a.x.richness).slice(0, 6)
-                .map(o => `<span class="cd-raw${o.row.perHour > 0 ? '' : ' need'}" title="${esc(o.x.name)}">${esc(o.x.name)} <b>×${num(o.x.richness)}</b></span>`).join('');
-            return `<button type="button" class="cd-planet" data-stake-add="${esc(p.key)}"><i class="pdot" style="--c:${CAT_COLOR[p.cat]}"></i><b>${esc(p.name)}</b><small>${esc(p.system)} · ${esc(p.catName)} · <span class="f-${p.faction}">${FAC_LABEL[p.faction]}</span> · ${this.zoneBadge(p)}</small><span class="cd-raws">${chips || `<span class="sb-muted">${ext.length} extractable raws, none in the bill</span>`}</span></button>`;
-        }
-        suggestions() {
-            const tier = this.add.tier, fac = this.add.fac, rows = this.cov ? this.cov.rows : [];
-            const lacking = rows.filter(r => r.perHour <= 0 && r.res && r.res.stakeMinable);
-            const want = lacking.length ? lacking : rows.filter(r => r.res && r.res.stakeMinable);
-            if (!want.length) return { list: [], lacking: lacking.length, want: 0 };
-            const ids = want.map(r => r.res.id);
-            const taken = new Set(this.stakes.map(s => s.key));
-            const scored = [];
-            this.se.planets.forEach(p => {
-                if (!p.stakeable || taken.has(p.key) || (fac !== 'all' && p.faction !== fac)) return;
-                let n = 0, rich = 0;
-                ids.forEach(id => { const d = p.deposits.get(id); if (d && this.se.extractorFor(p, id, tier)) { n++; rich += d.richness; } });
-                if (n) scored.push({ p, n, rich, z: ZONE_RANK[this.zoneOf(p)] + (String(p.terr).toLowerCase().startsWith(Store.s.faction.slice(0, 3)) ? 0 : 0.5) });   // own territory first within a zone class
-            });
-            scored.sort((a, b) => b.n - a.n || a.z - b.z || b.rich - a.rich || a.p.name.localeCompare(b.p.name));
-            return { list: scored.slice(0, 4), lacking: lacking.length, want: want.length };
+            const chips = Array.from(p.deposits.values()).map(d => ({ d, row: rows.find(r => r.name === d.name) })).filter(o => o.row).sort((a, b) => (a.row.perHour > 0) - (b.row.perHour > 0) || b.d.richness - a.d.richness).slice(0, 6)
+                .map(o => `<span class="cd-raw${o.row.perHour > 0 ? '' : ' need'}">${esc(o.d.name)} <b>×${num(o.d.richness)}</b></span>`).join('');
+            const sys = this.ctx.galaxy && this.ctx.galaxy.byKey.get(p.sysKey);
+            const tiers = [1, 2, 3, 4, 5].map(t => {
+                const n = this.se.extractable(p, t).length, gate = sys && t > sys.sb;
+                const title = `Place a T${t} stake here: ${num(this.se.slots[t])} slots, ${n} raw${n === 1 ? '' : 's'} it can extract` + (gate ? `. Tier-${t} kits need a Level-${t} starbase; this system's is ${sys.sb ? 'Level ' + sys.sb : 'none'}` : '');
+                return `<button type="button" class="sb-btn${gate ? ' gate' : ''}" data-stake-add="${esc(p.key)}|${t}" title="${esc(title)}">T${t}</button>`;
+            }).join('');
+            return `<div class="cd-prow"><i class="pdot" style="--c:${CAT_COLOR[p.cat]}"></i><b>${esc(p.name)}</b><small>${esc(p.system)} · ${esc(p.catName)} · <span class="f-${p.faction}">${FAC_LABEL[p.faction]}</span> · ${this.zoneBadge(p)}${sys ? ` · ${sys.sb === 6 ? 'CSS' : sys.sb ? 'L' + sys.sb + ' starbase' : 'no starbase'}` : ''}</small>
+                <span class="cd-raws">${chips}</span>
+                <span class="cd-prow-act">${tiers}</span></div>`;
         }
         renderPlanetResults() {
             const box = this.root.querySelector('#cdePlanetResults'); if (!box) return;
             const words = this.add.q.toLowerCase().split(/\s+/).filter(Boolean);
-            if (!words.length) {
-                const sg = this.suggestions();
-                box.innerHTML = sg.list.length ? `<h4>${sg.lacking ? `Planets that carry the most of the ${sg.lacking} bill lines still without a source` : `Planets that carry the most of the bill's ${sg.want} stake-minable raws`} <small>(count, then your zone before riskier ones, then richness)</small></h4>${sg.list.map(o => this.planetRow(o.p, this.add.tier)).join('')}`
-                    : `<p class="rx-note">${this.items().length ? 'No planet in this territory adds a stake-minable raw the bill lacks.' : 'Add a recipe to the plan and the planets that carry its raws are ranked here. Or search any planet by name.'}</p>`;
-                return;
-            }
-            const fac = this.add.fac;
-            const hits = this.se.planets.filter(p => p.stakeable && (fac === 'all' || p.faction === fac) && words.every(w => (p.name + ' ' + p.system + ' ' + p.sysKey).toLowerCase().includes(w))).slice(0, 8);
-            box.innerHTML = hits.length ? hits.map(p => this.planetRow(p, this.add.tier)).join('') : '<p class="rx-note">No planet matches. Asteroid belts are not listed: a belt holds no stake (send a fleet instead).</p>';
+            if (!words.length) { box.innerHTML = ''; return; }
+            const hits = this.se.planets.filter(p => p.stakeable && words.every(w => (p.name + ' ' + p.system).toLowerCase().includes(w))).slice(0, 8);
+            box.innerHTML = hits.length ? hits.map(p => this.planetRow(p)).join('') : '<p class="rx-note">No planet matches. Asteroid belts are not listed: a belt holds no stake (send a mining fleet in step 3).</p>';
         }
         stakesHTML(srcById) {
-            const a = this.add;
             const cards = this.stakes.map(s => this.stakeCard(s, srcById.get(s.id))).join('');
-            return `<section class="rx-panel cd-stakes">
-                <div class="rx-panel-head"><h3>Claim stakes</h3><span>${this.stakes.length ? `${this.stakes.length} placed` : 'none yet'}</span>${this.stakes.length || this.fleets.length ? '<button type="button" class="sb-btn ghost" data-clear-empire>Clear stakes and fleets</button>' : ''}</div>
-                <div class="cd-addstake">
-                    <div class="chips">${[1, 2, 3, 4, 5].map(t => `<button type="button" class="chip${a.tier === t ? ' on' : ''}" data-add-tier="${t}"><i class="t t${t}">T${t}</i>${num(this.se.slots[t])} slots</button>`).join('')}</div>
-                    <div class="chips"><span class="sb-muted">Planet faction</span>${[['all', 'All'], ['mud', 'MUD'], ['oni', 'ONI'], ['ustur', 'USTUR']].map(([k, l]) => `<button type="button" class="chip${a.fac === k ? ' on' : ''}" data-add-fac="${k}">${l}</button>`).join('')}</div>
-                    <input type="search" class="sb-input" id="cdePlanetFind" placeholder="Search a planet or system to stake…" autocomplete="off" spellcheck="false" value="${esc(a.q)}">
+            return `<div class="cd-addstake">
+                    <input type="search" class="sb-input" id="cdePlanetFind" placeholder="Search a planet or system by name…" autocomplete="off" spellcheck="false" value="${esc(this.add.q)}">
                     <div class="cd-planets" id="cdePlanetResults"></div>
-                    <p class="rx-note">Key: an orange raw chip is a bill line no stake or fleet supplies yet; ◆ before a raw on a stake marks a raw in the bill.</p>
                 </div>
-                ${cards}
-            </section>`;
+                ${cards ? `<div class="cd-cards">${cards}</div><div class="cd-stage-foot"><p class="rx-note">◆ before a raw marks a raw in the plan's bill. Use + / − to move extractors between raws.</p><button type="button" class="sb-btn ghost" data-clear-empire>Clear stakes and fleets</button></div>` : ''}`;
         }
         stakeCard(s, src) {
             const planet = this.se.planetByKey.get(s.key), p = src ? src.prod : this.se.production(planet, s.tier, s.alloc, s.procs, { richness: Store.s.richness }), L = p.layout;
@@ -326,60 +368,55 @@
         fleetsHTML(cov) {
             const raws = cov.rows.filter(r => r.res && r.res.category === 'raw').map(r => r.name);
             const allRaws = this.rm.list.filter(r => r.category === 'raw').map(r => r.name).sort();
+            const G = this.ctx.galaxy, opsById = new Map((this.ops ? this.ops.fleets : []).map(r => [r.id, r]));
+            const haulers = (this.ctx.loadout ? this.ctx.loadout.ships.map(s => s.name) : this.empire.ships.map(s => s.name)).filter(n => this.empire.shipByName.has(n)).sort();
+            const sel = (f, field, label, options) => `<select class="sb-input" data-fleet="${f.id}" data-field="${field}" aria-label="${label}">${options}</select>`;
+            // drop-off / destination choices: the nearest starbase to `sysKey`, (a miner) the systems of your stakes - a
+            // miner that drops off there restocks there, so the stake's R4 supply carries its fuel, food and ammo - the
+            // three CSS, and whatever is set now
+            const destOpts = (f, sysKey, none, withStakes) => {
+                const list = [], seen = new Set(), push = (key, text) => { if (!key || seen.has(key)) return; seen.add(key); list.push([key, text]); };
+                const near = sysKey && G ? G.nearestStarbase(sysKey) : null;
+                if (near) push(near.sys.key, `${near.sys.name} - nearest starbase (L${near.sys.sb}, ${num(near.d, 1)} AU)`);
+                if (withStakes && G) this.stakes.forEach(s => { const p = this.se.planetByKey.get(s.key); if (p) push(p.sysKey, `${p.system} - your T${s.tier} ${p.name}, restock from its R4 supply (${num(G.dist(sysKey, p.sysKey) || 0, 1)} AU)`); });
+                if (G) ['ustur', 'mud', 'oni'].forEach(k => { const c = G.css(k); if (c) push(c.key, `${c.name} - ${k === 'ustur' ? 'USTUR' : k.toUpperCase()} CSS, the market (${num(G.dist(sysKey, c.key) || 0, 1)} AU)`); });
+                if (f.dest && G && G.byKey.has(f.dest)) push(f.dest, `${G.byKey.get(f.dest).name} (${num(G.dist(sysKey, f.dest) || 0, 1)} AU)`);
+                return (none ? `<option value=""${f.dest ? '' : ' selected'}>${none}</option>` : '') + list.map(([k, t]) => `<option value="${esc(k)}"${k === f.dest ? ' selected' : ''}>${esc(t)}</option>`).join('');
+            };
+            const taskSel = f => sel(f, 'task', 'Job', [['mine', 'Mine'], ['haul', 'Haul output'], ['supply', 'R4 supply']].map(([k, l]) => `<option value="${k}"${k === f.task ? ' selected' : ''}${k !== 'mine' && !this.stakes.length ? ' disabled' : ''}>${l}</option>`).join(''));
             const rows = this.fleets.map(f => {
-                const ship = this.empire.shipByName.get(f.ship), bodies = this.bodies(f.raw).slice(0, 10);
-                const opts = Array.from(new Set(raws.concat(f.raw ? [f.raw] : [])));
-                return `<div class="cd-fleet">
-                    <select class="sb-input" data-fleet="${f.id}" data-field="ship" aria-label="Hull">${this.empire.miners.map(m => `<option value="${esc(m.name)}"${m.name === f.ship ? ' selected' : ''}>${esc(m.name)} - ${num(m.rate)} /s</option>`).join('')}</select>
-                    <label>&times;<input type="number" class="sb-input" min="1" max="999" value="${f.count}" data-fleet="${f.id}" data-field="count" aria-label="Hull count"></label>
-                    <select class="sb-input" data-fleet="${f.id}" data-field="raw" aria-label="Raw mined"><optgroup label="In the bill">${opts.map(n => `<option${n === f.raw ? ' selected' : ''}>${esc(n)}</option>`).join('')}</optgroup><optgroup label="Every raw">${allRaws.filter(n => !opts.includes(n)).map(n => `<option>${esc(n)}</option>`).join('')}</optgroup></select>
-                    <select class="sb-input" data-fleet="${f.id}" data-field="body" aria-label="Body mined">${bodies.map(b => `<option value="${esc(b.key)}"${b.key === f.body ? ' selected' : ''}>${esc(b.name)} ×${num(b.richness)} · ${esc(b.system)}${b.belt ? ' · belt' : ''}${this.zoneWord(b.planet)}</option>`).join('') || '<option>no body carries it</option>'}</select>
-                    <span class="cd-fleet-out"><b>${num(ship.rate * f.count * f.richness)}</b> / s<small>${ship.crew * f.count} crew · hold full in ${dur(ship.cargo / (ship.rate * f.richness))}</small></span>
-                    <button type="button" class="rp-x" data-fleet-remove="${f.id}" title="Remove this fleet">&times;</button>
+                const o = opsById.get(f.id), ship = this.empire.shipByName.get(f.ship);
+                const head = `<div class="cd-fleet-row">${taskSel(f)}<label>&times;<input type="number" class="sb-input" min="1" max="999" value="${f.count}" data-fleet="${f.id}" data-field="count" aria-label="Hull count"></label><button type="button" class="rp-x" data-fleet-remove="${f.id}" title="Remove this fleet">&times;</button></div>`;
+                if (f.task === 'mine') {
+                    const bodies = this.bodies(f.raw).slice(0, 10), body = this.se.planetByKey.get(f.body);
+                    const opts = Array.from(new Set(raws.concat(f.raw ? [f.raw] : [])));
+                    const out = o && o.dest && o.trip
+                        ? `<b>${num(o.perHour)}</b> / h delivered<small>cycle ${dur(o.trip.cycle)} (${(100 * o.trip.miningShare).toFixed(0)} % mining) · ${num(o.fuel)} fuel and ${num(o.food)} food / h</small>`
+                        : `<b>${num(ship.rate * f.count * f.richness)}</b> / s at the body<small>${ship.crew * f.count} crew · hold full in ${dur(ship.cargo / (ship.rate * f.richness))} · no trip counted</small>`;
+                    return `<div class="cd-fleet task-mine">${head}
+                        <div class="cd-fleet-row">${sel(f, 'ship', 'Hull', this.empire.miners.map(m => `<option value="${esc(m.name)}"${m.name === f.ship ? ' selected' : ''}>${esc(m.name)} - ${num(m.rate)} /s</option>`).join(''))}</div>
+                        <div class="cd-fleet-row">${sel(f, 'raw', 'Raw mined', `<optgroup label="In the bill">${opts.map(n => `<option${n === f.raw ? ' selected' : ''}>${esc(n)}</option>`).join('')}</optgroup><optgroup label="Every raw">${allRaws.filter(n => !opts.includes(n)).map(n => `<option>${esc(n)}</option>`).join('')}</optgroup>`)}${sel(f, 'body', 'Body mined', bodies.concat(body && !bodies.some(b => b.key === body.key) ? this.bodies(f.raw).filter(b => b.key === body.key) : []).map(b => `<option value="${esc(b.key)}"${b.key === f.body ? ' selected' : ''}>${esc(b.name)} ×${num(b.richness)} · ${esc(b.system)}${b.belt ? ' · belt' : ''}${this.zoneWord(b.planet)}</option>`).join('') || '<option>no body carries it</option>')}</div>
+                        <div class="cd-fleet-row">${sel(f, 'dest', 'Drop-off', destOpts(f, body && body.sysKey, 'No drop-off - rate at the body, no trip', true))}</div>
+                        <div class="cd-fleet-out">${out}${o && o.warn.length ? `<small class="warn">${o.warn.map(esc).join('; ')}</small>` : ''}</div>
+                    </div>`;
+                }
+                const stake = this.stakes.find(s => s.id === f.from), sp = stake && this.se.planetByKey.get(stake.key), sr = o && o.stake;
+                const out = o && o.trip
+                    ? `<b>${num(o.perHour)}</b> / h ${f.task === 'haul' ? 'hauled' : 'R4 brought'} of ${num(o.cap)} it could move (${(100 * o.busy).toFixed(0)} % busy)${sr ? ` · ${f.task === 'haul' ? `the stake makes ${num(sr.out)} / h` : `the base needs ${num(sr.r4.total)} / h: ${Object.entries(sr.r4.need).filter(([, v]) => v > 1e-9).map(([k, v]) => `${k} ${num(v)}`).join(', ') || 'nothing yet'}`}` : ''}<small>${o.trip.jumps} jump${o.trip.jumps === 1 ? '' : 's'} · round trip ${dur(o.trip.time)} · ${num(o.fuel)} fuel / h on the road (${num(o.fuelPerUnit)} per unit moved)</small>`
+                    : '<small>pick a stake and a destination</small>';
+                return `<div class="cd-fleet task-${f.task}">${head}
+                    <div class="cd-fleet-row">${sel(f, 'ship', 'Hull', haulers.map(n => { const st = this.statsOf(n); return `<option value="${esc(n)}"${n === f.ship ? ' selected' : ''}>${esc(n)}${st ? ` - ${num(st.cargo_capacity)} CU` : ''}</option>`; }).join(''))}</div>
+                    <div class="cd-fleet-row">${sel(f, 'from', 'Stake', this.stakes.map(s => { const p = this.se.planetByKey.get(s.key); return `<option value="${esc(s.id)}"${s.id === f.from ? ' selected' : ''}>T${s.tier} ${esc(p ? p.name : s.key)}</option>`; }).join(''))}<span class="cd-arrow">${f.task === 'haul' ? '→' : '←'}</span>${sel(f, 'dest', f.task === 'haul' ? 'Deliver to' : 'Fuel from', destOpts(f, sp && sp.sysKey, ''))}</div>
+                    <div class="cd-fleet-out">${out}${o && o.warn.length ? `<small class="warn">${o.warn.map(esc).join('; ')}</small>` : ''}</div>
                 </div>`;
             }).join('');
-            return `<section class="rx-panel cd-fleets">
-                <div class="rx-panel-head"><h3>Mining fleets</h3><span>one raw at one body per fleet; a ship can mine belts and any raw, kit or no kit</span><button type="button" class="sb-btn" data-fleet-add>Add a fleet</button></div>
-                ${rows || '<p class="rx-note">No fleet yet. Fleets are the only source for raws no stake can extract.</p>'}
-                ${this.fleets.length ? '<p class="rx-note">Output = hull rate × count × the body\'s richness, per second. The game also divides by a hardness the export does not list.</p>' : ''}
-            </section>`;
-        }
-
-        // ---- flow chart: sources -> bill lines -> recipes
-        flowHTML(items, cov) {
-            if (!items.length) return `<section class="rx-panel cd-flowpanel"><div class="rx-panel-head"><h3>Who supplies what</h3></div><p class="rx-note">The plan is empty. Add a recipe above: its bill appears here, one row per raw, and every stake and fleet you add links to the rows it supplies.</p></section>`;
-            const rows = cov.rows, srcs = cov.sources, recs = cov.expansion.byItem;
-            const RH = 27, TOP = 26, W = 1040, SX = 4, SW = 196, RX = 300, NAMEW = 170, BARW = 190, VALW = 96, QX = W - 200, QW = 196;
-            const H = TOP + Math.max(rows.length, srcs.length, recs.length, 1) * RH + 10;
-            const rowY = i => TOP + i * RH + RH / 2;
-            const spread = (n, i) => { const total = Math.max(rows.length, n) * RH; const step = total / n; return TOP + step * i + step / 2; };
-            const maxH = Math.max(1e-12, ...rows.filter(r => r.perHour > 0).map(r => r.hours));
-            const rEnd = RX + NAMEW + BARW + VALW;
-            let links = '';
-            rows.forEach((r, i) => {
-                r.from.forEach(f => { const si = srcs.findIndex(x => x.id === f.id), src = srcs[si]; const y1 = spread(srcs.length, si), y2 = rowY(i), share = f.perHour / r.perHour; links += `<path class="fl ${src.kind}" data-src="${esc(src.id)}" data-res="${i}" d="M${SX + SW},${y1.toFixed(1)} C${SX + SW + 50},${y1.toFixed(1)} ${RX - 50},${y2.toFixed(1)} ${RX - 4},${y2.toFixed(1)}" style="stroke-width:${(1 + 5 * share).toFixed(1)}"><title>${esc(src.label)} supplies ${num(f.perHour)} ${esc(r.name)} per hour, ${(100 * share).toFixed(0)} % of the supply</title></path>`; });
-                r.users.forEach(u => { const qi = recs.findIndex(x => x.id === u.id); const y1 = rowY(i), y2 = spread(recs.length, qi), share = u.units / r.need; links += `<path class="fl use" data-res="${i}" data-rec="${esc(u.id)}" d="M${rEnd + 4},${y1.toFixed(1)} C${rEnd + 44},${y1.toFixed(1)} ${QX - 44},${y2.toFixed(1)} ${QX},${y2.toFixed(1)}" style="stroke-width:${(0.8 + 3.2 * share).toFixed(1)}"><title>${esc(u.name)} needs ${num(u.units)} ${esc(r.name)}, ${(100 * share).toFixed(0)} % of the bill line</title></path>`; });
-            });
-            const srcNodes = srcs.map((x, i) => { const y = spread(srcs.length, i); return `<g class="fn src ${x.kind}" data-flow="src|${esc(x.id)}" data-src="${esc(x.id)}" transform="translate(${SX},${(y - 11).toFixed(1)})"><rect width="${SW}" height="22" rx="5"></rect><text x="8" y="15">${esc(trunc(x.label, 30))}</text></g>`; }).join('');
-            const recNodes = recs.map((x, i) => { const y = spread(recs.length, i); return `<g class="fn rec" data-flow="rec|${esc(x.id)}" data-rec="${esc(x.id)}" transform="translate(${QX},${(y - 11).toFixed(1)})"><rect width="${QW}" height="22" rx="5"></rect><text x="8" y="15">${esc(trunc(x.name, 24))} ×${num(x.qty)}</text></g>`; }).join('');
-            const resNodes = rows.map((r, i) => {
-                const y = rowY(i), ok = r.perHour > 0, w = ok ? Math.max(2, BARW * r.hours / maxH) : 0;
-                // a non-raw line is either stopped at a stake processor's product or has no recipe with ingredients (Ink)
-                const kind = !r.res ? 'unknown' : r.res.category === 'raw' ? (r.res.stakeMinable ? 'stake' : 'fleetonly') : cov.stop.has(r.name) ? 'made' : 'norecipe';
-                const hint = kind === 'made' ? 'made by a stake processor' : kind === 'fleetonly' ? 'fleet only: no stake can extract it' : kind === 'unknown' ? 'not a resource in the export' : kind === 'norecipe' ? 'no recipe in the export makes it from ingredients' : 'stake or fleet';
-                return `<g class="fr${ok ? '' : ' none'}${ok && i === rows.findIndex(q => q.perHour > 0) ? ' last' : ''}" data-flow="res|${i}" data-res="${i}" transform="translate(${RX},${(y - RH / 2).toFixed(1)})"><title>${esc(r.name)}: need ${num(r.need)}${ok ? `, supply ${num(r.perHour)} per hour, gathered in ${dur(r.hours * 3600)}` : ', no source'} (${hint})</title>
-                    <rect class="bg" width="${NAMEW + BARW + VALW}" height="${RH - 3}" y="1.5" rx="4"></rect>
-                    <text class="nm" x="8" y="${RH / 2 + 4}">${r.res ? '' : '? '}${esc(trunc(r.name, 23))}</text>
-                    <rect class="trk" x="${NAMEW}" y="${RH / 2 - 4}" width="${BARW}" height="8" rx="2"></rect>
-                    ${ok ? `<rect class="bar" x="${NAMEW}" y="${RH / 2 - 4}" width="${w.toFixed(1)}" height="8" rx="2"></rect>` : ''}
-                    <text class="vl" x="${NAMEW + BARW + VALW - 8}" y="${RH / 2 + 4}" text-anchor="end">${ok ? dur(r.hours * 3600) : (kind === 'fleetonly' ? 'needs a fleet' : 'no source')}</text></g>`;
-            }).join('');
-            return `<section class="rx-panel cd-flowpanel">
-                <div class="rx-panel-head"><h3>Who supplies what</h3><span>${rows.length} bill lines · the bar is the time to gather that line at a ${dur(cov.tick)} tick, longest first · hover anything to trace it</span></div>
-                <div class="cd-flow-head"><span style="width:${(100 * (RX - 4) / W).toFixed(1)}%">Stakes and fleets</span><span style="width:${(100 * (QX - RX) / W).toFixed(1)}%">The bill: resource · time to gather</span><span>The plan</span></div>
-                <div class="cd-flow-wrap"><svg class="cd-flow" viewBox="0 0 ${W} ${H}" role="img" aria-label="Sources, bill lines and the recipes that need them">${links}${srcNodes}${resNodes}${recNodes}</svg></div>
-                <div class="ch-key"><span><i style="background:${SRC_COLOR.stake}"></i>claim stake</span><span><i style="background:${SRC_COLOR.fleet}"></i>mining fleet</span><span><i style="background:#ffb86b"></i>the line gathered last</span><span><i style="background:#ff7a6b"></i>no source</span></div>
-                ${cov.stop.size ? `<p class="rx-note">The bill stops at ${Array.from(cov.stop).map(esc).join(', ')}: a stake processor already makes ${cov.stop.size > 1 ? 'them' : 'it'}, so the ore behind ${cov.stop.size > 1 ? 'them' : 'it'} is not billed again.</p>` : ''}            </section>`;
+            const noStake = this.stakes.length ? '' : ' disabled title="Place a claim stake first (step 2)"';
+            return `<div class="cd-fleet-add"><span class="sb-muted">Each fleet has one job</span>
+                    <button type="button" class="sb-btn" data-fleet-add title="Mine one raw at one body and drop it off at a starbase">+ Mining fleet</button>
+                    <button type="button" class="sb-btn" data-run-add="haul"${noStake} title="Carry a stake's whole output to a starbase (default: your CSS, the market)">+ Haul run</button>
+                    <button type="button" class="sb-btn" data-run-add="supply"${noStake} title="Bring a stake the R4 - Fuel, Food, Ammunition, Repair Kits - it and the fleets based on it burn">+ R4 supply</button></div>
+                ${rows ? `<div class="cd-cards">${rows}</div>` : '<p class="rx-note">No fleet yet. A mining fleet is the only source for raws no stake can extract; a haul run and an R4 supply serve a stake from step 2.</p>'}
+                ${this.fleets.length ? '<p class="rx-note">Mining = hull rate × count × the body\'s richness; with a drop-off, the hold is flown there and back each cycle. The game also divides by a hardness the export does not list.</p>' : ''}`;
         }
 
         // ---- hab schedule (2026-10-08): one lane per job, crafts in dependency order, the critical path in gold
@@ -448,6 +485,7 @@
                 if (x.kind === 'stake') { R.stakeGate(x.tier).forEach(t => run.add(t)); x.prod.layout.items.forEach(it => R.buildingGate(it.b.id).forEach(t => run.add(t))); zone(x.planet, 'Building'); }
                 else { R.shipGate({ sizeTier: x.ship.size }).forEach(t => run.add(t)); const f = this.fleets.find(q => q.id === x.id); zone(f && this.se.planetByKey.get(f.body), 'Mining'); }
             });
+            this.fleets.filter(f => f.task === 'haul' || f.task === 'supply').forEach(f => { const s = this.empire.shipByName.get(f.ship); if (s) R.shipGate({ sizeTier: s.size }).forEach(t => run.add(t)); });   // haulers fly too
             const fp = this.empire.fleetPoints(this.fleets), ladder = R.fleetLadder(), top = ladder.length ? ladder[ladder.length - 1].cap : 0;
             const rung = fp.max ? R.fleetSizeFor(fp.max) || null : null;
             if (rung) rung.node.tags.forEach(t => run.add(t)); else if (fp.max > top && ladder.length) ladder[ladder.length - 1].node.tags.forEach(t => run.add(t));
@@ -465,9 +503,14 @@
             const owned = this.ctx.app && this.ctx.app.researchTab ? this.ctx.app.researchTab.owned : new Set(R.start ? [R.start.id] : []);
             const T = window.CommandDeck.ResearchModel.TRACK_BY_KEY;
             const line = (label, tags) => { if (!tags.size) return ''; const b = R.bill(R.closure(tags), owned); const lv = Object.entries(b.levels).filter(([, v]) => v > 0).sort((a, c) => (b.xp[c[0]] || 0) - (b.xp[a[0]] || 0)); return `<div class="cd-res-line"><h4>${label}</h4><div class="rx-facts"><div><b>${b.todo}</b><span>node${b.todo === 1 ? '' : 's'} to research</span></div><div><b>${num(b.atlas)}</b><span>ATLAS</span></div><div><b>${b.rows.filter(r => r.owned && r.node !== R.start).length}</b><span>already researched</span></div></div>${lv.length ? `<p class="rx-note">Levels: ${lv.map(([k, v]) => `${esc((T.get(k) || { label: k }).label)} L${v}${b.xp[k] != null ? ' (' + num(b.xp[k]) + ' XP)' : ''}`).join(', ')}.${b.levels.CouncilRank ? ' (Council Rank levels cost 1 XP each in the export.)' : ''}</p>` : ''}</div>`; };
+            // every node still to research (both lines, prerequisites included), one list per category, three columns
+            const todo = R.bill(R.closure(new Set([...run, ...craft])), owned).rows.filter(r => !r.owned && r.node !== R.start).map(r => r.node);
+            const cats = window.CommandDeck.ResearchModel.TRACKS.map(t => ({ t, nodes: todo.filter(n => n.track === t) })).filter(c => c.nodes.length);
+            const lists = cats.length ? `<div class="cd-res-cats">${cats.map(c => `<div class="cd-res-cat"><h4>${esc(c.t.label)} <small>${c.nodes.length}</small></h4><ul>${c.nodes.map(n => `<li>${esc(n.name)}${n.level[c.t.key] ? `<small>L${n.level[c.t.key]}</small>` : ''}</li>`).join('')}</ul></div>`).join('')}</div>` : '';
             return `<section class="rx-panel cd-res">
                 <div class="rx-panel-head"><h3>Research this needs</h3><span>from the gate map: stake tiers, every building placed, hull sizes, fleet size, zone access, and the plan's recipes</span><button type="button" class="sb-btn" data-show-research>Show on the tree</button></div>
                 <div class="cd-res-two">${line('To run the stakes and fleets', run)}${line('To craft the plan yourself', craft)}</div>
+                ${lists}
                 ${fleetNote}
                 ${zones.size ? `<p class="rx-note">Zone access counted for a ${Store.s.faction.toUpperCase()} player: ${Array.from(zones.values()).map(z => `${ZONE_TEXT[z.cls]} → ${esc(z.n.name)}`).join('; ')}. Several nodes grant the same access; the one on the activity's own track, or else the cheapest, is used.</p>` : ''}
             </section>`;

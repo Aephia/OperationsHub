@@ -423,5 +423,77 @@ check('A1 Ammo TTN T5 x1000: schedule + HTML under 2 s; axis lines (grid + end) 
 // A7: a belt's failed layout still has the fields a stake card reads
 check('A7 a belt layout: not ok, and hubs / crew fields present', () => (L => [L.ok, Array.isArray(L.hubs), L.ncq, L.crewNeed])(se.layout(se.planets.find(p => p.cat === 3), 2, {}, [])), [false, true, 0, 0]);
 
+// ---- 14. the Empire map (2026-10-26): galaxy distances and the operations ledger, re-derived here from the raw
+//          mapData and the export's flat stat row, without Galaxy or Loadout
+const { Galaxy } = window.CommandDeck;
+const GX = new Galaxy(D.planets), MAP = D.planets.mapData;
+const rawSb = MAP.filter(s => s.starbase && +s.starbase.tier > 0);
+check('M1 galaxy: every system, every starbase (tier > 0), and the three CSS by faction', [GX.systems.length, GX.starbases.length, ['ustur', 'mud', 'oni'].map(f => GX.css(f) && GX.css(f).name)], [MAP.length, rawSb.length, ['Eternity', 'Serene', 'Neuno']]);
+const hyp = (a, b) => Math.hypot(a.coordinates[0] - b.coordinates[0], a.coordinates[1] - b.coordinates[1]);
+const lone = MAP.find(s => !(s.starbase && +s.starbase.tier > 0) && (s.planets || []).length);
+const lonely = rawSb.map(s => ({ s, d: hyp(lone, s) })).sort((a, b) => a.d - b.d || a.s.name.localeCompare(b.s.name))[0];
+check('M2 nearest starbase to a system without one = a brute-force scan of mapData; a starbase system is its own (0 AU)', () => { const n = GX.nearestStarbase(lone.key), m = GX.nearestStarbase(rawSb[0].key); return [n.sys.key, Math.abs(n.d - lonely.d) < 1e-12, m.sys.key, m.d]; }, [lonely.s.key, true, rawSb[0].key, 0]);
+// a Tap pair mining Copper Ore on a copper body in a system with no starbase, dropping off at the nearest one
+const TAPROW = load('Data/combat-data.js').allShips.find(r => r['Ship Name'] === 'Armstrong IMP Tap');
+const cyc = (st, d, rich) => {                       // closed form: fill, then warp there and back (spool per jump, cooldown between jumps and once at the end), load twice
+    const jumps = d > 0 ? Math.ceil(d / st.max_warp_distance - 1e-9) : 0, fly = jumps * st.warp_spool_time + d / st.warp_speed + Math.max(0, jumps - 1) * st.warp_cool_down;
+    const trip = 2 * fly + 2 * st.cargo_capacity / st.loading_rate + (jumps ? st.warp_cool_down : 0), fill = rich ? st.cargo_capacity / (st.asteroid_mining_rate * rich) : 0;
+    return { jumps, trip, fill, cycle: fill + trip, fuel: 2 * st.warp_fuel_consumption * d + st.planet_exit_fuel };
+};
+const cuBody = se.planets.filter(p => p.deposits.has('copper-ore') && !(GX.byKey.get(p.sysKey).sb > 0)).sort((a, b) => a.key.localeCompare(b.key))[0];
+const cuDrop = GX.nearestStarbase(cuBody.sysKey), cuRich = cuBody.deposits.get('copper-ore').richness;
+const dDrop = hyp(MAP.find(s => s.key === cuBody.sysKey), MAP.find(s => s.key === cuDrop.sys.key));
+const statsFn = n => (LO.stats(n, null) || {}).mod;
+const OPS = empire.ops([{ id: 's1', key: cu.key, tier: 5, alloc: { 'copper-ore': 7 }, procs: [] }],
+    [{ id: 'm1', task: 'mine', ship: 'Armstrong IMP Tap', count: 2, raw: 'Copper Ore', body: cuBody.key, richness: cuRich, dest: cuDrop.sys.key },
+     { id: 'h1', task: 'haul', ship: 'Armstrong IMP Tap', count: 1, from: 's1', dest: GX.css('ustur').key },
+     { id: 'q1', task: 'supply', ship: 'Armstrong IMP Tap', count: 1, from: 's1', dest: GX.nearestStarbase(cu.sysKey).sys.key }],
+    { tick: 60, richness: false, galaxy: GX, stats: statsFn });
+const m1 = OPS.fleets.find(f => f.id === 'm1'), C1 = cyc(TAPROW, dDrop, cuRich);
+console.log(`      (M3: ${cuBody.name} x${cuRich} -> ${cuDrop.sys.name}, ${dDrop.toFixed(3)} AU, ${C1.jumps} jumps, cycle ${C1.cycle.toFixed(1)} s)`);
+check('M3 2 Taps mining with a drop-off: delivered / h = 2 x hold x 3600 / cycle (closed form from the flat stat row)', m1.perHour, 2 * TAPROW.cargo_capacity * 3600 / C1.cycle, 1e-9);
+check('  fuel / h = 2 x (2 x warp fuel x d + planet exit) x 3600 / cycle; food / h = 2 x food rate x fill x 3600 / cycle', [m1.fuel, m1.food], [2 * C1.fuel * 3600 / C1.cycle, 2 * TAPROW.asteroid_mining_food_rate * C1.fill * 3600 / C1.cycle], 1e-9);
+check('  the distance is the straight line between the two systems', m1.d, dDrop, 1e-12);
+const covM = empire.coverage(prmItems, [], [{ id: 'm1', task: 'mine', ship: 'Armstrong IMP Tap', count: 2, raw: 'Copper Ore', body: cuBody.key, richness: cuRich, dest: cuDrop.sys.key }, { id: 'h1', task: 'haul', ship: 'Armstrong IMP Tap', raw: 'Copper Ore', count: 9 }], { tick: 60, richness: false, fleetPerSec: f => { const r = OPS.fleets.find(x => x.id === f.id); return r && r.dest ? r.perHour / 3600 : null; } });
+check('M4 coverage takes the delivered rate for a fleet with a drop-off, and a hauler supplies nothing', covM.rows.find(r => r.name === 'Copper Ore').perHour, m1.perHour, 1e-12);
+check('  without the hook a mining fleet keeps its rate at the body (2 x 19.192 x richness x 3600)', empire.coverage(prmItems, [], [{ id: 'x', ship: 'Armstrong IMP Tap', count: 2, raw: 'Copper Ore', richness: cuRich }], { tick: 60 }).rows.find(r => r.name === 'Copper Ore').perHour, 2 * 19.192 * cuRich * 3600, 1e-9);
+// the T5 copper stake (7 extractors, 34.02 / tick + the hub's copper, storage 207,500, fuel 114.44 / tick in the audit)
+const S1 = OPS.stakes[0], h1 = OPS.fleets.find(f => f.id === 'h1'), q1 = OPS.fleets.find(f => f.id === 'q1');
+const CH = cyc(TAPROW, hyp(MAP.find(s => s.key === cu.sysKey), MAP.find(s => s.key === GX.css('ustur').key)), 0);
+check('M5 the stake makes at least 34.02 x 60 / h of copper, stores 207,500 and burns 114.44 fuel / tick', [S1.out >= 34.02 * 60 - 1e-9, S1.storage, Math.abs(S1.fuel / 60 - 114.44) < 0.005], [true, 207500, true]);
+check('  a Tap hauling it to Eternity can move hold x 3600 / round trip', h1.cap, TAPROW.cargo_capacity * 3600 / CH.trip, 1e-9);
+check('  it flies only for what is there: moves min(capacity, made)', h1.perHour, Math.min(h1.cap, S1.out), 1e-12);
+check('  and burns (2 x warp fuel x d + exit) / hold for every unit it moves', h1.fuel, Math.min(h1.cap, S1.out) * CH.fuel / TAPROW.cargo_capacity, 1e-9);
+check('  backlog = made - capacity (0 here), never full', [S1.backlog, S1.fullIn === Infinity], [Math.max(0, S1.out - h1.cap), S1.out <= h1.cap]);
+// R4 supply (2026-10-26): the stake's base needs its own fuel + its haulers' fuel (+ miners dropping off in its system)
+const baseMiners = OPS.fleets.filter(f => f.task === 'mine' && f.dest && f.dest.key === cu.sysKey);
+check('  R4 supply: the base needs stake fuel + hauler fuel (+ miners that drop off in its system), no Repair Kit', [S1.r4.need.Fuel, S1.r4.need.Food, S1.r4.need.Ammunition, S1.r4.need['Repair Kit']].map(v => Math.round(v * 1e6) / 1e6), [S1.fuel + h1.fuel + baseMiners.reduce((a, f) => a + f.fuel, 0), baseMiners.reduce((a, f) => a + f.food, 0), baseMiners.reduce((a, f) => a + f.ammo, 0), 0].map(v => Math.round(v * 1e6) / 1e6));
+check('  and the run brings all of it when its capacity is larger; the gaps are 0', [q1.cap >= S1.r4.total, Math.abs(q1.perHour - S1.r4.total) < 1e-9, S1.r4.gap, S1.fuelGap], [true, true, 0, 0]);
+// a mining pair dropping off IN the stake's system makes the stake its base: food (and fuel) join the need, and a run
+// too small for it brings every basic in the same share
+check('  a miner based at the stake adds its fuel and food; a short run brings each basic in the same share', () => {
+    const o = empire.ops([{ id: 's1', key: cu.key, tier: 5, alloc: { 'copper-ore': 7 }, procs: [] }],
+        [{ id: 'm', task: 'mine', ship: 'Armstrong IMP', count: 3, raw: 'Copper Ore', body: cu.key, richness: 1, dest: cu.sysKey },
+         { id: 'q', task: 'supply', ship: 'Armstrong IMP Tip', count: 1, from: 's1', dest: GX.css('ustur').key }], { tick: 60, richness: false, galaxy: GX, stats: statsFn });
+    const s = o.stakes[0], m = o.fleets[0], q = o.fleets[1], need = s.r4.need, b = s.r4.brought;
+    const ratios = ['Fuel', 'Food'].map(k => b[k] / need[k]);
+    return [Math.abs(need.Fuel - (s.fuel + m.fuel)) < 1e-6, Math.abs(need.Food - m.food) < 1e-6, m.base === s, q.cap < s.r4.total, Math.abs(ratios[0] - ratios[1]) < 1e-12, Math.abs(ratios[0] - q.cap / s.r4.total) < 1e-12, Math.abs(s.r4.gap - (s.r4.total - q.cap)) < 1e-6];
+}, [true, true, true, true, true, true, true]);
+check('  two haulers on one stake share its output by capacity (Tap + Tip: each busy the same share)', () => { const o = empire.ops([{ id: 's1', key: cu.key, tier: 5, alloc: { 'copper-ore': 7 }, procs: [] }], [{ id: 'a', task: 'haul', ship: 'Armstrong IMP Tap', count: 1, from: 's1', dest: GX.css('ustur').key }, { id: 'b', task: 'haul', ship: 'Armstrong IMP Tip', count: 1, from: 's1', dest: GX.css('ustur').key }], { tick: 60, richness: false, galaxy: GX, stats: statsFn }); const [a, b] = o.fleets; return [Math.abs(a.busy - b.busy) < 1e-12, Math.abs(a.perHour + b.perHour - o.stakes[0].out) < 1e-6, Math.abs(a.perHour / b.perHour - a.cap / b.cap) < 1e-9]; }, [true, true, true]);
+const FUEL = OPS.ledger.get('Fuel');
+check('M6 the ledger burns the stake\'s fuel plus every fleet\'s road fuel', FUEL.burned, S1.fuel + m1.fuel + h1.fuel + q1.fuel, 1e-12);
+check('  and makes the copper the stake (extractors + hub, 34.02 + hub per tick x 60) and the miners make', OPS.ledger.get('Copper Ore').made, (34.02 + hubCu) * 60 + m1.perHour, 1e-9);
+check('  a haul or supply run with no stake, or a drop-off off the map, moves nothing and burns nothing', (o => [o.fleets[0].perHour, o.fleets[0].fuel, o.fleets[1].perHour, o.fleets[1].dest])(empire.ops([], [{ id: 'a', task: 'haul', ship: 'Armstrong IMP Tap', from: 'nope', dest: GX.css('ustur').key }, { id: 'b', task: 'mine', ship: 'Armstrong IMP Tap', raw: 'Copper Ore', body: cuBody.key, richness: 1, dest: 'not-a-system' }], { tick: 60, galaxy: GX, stats: statsFn })), [0, 0, 19.192 * 3600, null]);
+load('CommandDeck/deck-map.js');
+// at a 60 s tick one Tap keeps up with the stake; at a 1 s tick (60x the output) it cannot
+check('M7 at a 60 s tick one Tap keeps up (no backlog, never full); at 1 s the backlog is 60 x the stake minus the Tap', () => { const o1 = empire.ops([{ id: 's1', key: cu.key, tier: 5, alloc: { 'copper-ore': 7 }, procs: [] }], [{ id: 'h1', task: 'haul', ship: 'Armstrong IMP Tap', count: 1, from: 's1', dest: GX.css('ustur').key }], { tick: 1, richness: false, galaxy: GX, stats: statsFn }); return [S1.backlog, S1.fullIn === Infinity, Math.abs(o1.stakes[0].backlog - (60 * S1.out - h1.cap)) < 1e-6, o1.fleets[0].busy]; }, [0, true, true, 1]);
+check('  the ledger page at 1 s: copper is no shortfall, fuel is, and the stake says how many more Taps keep up', () => {
+    const o1 = empire.ops([{ id: 's1', key: cu.key, tier: 5, alloc: { 'copper-ore': 7 }, procs: [] }], [{ id: 'h1', task: 'haul', ship: 'Armstrong IMP Tap', count: 1, from: 's1', dest: GX.css('ustur').key }], { tick: 1, richness: false, galaxy: GX, stats: statsFn });
+    const h = window.DeckEmpireMap.prototype.ledgerHTML.call({}, o1, empire.coverage([], [], [], { tick: 1 })).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+    const more = Math.ceil(o1.stakes[0].backlog / o1.fleets[0].cap - 1e-9);
+    console.log(`      (M7: backlog ${Math.round(o1.stakes[0].backlog)} / h, ${more} more Taps)`);
+    return [/Copper Ore\s*:/.test(h), /Fuel\s*: [\d,.]+ \/ h burned, none made/.test(h), new RegExp(`${more} more IMP Tap on that run would keep up`).test(h)];
+}, [false, true, true]);
+
 console.log(`\n${pass} PASS, ${fail} FAIL${SABOTAGE ? ' (sabotage run: failures are expected)' : ''}`);
 process.exit(fail ? 1 : 0);

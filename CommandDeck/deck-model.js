@@ -702,8 +702,86 @@
             return lanes;
         }
 
-        // stakes: [{id, key, tier, alloc, procs}], fleets: [{id, ship, count, raw (name), richness}]
+        // ---- operations (2026-10-26, the Empire map): what every stake and fleet makes, burns and moves, per hour.
+        // fleets carry a task: 'mine' (raw at body; dest = drop-off system key, '' = mined at the body, nothing hauled),
+        // 'haul' (a stake's whole output from the stake to dest) or 'supply' (R4 - Fuel, Food, Ammunition, Repair Kit -
+        // from dest to the stake, for everything based there; see R4 below).
+        // opts: { tick, richness, galaxy: Galaxy, stats: shipName -> flat stat row (Loadout) }
+        // A trip is Loadout.trip / Loadout.mine over the straight-line map distance between the two systems, read as AU
+        // (the export's speeds are AU/s; nothing states the map's unit). Cargo is counted 1 unit = 1 CU.
+        ops(stakes, fleets, opts) {
+            const o = Object.assign({ tick: 60, richness: true }, opts || {}), G = o.galaxy, LO = window.CommandDeck.Loadout;
+            const perHour = 3600 / o.tick, ledger = new Map();
+            const put = (name, field, v, who) => { if (!(v > 0)) return; const r = ledger.get(name) || ledger.set(name, { name, made: 0, burned: 0, by: [] }).get(name); r[field] += v; r.by.push({ who, field, v }); };
+            const stakeRows = (stakes || []).map(s => {
+                const planet = this.se.planetByKey.get(s.key); if (!planet) return null;
+                const p = this.se.production(planet, s.tier, s.alloc, s.procs, { richness: o.richness });
+                let out = 0; p.net.forEach((v, id) => { out += v * perHour; put(this.se.resName(id), 'made', v * perHour, `T${s.tier} ${planet.name}`); });
+                const fuel = p.fuel * perHour; put('Fuel', 'burned', fuel, `T${s.tier} ${planet.name} (power plants and hub)`);
+                return { id: s.id, label: `T${s.tier} ${planet.name}`, planet, tier: s.tier, out, fuel, storage: p.layout.storage, hauled: 0, supplied: 0, haulers: [], suppliers: [] };
+            }).filter(Boolean);
+            const stakeById = new Map(stakeRows.map(r => [r.id, r]));
+            const fleetRows = (fleets || []).map(f => {
+                const task = f.task === 'haul' || f.task === 'supply' ? f.task : 'mine', n = Math.max(1, +f.count || 1);
+                const st = o.stats ? o.stats(f.ship) : null, ship = this.shipByName.get(f.ship);
+                const row = { id: f.id, task, ship: f.ship, count: n, label: `${n} × ${String(f.ship).replace(/^Armstrong /, '')}`, perHour: 0, fuel: 0, food: 0, ammo: 0, d: null, trip: null, warn: [] };
+                if (task === 'mine') {
+                    const body = this.se.planetByKey.get(f.body); row.raw = f.raw; row.body = body || null;
+                    const dest = G && f.dest && G.byKey.get(f.dest);
+                    if (dest && body && st) {
+                        row.dest = dest; row.d = G.dist(body.sysKey, dest.key);
+                        const m = LO.mine(st, row.d, 'warp', f.richness || 1);
+                        if (m) { const cyc = n * 3600 / m.cycle; row.trip = m; row.perHour = st.cargo_capacity * cyc; row.fuel = m.fuel * cyc; row.food = m.food * cyc; row.ammo = m.ammo * cyc; if (!m.trip.tankOk) row.warn.push('one round trip burns more fuel than the tank holds'); }
+                    } else if (ship && body && f.raw) { row.perHour = ship.rate * n * (f.richness || 1) * 3600; row.food = ship.food * n * 3600; }
+                    if (f.raw) put(f.raw, 'made', row.perHour, row.label);
+                } else {
+                    const src = stakeById.get(f.from), dest = G && f.dest && G.byKey.get(f.dest);
+                    row.stake = src || null; row.dest = dest || null;
+                    row.cap = 0; row.busy = 0;
+                    if (src && dest && st) {
+                        row.d = G.dist(src.planet.sysKey, dest.key);
+                        const t = LO.trip(st, row.d, 'warp');
+                        if (t) { row.trip = t; row.cap = t.perHour * n; row.fuelPerUnit = t.fuelPerUnit; if (!t.tankOk) row.warn.push('one round trip burns more fuel than the tank holds'); }
+                        (task === 'haul' ? src.haulers : src.suppliers).push(row);
+                    }
+                }
+                if (task === 'mine') { put('Fuel', 'burned', row.fuel, row.label); put('Food', 'burned', row.food, row.label); put('Ammunition', 'burned', row.ammo, row.label); }
+                return row;
+            });
+            // a run flies only when there is cargo: the haulers of a stake share its output (the suppliers its R4 need)
+            // in proportion to their capacity, and burn fuel for what they move. What they cannot move fills the storage.
+            const share = (rows, need) => {
+                const cap = rows.reduce((a, r) => a + r.cap, 0), k = cap > 0 ? Math.min(1, need / cap) : 0;
+                rows.forEach(r => { r.busy = k; r.perHour = r.cap * k; r.fuel = r.perHour * (r.fuelPerUnit || 0); put('Fuel', 'burned', r.fuel, r.label); });
+                return { cap, moved: cap * k };
+            };
+            // R4 (owner, 2026-10-26: "all R4 supply"): the four basics - Fuel, Food, Ammunition, Repair Kit (the toolkit).
+            // A stake is the base of: its own buildings (fuel; the export lists no other stake upkeep), its haul runs
+            // (they refuel there) and every mining fleet whose drop-off is the stake's system (it restocks there). An R4
+            // supply run brings that base's need, its hold shared over the four by need. A fleet that drops off at a
+            // starbase restocks there instead: its R4 is in the ledger as burned, to buy at that starbase.
+            const baseOf = new Map(); stakeRows.forEach(r => { if (!baseOf.has(r.planet.sysKey)) baseOf.set(r.planet.sysKey, r); });
+            stakeRows.forEach(r => {
+                const h = share(r.haulers, r.out);
+                r.hauled = h.moved; r.haulCap = h.cap;
+                r.backlog = Math.max(0, r.out - h.cap);
+                r.fullIn = r.backlog > 0 && r.storage > 0 ? r.storage / r.backlog : Infinity;   // hours
+                r.r4 = { need: { Fuel: r.fuel + r.haulers.reduce((a, x) => a + x.fuel, 0), Food: 0, Ammunition: 0, 'Repair Kit': 0 }, from: [] };
+            });
+            fleetRows.forEach(f => { if (f.task !== 'mine' || !f.dest) return; const b = baseOf.get(f.dest.key); if (!b) return; f.base = b; b.r4.need.Fuel += f.fuel; b.r4.need.Food += f.food; b.r4.need.Ammunition += f.ammo; b.r4.from.push(f.label); });
+            stakeRows.forEach(r => {
+                const need = r.r4.need, total = R4.reduce((a, k) => a + need[k], 0), q = share(r.suppliers, total), k = total > 0 ? q.moved / total : 0;
+                r.r4.total = total; r.r4.brought = Object.fromEntries(R4.map(n => [n, need[n] * k])); r.r4.gap = Math.max(0, total - q.cap);
+                r.supplied = q.moved; r.supplyCap = q.cap;
+                r.fuelGap = Math.max(0, need.Fuel - r.r4.brought.Fuel);
+            });
+            const rows = Array.from(ledger.values()).map(r => Object.assign(r, { net: r.made - r.burned }));
+            return { stakes: stakeRows, fleets: fleetRows, rows, ledger, perHour };
+        }
+
+        // stakes: [{id, key, tier, alloc, procs}], fleets: [{id, ship, count, raw (name), richness, task?}]
         // tick: seconds per stake tick (INPUT - not in the data). Supply is returned per hour.
+        // fleetPerSec (optional): fleet -> units a second it delivers (the Empire map's mining cycle), else rate at the body
         coverage(items, stakes, fleets, opts) {
             const o = Object.assign({ tick: 60, richness: true }, opts || {});
             const perTickToHour = 3600 / o.tick;
@@ -717,8 +795,9 @@
                 sources.push({ id: s.id, kind: 'stake', label: `T${s.tier} ${planet.name}`, planet, tier: s.tier, prod: p, supply });
             });
             (fleets || []).forEach(f => {
-                const ship = this.shipByName.get(f.ship); if (!ship || !f.raw) return;
-                const perSec = ship.rate * (f.count || 1) * (f.richness || 1);
+                const ship = this.shipByName.get(f.ship); if (!ship || !f.raw || (f.task && f.task !== 'mine')) return;
+                const given = o.fleetPerSec ? o.fleetPerSec(f) : null;
+                const perSec = given != null ? given : ship.rate * (f.count || 1) * (f.richness || 1);
                 sources.push({ id: f.id, kind: 'fleet', label: `${f.count || 1} × ${ship.name.replace(/^Armstrong /, '')}`, ship, count: f.count || 1, perSec, supply: new Map([[f.raw, perSec * 3600]]) });
             });
             const x = this.expand(items, stop);
@@ -741,6 +820,32 @@
         }
     }
 
+    const R4 = ['Fuel', 'Food', 'Ammunition', 'Repair Kit'];          // the four basics (Hydrogen, Biomass, Copper Ore, Iron Ore)
+    Empire.R4 = R4;
+
+    // ------------------------------------------------------------------------------------------------- galaxy
+    // The map's systems (planet-data mapData): coordinates as exported (the page flips Y so north is up), territory
+    // (closestFaction), starbase tier (0 = no starbase; 6 = the faction's CSS, the one market).
+    class Galaxy {
+        constructor(planetData) {
+            const FAC = { MUD: 'mud', ONI: 'oni', UST: 'ustur', USTUR: 'ustur' };
+            this.systems = ((planetData && planetData.mapData) || []).filter(s => Array.isArray(s.coordinates)).map(s => ({
+                key: s.key, name: s.name || s.key, xy: s.coordinates, terr: FAC[String(s.closestFaction || s.faction || '').toUpperCase()] || null,
+                sb: (s.starbase && +s.starbase.tier) || 0, bodies: (s.planets || []).length, raw: s     // raw: star + planets (orbit, angle, scale) for the orrery
+            }));
+            this.byKey = new Map(this.systems.map(s => [s.key, s]));
+            this.starbases = this.systems.filter(s => s.sb > 0);
+        }
+        dist(a, b) { const p = this.byKey.get(a), q = this.byKey.get(b); return p && q ? Math.hypot(p.xy[0] - q.xy[0], p.xy[1] - q.xy[1]) : null; }
+        // the nearest system with a starbase of at least minTier (itself when it has one)
+        nearestStarbase(key, minTier) {
+            const t = minTier || 1; let best = null, bd = Infinity;
+            this.starbases.forEach(s => { if (s.sb < t) return; const d = this.dist(key, s.key); if (d < bd || (d === bd && s.name < best.name)) { bd = d; best = s; } });
+            return best ? { sys: best, d: bd } : null;
+        }
+        css(faction) { return this.systems.find(s => s.sb === 6 && s.terr === faction) || null; }
+    }
+
     // ----------------------------------------------------------------------------------- ships vs stakes maths
     // perTick: what the stake makes in one tick; perSec: what the ship mines in one second (same deposit, so richness
     // cancels). Everything else follows from the tick length.
@@ -751,5 +856,5 @@
         measuredTick(rate, richness, unitsPerHour) { return unitsPerHour > 0 ? 3600 * rate * richness / unitsPerHour : null; }
     };
 
-    window.CommandDeck = { ResearchModel, StakeEngine, Empire, Calc, slug, PT_NAME, PT_SLUG, FACTION, TRACKS, ATLAS_DECIMALS };
+    window.CommandDeck = { ResearchModel, StakeEngine, Empire, Galaxy, Calc, slug, PT_NAME, PT_SLUG, FACTION, TRACKS, ATLAS_DECIMALS };
 })();
