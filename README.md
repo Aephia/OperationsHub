@@ -361,7 +361,16 @@ configuration calculator. Four tabs, everything always visible, no Chart.js, no 
   resources` with the resources named from the export's cargo table, which `split-uber-export.js` now carries in
   `tokenNames`), then what it needs, what it is a gate of, and **Leads to**: the nodes that require it. A node the
   export names without a sentence or an effect says so instead of showing nothing. **My research** marks nodes
-  researched (localStorage): bills count only what is left and *Next nodes* ranks what is open by recipes gated.
+  researched (localStorage): bills count only what is left and *Research next* ranks what is open by recipes gated.
+  **Layout (2026-10-27): verdict-first, like Ships vs Stakes and Loadouts.** No stat tiles; the legend and the
+  method are in a *How to read the tree* fold. The side panel answers in words: a clicked node's card comes first
+  and scrolls in below the sticky header (*Open now: it costs 350 ATLAS and 1 Mining track point; needs Mining
+  level 1* / *Locked: research X first* / *Researched*); a goal reads *Framework T1: 11 nodes to research, 3,500
+  ATLAS, 11 track points* with the longest grind (the track level with the most XP - *Crafting to level 15: 2,180
+  XP*; a first level is 1 XP on every track and a Council Rank level 1 XP, so neither is ever called a grind), what to
+  research now, and what gathering adds, then the path list and folds (track levels and XP, where the raws come
+  from, why these nodes). *Research next* leads with one sentence (the node that completes the most recipes, else
+  gates the most); every ranking sentence has a tie branch; nodes that gate nothing are a link list, not empty bars.
   Links in: `?recipe=<outputId|name>` (the Recipe Explorer's sheet has a *Research path* button), `?building=<id>`,
   `?ship=<name>`, `?stake=<tier>`, `?hab=<id>`, `?node=<name>`
 - **Empire tab layout (2026-10-26): inputs first, then what they add up to.** Three fold-away steps - **1 What to

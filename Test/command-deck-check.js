@@ -495,5 +495,78 @@ check('  the ledger page at 1 s: copper is no shortfall, fuel is, and the stake 
     return [/Copper Ore\s*:/.test(h), /Fuel\s*: [\d,.]+ \/ h burned, none made/.test(h), new RegExp(`${more} more IMP Tap on that run would keep up`).test(h)];
 }, [false, true, true]);
 
+// ---- R. the Research side panel answers in words (2026-10-27): each sentence re-derived from the model here, every
+//    ranking sentence probed with a tie, the clicked node renders above the goal
+const rtxt = h => h.replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').replace(/ ([.,:;)])/g, '$1').trim();
+const rtab = (goal, owned, sel, m) => {
+    const t = Object.assign(Object.create(window.DeckResearchTab.prototype), { m: m || research, ctx: RTab.ctx, folds: {}, sel: sel || null, side: { innerHTML: '' }, goal: null });
+    t.owned = new Set([research.start.id].concat(owned || []));
+    if (goal) t.goal = t.makeGoal(goal[0], goal[1]);
+    t.tags = research.ownedTags(t.owned); t.path = t.pathSet(); return t;
+};
+const fw = rc.recipes.find(r => window.DeckUI.recipeLabel(r) === 'Framework T1');
+check('R1 Framework T1 goal: the headline is the bill (11 nodes, 3,500 ATLAS); the longest grind is the XP argmax, Crafting 15', () => {
+    const t = rtab(['recipe', fw.outputId]), b = research.bill(t.path, t.owned), h = rtxt(t.goalHTML());
+    let arg = null; for (const k in b.xp) if (b.levels[k] > 0 && b.xp[k] != null && (arg === null || b.xp[k] > b.xp[arg])) arg = k;
+    return [b.todo, b.atlas, arg, b.levels[arg], new RegExp(`Framework T1: ${b.todo} nodes to research, ${b.atlas.toLocaleString('en-US')} ATLAS, ${Object.values(b.points).reduce((a, v) => a + v, 0)} track points\\.`).test(h), new RegExp(`The longest grind is Crafting to level ${b.levels[arg]}: ${b.xp[arg].toLocaleString('en-US')} XP; the path also needs Mining 1\\.`).test(h)];
+}, [11, 3500, 'Crafting', 15, true, true]);
+check('  "Research now" names exactly the path nodes whose prerequisites are held, and how many of the todo', () => {
+    const t = rtab(['recipe', fw.outputId]), h = rtxt(t.goalHTML());
+    const open = Array.from(t.path).filter(n => n.hasData && !t.owned.has(n.id) && n.reqTags.every(x => t.tags.has(x)));
+    const said = (/Research now: (.*?) \((\d+) of (\d+) open; levels not checked\)/.exec(h) || []);
+    return [open.every(n => said[1] && said[1].includes(n.name)), +said[2] === open.length, +said[3]];
+}, [true, true, 11]);
+check('  stakes: "Gathering the raws adds 8 nodes (2,450 ATLAS); crafting alone is 3 nodes"; in hand: no gathering line, no raws fold', () => {
+    const S = window.DeckStore.s, was = S.gather, a = rtxt(rtab(['recipe', fw.outputId]).goalHTML());
+    S.gather = 'hand'; let b; try { b = rtab(['recipe', fw.outputId]).goalHTML(); } finally { S.gather = was; }
+    return [/Gathering the raws adds 8 nodes \(2,450 ATLAS\); crafting alone is 3 nodes\./.test(a), /Gathering/.test(rtxt(b)), /data-fold="rraws"/.test(b), /crafting research only/.test(b)];
+}, [true, false, false, true]);
+const fakeBill = xp => Object.assign(Object.create(research), { bill: () => ({ rows: [], todo: 2, levels: { Mining: 3, Crafting: 3 }, xp, points: {}, tokens: {}, atlas: 5 }) });
+check('  tie: two tracks at equal XP "tie as the longest grind", never a winner; unequal XP names the larger', () => {
+    const tie = rtxt(rtab(['stake', 3], null, null, fakeBill({ Mining: 100, Crafting: 100 })).goalHTML()), one = rtxt(rtab(['stake', 3], null, null, fakeBill({ Mining: 90, Crafting: 100 })).goalHTML());
+    return [/Mining to level 3 and Crafting to level 3 tie as the longest grind: 100 XP each\./.test(tie), /The longest grind is/.test(tie), /The longest grind is Crafting to level 3: 100 XP; the path also needs Mining 3\./.test(one)];
+}, [true, false, true]);
+// review 2026-10-27: level 1 is 1 XP on every track and Council Rank 1 XP a level - never "the longest grind"
+check('  copper-ore-extractor-t3 (levels Mining 1, Building 1, Council 1): no "longest grind", says none is a grind; Capital hull: no Council grind', () => {
+    const a = rtxt(rtab(['building', 'copper-ore-extractor-t3']).goalHTML()), cap = D.ships.ships.find(s => s.sizeTier === 'Capital' || /Capital/.test(s.sizeTier));
+    const c = cap ? rtxt(rtab(['ship', cap.name]).goalHTML()) : 'no capital hull';
+    return [/longest grind/.test(a), /none of them is a grind/.test(a), /Council Rank to level \d+: \d+ XP/.test(c), /longest grind/.test(rtxt(rtab(['recipe', fw.outputId]).goalHTML()))];
+}, [false, true, false, true]);
+check('  a goal node with no numbers says so, offers no "Mark the whole path", blames no prerequisite', () => {
+    const blank = research.nodes.find(n => !n.hasData), h = rtab(['node', blank.id]).goalHTML(), t = rtxt(h);
+    return [/the export names this node but gives it no numbers yet/.test(t), /data-act="own-path"/.test(h), /a prerequisite has no numbers/.test(t)];
+}, [true, false, false]);
+const openNow = owned => research.nodes.filter(n => n.hasData && !owned.has(n.id) && n.reqTags.every(x => research.ownedTags(owned).has(x)));
+check('R2 nothing marked: "None of the N open nodes is a gate of a recipe yet", N counted here', () => {
+    const t = rtab(), n = openNow(t.owned).length, h = rtxt(t.nextHTML(false));
+    return [n, new RegExp(`None of the ${n} open nodes is a gate of a recipe yet`).test(h), /0 nodes marked researched · \d+ of [\d,]+ recipes startable/.test(h)];
+}, [14, true, true]);
+check('  the Framework path held but Complex Crafting: the lead names the node that completes the most recipes, with its count', () => {
+    const cc = research.byName.get('Complex Crafting'), t0 = rtab(['recipe', fw.outputId]), held = Array.from(t0.path).filter(n => n !== cc).map(n => n.id);
+    const t = rtab(null, held), h = rtxt(t.nextHTML(false)), tags = research.ownedTags(t.owned);
+    const best = openNow(t.owned).map(n => [n, research.completes(n, tags)]).sort((a, b) => b[1] - a[1]), top = best[0][1], tied = best.filter(x => x[1] === top);
+    return [top > 0, tied.length === 1 ? h.includes(`${tied[0][0].name} starts the most recipes the moment you research it: ${top.toLocaleString('en-US')}.`) : / tie: each starts /.test(h)];
+}, [true, true]);
+check('  tie: two open nodes completing the same count "tie", one alone "starts the most"', () => {
+    const fake = (names, k) => Object.assign(Object.create(research), { completes: n => (names.includes(n.name) ? k : 0) });
+    const tie = rtxt(rtab(null, null, null, fake(['Freelance Miner', 'Freelance Crafter'], 5)).nextHTML(false)), one = rtxt(rtab(null, null, null, fake(['Freelance Miner'], 5)).nextHTML(false));
+    return [/(Freelance Miner and Freelance Crafter|Freelance Crafter and Freelance Miner) tie: each starts 5 recipes the moment you research it\./.test(tie), /starts the most/.test(tie), /Freelance Miner starts the most recipes the moment you research it: 5\./.test(one)];
+}, [true, false, true]);
+check('  none completes a recipe: equal gate counts "are each a gate of", one alone "is a gate of the most"', () => {
+    const fake = names => Object.assign(Object.create(research), { completes: () => 0, unlocks: n => Object.assign(research.unlocks(n), { recipes: names.includes(n.name) ? 7 : 0 }) });
+    const tie = rtxt(rtab(null, null, null, fake(['Freelance Miner', 'Freelance Crafter'])).nextHTML(false)), one = rtxt(rtab(null, null, null, fake(['Freelance Miner'])).nextHTML(false));
+    return [/(Freelance Miner and Freelance Crafter|Freelance Crafter and Freelance Miner) are each a gate of 7 recipes\./.test(tie), /gate of the most/.test(tie), /No open node starts a recipe on its own yet\. Freelance Miner is a gate of the most: 7 recipes\./.test(one)];
+}, [true, false, true]);
+check('R3 node cards: open says what it costs, locked names each missing prerequisite, the Starting Node is researched', () => {
+    const t = rtab(), mg = research.byName.get('Mining Gear - T1'), miss = mg.reqTags.filter(x => !t.tags.has(x)).map(x => research.nodeOfTag.get(x).name);
+    const lk = rtxt(t.nodeHTML(mg));
+    return [rtxt(t.nodeHTML(research.byName.get('Freelance Miner'))).includes('Open now: it costs 350 ATLAS and 1 Mining track point; needs Mining level 1.'), miss.length > 0 && miss.every(n => new RegExp(`Locked: research [^.]*${n.replace(/[-&]/g, '\\$&')}[^.]* first\\.`).test(lk)), rtxt(t.nodeHTML(research.start)).includes('Researched.')];
+}, [true, true, true]);
+check('  side order: the clicked node above the goal, "research next" folded; nothing chosen: the intro and an open panel', () => {
+    const a = rtab(['recipe', fw.outputId], null, research.byName.get('Freelance Miner').id); a.renderSide();
+    const b = rtab(); b.renderSide(); const s = a.side.innerHTML;
+    return [s.indexOf('cd-node') > -1 && s.indexOf('cd-node') < s.indexOf('cd-goal'), /data-fold="rnext"/.test(s), /cd-intro/.test(b.side.innerHTML), /data-fold="rnext"/.test(b.side.innerHTML)];
+}, [true, true, true, false]);
+
 console.log(`\n${pass} PASS, ${fail} FAIL${SABOTAGE ? ' (sabotage run: failures are expected)' : ''}`);
 process.exit(fail ? 1 : 0);

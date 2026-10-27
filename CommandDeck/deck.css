@@ -592,3 +592,34 @@ main { overflow-x: clip; }                                   /* a hover tooltip 
 .cd-fold > summary span { flex: 1 1 220px; min-width: 0; }
 @media (max-width: 560px) { .cd-fold > summary b { white-space: normal; } .cd-verdict.vs h2 { font-size: 1.25rem; } }
 .vs-lo-art { margin-top: 0.9rem; }
+
+/* Research tab, verdict-first (2026-10-27): the goal and the intro answer in words; folds hold the detail */
+.cd-verdict.rs { border-left-color: #ffd36b; margin-bottom: 0; padding: 0.9rem 1rem; }
+.cd-verdict.rs.cd-intro { border-left-color: var(--cyan); }
+.cd-verdict.rs h2 { font-size: 1.3rem; }
+.cd-verdict.rs h2 b { color: #ffd36b; }
+.cd-verdict.rs.cd-intro h2 { color: #fff; }
+.cd-verdict.rs li { font-size: 0.88rem; }
+.cd-verdict.rs .rx-link { font-size: inherit; }
+.cd-rs-ctx { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.35rem; }
+.cd-rs-ctx .cd-verdict-ctx { flex: 1 1 auto; min-width: 0; margin: 0; line-height: 1.5; }
+.cd-rs-ctx a { font-size: 0.78rem; color: var(--cyan); white-space: nowrap; }
+.cd-dim { color: var(--text-muted); }
+.cd-rs-gather { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.6rem; margin: 0.75rem 0 0.2rem; }
+.cd-rs-gather > span, .cd-rs-h, .cd-also > span { font-family: 'Orbitron', sans-serif; font-size: 0.58rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-dim); font-weight: 500; }
+.cd-rs-gather .chips { display: inline-flex; flex-wrap: wrap; gap: 0.3rem; }
+.cd-rs-gather small { flex-basis: 100%; font-size: 0.74rem; color: var(--text-muted); }
+.cd-rs-h { margin: 0.85rem 0 0; }
+.cd-step.go span { color: var(--ok); }
+.cd-rs-lead { margin: 0.1rem 0 0.6rem; font-size: 0.92rem; line-height: 1.45; color: var(--text-secondary); }
+.cd-rs-gates { margin: 0.55rem 0 0; font-size: 0.86rem; color: var(--text-secondary); }
+.cd-node .cd-title { margin-bottom: 0.45rem; }
+.cd-node .cd-state b { font-weight: 700; }
+.cd-also { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.75rem; margin: 0.4rem 0 0; font-size: 0.82rem; }
+.cd-also > span { flex-basis: 100%; }
+.cd-also .rx-link { display: inline-flex; align-items: center; gap: 0.3rem; }
+.cd-also .dot { margin: 0; }
+.cd-side .cd-fold { margin-bottom: 0; }
+.cd-research + .cd-fold { margin-top: 1rem; }
+.cd-fold .cd-legend { margin-bottom: 0.5rem; }
+.cd-verdict.rs .cd-steps { max-height: 440px; }
