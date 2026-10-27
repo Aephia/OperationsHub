@@ -440,6 +440,13 @@ configuration calculator. Four tabs, everything always visible, no Chart.js, no 
   page too; 3,756 components, 0 missing) applied to each hull's **flat stat row** (`Data/combat-data.js` `allShips`, 74
   snake_case keys - the keys the calculator modifies and the keys the combat formula reads), so one fitted row serves
   every view. The export's travel units are unstated, so every figure is a comparison under one reading.
+  **Layout (reworked 2026-10-26, as Ships vs Stakes):** the loadout cards carry the hull's art; every sub-tab opens
+  with a **verdict in words** (who wins, by how much, the runner-up facts; "they ... the same" when the values tie,
+  so a pair of fits that leave the scanner alone no longer crowns a winner), Haul and Mine draw **one chart** with a
+  toggle (Cargo an hour / Fuel per unit; Ore an hour / Time mining), the at-distance table follows, and the crossover
+  list, the stat table with the fit lists, Points by class, the raw bill and the method notes ("How this is worked
+  out", which also holds the combat formula buttons) are folds whose open state survives sub-tab switches. Fleet
+  Size is a select; an empty fleet shows no totals. Stat tiles and the Scan bar panels are gone.
   - **Haul:** cargo delivered an hour and fuel per unit against route length (log-log, 0.5-60 map units; each line a
     staircase that steps where that loadout needs one more jump), the at-distance table (jumps, times, cargo an hour,
     hold, fuel, trips a tank, gain over the bare hull), every crossover with its reason, the eleven hauling stats

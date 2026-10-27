@@ -161,7 +161,45 @@ const real = tc.lo.cost.bind(tc.lo); let n = 0;
 tc.lo.cost = st => { const c = real(st); if (n++ === 0) return Object.assign({}, c, { unpriced: [{ name: 'X', cls: '', tier: '' }], rawUnits: 1 }); return c; };
 const ch = safe(() => tc.cost(tc.rows()));
 tc.lo.cost = real;
-check('cheapest fit skips a configuration that is not fully priced (and says so)', [/cheapest fit in raw units: 1 /.test(ch), /not fully priced, left out/.test(ch)], [false, true]);
+check('cheapest fit skips a configuration that is not fully priced (and says so)', [/>A · [^<]*<\/b> is the cheapest fit/.test(ch), /not fully priced, left out/.test(ch)], [false, true]);
+check('  ... and names the priced one (B) instead', />B · [^<]*<\/b> is the cheapest fit/.test(ch), true);
+
+// ---- the Loadouts rework (2026-10-26): every sub-tab leads with a verdict in words
+console.log('-- Loadouts verdicts');
+const tv = mk({ d: 10, mode: 'warp' }); tv.cards(tv.rows());
+const vr = tv.rows(), trips = vr.map(r => Loadout.trip(r.st.mod, 10, 'warp')), ti = trips[0].perHour >= trips[1].perHour ? 0 : 1;
+const hv = safe(() => tv.haul(vr)), hHead = (hv.match(/<h2>([\s\S]*?)<\/h2>/) || [])[1] || '';
+check('haul verdict names the loadout with the most cargo an hour (re-derived from Loadout.trip)', new RegExp('>' + 'AB'[ti] + ' · ').test(hHead), true);
+check('  ... with its cargo an hour figure', (trips[ti].perHour >= 1e4 && trips[ti].perHour < 1e6 ? hHead.includes(`<b>${window.DeckUI.num(trips[ti].perHour / 1e3, 0)} k</b>`) : 'out of the k band: ' + trips[ti].perHour), true);
+check('haul draws ONE chart; the toggle switches it to fuel per unit', [(hv.match(/<svg /g) || []).length, /Cargo delivered an hour/.test(hv), safe(() => { tv.s.chart.haul = 'fuel'; const h = tv.haul(vr); tv.s.chart.haul = 'cargo'; return /Fuel burned per cargo unit/.test(h) && !/Cargo delivered an hour/.test(h); })], [1, true, true]);
+check('stats, flips and method sit in folds, closed by default', ['stats', 'flips', 'how'].map(k => new RegExp(`<details class="cd-fold" data-fold="${k}">`).test(hv)), [true, true, true]);
+const sv = safe(() => tv.scan(vr));
+check('scan: two loadouts that scan alike say so instead of naming a winner', [/They scan the same/.test(sv), /scans the most/.test(sv)], [true, false]);
+const over = fleetHtml([{ id: 'a', ship: 'Armstrong IMP Tap', cfg: 'Default', n: 30 }]);
+check('fleet over the cap says by how much in the verdict', /<h2><b>480<\/b> of 312 fleet points used - <b class="bad">168 over the cap<\/b>/.test(over), true);
+check('  an empty fleet shows no verdict, a fleet of one does (positive twin)', [/cd-verdict/.test(fh), /cd-verdict/.test(fleetHtml([{ id: 'a', ship: 'Armstrong IMP Tap', cfg: 'Default', n: 1 }]))], [false, true]);
+
+// ---- reviewer findings 2026-10-26: ties at the top, lead changes vs pairwise swaps, bare hull cost, fight even rule
+console.log('-- Loadouts verdicts: ties and duplicates');
+const head = h => (String(h).match(/<h2>([\s\S]*?)<\/h2>/) || [])[1] || 'NO VERDICT: ' + String(h).slice(0, 60);
+const dup = mk({ d: 10, mode: 'warp', loadouts: [{ ship: 'Armstrong IMP Tap', cfg: 'Cargo Boost Max' }, { ship: 'Armstrong IMP Tap', cfg: 'Cargo Boost Max' }, { ship: 'Armstrong IMP Tap', cfg: 'Fast Freight Max' }] }); dup.cards(dup.rows());
+const dh = head(safe(() => dup.haul(dup.rows()))), dm = head(safe(() => dup.mine(dup.rows()))), dc = head(safe(() => dup.cost(dup.rows())));
+check('A = B at the top: haul, mine and cost say they tie (never "1× B" or "0 % less")', [/A · [^<]*<\/b> and <b[^>]*>B · [^<]*<\/b> tie for the most cargo/.test(dh), /tie for the most ore/.test(dm), /tie for the cheapest fit/.test(dc), /1× B|0 % less/.test(dh + dm + dc)], [true, true, true, false]);
+// lead changes counted independently: argmax over 4,000 log-spaced lengths, a tie keeps the leader
+const leadCount = (rows, f) => { let cur = null, n = 0; for (let i = 0; i <= 4000; i++) { const x = 0.5 * Math.pow(120, i / 4000), v = rows.map(r => f(r.st.mod, x)), m = Math.max(...v), L = rows.filter((r, j) => Math.abs(v[j] - m) <= 1e-9 * Math.max(1, m)); if (cur && L.includes(cur)) continue; if (cur) n++; cur = L[0]; } return n; };
+const dupLead = leadCount(dup.rows(), (st, x) => Loadout.trip(st, x, 'warp').perHour);
+const said = +((safe(() => dup.haul(dup.rows())).match(/changes hands <b>(\d+)<\/b>/) || [])[1]);
+check('haul "lead changes hands N times" = an independent argmax count, not the pairwise swaps', [said, said === dupLead, dupLead > 0], [dupLead, true, true]);
+const bare = mk({ loadouts: [{ ship: 'Busan Pulse', cfg: 'Default' }, { ship: 'Armstrong IMP Tap', cfg: 'Cargo Boost Max' }] }); bare.cards(bare.rows());
+const bc = safe(() => bare.cost(bare.rows()));
+check('a bare hull (nothing fitted) is the cheapest fit at 0, not "not fully priced"', [/>A · [^<]*<\/b> is the cheapest fit: nothing fitted/.test(head(bc)), /not fully priced/.test(bc)], [true, false]);
+const tri = mk({ fights: 200, loadouts: [{ ship: 'Armstrong IMP Tap', cfg: 'Default' }, { ship: 'Armstrong IMP Tap', cfg: 'Default' }, { ship: 'Armstrong IMP Tap', cfg: 'Default' }] }); tri.cards(tri.rows());
+// owner 2026-10-26: "VZUS ballad vs IMP Tap shows nothing in Where the ranking flips" - correct (the ballad hauls
+// more at every length, the Tap mines more), so the empty fold is hidden and the verdict says the lead holds
+const bal = (mode, sub) => { const t = mk({ d: 10, mode, loadouts: [{ ship: 'VZUS ballad', cfg: 'Default' }, { ship: 'Armstrong IMP Tap', cfg: 'Default' }] }); t.cards(t.rows()); return safe(() => t[sub](t.rows())); };
+const balHaul = bal('warp', 'haul'), balMineSub = bal('subwarp', 'mine');
+check('ballad vs Tap, warp haul: no flips fold, the verdict says the lead holds; subwarp mine (1 real flip) keeps its fold', [/data-fold="flips"/.test(balHaul), /lead on cargo an hour holds at every length/.test(balHaul), /data-fold="flips"/.test(balMineSub), /changes hands <b>1<\/b> time/.test(balMineSub)], [false, true, true, true]);
+check('fight: three identical loadouts give "No clear winner", never a winner over its own twin', [/No clear winner/.test(head(safe(() => tri.fight(tri.rows())))), /wins most often/.test(head(safe(() => tri.fight(tri.rows()))))], [true, false]);
 
 console.log(`\n${pass} PASS, ${fail} FAIL${oldArg ? ' (run against ' + SRC + ': failures are expected)' : ''}`);
 process.exit(fail ? 1 : 0);

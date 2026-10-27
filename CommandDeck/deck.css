@@ -568,3 +568,27 @@ main { overflow-x: clip; }                                   /* a hover tooltip 
 .cd-extstep button:hover:not(:disabled) { background: rgba(79, 216, 255, 0.3); }
 .cd-extstep button:disabled { opacity: 0.25; cursor: default; }
 .cd-duel-card dd small { font-size: 0.76rem; color: var(--text-muted); }
+/* Loadouts (reworked 2026-10-26): the answer in words per sub-tab, one chart with a toggle, the rest folded */
+.cd-verdict.vs { border-left-color: var(--c, var(--cyan)); }
+.cd-verdict.vs h2 { font-size: 1.45rem; }
+.cd-verdict.vs h2 b, .cd-verdict.vs li b { color: #fff; }
+.cd-verdict.vs h2 b.vs-who, .cd-verdict.vs li b.vs-who { font-weight: 700; }
+.cd-verdict.vs.over { border-left-color: var(--warn); }
+.cd-verdict.vs .bad, .cd-verdict.vs b.bad { color: var(--warn); }
+.vs-onechart .an-head { justify-content: flex-start; margin-bottom: 0.4rem; }
+.vs-grid.one { grid-template-columns: minmax(0, 1fr); }
+.cd-fold .vs-stats { width: auto; min-width: min(100%, 680px); }
+.cd-fold .vs-fits { margin-bottom: 0.4rem; }
+.vs-how { max-width: 980px; line-height: 1.5; }
+.vs-pairs-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.6rem; }
+.vs-pairs-head .vs-h { margin: 0; }
+.vs-lo { grid-template-columns: 26px minmax(0, 1fr) 78px; grid-template-areas: "l ship art" "l cfg art" "l meta meta"; }
+.vs-lo-art { grid-area: art; display: flex; align-items: center; justify-content: center; min-height: 60px; border-radius: 8px; background: radial-gradient(circle at 50% 45%, rgba(79, 216, 255, 0.1), transparent 70%); }
+.vs-lo-art img { max-width: 78px; max-height: 64px; object-fit: contain; filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.6)); }
+.vs-lo .vs-x { z-index: 1; }
+.vs-tiersel { width: auto; padding: 0.35rem 0.6rem; }
+.vs-costs { margin-bottom: 1rem; }
+.cd-fold > summary { flex-wrap: wrap; row-gap: 0.2rem; }
+.cd-fold > summary span { flex: 1 1 220px; min-width: 0; }
+@media (max-width: 560px) { .cd-fold > summary b { white-space: normal; } .cd-verdict.vs h2 { font-size: 1.25rem; } }
+.vs-lo-art { margin-top: 0.9rem; }
