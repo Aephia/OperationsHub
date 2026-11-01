@@ -1,0 +1,841 @@
+{
+ "Fimbul Airbike": {
+  "file": "fimbul-airbike.glb",
+  "tris": 13132,
+  "bytes": 357052,
+  "source": "RawAssets/ShipsModels/Fimbul/Fimbul/Classic/Airbike/XXS_FBL_Airbike_LowRes.fbx",
+  "sternHint": "-z",
+  "mounts": [
+   [
+    0.39286,
+    -0.20443,
+    1.57442
+   ],
+   [
+    -0.39286,
+    -0.20443,
+    1.57442
+   ]
+  ]
+ },
+ "Fimbul ECOS Unibomba": {
+  "file": "fimbul-ecos-unibomba.glb",
+  "tris": 13288,
+  "bytes": 374156,
+  "source": "RawAssets/ShipsModels/Fimbul/Fimbul/ECOS/Unibomba/XXS_FBL_Unibomba_LowRes.fbx"
+ },
+ "Opal Jet": {
+  "file": "opal-jet.glb",
+  "tris": 10506,
+  "bytes": 338084,
+  "source": "RawAssets/ShipsModels/Opal/Opal/Jet/XXS_OPL_Jet_LowRes.fbx",
+  "sternHint": "-z",
+  "mounts": [
+   [
+    0.0,
+    -1.48731,
+    7.67002
+   ]
+  ]
+ },
+ "Pearce X4": {
+  "file": "pearce-x4.glb",
+  "tris": 8153,
+  "bytes": 322096,
+  "source": "RawAssets/ShipsModels/Pearce/Pearce/X4/XSM_PRC_X4_Light_LowRes.fbx",
+  "sternHint": "-z",
+  "mounts": [
+   [
+    0.50738,
+    -0.03709,
+    0.71953
+   ],
+   [
+    -0.50738,
+    -0.03709,
+    0.71953
+   ]
+  ]
+ },
+ "VZUS solos": {
+  "file": "vzus-solos.glb",
+  "tris": 10395,
+  "bytes": 345852,
+  "source": "RawAssets/ShipsModels/VZUS/VZUS/Solos/XXS_VUS_Solos_LowRes.fbx",
+  "sternHint": "-z",
+  "mounts": [
+   [
+    -0.17399,
+    0.09099,
+    2.77977
+   ],
+   [
+    0.17299,
+    0.09099,
+    2.77977
+   ]
+  ]
+ },
+ "Calico Scud": {
+  "file": "calico-scud.glb",
+  "tris": 21072,
+  "bytes": 408712,
+  "source": "RawAssets/ShipsModels/Calico/Calico/Scud/XSM_CLC_Scud_LowRes.fbx",
+  "mounts": [
+   [
+    0.0,
+    -0.00111,
+    5.64748
+   ]
+  ]
+ },
+ "Fimbul Lowbie": {
+  "file": "fimbul-lowbie.glb",
+  "tris": 20241,
+  "bytes": 335848,
+  "source": "RawAssets/ShipsModels/Fimbul/Fimbul/Classic/Lowbie/XSM_FBL_Lowbie_LowRes.fbx",
+  "sternHint": "-z"
+ },
+ "Ogrika Niruch": {
+  "file": "ogrika-niruch.glb",
+  "tris": 19967,
+  "bytes": 304996,
+  "source": "RawAssets/ShipsModels/Ogrika/Ogrika/Niruch/XS_Niruch_LowRes.fbx"
+ },
+ "Opal Jetjet": {
+  "file": "opal-jetjet.glb",
+  "tris": 8722,
+  "bytes": 286788,
+  "source": "RawAssets/ShipsModels/Opal/Opal/JetJet/XSM_OPL_JetJet_LowRes.fbx",
+  "sternHint": "-z",
+  "mounts": [
+   [
+    1.49994,
+    -0.14849,
+    8.09768
+   ],
+   [
+    -1.49994,
+    -0.14849,
+    8.09768
+   ]
+  ]
+ },
+ "Pearce X5": {
+  "file": "pearce-x5.glb",
+  "tris": 23594,
+  "bytes": 468160,
+  "source": "RawAssets/ShipsModels/Pearce/Pearce/X5/XSM_PRC_X5_LowRes.fbx",
+  "mounts": [
+   [
+    1.7662,
+    -0.38044,
+    -5.2696
+   ],
+   [
+    -1.76758,
+    -0.38044,
+    -5.27237
+   ],
+   [
+    1.77794,
+    -0.38044,
+    5.59619
+   ],
+   [
+    -1.77449,
+    -0.38044,
+    5.5955
+   ]
+  ]
+ },
+ "Armstrong IMP Tip": {
+  "file": "armstrong-imp-tip.glb",
+  "tris": 25015,
+  "bytes": 687180,
+  "source": "RawAssets/ShipsModels/Armstrong/Armstrong/IMP Tip/ARM_IMP_TIP_LowRes.fbx",
+  "sternHint": "-x"
+ },
+ "Busan Thrill of Life": {
+  "file": "busan-thrill-of-life.glb",
+  "tris": 24892,
+  "bytes": 510364,
+  "source": "RawAssets/ShipsModels/Busan/Busan/ThrillOfLife/SML_BSN_ThrillOfLife_LowRes.fbx",
+  "mounts": [
+   [
+    5.55248,
+    -3.2117,
+    9.07714
+   ],
+   [
+    -5.55248,
+    -3.2117,
+    9.07714
+   ]
+  ]
+ },
+ "Calico Medtech": {
+  "file": "calico-medtech.glb",
+  "tris": 21358,
+  "bytes": 405532,
+  "source": "RawAssets/ShipsModels/Calico/Calico/MedTech/SML_CLC_MedTech_LowRes.fbx",
+  "sternHint": "-z",
+  "mounts": [
+   [
+    0.0,
+    0.51552,
+    13.25866
+   ]
+  ]
+ },
+ "Ogrika Mik": {
+  "file": "ogrika-mik.glb",
+  "tris": 19025,
+  "bytes": 336356,
+  "source": "RawAssets/ShipsModels/Ogrika/Ogrika/Mik/SML_OKA_Mik_LowRes.fbx",
+  "mounts": [
+   [
+    -0.004,
+    -1.74292,
+    11.68044
+   ]
+  ]
+ },
+ "Opal Rayfam": {
+  "file": "opal-rayfam.glb",
+  "tris": 15708,
+  "bytes": 258368,
+  "source": "RawAssets/ShipsModels/Opal/Opal/Rayfam/SML_OPL_Rayfam_LowRes.fbx",
+  "sternHint": "-z",
+  "mounts": [
+   [
+    1.76916,
+    -2.16019,
+    14.60128
+   ],
+   [
+    -1.76916,
+    -2.16019,
+    14.60128
+   ]
+  ]
+ },
+ "Pearce X6": {
+  "file": "pearce-x6.glb",
+  "tris": 27598,
+  "bytes": 457148,
+  "source": "RawAssets/ShipsModels/Pearce/Pearce/X6/SML_PRC_X6_LowRes.fbx"
+ },
+ "Rainbow Chi": {
+  "file": "rainbow-chi.glb",
+  "tris": 1498,
+  "bytes": 49168,
+  "source": "RawAssets/ShipsModels/Rainbow/Rainbow/Chi/SML_RBW_Chi_LowRes.fbx",
+  "sternHint": "-z"
+ },
+ "Tufa Feist": {
+  "file": "tufa-feist.glb",
+  "tris": 17264,
+  "bytes": 282904,
+  "source": "RawAssets/ShipsModels/Tufa/Tufa/Feist/SML_TFA_Feist_LowRes.fbx",
+  "sternHint": "-z",
+  "mounts": [
+   [
+    -2.471,
+    -1.114,
+    6.366
+   ],
+   [
+    2.242,
+    -0.826,
+    5.633
+   ],
+   [
+    -0.034,
+    -3.248,
+    9.992
+   ]
+  ]
+ },
+ "VZUS ambwe": {
+  "file": "vzus-ambwe.glb",
+  "tris": 11631,
+  "bytes": 250620,
+  "source": "RawAssets/ShipsModels/VZUS/VZUS/Ambwe/SML_VUS_Ambwe_LowRes.fbx"
+ },
+ "Calico ATS Enforcer": {
+  "file": "calico-ats-enforcer.glb",
+  "tris": 24863,
+  "bytes": 491468,
+  "source": "RawAssets/ShipsModels/Calico/Calico/Enforcer/MED_CLC_Enforcer_LowRes.fbx",
+  "mounts": [
+   [
+    0.0,
+    -6.22853,
+    45.7482
+   ],
+   [
+    8.54104,
+    -3.27451,
+    21.05109
+   ],
+   [
+    -8.54104,
+    -3.27451,
+    21.05109
+   ]
+  ]
+ },
+ "Calico Compakt Hero": {
+  "file": "calico-compakt-hero.glb",
+  "tris": 19988,
+  "bytes": 387396,
+  "source": "RawAssets/ShipsModels/Calico/Calico/CompaktHero/MED_CLC_CompaktHero_LowRes.fbx",
+  "sternHint": "-z",
+  "mounts": [
+   [
+    11.29711,
+    1.30917,
+    -1.20479
+   ],
+   [
+    -11.29711,
+    1.30917,
+    -1.20479
+   ]
+  ]
+ },
+ "Calico Evac": {
+  "file": "calico-evac.glb",
+  "tris": 32274,
+  "bytes": 622832,
+  "source": "RawAssets/ShipsModels/Calico/Calico/Evac/MED_CLC_Evac_LowRes.fbx",
+  "sternHint": "-z",
+  "mounts": [
+   [
+    -1.29651,
+    2.70353,
+    18.15068
+   ],
+   [
+    1.30351,
+    2.70353,
+    18.15068
+   ]
+  ]
+ },
+ "Fimbul BYOS Packlite": {
+  "file": "fimbul-byos-packlite.glb",
+  "tris": 21721,
+  "bytes": 390052,
+  "source": "RawAssets/ShipsModels/Fimbul/Fimbul/BYOS/Packlite/MED_FBL_Packlite_LowRes.fbx",
+  "mounts": [
+   [
+    -4.0661,
+    6.45916,
+    18.52146
+   ],
+   [
+    0.43401,
+    6.34216,
+    18.52146
+   ]
+  ]
+ },
+ "Fimbul Mamba EX": {
+  "file": "fimbul-mamba-ex.glb",
+  "tris": 27622,
+  "bytes": 545268,
+  "source": "RawAssets/ShipsModels/Fimbul/Fimbul/Classic/Mamba/MED_FBL_Mamba_LowRes.fbx",
+  "sternHint": "-z",
+  "mounts": [
+   [
+    5.18302,
+    -0.4025,
+    20.00808
+   ],
+   [
+    -5.18302,
+    -0.4025,
+    20.00808
+   ]
+  ]
+ },
+ "Fimbul Mamba": {
+  "file": "fimbul-mamba-ex.glb",
+  "tris": 27622,
+  "bytes": 545268,
+  "source": "RawAssets/ShipsModels/Fimbul/Fimbul/Classic/Mamba/MED_FBL_Mamba_LowRes.fbx",
+  "sternHint": "-z",
+  "mounts": [
+   [
+    5.18302,
+    -0.4025,
+    20.00808
+   ],
+   [
+    -5.18302,
+    -0.4025,
+    20.00808
+   ]
+  ]
+ },
+ "Ogrika Tursic": {
+  "file": "ogrika-tursic.glb",
+  "tris": 21825,
+  "bytes": 406704,
+  "source": "RawAssets/ShipsModels/Ogrika/Ogrika/Tursic/MED_OKA_Tursic_LowRes.fbx",
+  "mounts": [
+   [
+    0.0,
+    -4.39398,
+    75.99066
+   ]
+  ]
+ },
+ "Pearce F4": {
+  "file": "pearce-f4.glb",
+  "tris": 10756,
+  "bytes": 385924,
+  "source": "RawAssets/ShipsModels/Pearce/Pearce/F4/MED_PRC_F4_LowRes.fbx",
+  "sternHint": "-z",
+  "mounts": [
+   [
+    8.23499,
+    -2.4395,
+    11.78249
+   ],
+   [
+    -8.28099,
+    -2.4395,
+    11.78249
+   ]
+  ]
+ },
+ "Rainbow Om": {
+  "file": "rainbow-om.glb",
+  "tris": 5592,
+  "bytes": 210424,
+  "source": "RawAssets/ShipsModels/Rainbow/Rainbow/Om/MED_RBW_Om_LowRes.fbx",
+  "sternHint": "-z",
+  "mounts": [
+   [
+    0.0,
+    0.0,
+    17.09464
+   ]
+  ]
+ },
+ "VZUS opod": {
+  "file": "vzus-opod.glb",
+  "tris": 18143,
+  "bytes": 373868,
+  "source": "RawAssets/ShipsModels/VZUS/VZUS/Opod/MED_VUS_Opod_LowRes.fbx",
+  "sternHint": "-z",
+  "mounts": [
+   [
+    -0.163,
+    -4.30641,
+    21.99654
+   ]
+  ]
+ },
+ "Fimbul ECOS Greenader": {
+  "file": "fimbul-ecos-greenader.glb",
+  "tris": 25570,
+  "bytes": 462420,
+  "source": "RawAssets/ShipsModels/Fimbul/Fimbul/ECOS/Greenader/LRG_FBL_Greenader_LowRes.fbx",
+  "sternHint": "-z",
+  "mounts": [
+   [
+    -0.99994,
+    19.1694,
+    22.86218
+   ],
+   [
+    -0.19999,
+    22.5602,
+    -7.63606
+   ],
+   [
+    -1.29993,
+    14.97464,
+    -16.13557
+   ]
+  ]
+ },
+ "Ogrika Sunpaa": {
+  "file": "ogrika-sunpaa.glb",
+  "tris": 25732,
+  "bytes": 406380,
+  "source": "RawAssets/ShipsModels/Ogrika/Ogrika/Sunpaa/LRG_OKA_Sunpaa_LowRes.fbx",
+  "sternHint": "-z",
+  "mounts": [
+   [
+    0.0,
+    1.9416,
+    64.0202
+   ]
+  ]
+ },
+ "Ogrika Thripid": {
+  "file": "ogrika-thripid.glb",
+  "tris": 22137,
+  "bytes": 389076,
+  "source": "RawAssets/ShipsModels/Ogrika/Ogrika/Thripid/LRG_OKA_Thripid_LowRes.fbx",
+  "mounts": [
+   [
+    0.0,
+    11.18105,
+    84.72737
+   ],
+   [
+    0.0,
+    -7.45903,
+    84.72737
+   ]
+  ]
+ },
+ "Opal Bitboat": {
+  "file": "opal-bitboat.glb",
+  "tris": 12320,
+  "bytes": 318088,
+  "source": "RawAssets/ShipsModels/Opal/Opal/Bitboat/LRG_OPL_Bitboat_LowRes.fbx",
+  "sternHint": "-z",
+  "mounts": [
+   [
+    0.0,
+    0.918,
+    60.0
+   ]
+  ]
+ },
+ "Pearce R8": {
+  "file": "pearce-r8.glb",
+  "tris": 20083,
+  "bytes": 401636,
+  "source": "RawAssets/ShipsModels/Pearce/Pearce/R8/LRG_PRC_R8_LowRes.fbx",
+  "sternHint": "-z",
+  "mounts": [
+   [
+    15.23325,
+    -9.11065,
+    73.38321
+   ],
+   [
+    -15.23325,
+    -9.11065,
+    73.38321
+   ]
+  ]
+ },
+ "Rainbow Arc": {
+  "file": "rainbow-arc.glb",
+  "tris": 4380,
+  "bytes": 224524,
+  "source": "RawAssets/ShipsModels/Rainbow/Rainbow/Arc/LRG_ RBW_Arc_LowRes.fbx",
+  "sternHint": "-z",
+  "mounts": [
+   [
+    0.0,
+    4.50006,
+    59.32074
+   ]
+  ]
+ },
+ "Armstrong IMP": {
+  "file": "armstrong-imp.glb",
+  "tris": 43739,
+  "bytes": 1142012,
+  "source": "RawAssets/ShipsModels/Armstrong/Armstrong/Imp/CAP_ARM_Imp_LowRes.fbx",
+  "sternHint": "-z",
+  "mounts": [
+   [
+    46.55025,
+    -8.28004,
+    181.62649
+   ],
+   [
+    -46.55025,
+    -8.28004,
+    181.62649
+   ],
+   [
+    43.12923,
+    21.73512,
+    -3.52952
+   ],
+   [
+    -43.12923,
+    21.73512,
+    -3.52952
+   ]
+  ]
+ },
+ "Busan Maiden Heart": {
+  "file": "busan-maiden-heart.glb",
+  "tris": 26122,
+  "bytes": 553756,
+  "source": "RawAssets/ShipsModels/Busan/Busan/MaidenHeart/CAP_BSN_MaidenHeart_LowRes.fbx",
+  "mounts": [
+   [
+    66.73532,
+    14.72107,
+    63.3588
+   ],
+   [
+    -66.73532,
+    14.72107,
+    63.3588
+   ],
+   [
+    92.99644,
+    14.72107,
+    63.3588
+   ],
+   [
+    -92.99644,
+    14.72107,
+    63.3588
+   ],
+   [
+    12.71006,
+    -24.55312,
+    75.59686
+   ],
+   [
+    -12.71006,
+    -24.55312,
+    75.59686
+   ],
+   [
+    19.33509,
+    20.1531,
+    59.53378
+   ],
+   [
+    -19.33509,
+    20.1531,
+    59.53378
+   ]
+  ]
+ },
+ "Calico Guardian": {
+  "file": "calico-guardian.glb",
+  "tris": 21864,
+  "bytes": 425156,
+  "source": "RawAssets/ShipsModels/Calico/Calico/Guardian/CAP_CLC_Guardian_LowRes.fbx",
+  "mounts": [
+   [
+    46.00535,
+    -5.24354,
+    23.96318
+   ],
+   [
+    -46.00535,
+    -5.24354,
+    23.96318
+   ],
+   [
+    0.0,
+    -0.90251,
+    136.21903
+   ],
+   [
+    0.007,
+    19.81065,
+    -86.48665
+   ],
+   [
+    0.0,
+    14.77761,
+    12.21809
+   ]
+  ]
+ },
+ "Ogrika Jod Asteris": {
+  "file": "ogrika-jod-asteris.glb",
+  "tris": 25617,
+  "bytes": 437848,
+  "source": "RawAssets/ShipsModels/Ogrika/Ogrika/Jod Asteris/CAP_OKA_JodAsteris_LowRes.fbx"
+ },
+ "Pearce C9": {
+  "file": "pearce-c9.glb",
+  "tris": 38726,
+  "bytes": 893172,
+  "source": "RawAssets/ShipsModels/Pearce/Pearce/C9/CAP_PRC_C9_LowRes.fbx",
+  "mounts": [
+   [
+    37.82612,
+    27.63559,
+    39.06963
+   ],
+   [
+    -37.82612,
+    27.63559,
+    39.06963
+   ],
+   [
+    32.56711,
+    23.89158,
+    -22.51657
+   ],
+   [
+    -32.56711,
+    23.89158,
+    -22.51657
+   ],
+   [
+    0.0,
+    -17.07556,
+    28.67459
+   ]
+  ]
+ },
+ "Pearce D9": {
+  "file": "pearce-d9.glb",
+  "tris": 43292,
+  "bytes": 1103344,
+  "source": "RawAssets/ShipsModels/Pearce/Pearce/D9/CAP_PRC_D9_LowRes.fbx",
+  "mounts": [
+   [
+    -17.00449,
+    14.58199,
+    61.92348
+   ],
+   [
+    16.99549,
+    14.58199,
+    61.92348
+   ],
+   [
+    -36.82649,
+    -4.642,
+    54.41248
+   ],
+   [
+    36.81749,
+    -4.642,
+    54.41248
+   ]
+  ]
+ },
+ "VZUS ballad": {
+  "file": "vzus-ballad.glb",
+  "tris": 23499,
+  "bytes": 475624,
+  "source": "RawAssets/ShipsModels/VZUS/VZUS/Ballad/CAP_VUS_Ballad_LowRes.fbx",
+  "sternHint": "-z",
+  "mounts": [
+   [
+    5.18603,
+    29.69117,
+    210.8282
+   ],
+   [
+    21.51712,
+    -24.46514,
+    168.10896
+   ],
+   [
+    -21.01312,
+    -24.46514,
+    168.10896
+   ]
+  ]
+ },
+ "Fimbul BYOS Tankship": {
+  "file": "fimbul-byos-tankship.glb",
+  "tris": 35715,
+  "bytes": 643384,
+  "source": "RawAssets/ShipsModels/Fimbul/Fimbul/BYOS/Tankship/CDR_FBL_Tankship_LowRes.fbx",
+  "mounts": [
+   [
+    14.81862,
+    23.03891,
+    136.48102
+   ],
+   [
+    -14.79362,
+    23.03891,
+    136.48102
+   ],
+   [
+    0.51399,
+    20.59997,
+    403.19021
+   ],
+   [
+    -0.82698,
+    20.59997,
+    400.18929
+   ],
+   [
+    60.32446,
+    -26.28683,
+    -81.50042
+   ],
+   [
+    -60.32546,
+    -26.28683,
+    -81.50042
+   ]
+  ]
+ },
+ "Fimbul ECOS Treearrow": {
+  "file": "fimbul-ecos-treearrow.glb",
+  "tris": 18670,
+  "bytes": 313884,
+  "source": "RawAssets/ShipsModels/Fimbul/Fimbul/ECOS/Treearrow/CMD_FBL_Treearrow_LowRes.fbx"
+ },
+ "Pearce C11": {
+  "file": "pearce-c11.glb",
+  "tris": 40618,
+  "bytes": 897704,
+  "source": "RawAssets/ShipsModels/Pearce/Pearce/C11/CAP_PRC_C11_LowRes.fbx",
+  "mounts": [
+   [
+    9.50776,
+    48.25376,
+    152.53608
+   ],
+   [
+    -9.65775,
+    48.25376,
+    152.53608
+   ],
+   [
+    24.02738,
+    52.50365,
+    38.65201
+   ],
+   [
+    -24.02738,
+    52.50365,
+    38.65201
+   ],
+   [
+    21.44045,
+    -20.89146,
+    281.39677
+   ],
+   [
+    -21.44045,
+    -20.89146,
+    281.39677
+   ]
+  ]
+ },
+ "Fimbul ECOS Superphoenix": {
+  "file": "fimbul-ecos-superphoenix.glb",
+  "tris": 21925,
+  "bytes": 402024,
+  "source": "RawAssets/ShipsModels/Fimbul/Fimbul/ECOS/Superphoenix/TTN_Superphoenix_LowRes.fbx"
+ },
+ "Pearce T1": {
+  "file": "pearce-t1.glb",
+  "tris": 23446,
+  "bytes": 651284,
+  "source": "RawAssets/ShipsModels/Pearce/Pearce/T1/TTN_T1_LowRes.fbx"
+ }
+}

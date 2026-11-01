@@ -234,8 +234,10 @@ class ShipExplorer {
             if (this.currentTab === 'analytics') {
                 this.renderAnalytics();
             }
+            if (this._bayData) this._bayData(false); // an open ship view now has real configured values
         } catch (error) {
             console.error('[ShipExplorer] Failed to load component metadata:', error);
+            if (this._bayData) this._bayData(true);
         }
     }
 

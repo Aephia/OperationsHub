@@ -319,6 +319,29 @@ tab opens with a **Fleet overview** (hulls by size and role, leaders by cargo, h
 power, subwarp speed and warp distance) above the configuration resource totals. Display names no longer
 repeat the manufacturer. Files: `ShipExplorer/ship-visual.js`, `ship-visual.css` (hooks in `app.js`).
 
+**Teardown view (2026-11-01):** in Ship view, toggling a configuration pulls the 3D hull apart and flies in exactly
+what that configuration fits; Default closes it again. The hull is cut into 7 sections x port/starboard x
+dorsal/ventral (28 pieces, `STATIONS`/`SIDES`/`LAYERS` in `main.js`) and named meshes such as probe covers lift off
+whole. Ship view is a full-screen **configuration bay**: the Loadout panel on the left (the number on a cell is how many
+parts it fits), the Systems Readout on the right (numbers count and bars run to the configured value on every toggle;
+the tick marks the base stat, a full bar is the most this hull reaches in any configuration; the accent colour means
+better and red worse, so a lower cooldown or fuel use counts as an improvement), callout cards with leaders around the ship, and the Fitted
+list and view controls below it. Every part comes from the record's `config.components` through
+`teardown-src/fit.js`: the count shown is always the real one, and a group with more items than its draw cap (51 weapons
+on a Rainbow Phi) draws the cap and still says x51. A callout's percentage is that part group's own effect: the stat with the configuration as
+fitted against the same configuration without the group, as a share of the base stat. A hull with no model, or a browser without WebGL, keeps its turntable or still in the same
+layout, and the loadout still drives the readout. The panels are a 1600x900 design scaled to the window with their edges on its edges, so spare width or height goes to the ship; nothing scrolls from 1280x600 up. At 1100 px wide or less, or where the scaled panels would be too small
+to read, the bay stacks and scrolls instead.
+
+On hulls with known gun positions the weapons seat on the real guns and ride that hull piece as it opens, and the Weapons card's leader reaches each gun; more weapons than guns gather beside them. `Tools/landing/pack_hull_mounts.py` fits the Battle Arena's muzzle picks onto our GLBs and stores `mounts` in the manifest only if they land on the mesh and the ship turned end for end fits clearly worse (36 of 47 hulls; the rest keep a weapons rack above the ship; on hulls with no visible guns a pick is the game's nose hardpoint). `teardown-src/works.js` adds the machinery revealed by opening the hull: ribs, a few short pipe runs that cross a gap here and there as stretching hoses, tanks, pumps, valves, turbines, junction boxes. It is built from each hull's own cross-sections and seeded by the hull, and it is illustration: no number on screen reads from it.
+
+**Deck plan** (the fourth view button): no source model has an interior, so this is an illustrative layout and the bay says so on screen. `teardown-src/deck.js` takes real slices of the hull (a cell counts if hull is there at floor and ceiling height) and keeps the roomiest levels as decks: 1 up to size class 2, up to 2 to class 5, up to 3 from class 6. A hull with no sealed slice uses cells with hull above and below instead (labelled simplified), and one with no run of floor at all says it has no plan. Real: the outline, gun markers at the guns' true positions, and each room's number, which reads exactly as the readout. Close to real: the bridge sits as near the canopy's main cluster of glass as the floor reaches (the bow of the floor without glass), and engineering at the stern end of the lowest floor, which on some hulls is well forward of the true stern. Rough: rooms use one scale per hull and keep their place across loadouts, so a room grows with its own stat (square root, so a 16x stat does not swallow the deck) and floor nobody claims is Stores; two different rooms are only roughly comparable, because columns are coarse. Invented: which room sits next to which, plus rooms with no stat behind them such as Mess or Life support. Small hulls leave some stats out: fuel and ammo need class 2, crew class 3.
+
+Models: `Tools/landing/pack_hull_models.py` exports geometry-only GLBs from the Battle Arena's source files
+to `Images/ships/models/` with `manifest.json` keyed by ship name; run `pack_hull_mounts.py --build` after it, because a rebuilt entry loses its mounts. The viewer source is `ShipExplorer/teardown-src/`;
+rebuild the committed bundle with `node ShipExplorer/teardown-src/build.mjs` (it uses the teardown skill's locked
+three.js install). Checks: `node Test/ship-teardown-check.js`, `node Test/ship-teardown-drive.js` (real browser), `python Tools/landing/pack_hull_mounts.py --check`.
+
 **Features:**
 - Multi-ship side-by-side comparison (67 ships available)
 - Real-time stat calculations with component modifiers
