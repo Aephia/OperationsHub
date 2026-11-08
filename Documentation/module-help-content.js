@@ -158,12 +158,12 @@ const moduleHelpContent = {
                 <ul>
                     <li>Your first visit reads the z.ink chain behind a loading screen, which takes about half a minute, and saves the result on your PC</li>
                     <li>Later visits open instantly from that saved copy and show how old it is. <strong>Refresh</strong> reads the chain again, at most once every 5 minutes</li>
-                    <li>Combat history and trend charts come from comparing reads, so they start empty and fill in as you refresh</li>
+                    <li>Trend charts come from comparing reads, so they start empty and fill in as you refresh</li>
                     <li>Wealth uses mainnet reference prices published with the site, and says how old they are</li>
                 </ul>` },
             { heading: 'The map and the tabs', content: `
                 <ul>
-                    <li><strong>Map:</strong> star systems in their starbase faction's colour, fleets moving along their real warp and subwarp legs, mining fleets beaming to their asteroid, recent combat as hot spots. Hover anything for what it is; click a fleet for its owner, an asteroid for who mines it, a system for its starbase. The faction chips filter the map and every tab together</li>
+                    <li><strong>Map:</strong> star systems in their starbase faction's colour, every fleet as a small faction-coloured dot that becomes its true-scale ship as you zoom in, fleets moving along their real warp and subwarp legs, mining fleets beaming to their asteroid, recent combat as hot spots. Hover anything for what it is; click a fleet for its owner, an asteroid for who mines it, a system for its starbase. The faction chips filter the map and every tab together</li>
                     <li><strong>Mining:</strong> live output by resource, how concentrated it is (top owners and fleets), the busiest asteroids, and mined per hour as settled on chain</li>
                     <li><strong>Combat:</strong> fleets in combat and engagements in the last 24 hours, the feed, likely pairings, faction against faction, and losses</li>
                     <li><strong>Fleets</strong> and <strong>Owners:</strong> states, sizes and a searchable table; the owner leaderboard. The find box takes a profile address or a fleet name</li>

@@ -140,6 +140,32 @@ void main() {
   gl_Position = clipOf(viewOf(relOf(c, loc + w)));
 }`;
 
+// Owner 2026-11-08 (refines c4-ships-world-scale): at true scale a hull needs about 47 wheel notches to appear, so every
+// fleet is also a small faction dot of fixed screen size, handing over to its real hull as the hull grows. Same placement
+// code as FLEET_VS, so a dot is always exactly where its hull is. Dots are not pickable: the overview picks systems.
+const DOT_PX = 3.2, DOT_GONE_PX = [1.5, 4.0];
+const DOT_VS = GL_FLEET_COMMON + /* glsl */`
+uniform float uSil; uniform float uHasAtlas; uniform float uShipBase;
+varying vec2 vP; varying vec3 vCol; varying float vA;
+void main() {
+  if (iM.z < 0.001) COLLAPSE
+  int k = kindOf();
+  vec2 c, loc, hd; place(c, loc, hd);
+  float sil = (uHasAtlas > 0.5 && iX.x >= 0.0 && k != 5) ? uSil : 0.0;
+  float size = uShipBase * iX.y * (iM.z > 1.5 ? 1.15 : 1.0) * mix(1.8, 1.0, sil);
+  float ppu = ppuOf(viewOf(relOf(c, loc)));
+  vA = min(iM.z, 1.0) * (1.0 - smoothstep(${DOT_GONE_PX[0].toFixed(2)}, ${DOT_GONE_PX[1].toFixed(2)}, size * 2.0 * ppu));
+  if (vA < 0.004) COLLAPSE
+  vP = position.xy * 2.0; vCol = iC;
+  gl_Position = clipOf(viewOf(relOf(c, loc + position.xy * ${DOT_PX.toFixed(2)} / ppu)));
+}`;
+const DOT_FS = /* glsl */`
+varying vec2 vP; varying vec3 vCol; varying float vA;
+void main() {
+  float a = smoothstep(1.0, 0.7, length(vP)) * vA;
+  gl_FragColor = vec4(vCol * 0.8 * a, a);   // under 1.0 so the bloom pass keeps the faction hue on such a small mark
+}`;
+
 const FLEET_FS = /* glsl */`
 uniform float uAnim; uniform sampler2D uAtlas; uniform float uCols; uniform float uRows;
 varying vec2 vP; varying vec3 vCol; varying float vKind; varying float vVis; varying float vSeed; varying float vSil; varying float vCell; varying float vFade;
@@ -950,6 +976,7 @@ function mount(container, opts = {}) {
   const systemsMesh = mesh(sysGeo, shaderMat(SYS_VS, SYS_FS, {uSysZoom: U.uSysZoom, uGlyphK: U.uGlyphK, uViewH: U.uViewH, uAnim: U.uAnim, uDim: U.uDim, uSysCover: sysCover}, null, 'premult'), 4);
   const beams = mesh(fleetGeo, additive(BEAM_VS, BEAM_FS, fU, null), 4.8);
   const fleetsMesh = mesh(fleetGeo, shaderMat(FLEET_VS, FLEET_FS, fU, null, 'premult'), 5);
+  const fleetDots = mesh(fleetGeo, shaderMat(DOT_VS, DOT_FS, fU, null, 'premult'), 4.6);
   const pulses = mesh(pulseGeo, additive(PULSE_VS, PULSE_FS, {uTime: U.uTime, uReduced: U.uReduced}, U.uGal), 6);
   const tracerGeo = quadGeometry();
   const tracers = mesh(tracerGeo, additive(TRACER_VS, TRACER_FS, {uTime: U.uTime, uZoom: U.uZoom, uReduced: U.uReduced}, U.uGal), 6);
@@ -964,7 +991,7 @@ function mount(container, opts = {}) {
   const dacHalos = mesh(dacGeo, additive(DACHALO_VS, DACHALO_FS, dacU, U.uGal), 1); // over the territory, under routes / systems
   dacHalos.visible = false;
   scene.add(dacHalos);
-  scene.add(routes, hots, trails, systemsMesh, beams, fleetsMesh, pulses, tracers, statDisc, statCols);
+  scene.add(routes, hots, trails, systemsMesh, beams, fleetDots, fleetsMesh, pulses, tracers, statDisc, statCols);
   const tracerA = instanceAttrs(tracerGeo, [['iE', 4], ['iC', 3], ['iC2', 3], ['iS', 2]], TRACER_POOL);
   for (let i = 0; i < TRACER_POOL; i++) tracerA.iS.array[i * 2] = -1e9;
   let tracerNext = 0;
@@ -975,7 +1002,7 @@ function mount(container, opts = {}) {
 
   // the combat heat / pulse rings (hots) are NOT in layerObjs since task #57: syncHots shows them only while the Combat
   // stat layer leads (and the 'combat' layer switch is on). Mining beams follow fleets AND mining (syncBeams).
-  const layerObjs = {systems: [systemsMesh], fleets: [fleetsMesh, trails], mining: [], routes: [routes], combat: []};
+  const layerObjs = {systems: [systemsMesh], fleets: [fleetsMesh, fleetDots, trails], mining: [], routes: [routes], combat: []};
   const layers = Object.fromEntries(LAYERS.map((l) => [l, true]));
   const syncBeams = () => { beams.visible = layers.fleets && layers.mining; };
 
