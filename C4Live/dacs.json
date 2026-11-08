@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "note": "Hand-kept until DACs are on z.ink. DACs exist only on Solana mainnet today (player-profile roles), with no on-chain DAC names and no link from a mainnet member to a z.ink C4 player, so membership cannot be read from z.ink yet. members: z.ink profile addresses or auth wallets (base58), matched exactly. List set by the owner (Siphaawal, 2026-11-07 23:33 EST); a name equal to its tag and faction 'all' mean not known yet - correct them here. Colours: #rrggbb, readable on #04060f, distinct from each other and from the faction colours (checked by Test/c4-live-check.js).",
+  "dacs": [
+    { "tag": "VGD", "name": "Vanguard", "faction": "mud", "color": "#ff9a7a", "source": "owner (Siphaawal, 2026-11-07)", "members": [] },
+    { "tag": "ROME", "name": "Rome", "faction": "oni", "color": "#5f8cff", "source": "owner (Siphaawal, 2026-11-07)", "members": [] },
+    { "tag": "AEP", "name": "Aephia Industries", "faction": "all", "color": "#ff6ad5", "source": "owner (Siphaawal, 2026-11-07)", "members": [] },
+    { "tag": "COEX", "name": "Coexist", "faction": "oni", "color": "#b4ecff", "source": "owner (Siphaawal, 2026-11-07); faction from web, unverified", "members": [] },
+    { "tag": "EMP", "name": "EMP", "faction": "all", "color": "#b07cff", "source": "owner (Siphaawal, 2026-11-07)", "members": [] },
+    { "tag": "SAI", "name": "SAI", "faction": "all", "color": "#22e6c4", "source": "owner (Siphaawal, 2026-11-07)", "members": [] },
+    { "tag": "CLUB", "name": "The Club", "faction": "all", "color": "#5dff7a", "source": "owner (Siphaawal, 2026-11-07)", "members": [] },
+    { "tag": "EC", "name": "EC", "faction": "all", "color": "#c8e04a", "source": "owner (Siphaawal, 2026-11-07)", "members": [] },
+    { "tag": "HEIM", "name": "Heimdall Industries", "faction": "ustur", "color": "#fff0a0", "source": "owner (Siphaawal, 2026-11-07); faction from web, unverified", "members": [] },
+    { "tag": "BULK", "name": "BULK", "faction": "all", "color": "#ff3b6b", "source": "owner (Siphaawal, 2026-11-07)", "members": [] }
+  ]
+}

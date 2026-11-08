@@ -539,6 +539,37 @@ configuration calculator. Four tabs, everything always visible, no Chart.js, no 
 fitting hauls, mines or fights best, what my fleet cap allows, and what the fit costs" in one place.
 What comes next is in [Documentation/ANALYTICS-ROADMAP.md](Documentation/ANALYTICS-ROADMAP.md)
 
+### 8. 🛰️ **C4 Live** (built 2026-11-06)
+Near-realtime economy analytics for the **SAGE C4 test realm on z.ink**. This is the only module that reads
+the live chain; every other module reads the static uber-export. It has two halves:
+
+- **Collector** (`Tools/c4-live/`, Node): reads every fleet, star system, asteroid being mined, claim stake
+  and player owner through Aephia's [Atlas Kit](https://docs.atlaskit.dev/) (`@aephia/atlas-kit` 0.6.1,
+  pinned by lockfile, own folder, `npm ci --ignore-scripts`). It runs **once an hour**: `npm run collect`
+  loops, or `install-schedule.ps1` registers a Windows task. It writes `Data/c4-live/` (git-ignored). The
+  data contract, the safety rules (single atomic commit file, lock, partial-pass and suspect-discovery
+  gates, corrupt-file abort) and what is measured versus derived are in
+  [Tools/c4-live/README.md](Tools/c4-live/README.md).
+- **Module** (`C4Live/`): a 3D galaxy map (three.js, bundled from `C4Live/scene-src/` into
+  `C4Live/c4-scene.js` by `node C4Live/scene-src/build.mjs`) under a glass HUD, plus Mining, Combat, Fleets
+  and Owners tabs.
+  - **Map**: fleets move along their real warp and subwarp legs on the wall clock, mining fleets beam to
+    their asteroids, and combat plays as pulses with tracers between paired fleets.
+  - **Verdict first**: every tab opens with a sentence computed from the data.
+  - **Live counter**: between hourly reads, the mined counter projects each fleet's on-chain rate forward.
+  - **Drill-down**: clicking anything opens its owner, asteroid or starbase drawer.
+
+The chain keeps **no combat log and no mining history**; both are derived by diffing hourly reads.
+- **Combat**: a combat stamp means a fleet *took part*; both sides share the second.
+- **Losses**: a destroyed count is a lower bound.
+- **Mining**: settled on-chain mining lags the live rate.
+- **Owners**: owners have no on-chain name and are shown by profile address.
+
+The page says all of this where the numbers appear.
+
+Checks: `node Test/c4-live-check.js` (panel model against the real data, with mutants that must fail) and
+`node Test/c4-scene-check.js` (scene API, interpolation, picking and GPU draw in headless Chromium).
+
 ---
 
 ## 🔬 Analytics Features
@@ -678,6 +709,8 @@ OperationsHub/
 ├── HubExplorer/                        # Space hub construction
 ├── ShipExplorer/                       # Ship comparison & fleet
 ├── CommandDeck/                        # Research tree, empire planner, ships vs stakes (joins the others)
+├── C4Live/                             # Live z.ink C4 analytics: 3D galaxy (scene-src -> c4-scene.js) + panels
+├── Tools/c4-live/                      # Hourly z.ink collector (atlas-kit) -> Data/c4-live/ (git-ignored)
 │
 ├── Utils/
 │   ├── CrossExplorerAnalytics.js      # Analytics engine

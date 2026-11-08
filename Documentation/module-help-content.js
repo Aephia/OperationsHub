@@ -150,6 +150,33 @@ const moduleHelpContent = {
         ]
     },
 
+    c4Live: {
+        title: 'C4 Live',
+        sections: [
+            { heading: 'What it is', content: 'The SAGE C4 test realm on z.ink, read off the chain by a local collector once an hour (Tools/c4-live, built on Aephia\'s Atlas Kit). Every fleet, star system, asteroid being mined, claim stake and player owner, on a live galaxy map with analytics around it. Between hourly reads the mining counters keep running at each fleet\'s on-chain rate.' },
+            { heading: 'Getting data', content: `
+                <ul>
+                    <li>Run <code>cd Tools/c4-live &amp;&amp; npm ci --ignore-scripts &amp;&amp; npm run collect</code> (loops hourly), or register the hourly Windows task with <code>Tools/c4-live/install-schedule.ps1</code></li>
+                    <li>The collector writes <code>Data/c4-live/</code>; the page reloads it every few minutes and shows how old the snapshot is</li>
+                </ul>` },
+            { heading: 'The map and the tabs', content: `
+                <ul>
+                    <li><strong>Map:</strong> star systems in their starbase faction's colour, fleets moving along their real warp and subwarp legs, mining fleets beaming to their asteroid, recent combat as hot spots. Hover anything for what it is; click a fleet for its owner, an asteroid for who mines it, a system for its starbase. The faction chips filter the map and every tab together</li>
+                    <li><strong>Mining:</strong> live output by resource, how concentrated it is (top owners and fleets), the busiest asteroids, and mined per hour as settled on chain</li>
+                    <li><strong>Combat:</strong> fleets in combat and engagements in the last 24 hours, the feed, likely pairings, faction against faction, and losses</li>
+                    <li><strong>Fleets</strong> and <strong>Owners:</strong> states, sizes and a searchable table; the owner leaderboard. The find box takes a profile address or a fleet name</li>
+                </ul>` },
+            { heading: 'What is measured and what is derived', content: `
+                <ul>
+                    <li><strong>Read from the chain:</strong> fleet state, position, ships, hp and shields, mining rate per resource, starbase faction and level, claim stakes, an owner's ATLAS, council rank and career XP</li>
+                    <li><strong>Combat is derived:</strong> the chain keeps no combat log. A fleet whose last-combat time moved between two hourly reads <em>took part</em> in a fight; both sides carry the same second, which is how likely opponents are paired. "Took damage" appears only when hull or shields fell. Fleets that disappear right after combat (NPCs are closed when they die) are shown as probable kills, and destroyed counts are a lower bound</li>
+                    <li><strong>Mining:</strong> the live counter runs each fleet's on-chain rate forward. Mined per hour comes from each asteroid's mined counter, which only moves when mining settles on chain, so it runs below the live rate</li>
+                    <li><strong>Owners</strong> have no name on chain, so they are shown by profile address. All NPC fleets share one profile and are kept apart from players</li>
+                    <li><strong>Banners:</strong> the page says when the snapshot is overdue or the collector has stopped (counters freeze), when a read was partial, and when a data file could not be loaded</li>
+                </ul>` }
+        ]
+    },
+
     commandDeck: {
         title: 'Command Deck',
         sections: [

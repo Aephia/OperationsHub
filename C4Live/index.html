@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en" class="c4-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Aephia Industries - C4 Live</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/jpeg" href="../Images/channels4_profile.jpg">
+    <link rel="stylesheet" href="../ResourcesExplorer/styles.css?v=20261001">
+    <link rel="stylesheet" href="../ResourcesExplorer/resource-visual.css?v=20261023">
+    <link rel="stylesheet" href="c4.css?v=20261108d">
+</head>
+<body class="c4-app">
+    <!-- v2 (2026-11-07): the map IS the page. Everything else floats on it: brand + KPI bar top, map controls left,
+         the analytics dock right (bottom sheet on phones). The page never scrolls; the dock scrolls inside. -->
+    <div class="c4-stage" id="c4Hero" aria-label="Galaxy map">
+        <div class="c4-map" id="c4Map"></div>
+        <div class="c4-nomap" id="c4NoMap" hidden></div>
+
+        <div class="c4-topbar" id="c4Topbar">
+            <a class="c4-brand c4-glass" href="../index.html" title="Back to the Operations Hub">
+                <img src="../Images/channels4_profile.jpg" alt="">
+                <span class="c4-brand-t"><small>Aephia Industries</small><h1>C4 Live <i class="c4-live-dot" aria-hidden="true"></i></h1></span>
+            </a>
+            <div class="c4-hud-top" id="c4Kpis" aria-live="off"></div>
+        </div>
+        <div class="c4-hud c4-hud-left" id="c4Controls"></div>
+        <div class="c4-shiphint" id="c4ShipHint" aria-live="polite">Ships are drawn to scale; zoom in to see them</div>
+        <div class="c4-hud c4-hud-bottom" id="c4Age"></div>
+        <div class="c4-dacex" id="c4DacEx" role="status" hidden><b>EXAMPLE</b> - not real DAC membership</div>
+
+        <aside class="c4-dock c4-glass" id="c4Dock" data-acc="mining" aria-label="Analytics">
+            <div class="c4-dock-grip" id="c4DockGrip" title="Drag to resize" aria-hidden="true"></div>
+            <div class="c4-dock-head">
+                <nav class="c4-tabs" id="c4Tabs" role="tablist">
+                    <button class="c4-tab active" data-tab="mining" role="tab" title="Mining"><i class="ti ti-mining" aria-hidden="true"></i><span>Mining</span></button>
+                    <button class="c4-tab" data-tab="combat" role="tab" title="Combat"><i class="ti ti-combat" aria-hidden="true"></i><span>Combat</span></button>
+                    <button class="c4-tab" data-tab="fleets" role="tab" title="Fleets"><i class="ti ti-fleets" aria-hidden="true"></i><span>Fleets</span></button>
+                    <button class="c4-tab" data-tab="owners" role="tab" title="Owners"><i class="ti ti-owners" aria-hidden="true"></i><span>Owners</span></button>
+                    <!-- DACs (2026-11-07): shown only when C4Live/dacs.json loads and is valid -->
+                    <button class="c4-tab" data-tab="dacs" role="tab" title="DACs" hidden><i class="ti ti-dacs" aria-hidden="true"></i><span>DACs</span></button>
+                    <button class="c4-tab c4-tab-sys" data-view="system" role="tab" title="System" hidden><i class="ti ti-system" aria-hidden="true"></i><span id="c4SysTabName">System</span></button>
+                </nav>
+                <button class="c4-dock-toggle" id="c4DockToggle" aria-controls="c4Dock" aria-expanded="true" title="Hide the panel (D)"><i aria-hidden="true"></i></button>
+            </div>
+            <label class="c4-find"><span>Find owner</span><input id="c4Find" type="search" placeholder="owner name, profile address or fleet name" autocomplete="off" spellcheck="false"></label>
+            <div class="c4-dock-body" id="c4Main">
+                <section class="c4-sec active" id="sec-mining"></section>
+                <section class="c4-sec" id="sec-combat"></section>
+                <section class="c4-sec" id="sec-fleets"></section>
+                <section class="c4-sec" id="sec-owners"></section>
+                <section class="c4-sec" id="sec-dacs"></section>
+                <section class="c4-sec c4-syspanel" id="c4SysPanel" hidden aria-label="System"></section>
+            </div>
+        </aside>
+        <div class="c4-tip" id="c4Tip" hidden></div>
+    </div>
+
+    <div class="c4-empty" id="c4Empty" hidden></div>
+    <div class="c4-scrim" id="c4Scrim" hidden></div>
+    <aside class="c4-drawer" id="c4Drawer" aria-hidden="true" tabindex="-1"></aside>
+    <div class="c4-ctip" id="c4ChartTip" hidden></div>
+
+    <script src="c4-ui-model.js?v=20261108d"></script>
+    <script src="app.js?v=20261108d"></script>
+</body>
+</html>

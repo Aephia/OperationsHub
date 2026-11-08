@@ -9,7 +9,7 @@
 
     const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const CAT = { raw: { label: 'Raw', color: '#dd7429' }, processed: { label: 'Processed', color: '#2a9fcf' }, component: { label: 'Component', color: '#2fa985' }, advanced: { label: 'Advanced', color: '#9476db' } };
-    const FAC_COLOR = { mud: '#ff6040', oni: '#3ec8ff', ustur: '#b98cff', none: '#8a93a8' };
+    const FAC_COLOR = { mud: '#ff6040', oni: '#3ec8ff', ustur: '#ffcc33', none: '#8a93a8' };
     const FAC_LABEL = { mud: 'MUD', oni: 'ONI', ustur: 'USTUR' };
     const PT_COLOR = ['#3fae79', '#e2512b', '#b7a58a', '#9a9a9a', '#d99a4e', '#7fd0ff', '#6b70b8', '#2f8cff'];
     const fmtTime = sec => { if (!sec) return '0 s'; if (sec < 60) return sec + ' s'; const m = Math.round(sec / 60); if (m < 60) return m + ' min'; const h = Math.floor(m / 60), mm = m % 60; return h + ' h' + (mm ? ' ' + mm + ' min' : ''); };

@@ -11,7 +11,7 @@
     --line: rgba(120, 200, 255, 0.14);
     --line-strong: rgba(120, 200, 255, 0.35);
     --cyan: #4fd8ff;
-    --mud: #ff6040; --oni: #3ec8ff; --ust: #b98cff;
+    --mud: #ff6040; --oni: #3ec8ff; --ust: #ffcc33;
     --card: rgba(9, 13, 28, 0.86);
     --ok: #7ee8a4; --warn: #ffb86b; --bad: #ff7a6b;
 }
@@ -64,7 +64,7 @@ main { padding: 1.2rem clamp(0.8rem, 2vw, 2rem); }
 .chip.on { background: rgba(79, 216, 255, 0.16); border-color: var(--line-strong); color: #fff; }
 .chip.f-mud.on { background: rgba(255, 96, 64, 0.18); border-color: rgba(255, 96, 64, 0.5); }
 .chip.f-oni.on { background: rgba(62, 200, 255, 0.18); border-color: rgba(62, 200, 255, 0.5); }
-.chip.f-ustur.on { background: rgba(185, 140, 255, 0.18); border-color: rgba(185, 140, 255, 0.5); }
+.chip.f-ustur.on { background: rgba(255, 204, 51, 0.18); border-color: rgba(255, 204, 51, 0.5); }
 .sb-input { width: 100%; padding: 0.55rem 0.8rem; border-radius: 8px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.04); color: #fff; font-family: 'Rajdhani', sans-serif; font-size: 0.95rem; }
 .sb-input:focus { outline: none; border-color: var(--line-strong); }
 .sb-input::placeholder { color: var(--text-dim); }

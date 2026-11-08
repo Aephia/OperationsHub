@@ -12,3 +12,12 @@ RefreshData/.cache/
 
 # Temporary files
 nul
+
+# C4 Live: hourly collector output and probe dumps (generated, changes every run)
+Data/c4-live/
+Tools/c4-live/probe-out/
+# the collector pins its deps by lockfile (npm ci), so keep this one
+!Tools/c4-live/package-lock.json
+Tools/c4-live/collector.log
+Tools/c4-live/collector.log.1
+Tools/c4-live/collector.last.log

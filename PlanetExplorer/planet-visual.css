@@ -9,7 +9,7 @@
     --line: rgba(120, 200, 255, 0.14);
     --line-strong: rgba(120, 200, 255, 0.35);
     --cyan: #4fd8ff;
-    --mud: #ff6040; --oni: #3ec8ff; --ust: #b98cff;
+    --mud: #ff6040; --oni: #3ec8ff; --ust: #ffcc33;
     --card: rgba(9, 13, 28, 0.86);
 }
 
@@ -92,7 +92,7 @@ header .navigation-tabs { grid-area: tabs; justify-content: center; }
 .badge { font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; padding: 0.22rem 0.55rem; border-radius: 4px; border: 1px solid var(--line); color: var(--text-secondary); background: rgba(255, 255, 255, 0.04); }
 .badge.faction-mud { color: var(--mud); border-color: rgba(255, 96, 64, 0.5); }
 .badge.faction-oni { color: var(--oni); border-color: rgba(62, 200, 255, 0.5); }
-.badge.faction-ust { color: var(--ust); border-color: rgba(185, 140, 255, 0.5); }
+.badge.faction-ust { color: var(--ust); border-color: rgba(255, 204, 51, 0.5); }
 .badge.star { color: #ffd98a; }
 .badge.sb { color: var(--text-secondary); }
 .badge.sb-high { color: #fff; background: rgba(79, 216, 255, 0.16); border-color: var(--line-strong); }
@@ -140,7 +140,7 @@ header .navigation-tabs { grid-area: tabs; justify-content: center; }
 .quick-picks { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 1.2rem 0; }
 .quick { font-family: 'Orbitron', sans-serif; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; padding: 0.75rem 1.2rem; border-radius: 8px; border: 1px solid var(--line-strong); background: rgba(255, 255, 255, 0.04); color: #fff; cursor: pointer; transition: transform 0.2s, background 0.2s; }
 .quick:hover { transform: translateY(-2px); background: rgba(79, 216, 255, 0.12); }
-.quick.faction-mud { border-color: rgba(255, 96, 64, 0.6); } .quick.faction-oni { border-color: rgba(62, 200, 255, 0.6); } .quick.faction-ust { border-color: rgba(185, 140, 255, 0.6); }
+.quick.faction-mud { border-color: rgba(255, 96, 64, 0.6); } .quick.faction-oni { border-color: rgba(62, 200, 255, 0.6); } .quick.faction-ust { border-color: rgba(255, 204, 51, 0.6); }
 .placeholder-tips { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.6rem; }
 .placeholder-tips .tip { background: rgba(255, 255, 255, 0.03); border: 1px solid var(--line); border-radius: 10px; padding: 0.8rem 1rem; font-size: 0.9rem; color: var(--text-secondary); }
 .placeholder-tips .tip strong { color: var(--cyan); }

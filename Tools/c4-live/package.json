@@ -1,0 +1,18 @@
+{
+  "name": "c4-live-collector",
+  "private": true,
+  "type": "module",
+  "description": "Hourly z.ink (SAGE C4) collector for the OperationsHub C4 Live tab. Own lockfile; install with npm ci --ignore-scripts.",
+  "//override": "7-day age rule overridden for @aephia/atlas-kit 0.6.1 by owner on 2026-11-06: vetted (Apache-2.0, Aephia/atlas-kit repo, publisher also maintains @staratlas/dev-sage, no install scripts). Every >=7-day-old version is a 'next' prerelease.",
+  "scripts": {
+    "collect": "node collector.mjs",
+    "collect:once": "node collector.mjs --once",
+    "check": "node ../../Test/c4-collector-check.js",
+    "check:offline": "node ../../Test/c4-collector-check.js --offline",
+    "probe:holdings": "node probe-holdings.mjs"
+  },
+  "dependencies": {
+    "@aephia/atlas-kit": "0.6.1",
+    "@solana/kit": "6.10.0"
+  }
+}

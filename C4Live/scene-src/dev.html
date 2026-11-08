@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>C4 Live scene - dev harness</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  html, body { margin: 0; height: 100%; background: #000; color: #9fe; font: 12px system-ui, sans-serif; }
+  #map { position: absolute; inset: 0; }
+  #bar { position: absolute; left: 10px; top: 10px; z-index: 2; background: rgba(0, 12, 16, .78); border: 1px solid #1d4a55; padding: 8px 10px; border-radius: 6px; max-width: 560px; }
+  #bar button, #bar select { background: #071c22; color: #9fe; border: 1px solid #2a6a78; border-radius: 4px; padding: 2px 7px; margin: 2px; font: inherit; cursor: pointer; }
+  #bar button.off { opacity: .45; }
+  #stats { margin-top: 6px; color: #6cb; white-space: pre; }
+  #tip { position: fixed; z-index: 3; pointer-events: none; background: rgba(0, 10, 14, .9); border: 1px solid #2a6a78; padding: 4px 7px; border-radius: 4px; display: none; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="bar">
+  <div><b>C4 Live scene dev</b> - real Data/c4-live. <span id="clockmode"></span></div>
+  <div id="layers"></div>
+  <div>
+    Faction <select id="fa"><option value="">all</option><option>mud</option><option>oni</option><option>ustur</option><option>unaligned</option></select>
+    <button id="mining">only mining</button><button id="allstates">all states</button>
+    <button id="owner">focus top owner</button><button id="reset">reset</button>
+    <button id="pulse">pulse 5 events</button>
+  </div>
+  <div id="systems">Systems </div>
+  <div id="sysname" style="color:#fff"></div>
+  <div id="stats"></div>
+</div>
+<div id="tip"></div>
+<script src="../c4-scene.js"></script>
+<script>
+(async () => {
+  const q = new URLSearchParams(location.search);
+  // ?replay=1 runs the clock from 5 minutes before the snapshot so in-flight fleets visibly move (x ?speed=N)
+  const speed = Number(q.get('speed') || 1);
+  let clock;
+  const [latest, events, bodiesFile] = await Promise.all(['latest', 'events', 'bodies'].map((n) => fetch('../../Data/c4-live/' + n + '.json', {cache: 'no-store'}).then((r) => r.json())));
+  const bodies = bodiesFile.bodies;
+  if (q.get('replay')) {
+    // ?t0=<unix s> starts the replay clock at that moment (tests pin a fleet just after its departure)
+    const t0 = q.get('t0') ? Number(q.get('t0')) : latest.generatedAt - 300, w0 = performance.now();
+    clock = () => t0 + (performance.now() - w0) / 1000 * speed;
+    document.getElementById('clockmode').textContent = 'Replay clock from snapshot - 5 min, x' + speed;
+  } else document.getElementById('clockmode').textContent = 'Real clock';
+  const scene = C4Scene.mount(document.getElementById('map'), {reducedMotion: q.get('reduced') ? true : undefined, clock});
+  window.scene = scene; window.latest = latest; window.events = events; window.bodies = bodies;
+  window.lastPick = null; window.lastHover = null; window.sysEvents = [];
+  // ?nobodies=1: no bodies -> no system view (tests that zoom right into a system's space for galaxy fleets)
+  scene.setData(latest, events, q.get('nobodies') ? undefined : bodies);
+  scene.on('systemView', (v) => { window.sysEvents.push(v); document.getElementById('sysname').textContent = v ? 'System view: ' + v.name : ''; });
+  const sysBar = document.getElementById('systems');
+  for (const n of ['Evernat', 'Serene', 'Neuno', 'Eternity']) {
+    const s = latest.systems.find((x) => x.n === n); if (!s) continue;
+    const b = document.createElement('button'); b.textContent = n; b.onclick = () => scene.focusSystem(s.a); sysBar.appendChild(b);
+  }
+  const er = bodies.find((b) => b.n === 'Errutar');
+  if (er) { const b = document.createElement('button'); b.textContent = 'Errutar (stakes)'; b.onclick = () => scene.focusSystem(er.sys); sysBar.appendChild(b); }
+  const out = document.createElement('button'); out.textContent = 'out'; out.onclick = () => scene.focusSystem(null); sysBar.appendChild(out);
+  const tip = document.getElementById('tip');
+  scene.on('hover', (h) => {
+    window.lastHover = h;
+    if (!h) { tip.style.display = 'none'; return; }
+    tip.textContent = h.label; tip.style.display = 'block'; tip.style.left = h.clientX + 14 + 'px'; tip.style.top = h.clientY + 10 + 'px';
+  });
+  scene.on('pick', (p) => { window.lastPick = p; console.log('pick', p); if (p.type === 'fleet' && !window.noFocusOnPick) scene.focusOwner(p.ownerProfile); });
+  const L = document.getElementById('layers');
+  for (const name of C4Scene.layers) {
+    const b = document.createElement('button'); b.textContent = name;
+    b.onclick = () => { const on = b.classList.toggle('off'); scene.setLayer(name, !on); };
+    L.appendChild(b);
+  }
+  document.getElementById('fa').onchange = (e) => scene.setFilter({faction: e.target.value || null});
+  document.getElementById('mining').onclick = () => scene.setFilter({states: ['mining']});
+  document.getElementById('allstates').onclick = () => scene.setFilter({states: null});
+  const top = latest.owners.slice().sort((a, b) => b.fleets - a.fleets)[0];
+  document.getElementById('owner').onclick = () => scene.focusOwner(top.p);
+  document.getElementById('reset').onclick = () => { scene.setFilter({faction: null, states: null, owner: null}); scene.focusOwner(null); };
+  document.getElementById('pulse').onclick = () => events.slice(-5).forEach((e, i) => setTimeout(() => scene.pulseEvent(e), i * 350));
+  setInterval(() => { document.getElementById('stats').textContent = JSON.stringify(scene.getStats(), ['fps', 'frameMs', 'drawCalls', 'pixelRatio', 'fleets', 'systems', 'hotSpots', 'reducedMotion']); }, 1000);
+})();
+</script>
+</body>
+</html>
