@@ -308,7 +308,8 @@ export async function refreshPrices(pass, nowSec) {
     writeJson('prices.attempt.json', { at: nowSec, ok: true });
     res.prices = prices; res.fetched = true;
   } catch (e) {
-    const msg = String(e.message).slice(0, 120);
+    // A malformed URL is quoted whole by fetch(), key included, and this text reaches latest.json: redact before cutting.
+    const msg = String(e.message).split(MAINNET_RPC_URL).join(MAINNET_LABEL).slice(0, 120);
     try { writeJson('prices.attempt.json', { at: nowSec, ok: false, error: msg }); } catch { /* best effort */ }
     res.notes.push(`price refresh failed: ${msg}${res.prices ? ` - keeping prices from ${res.prices.fetchedAt}` : ' - no reference prices'}`);
   }
@@ -396,7 +397,7 @@ function slimFleet(f) {
   }
   return {
     a: f.address,
-    n: f.name,
+    n: sanitizeName(f.name).name,   // player-typed: same control/bidi stripping as owner names
     o: f.ownerProfile?.address,
     fa: f.faction,
     npc: f.npcFactionId || 0,

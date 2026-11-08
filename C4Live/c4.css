@@ -299,6 +299,13 @@ body.c4-app { min-height: 0; margin: 0; }
 .c4-empty h2 { margin: 0 0 0.6rem; font-family: 'Orbitron', sans-serif; font-size: 1rem; color: #fff; }
 .c4-empty code { display: block; margin: 0.7rem 0; padding: 0.6rem 0.8rem; background: rgba(0, 0, 0, 0.4); border: 1px solid var(--line); border-radius: 8px; color: var(--cyan); font-size: 0.86rem; }
 .c4-empty a { color: var(--cyan); }
+.c4-loading { text-align: center; }
+.c4-spin { display: block; width: 34px; height: 34px; margin: 0 auto 0.9rem; border: 3px solid var(--line-strong); border-top-color: var(--cyan); border-radius: 50%; animation: c4-spin 0.9s linear infinite; }
+@keyframes c4-spin { to { transform: rotate(360deg); } }
+.c4-saved { display: flex; align-items: center; gap: 0.7rem; }
+.c4-refresh { padding: 0.2rem 0.65rem; font: inherit; font-weight: 600; color: var(--cyan); background: transparent; border: 1px solid var(--cyan); border-radius: 6px; cursor: pointer; white-space: nowrap; }
+.c4-refresh:hover:not(:disabled) { background: rgba(62, 200, 255, 0.14); }
+.c4-refresh:disabled { color: var(--text-muted); border-color: var(--line-strong); cursor: default; }
 
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition: none !important; }

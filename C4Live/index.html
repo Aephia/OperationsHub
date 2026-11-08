@@ -2,6 +2,8 @@
 <html lang="en" class="c4-full">
 <head>
     <meta charset="UTF-8">
+    <!-- Player-typed chain text is rendered on this page: even if escaping ever failed, nothing could run or be sent elsewhere. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://testnet-rpc.z.ink; base-uri 'none'; form-action 'none'">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Aephia Industries - C4 Live</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -10,7 +12,7 @@
     <link rel="icon" type="image/jpeg" href="../Images/channels4_profile.jpg">
     <link rel="stylesheet" href="../ResourcesExplorer/styles.css?v=20261001">
     <link rel="stylesheet" href="../ResourcesExplorer/resource-visual.css?v=20261023">
-    <link rel="stylesheet" href="c4.css?v=20261108d">
+    <link rel="stylesheet" href="c4.css?v=20261108e">
 </head>
 <body class="c4-app">
     <!-- v2 (2026-11-07): the map IS the page. Everything else floats on it: brand + KPI bar top, map controls left,
@@ -64,6 +66,7 @@
     <div class="c4-ctip" id="c4ChartTip" hidden></div>
 
     <script src="c4-ui-model.js?v=20261108d"></script>
-    <script src="app.js?v=20261108d"></script>
+    <script src="c4-store.js?v=20261108e"></script>
+    <script src="app.js?v=20261108e"></script>
 </body>
 </html>

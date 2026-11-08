@@ -20,6 +20,13 @@
     'use strict';
     const M = window.C4Model;
     const DATA = '../Data/c4-live/';
+    // A local copy reads the collector's folder. The public site has no such folder: each visitor's browser reads z.ink
+    // itself (c4-collect.js) and keeps the result on their PC (c4-store.js). ?chain=1 forces that mode on localhost.
+    const LOCAL = (location.protocol === 'file:' || /^(localhost|127\.|\[::1\])/.test(location.hostname)) && !/[?&]chain=1\b/.test(location.search);
+    const REFRESH_COOLDOWN_SEC = 5 * 60;   // the z.ink endpoint is shared and rate-limited
+    const RETRY_COOLDOWN_SEC = 60;         // after any attempt, including one that failed
+    const ATTEMPT_KEY = 'c4.read.at';
+    let saved = null;                      // public site: Map of file name -> JSON text from the last good read
     const RELOAD_MS = 5 * 60 * 1000;
     const RM = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
     const LAYERS = [['systems', 'Systems'], ['fleets', 'Fleets'], ['mining', 'Mining'], ['routes', 'Routes'], ['combat', 'Combat'], ['territory', 'Territory'], ['labels', 'Labels']];
@@ -63,11 +70,64 @@
 
     // ================================================================== loading
     async function getJson(name) {
+        if (!LOCAL) {
+            if (!saved || !saved.has(name)) throw new Error(name + ' is not saved');
+            return JSON.parse(saved.get(name));
+        }
         const r = await fetch(DATA + name + '?t=' + Date.now(), { cache: 'no-store' });
         if (!r.ok) throw new Error(name + ' ' + r.status);
         return r.json();
     }
-    async function load(initial) {
+    function loadCollector() {
+        return S.collectorP || (S.collectorP = new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = 'c4-collect.js?v=20261108e';
+            s.onload = resolve;
+            s.onerror = () => { S.collectorP = null; reject(new Error('c4-collect.js failed to load')); };
+            document.head.append(s);
+        }));
+    }
+    // One read of the chain, saved only once the whole pass has succeeded. The lock stops two tabs racing each other.
+    async function readChain() {
+        await loadCollector();
+        const prices = await fetch('prices.json', { cache: 'no-cache' }).then(r => r.ok ? r.text() : null).catch(() => null);
+        const run = async () => {
+            const base = await window.C4Store.getAll().catch(() => saved || new Map());
+            // Another tab may have read while this one waited for the lock: use its result instead of reading again.
+            if (generatedAtIn(base) > now() - REFRESH_COOLDOWN_SEC && generatedAtIn(base) <= now()) { saved = base; return; }
+            try { localStorage.setItem(ATTEMPT_KEY, String(now())); } catch (e) { /* private mode */ }
+            const res = await window.C4Collect.run(base, prices);
+            saved = res.files;
+            S.notSaved = false;
+            try { await window.C4Store.putAll(saved); } catch (e) { S.notSaved = true; console.warn('C4 Live: could not save to this PC', e); }
+        };
+        return navigator.locks ? navigator.locks.request('c4-live-read', run) : run();
+    }
+    const hasSaved = () => { try { const l = JSON.parse(saved.get('latest.json')); return Array.isArray(l.fleets) && !!l.generatedAt; } catch (e) { return false; } };
+    const generatedAtIn = files => { try { return +JSON.parse(files.get('latest.json')).generatedAt || 0; } catch (e) { return 0; } };
+    const lastAttempt = () => { try { return +localStorage.getItem(ATTEMPT_KEY) || 0; } catch (e) { return 0; } };
+    // Seconds until another read is allowed. A timestamp in the future (a clock that was wrong) never locks the button.
+    function refreshWait() {
+        const t = now(), g = S.latest ? S.latest.generatedAt : 0, a = lastAttempt();
+        return Math.max(0, g && g <= t ? REFRESH_COOLDOWN_SEC - (t - g) : 0, a && a <= t ? RETRY_COOLDOWN_SEC - (t - a) : 0);
+    }
+    async function refreshChain() {
+        if (S.refreshing || refreshWait() > 0) return;
+        S.refreshing = true; S.refreshErr = false; renderAge();
+        try { await readChain(); await load(false, true); }
+        catch (e) { S.refreshErr = true; console.warn('C4 Live: refresh failed', e); }
+        finally { S.refreshing = false; renderAge(); }
+    }
+    async function load(initial, fresh) {
+        if (!LOCAL && !initial && !fresh) return;   // the public site only changes when its Refresh button says so
+        if (!LOCAL && initial) {
+            saved = await window.C4Store.getAll().catch(() => new Map());
+            if (!hasSaved()) {
+                showLoading();
+                await new Promise(r => setTimeout(r, refreshWait() * 1000));   // "Try again" reloads the page: keep the limit
+                try { await readChain(); } catch (e) { console.warn('C4 Live: first read failed', e); showFailed(); return; }
+            }
+        }
         let latest;
         try { latest = await getJson('latest.json'); }
         catch (e) { if (initial || !S.latest) showEmpty(); return; }
@@ -86,7 +146,16 @@
         if (S.sysView) renderSystemPanel();
         if (initial) { await S.dacP; applyParams(); }
     }
+    function showLoading() {
+        const el = $('#c4Empty'); el.hidden = false;
+        el.innerHTML = '<div class="c4-loading"><i class="c4-spin" aria-hidden="true"></i><h2>Loading C4 Live</h2><p role="status">Reading the z.ink chain. The first load takes about half a minute, then this page opens instantly from your PC.</p></div>';
+    }
+    function showFailed() {
+        const el = $('#c4Empty'); el.hidden = false;
+        el.innerHTML = '<div class="c4-loading"><h2>Could not reach z.ink</h2><p>The chain did not answer, so there is nothing to show yet.</p><button type="button" class="c4-refresh" data-c4-retry>Try again</button></div>';
+    }
     function showEmpty() {
+        if (!LOCAL) { showFailed(); return; }
         const el = $('#c4Empty'); el.hidden = false;
         const file = location.protocol === 'file:';
         el.innerHTML = `<div><h2>No C4 Live data yet</h2>
@@ -176,7 +245,7 @@
             const t = now();
             const live = M.liveMined(S.D.mining.ups, S.latest, t);
             const k = $('#kpiMined'); if (k) k.textContent = kpiNum(live.units);
-            const ks = $('#kpiMinedS'); if (ks) ks.textContent = live.frozen ? 'collector stopped' : `current rate, ${M.fmt(S.D.mining.ups)} u/s`;
+            const ks = $('#kpiMinedS'); if (ks) ks.textContent = live.frozen ? (LOCAL ? 'collector stopped' : 'saved data, refresh to update') : `current rate, ${M.fmt(S.D.mining.ups)} u/s`;
             document.querySelectorAll('[data-live-ups]').forEach(el => { el.textContent = M.fmt(M.liveMined(+el.dataset.liveUps, S.latest, t).units, 0); });
         }
         requestAnimationFrame(tick);
@@ -189,6 +258,16 @@
         const tail = a.state === 'stopped' ? ` - <b>the collector looks stopped</b> (no run for over two intervals). Run <b>npm run collect</b> in Tools/c4-live; the projected counters are frozen.`
             : a.state === 'late' ? ' - the next run is overdue.' : `, next run in about <b>${M.ago(a.next)}</b>. Counters project the current mining rates forward.`;
         const notes = M.qualityNotes(S.latest.quality).concat((S.loadErr || []).map(f => `${f} could not be loaded, so the panels that use it are empty.`));
+        if (!LOCAL) {
+            const wait = refreshWait();
+            const label = S.refreshing ? 'Refreshing...' : wait > 0 ? `Refresh in ${M.ago(wait)}` : 'Refresh';
+            const extra = (S.refreshErr ? ['Could not reach z.ink, so this is still your saved data.'] : []).concat(S.notSaved ? ['This browser could not save the data, so it will load again next time.'] : []);
+            el.innerHTML = `<div class="c4-glass c4-age c4-saved${a.state !== 'ok' ? ' stale' : ''}" id="c4AgeBox"><span>Saved data from <b>${M.ago(a.age)} ago</b> (${esc(when)})</span><button type="button" class="c4-refresh" data-c4-refresh${S.refreshing || wait > 0 ? ' disabled' : ''}>${label}</button></div>`
+                + notes.concat(extra).map(n => `<div class="c4-glass c4-age c4-qual">${esc(n)}</div>`).join('');
+            $('.c4-live-dot').classList.toggle('stale', a.state !== 'ok');
+            queueInsets();
+            return;
+        }
         // .lg = the full sentence (desktop); .sm = a one-line chip for phones, where the banner must not eat the map
         // (v3: the stopped banner took 70 of 354 map px at 390x844). The chip folds the quality notes into a count.
         const short = a.state === 'stopped' ? `<b>Collector stopped</b> · snapshot ${M.ago(a.age)} ago` : a.state === 'late' ? `Run overdue · snapshot <b>${M.ago(a.age)}</b> ago` : `Snapshot <b>${M.ago(a.age)}</b> ago · next in ${M.ago(a.next)}`;
@@ -549,9 +628,9 @@
         const fl = S.D.fleetsView;
         const stRows = M.STATES.filter(k => fl.byState[k] && (fl.byState[k].player + fl.byState[k].npc)).map(k => {
             const b = fl.byState[k], n = b.player + b.npc;
-            return { lab: st(k), labText: k, v: n, parts: [{ v: b.player, c: 'var(--s-fleet)' }, { v: b.npc, c: 'var(--npc)' }], val: `${M.fmt(n, 0)}<em>${M.pct(n / fl.n)}</em>`, click: `data-state="${k}"`, on: S.states && S.states[0] === k, tip: `${M.STATE_LABEL[k]}\n${b.player} player, ${b.npc} NPC fleets` };
+            return { lab: st(k), labText: k, v: n, parts: [{ v: b.player, c: 'var(--s-fleet)' }, { v: b.npc, c: 'var(--npc)' }], val: `${M.fmt(n, 0)}<em>${M.pct(n / fl.n)}</em>`, click: `data-state="${esc(k)}"`, on: S.states && S.states[0] === k, tip: `${M.STATE_LABEL[k]}\n${b.player} player, ${b.npc} NPC fleets` };
         });
-        const gRows = Object.entries(fl.byGroup).sort((a, b) => b[1].ships - a[1].ships).map(([g, b]) => ({ lab: fa(g), labText: g, v: b.ships, c: 'var(--fc)', val: `${M.fmt(b.ships, 0)}<em>${M.fmt(b.fleets, 0)} fleets</em>`, click: `data-filter="${g}"`, tip: `${M.GROUP_LABEL[g] || g}\n${b.fleets} fleets, ${b.ships} ships, ${b.mining} mining` }));
+        const gRows = Object.entries(fl.byGroup).sort((a, b) => b[1].ships - a[1].ships).map(([g, b]) => ({ lab: fa(g), labText: g, v: b.ships, c: 'var(--fc)', val: `${M.fmt(b.ships, 0)}<em>${M.fmt(b.fleets, 0)} fleets</em>`, click: `data-filter="${esc(g)}"`, tip: `${M.GROUP_LABEL[g] || g}\n${b.fleets} fleets, ${b.ships} ships, ${b.mining} mining` }));
         const sRows = M.SIZES.filter(s => fl.size[s]).map(s => ({ lab: esc(s), v: fl.size[s], val: `${M.fmt(fl.size[s], 0)}<em>${M.pct(fl.size[s] / fl.ships)}</em>` }));
         el.innerHTML = `<p class="c4-verdict">${S.D.verdicts.fleets}</p><div class="c4-grid">
             ${card('w4', 0, 'What fleets are doing', 'Click a state to show only those fleets on the map.', `<div class="c4-legend"><span><i style="background:var(--s-fleet)"></i>Player</span><span><i style="background:var(--npc)"></i>NPC</span></div>${bars(stRows)}`)}
@@ -560,7 +639,7 @@
             ${card('w12', 3, 'Fleet table', '', `<div class="c4-tools"><input class="c4-search" id="c4FleetQ" type="search" placeholder="Search fleet name, owner name or address" value="${esc(S.fleetQ)}" spellcheck="false"><span class="cnt" id="c4FleetCnt"></span></div><div id="c4FleetTable"></div>`)}
         </div>`;
         // faction bars use the faction colour
-        el.querySelectorAll('.gfac .c4-bar').forEach((b, i) => { const g = gRows[i] && gRows[i].labText; if (g) b.classList.add('fc-' + g); });
+        el.querySelectorAll('.gfac .c4-bar').forEach((b, i) => { const g = gRows[i] && gRows[i].labText; if (g) b.classList.add('fc-' + String(g).replace(/\W/g, '')); });
         renderFleetTable();
     }
     function renderFleetTable() {
@@ -878,7 +957,7 @@
         const evs = S.events.filter(e => e.o === p).sort((a, b) => b.t - a.t);
         const combat = evs.length ? `<ul class="c4-feed">${evs.slice(0, 20).map((e, i) => feedItem(e, i, t0)).join('')}</ul>` : note('No combat on record for this owner.');
         const ser = M.ownerSeries(S.ownersSeries, p);
-        const sparks = ser.n < 2 ? note(`Trend starts after the next hourly run (${ser.n} point${ser.n === 1 ? '' : 's'} so far).`)
+        const sparks = ser.n < 2 ? note(`Trend starts after the next ${LOCAL ? 'hourly run' : 'refresh'} (${ser.n} point${ser.n === 1 ? '' : 's'} so far).`)
             : [['Fleets', ser.fleets, 0], ['Mining fleets', ser.mining, 0], ['ATLAS', ser.atlas, 0]].map(([l, v, d]) => `<div class="c4-spark"><span>${l}</span>${spark(v)}<b>${M.fmt(v[v.length - 1], d)}</b></div>`).join('');
         const stakes = o.stakesLive != null && o.stakesLive !== o.stakes ? `${o.stakes} (${o.stakesLive} live)` : (o.stakes || 0);
         const myStakes = (S.latest.stakes || []).filter(k => k.o === p);
@@ -895,7 +974,7 @@
             <div class="c4-dsec"><span>Mining by resource</span></div><div class="c4-anim-in">${mining}</div>
             <div class="c4-dsec"><span>Careers (XP)</span></div><div class="c4-anim-in">${xp}</div>
             <div class="c4-dsec"><span>Combat history</span></div><div class="c4-anim-in">${combat}</div>
-            <div class="c4-dsec"><span>Trend (hourly)</span></div><div class="c4-anim-in">${sparks}</div>`);
+            <div class="c4-dsec"><span>${LOCAL ? 'Trend (hourly)' : 'Trend'}</span></div><div class="c4-anim-in">${sparks}</div>`);
     }
     function spark(v) {
         const W = 200, H = 26, mn = Math.min(...v), mx = Math.max(...v), r = mx - mn || 1;
@@ -1191,6 +1270,8 @@
             if (t.closest('#c4DockToggle')) { setDockCollapsed(!S.dock.collapsed); return; }
             if (t.closest('[data-dac-example]')) { setDacExample(!S.dac.example); return; }
             if (t.closest('[data-age-detail]')) { S.ageOpen = !S.ageOpen; renderAge(); return; }
+            if (t.closest('[data-c4-refresh]')) { refreshChain(); return; }
+            if (t.closest('[data-c4-retry]')) { location.reload(); return; }
             const dcol = t.closest('[data-dac-colour]'); if (dcol) { setLensOn(dcol.dataset.dacColour === 'dac'); return; }
             const dmet = t.closest('[data-dac-metric]'); if (dmet) { toggleLensMetric(dmet.dataset.dacMetric); return; }
             const df = t.closest('[data-dac-focus]'); if (df) { focusDac(df.dataset.dacFocus); return; }

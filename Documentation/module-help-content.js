@@ -153,11 +153,13 @@ const moduleHelpContent = {
     c4Live: {
         title: 'C4 Live',
         sections: [
-            { heading: 'What it is', content: 'The SAGE C4 test realm on z.ink, read off the chain by a local collector once an hour (Tools/c4-live, built on Aephia\'s Atlas Kit). Every fleet, star system, asteroid being mined, claim stake and player owner, on a live galaxy map with analytics around it. Between hourly reads the mining counters keep running at each fleet\'s on-chain rate.' },
+            { heading: 'What it is', content: 'The SAGE C4 test realm on z.ink, read off the chain by your own browser (built on Aephia\'s Atlas Kit). Every fleet, star system, asteroid being mined, claim stake and player owner, on a live galaxy map with analytics around it. Between reads the mining counters keep running at each fleet\'s on-chain rate.' },
             { heading: 'Getting data', content: `
                 <ul>
-                    <li>Run <code>cd Tools/c4-live &amp;&amp; npm ci --ignore-scripts &amp;&amp; npm run collect</code> (loops hourly), or register the hourly Windows task with <code>Tools/c4-live/install-schedule.ps1</code></li>
-                    <li>The collector writes <code>Data/c4-live/</code>; the page reloads it every few minutes and shows how old the snapshot is</li>
+                    <li>Your first visit reads the z.ink chain behind a loading screen, which takes about half a minute, and saves the result on your PC</li>
+                    <li>Later visits open instantly from that saved copy and show how old it is. <strong>Refresh</strong> reads the chain again, at most once every 5 minutes</li>
+                    <li>Combat history and trend charts come from comparing reads, so they start empty and fill in as you refresh</li>
+                    <li>Wealth uses mainnet reference prices published with the site, and says how old they are</li>
                 </ul>` },
             { heading: 'The map and the tabs', content: `
                 <ul>
@@ -169,10 +171,10 @@ const moduleHelpContent = {
             { heading: 'What is measured and what is derived', content: `
                 <ul>
                     <li><strong>Read from the chain:</strong> fleet state, position, ships, hp and shields, mining rate per resource, starbase faction and level, claim stakes, an owner's ATLAS, council rank and career XP</li>
-                    <li><strong>Combat is derived:</strong> the chain keeps no combat log. A fleet whose last-combat time moved between two hourly reads <em>took part</em> in a fight; both sides carry the same second, which is how likely opponents are paired. "Took damage" appears only when hull or shields fell. Fleets that disappear right after combat (NPCs are closed when they die) are shown as probable kills, and destroyed counts are a lower bound</li>
+                    <li><strong>Combat is derived:</strong> the chain keeps no combat log. A fleet whose last-combat time moved between two reads <em>took part</em> in a fight; both sides carry the same second, which is how likely opponents are paired. "Took damage" appears only when hull or shields fell. Fleets that disappear right after combat (NPCs are closed when they die) are shown as probable kills, and destroyed counts are a lower bound</li>
                     <li><strong>Mining:</strong> the live counter runs each fleet's on-chain rate forward. Mined per hour comes from each asteroid's mined counter, which only moves when mining settles on chain, so it runs below the live rate</li>
-                    <li><strong>Owners</strong> have no name on chain, so they are shown by profile address. All NPC fleets share one profile and are kept apart from players</li>
-                    <li><strong>Banners:</strong> the page says when the snapshot is overdue or the collector has stopped (counters freeze), when a read was partial, and when a data file could not be loaded</li>
+                    <li><strong>Owners</strong> are shown by their on-chain player name, or by profile address if they have none. Names are not unique. All NPC fleets share one profile and are kept apart from players</li>
+                    <li><strong>Banners:</strong> the page says how old your saved data is, when a read was partial, when a refresh could not reach the chain, and when a data file could not be loaded. Counters freeze once the saved data is more than two hours old</li>
                 </ul>` }
         ]
     },

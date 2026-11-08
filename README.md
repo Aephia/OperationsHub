@@ -543,7 +543,15 @@ What comes next is in [Documentation/ANALYTICS-ROADMAP.md](Documentation/ANALYTI
 Near-realtime economy analytics for the **SAGE C4 test realm on z.ink**. This is the only module that reads
 the live chain; every other module reads the static uber-export. It has two halves:
 
-- **Collector** (`Tools/c4-live/`, Node): reads every fleet, star system, asteroid being mined, claim stake
+- **On the public site, the visitor's browser is the collector.** `C4Live/c4-collect.js` is the same
+  `collector.mjs` bundled for the browser (`node C4Live/collect-src/build.mjs`, run before a release; it also
+  refreshes `C4Live/prices.json`). The first visit reads z.ink behind a loading screen and saves to IndexedDB
+  (`C4Live/c4-store.js`) only after a whole pass succeeds; later visits open from that copy, and Refresh reads
+  again at most every 5 minutes. The browser cannot read mainnet (the public RPC returns 403 to browser
+  origins), so reference prices are the shipped `prices.json`. Combat history and trends build up per browser.
+  The chain code needs a secure context, so this works on HTTPS or localhost only. Localhost keeps reading
+  `Data/c4-live/` unless `?chain=1` is added.
+- **Collector** (`Tools/c4-live/`, Node, for local copies): reads every fleet, star system, asteroid being mined, claim stake
   and player owner through Aephia's [Atlas Kit](https://docs.atlaskit.dev/) (`@aephia/atlas-kit` 0.6.1,
   pinned by lockfile, own folder, `npm ci --ignore-scripts`). It runs **once an hour**: `npm run collect`
   loops, or `install-schedule.ps1` registers a Windows task. It writes `Data/c4-live/` (git-ignored). The
@@ -563,11 +571,12 @@ The chain keeps **no combat log and no mining history**; both are derived by dif
 - **Combat**: a combat stamp means a fleet *took part*; both sides share the second.
 - **Losses**: a destroyed count is a lower bound.
 - **Mining**: settled on-chain mining lags the live rate.
-- **Owners**: owners have no on-chain name and are shown by profile address.
+- **Owners**: shown by on-chain player name, or by profile address if they have none; names are not unique.
 
 The page says all of this where the numbers appear.
 
-Checks: `node Test/c4-live-check.js` (panel model against the real data, with mutants that must fail) and
+Checks: `node Test/c4-live-check.js` (panel model against the real data, with mutants that must fail),
+`node Test/c4-browser-collect-check.js` (a real browser reading the real chain as a visitor) and
 `node Test/c4-scene-check.js` (scene API, interpolation, picking and GPU draw in headless Chromium).
 
 ---

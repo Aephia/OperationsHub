@@ -12,6 +12,11 @@ RefreshData/.cache/
 
 # Temporary files
 nul
+verify.log
+
+# Python caches embed absolute local paths; env files hold secrets
+__pycache__/
+.env*
 
 # C4 Live: hourly collector output and probe dumps (generated, changes every run)
 Data/c4-live/
