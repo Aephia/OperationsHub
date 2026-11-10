@@ -74,9 +74,10 @@
             const parts = [];
             if (q.mineFailed) parts.push(`${q.mineFailed} of ${q.mineTotal} mining states failed`);
             if (q.charFailed) parts.push(`${q.charFailed} of ${q.charTotal} player profiles failed`);
-            out.push(`Partial read: ${parts.length ? parts.join(', ') : 'some reads failed'}, so rates are low and no history point was added.`);
+            // a read kept out of the trends only because many fleets vanished did not fail: the next note says what happened
+            if (parts.length || !q.suspectDiscovery) out.push(`Partial read: ${parts.length ? parts.join(', ') : 'some reads failed'}, so rates are low and no history point was added.`);
         }
-        if (q.suspectDiscovery) out.push('Fleet discovery looked truncated on this pass: closed fleets were not counted as gone.');
+        if (q.suspectDiscovery) out.push('Many fleets disappeared since the previous read, so this read is kept out of the trends and they are not counted as gone yet.');
         if (q.bodiesFailed) out.push('The planets and asteroids read failed on this run; bodies.json is from an earlier run.');
         if (q.stakeDefsFailed) out.push('The claim-stake definitions read failed on this run, so stake tiers are unknown.');
         return out;

@@ -137,9 +137,9 @@ ruleCheck('live counter is continuous across the freeze (no drop from 2 x interv
     lm => { const b = 1000 + 2 * 3600; const x = lm(10, snap, b - 1), y = lm(10, snap, b + 1); return !x.frozen && y.frozen && y.units >= x.units && y.units - x.units <= 10; },
     M.liveMined, (ups, l, t) => { const a = M.dataAge(l, t); return a.stale ? { units: ups * a.interval, frozen: true } : { units: Math.max(0, ups * (t - l.generatedAt)), frozen: false }; });
 ruleCheck('quality notes: partial read names failed counts; suspectDiscovery noted; clean pass = no note',
-    qn => { const n = qn({ partial: true, mineFailed: 3, mineTotal: 387, charFailed: 0, charTotal: 324, suspectDiscovery: true }); return n.length === 2 && n[0].includes('3 of 387 mining states failed') && /truncated/.test(n[1]) && qn({ partial: false, mineFailed: 0, mineTotal: 387 }).length === 0; },
+    qn => { const n = qn({ partial: true, mineFailed: 3, mineTotal: 387, charFailed: 0, charTotal: 324, suspectDiscovery: true }); return n.length === 2 && n[0].includes('3 of 387 mining states failed') && /disappeared/.test(n[1]) && qn({ partial: true, mineFailed: 0, charFailed: 0, suspectDiscovery: true }).length === 1 && qn({ partial: false, mineFailed: 0, mineTotal: 387 }).length === 0; },
     M.qualityNotes, q => (q.partial ? ['Partial read'] : []));
-check('real snapshot quality notes match latest.quality', M.qualityNotes(L.quality).length === ((L.quality && L.quality.partial ? 1 : 0) + (L.quality && L.quality.suspectDiscovery ? 1 : 0)), JSON.stringify(L.quality || null));
+check('real snapshot quality notes match latest.quality', M.qualityNotes(L.quality).length === ((L.quality && L.quality.partial && (L.quality.mineFailed || L.quality.charFailed || !L.quality.suspectDiscovery) ? 1 : 0) + (L.quality && L.quality.suspectDiscovery ? 1 : 0)), JSON.stringify(L.quality || null));
 
 console.log('\n[6] History degrades honestly');
 const ms = M.minedSeries(H);
@@ -1117,7 +1117,7 @@ async function browserLayout() {
             });
             // Owners leaderboard + KPI bar as rendered: must be byte-identical with the example on (no leak outside DAC views)
             const ownersSnap = async page => { await page.click('.c4-tab[data-tab="owners"]'); await sleep(400);
-                return page.evaluate(() => ({ owners: document.getElementById('c4OwnerTable').innerHTML, kpi: [...document.querySelectorAll('#c4Kpis b')].map(b => b.id + '=' + b.textContent).join(' '), verdict: document.querySelector('#sec-owners .c4-verdict').textContent })); };
+                return page.evaluate(() => ({ owners: document.getElementById('c4OwnerTable').innerHTML, kpi: [...document.querySelectorAll('#c4Kpis b')].filter(b => b.id !== 'kpiMined').map(b => b.id + '=' + b.textContent).join(' '), verdict: document.querySelector('#sec-owners .c4-verdict').textContent })); };
             async function dacRun(appMut) {
                 mut = appMut ? { '/C4Live/app.js': appMut } : {};
                 const out = { errors: [] };

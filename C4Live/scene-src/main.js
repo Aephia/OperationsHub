@@ -145,10 +145,10 @@ void main() {
 // code as FLEET_VS, so a dot is always exactly where its hull is. Dots are not pickable: the overview picks systems.
 const DOT_PX = 3.2, DOT_GONE_PX = [1.5, 4.0];
 const DOT_VS = GL_FLEET_COMMON + /* glsl */`
-uniform float uSil; uniform float uHasAtlas; uniform float uShipBase;
+uniform float uSil; uniform float uHasAtlas; uniform float uShipBase; uniform float uDots;
 varying vec2 vP; varying vec3 vCol; varying float vA;
 void main() {
-  if (iM.z < 0.001) COLLAPSE
+  if (uDots < 0.5 || iM.z < 0.5) COLLAPSE   // filtered-out fleets: a dimmed dot stacks back to full brightness in a pile
   int k = kindOf();
   vec2 c, loc, hd; place(c, loc, hd);
   float sil = (uHasAtlas > 0.5 && iX.x >= 0.0 && k != 5) ? uSil : 0.0;
@@ -966,9 +966,9 @@ function mount(container, opts = {}) {
   // instanced layers
   const fleetGeo = quadGeometry(), sysGeo = quadGeometry(), hotGeo = quadGeometry(), pulseGeo = quadGeometry();
   const FLEET_SPEC = [['iA', 4], ['iT', 2], ['iC', 3], ['iM', 4], ['iX', 2], ['iO', 4]];
-  // one fleet instancing for every fleet (v10): fleets, trails, routes and mining beams are four draws of it
+  // one fleet instancing for every fleet (v10): fleets, dots, trails, routes and mining beams are five draws of it
   const fU = {uNow: U.uNow, uAnim: U.uAnim, uZoom: U.uZoom, uBeamGain: {value: 2.6},
-    uSil: U.uSil, uHasAtlas: U.uHasAtlas, uAtlas: U.uAtlas, uCols: U.uCols, uRows: U.uRows, uShipBase: {value: M.SHIP_BASE.galaxy}, uViewH: U.uViewH};
+    uSil: U.uSil, uHasAtlas: U.uHasAtlas, uAtlas: U.uAtlas, uCols: U.uCols, uRows: U.uRows, uShipBase: {value: M.SHIP_BASE.galaxy}, uViewH: U.uViewH, uDots: {value: 1}};
   const routes = mesh(fleetGeo, additive(ROUTE_VS, ROUTE_FS, fU, null), 2);
   const hots = mesh(hotGeo, additive(HOT_VS, HOT_FS, {uZoom: U.uZoom, uAnim: U.uAnim}, U.uGal), 2);
   const trails = mesh(fleetGeo, additive(TRAIL_VS, TRAIL_FS, fU, null), 3);
@@ -2279,6 +2279,7 @@ function mount(container, opts = {}) {
     },
     // look tuning (bloom + exposure); not part of the panel contract
     tune(o = {}) {
+      if (typeof o.fleetDots === 'boolean') fU.uDots.value = o.fleetDots ? 1 : 0;   // tests that measure hulls alone
       if (Number.isFinite(o.strength)) bloom.strength = o.strength;
       if (Number.isFinite(o.radius)) bloom.radius = o.radius;
       if (Number.isFinite(o.threshold)) bloom.threshold = o.threshold;

@@ -184,7 +184,7 @@
         const from = el._v != null ? el._v : 0; el._v = to;
         if (RM.matches || from === to) { el.textContent = f(to); return; }
         const t0 = performance.now(); dur = dur || 900;
-        const step = t => { const k = Math.min(1, (t - t0) / dur); const e = 1 - Math.pow(1 - k, 4); el.textContent = f(from + (to - from) * e); if (k < 1) requestAnimationFrame(step); };
+        const step = t => { const k = Math.min(1, Math.max(0, (t - t0) / dur)); const e = 1 - Math.pow(1 - k, 4);   /* a frame's timestamp can precede t0 */ el.textContent = f(from + (to - from) * e); if (k < 1) requestAnimationFrame(step); };
         requestAnimationFrame(step);
     }
     function animateIn(el) { if (RM.matches) return; el.classList.remove('c4-anim'); void el.offsetWidth; el.classList.add('c4-anim'); }

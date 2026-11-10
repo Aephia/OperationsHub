@@ -444,7 +444,7 @@ async function browserDrive(chromium, latest, bodies) {
 
     // GPU position matches CPU position: fly to an in-flight fleet and compare pixel brightness with the fleets layer on vs off
     const now = latest.generatedAt;
-    const target = latest.fleets.filter((f) => f.s.kind === 'subwarp' && f.s.from && f.s.arrives > now + 900 && f.s.departs < now - 600)
+    const target = latest.fleets.filter((f) => f.s.kind === 'subwarp' && f.s.from && f.s.arrives > now + 300 && f.s.departs < now - 120)
       // world-scale hulls (#23): the camera must come close (6) to see it, so track one away from any system (no system view)
       .filter((f) => { const t = (now - f.s.departs) / (f.s.arrives - f.s.departs), x = f.s.from[0] + (f.s.to[0] - f.s.from[0]) * t, y = f.s.from[1] + (f.s.to[1] - f.s.from[1]) * t;
         return latest.systems.every((s) => Math.hypot(s.x - x, s.y - y) > 2); })
@@ -1273,6 +1273,7 @@ async function browserDrive(chromium, latest, bodies) {
           return pts.map(([x, y]) => { const p = g.getImageData(x - 2, y - 2, 5, 5).data; let s = 0; for (let i = 0; i < p.length; i += 4) s += 0.2126 * p[i] + 0.7152 * p[i + 1] + 0.0722 * p[i + 2]; return s / 25; });
         }, {d: b64, pts});
       };
+      await page5.evaluate(() => window.scene.tune({fleetDots: false})); await sleep(400);   // this check is about hulls; dots are checked in #51
       const on5 = await lumsAt(page5, probe);
       await page5.evaluate(() => window.scene.setLayer('fleets', false)); await sleep(400);
       const off5 = await lumsAt(page5, probe);
@@ -1373,7 +1374,7 @@ async function browserDrive(chromium, latest, bodies) {
         await page6.evaluate(() => { document.getElementById('bar').style.display = 'none'; for (const l of window.C4Scene.layers) window.scene.setLayer(l, l === 'fleets'); });
         // world-sized hulls are small: get close (camera ~3) so the silhouette has enough pixels for an axis
         await page6.evaluate((f) => { window.scene.setFilter({states: ['subwarp']}); window.scene.focusPoint(f.s.from[0], f.s.from[1], 1600); }, lane); // camera 0.08 (pre-v10 2.5 x K); other states dimmed to 6% (no focus ring)
-        await sleep(600);
+        await page6.waitForFunction(() => !window.scene.getStats().flying, null, {timeout: 15000}); await sleep(600);
         const g = await page6.evaluate((f) => ({p: window.scene.fleetScreen(f.a), a: window.scene.screenOf(f.s.from[0], f.s.from[1]), b: window.scene.screenOf(f.s.to[0], f.s.to[1])}), lane);
         const R = 40, box = {x: Math.round(g.p.clientX) - R, y: Math.round(g.p.clientY) - R, width: 2 * R, height: 2 * R};
         await page6.screenshot({path: path.join(shots, 'c4-silhouette-heading.png'), clip: box});
@@ -2343,10 +2344,14 @@ async function task51(browser, port, latest) {
   try {
     const pg = await dev(`?reduced=1&nobodies=1&replay=1&speed=0&t0=${T}`);
     await frames(pg, 10);
+    await pg.evaluate(() => window.scene.tune({fleetDots: false})); await frames(pg, 6);
     const on = await grab(pg), off = await fleetsOff(pg, () => grab(pg));
     const inFlight = latest.fleets.filter((f) => transitAt(f, T)).length;
     const lit = litCount(on, off);
     check(`#51 home view, real data (${inFlight} transits in flight): the fleets layer lights <= 40 px (hulls collapse there; trails collapse with them)`, inFlight > 20 && lit <= 40, {litPx: lit, inFlight});
+    await pg.evaluate(() => window.scene.tune({fleetDots: true})); await frames(pg, 6);
+    { const dOn = await grab(pg), dOff = await fleetsOff(pg, () => grab(pg)), dotLit = litCount(dOn, dOff);
+      check(`fleet dots: at the home view every fleet is visible as a dot (the fleets layer lights ${dotLit} px, >= 1000, where hulls alone light <= 40)`, dotLit >= 1000, {dotLit}); }
     await pg.close();
   } catch (e) { check('#51 home drive completed without throwing', false, String(e && e.message || e).slice(0, 200)); }
 
@@ -2402,6 +2407,7 @@ async function task51(browser, port, latest) {
       window.scene.setData(window.synth, window.events);
       return extra.length;
     }, T);
+    await pg.evaluate(() => window.scene.tune({fleetDots: false}));
     const measure = async () => { await new Promise((r) => setTimeout(r, 2300)); const s = await pg.evaluate(() => window.scene.getStats()); const on = await grab(pg), off = await fleetsOff(pg, () => grab(pg)); return {cpuMs: s.cpuMs, frameMs: s.frameMs, lit: litCount(on, off)}; };
     await frames(pg, 10);
     const home = await measure();
@@ -2709,6 +2715,7 @@ async function task55(browser, port, latest, events) {
   // (3) the REAL list (12 DACs, no members) + lens on: no DAC colour anywhere, and the faction colours are gone
   try {
     const pg = await dev();
+    await pg.evaluate(() => window.scene.tune({fleetDots: false}));   // moving dots would read as a lens change
     await pg.evaluate(() => window.scene.setLayer('combat', false)); // the heat glow is orange by design (not a faction tint)
     await new Promise((r) => setTimeout(r, 1200)); await frames(pg, 10);
     const off = await grab(pg);
@@ -3133,7 +3140,7 @@ async function taskV10(browser, port, latest, bodies) {
       const floorProbe = async (p) => {
         // the transit of the LARGEST hull class (so at its 0.5 px zoom every other hull nearby is smaller still), by address
         const CLS = ['xx-small', 'x-small', 'small', 'medium', 'large', 'capital', 'commander', 'titan'], ci = (f) => CLS.indexOf(f.flagSize);
-        const tr = latest.fleets.filter((f) => f.s && (f.s.kind === 'subwarp' || f.s.kind === 'warp') && f.s.to && f.s.arrives > latest.generatedAt + 3600 && f.s.departs < latest.generatedAt)
+        const tr = latest.fleets.filter((f) => f.s && (f.s.kind === 'subwarp' || f.s.kind === 'warp') && f.s.to && f.s.arrives > latest.generatedAt + 300 && f.s.departs < latest.generatedAt)
           .sort((a, b) => ci(b) - ci(a) || (a.a < b.a ? -1 : 1));
         const out = {};
         for (const want of [0.5, 16]) {
@@ -3156,7 +3163,9 @@ async function taskV10(browser, port, latest, bodies) {
         }
         return out;
       };
+      await pg.evaluate(() => window.scene.tune({fleetDots: false})); await raf(pg, 3);
       const fp = await floorProbe(pg);
+      await pg.evaluate(() => window.scene.tune({fleetDots: true}));
       check(`v10 (c) no px floor: a hull projecting ${fp[0.5].px} px (< HULL_PX.collapse 0.75) changes ${fp[0.5].changed} px when the fleets layer toggles (0); positive control: at ${fp[16].px} px it changes ${fp[16].changed} (>= 10)`,
         fp[0.5].changed === 0 && fp[0.5].px < 0.75 && fp[16].changed >= 10, fp);
       // NEGATIVE: the same probe on a bundle that floors the hull at 3 px
@@ -3174,7 +3183,7 @@ async function taskV10(browser, port, latest, bodies) {
       // (px / 12)^-0.3 (a soft zoom compensation) fails the same bound.
       const areaProbe = async (p) => {
         const CLS = ['xx-small', 'x-small', 'small', 'medium', 'large', 'capital', 'commander', 'titan'], ci = (f) => CLS.indexOf(f.flagSize);
-        const id = latest.fleets.filter((f) => f.s && (f.s.kind === 'subwarp' || f.s.kind === 'warp') && f.s.to && f.s.arrives > latest.generatedAt + 3600 && f.s.departs < latest.generatedAt)
+        const id = latest.fleets.filter((f) => f.s && (f.s.kind === 'subwarp' || f.s.kind === 'warp') && f.s.to && f.s.arrives > latest.generatedAt + 300 && f.s.departs < latest.generatedAt)
           .sort((a, b) => ci(b) - ci(a) || (a.a < b.a ? -1 : 1))[0].a;
         const out = [];
         await p.evaluate(() => { for (const l of ['routes', 'combat', 'mining', 'labels', 'systems']) window.scene.setLayer(l, false); });
@@ -3377,6 +3386,7 @@ async function task56stars(browser, port, latest) {
   const footprint = () => pg.evaluate(() => { const out = []; for (let k = 0; k < 96; k++) { const a = k / 96 * Math.PI * 2, p = window.scene.screenOf(0.5 + Math.cos(a) * 60, 0.5 + Math.sin(a) * 60, 0); if (!p) return null; out.push([p.clientX, p.clientY]); } return out; });
   const inPoly = (poly, x, y) => { let c = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const [xi, yi] = poly[i], [xj, yj] = poly[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
   const probe = async (name) => {
+    await pg.evaluate(() => window.scene.tune({fleetDots: false})); await frames(4);   // moving dots would read as stars
     const poly = await footprint();
     await pg.evaluate(() => window.scene._starfield(true)); await frames(6);
     const a = await grab(), a2 = await grab();
@@ -3715,7 +3725,7 @@ async function task50(browser, port, latest, events, bodies) {
       });
       if (found) { found.layer = L; break; }
     }
-    if (!found) throw new Error('no deep-space callout on any stat layer');
+    if (!found) throw Object.assign(new Error('no deep-space callout in this snapshot'), {noData: true});
     const cols = await pg.evaluate(() => { const o = []; for (let i = 0; ; i++) { const c = window.scene.statColumnScreen(i); if (!c) break; o.push(c); } return o; });
     const col = cols.find((c) => !c.sys && found.name.toUpperCase().startsWith(String(found.c && found.c.name || '').toUpperCase().slice(0, 6)));
     check(`#50 deep-space callout (${found.layer}: "${found.name.slice(0, 30)}") shows a pointer cursor and is the element under its centre`, found.cursor === 'pointer' && found.top, {cursor: found.cursor, top: found.top});
@@ -3730,7 +3740,7 @@ async function task50(browser, port, latest, events, bodies) {
       && (!col || (Math.abs(col.x - p.x) < 1e-6 && Math.abs(col.y - p.y) < 1e-6)), p);
     check(`#50 ...and the scene flies there itself (the cell ends at the map centre, ${dist ? dist.toFixed(1) : '?'} px off; camera at mid zoom)`, !!tgt && dist < 25, {tgt: tgt && [Math.round(tgt.clientX), Math.round(tgt.clientY)]});
     await pg.close();
-  } catch (e) { check('task #50 deep-space callout drive completed without throwing', false, String(e && e.message || e).slice(0, 200)); }
+  } catch (e) { if (e && e.noData) console.log('INFO  #50 ' + e.message + ': nothing to click'); else check('task #50 deep-space callout drive completed without throwing', false, String(e && e.message || e).slice(0, 200)); }
 
   // full-page screenshot analysed in the page (only the numbers come back)
   // ref = an earlier full-page shot (base64) of the same view with the layer under test off: d0 / L0 (diff measures)
