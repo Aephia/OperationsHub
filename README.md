@@ -579,6 +579,64 @@ Checks: `node Test/c4-live-check.js` (panel model against the real data, with mu
 `node Test/c4-browser-collect-check.js` (a real browser reading the real chain as a visitor) and
 `node Test/c4-scene-check.js` (scene API, interpolation, picking and GPU draw in headless Chromium).
 
+### 9. 🧑‍🚀 **Crew Explorer** (built 2026-11-10)
+
+A visitor's own Star Atlas crew, analysed. They enter a **wallet**, a **SAGE player profile**, or both; the page
+reads every crew card held there from the public Star Atlas crew feed, in their browser, with no key and no server.
+
+- **Where crew lives.** Crew still in the wallet is listed under the wallet. Crew deposited into SAGE is held by the
+  profile's `SagePlayerProfile` account; its address is computed in the browser (`crew-model.js`
+  `sagePlayerProfileAddress`, no network call) and the feed is asked for that address. A wallet's profiles are not
+  looked up: that needs a Solana RPC, and none of five public ones answered it from a browser without a key.
+- **Loading.** 100 cards a call until an empty page, behind a loading screen with a live count. It stops by itself
+  at 5 minutes or 40,000 cards and can be stopped early; either way the cards already read are shown and the roster
+  is marked partial. One address failing never discards the other's cards. A request that never answers is
+  cancelled at the limit, and Stop ends a request or a back-off wait at once. When nothing comes back the page says
+  what happened (stopped, could not load, or no crew found) and never calls a failure "no crew". A real roster of about 2,600
+  cards took 12 to 19 seconds over four runs (measured 2026-11-10).
+- **Saved on the device.** The roster goes to IndexedDB (`crew-store.js`) only when at least one card came back,
+  and part of a load (stopped, failed or timed out) never replaces a complete saved roster: it is shown, marked not
+  saved, and the complete one returns on the next visit. A roster read back from the device is re-checked field by
+  field like outside data (`cleanRecord`). Reload reads again; Forget deletes it. The typed addresses are sent only
+  to the crew feed.
+- **Tabs.** *Overview* (the roster in sentences chosen by rule, counts by rarity, faction, species, university,
+  body and age, and a table comparing any two of them), *Aptitudes* (crew at minor / major / anomaly XP rate per
+  aptitude, the perks each unlocks, and the best crew for the picked aptitudes), *Personality* (the five traits as
+  distributions and as averages by group), *Roster* (sortable cards, a sheet per crew member; clicking the portrait
+  in a sheet shows it full size, and a click or Escape closes it). The filters apply to
+  every tab; several picked aptitudes mean "has all of them". Clicking a number in the compare table picks exactly
+  the crew that cell counted, by card number, on top of the filters in force.
+- **Files** (`CrewExplorer/`): `crew-model.js` (every number, no DOM), `crew-fetch.js` (the feed walk),
+  `crew-store.js`, `app.js`, `crew.css`. Art (`Images/crew/`: six rarity frames and the bay backdrop) is rendered
+  with Blender by `Tools/crew/`. Portraits load from the Star Atlas CDN and are never stored.
+- **Trust boundary.** Crew names are outside text: everything is escaped, the portrait address is rebuilt from the
+  card number, and the page's content policy allows only the crew feed and the portrait host. Names from the feed
+  are never used as keys into plain objects (`constructor` is a legal aptitude name to send): rates and aptitudes
+  are matched against the known lists.
+
+How the feed behaves, measured: [Documentation/CREW-DATA-HOW-TO.md](Documentation/CREW-DATA-HOW-TO.md).
+Checks: `node Test/crew-explorer-check.js` (model against brute-force counts and Python-derived address vectors,
+the feed walk against a scripted fake feed; every rule also runs against broken copies of the source, and a broken
+copy only counts as caught when the rule reports a problem, not when it merely crashes).
+
+### Interface sounds (C4 Live and Crew Explorer, added 2026-11-10)
+
+Five short sounds, `SFX/ui/{tap,tab,open,close,done}.wav` (about 170 KB together), played by `SFX/ui-sfx.js`. A page opts
+in with one script tag that names which elements sound (`data-tap`, `data-tab`, `data-open-class`,
+`data-open-unhide`), so neither page's own code decides when to play; the Crew Explorer adds one call, the chime
+when a whole roster arrives. This is separate from the older `SFX/sounds.js` the other explorers use.
+
+- **Kept quiet by rule.** Nothing plays on hover or on page load. Everything a click causes collapses to one sound
+  (a card that opens a sheet is one "open", not a tap and an open). Sounds are at least 70 ms apart. A speaker
+  button in the top bar turns them off, and the choice is remembered on the device for both pages.
+- **Where they come from.** `Tools/sfx/build_ui_sfx.py` asks the ElevenLabs Sound Effects API for takes (key from
+  the `ELEVENLABS_API_KEY` user environment variable, never in the repo), then picks and shapes them offline: a
+  take is judged on what would ship, dropped when it is silent or its spectral centroid is above 2.6 kHz (shrill),
+  cut to a maximum length, band-limited, and levelled to the same A-weighted loudness. `SFX/ui/report.json` records
+  every take's numbers and which one was picked. The script also synthesises a fallback take of each sound.
+- **Nobody heard them while building.** They were chosen from measurements; the mix lives in one line (`GAIN` in
+  `SFX/ui-sfx.js`). Regenerate with `generate <scratch>` then `build <scratch>`.
+
 ---
 
 ## 🔬 Analytics Features
@@ -719,6 +777,7 @@ OperationsHub/
 ├── ShipExplorer/                       # Ship comparison & fleet
 ├── CommandDeck/                        # Research tree, empire planner, ships vs stakes (joins the others)
 ├── C4Live/                             # Live z.ink C4 analytics: 3D galaxy (scene-src -> c4-scene.js) + panels
+├── CrewExplorer/                       # A visitor's own crew from the public crew feed: analytics + roster
 ├── Tools/c4-live/                      # Hourly z.ink collector (atlas-kit) -> Data/c4-live/ (git-ignored)
 │
 ├── Utils/
@@ -784,6 +843,9 @@ node Test/test-recipes.js
 
 # Command Deck model against independently derived figures (175 checks; --sabotage must fail)
 node Test/command-deck-check.js
+
+# Crew Explorer model and feed walk (no network; every rule also has mutants that must fail)
+node Test/crew-explorer-check.js
 ```
 
 **Coverage:**

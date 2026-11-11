@@ -150,6 +150,30 @@ const moduleHelpContent = {
         ]
     },
 
+    crewExplorer: {
+        title: 'Crew Explorer',
+        sections: [
+            { heading: 'What it is', content: 'Your own Star Atlas crew, analysed. Enter a wallet, a SAGE player profile, or both, and the page loads every crew member held there from the public Star Atlas crew feed.' },
+            { heading: 'Loading', content: `
+                <ul>
+                    <li>The wallet shows crew still held in it; the SAGE player profile shows crew deposited into SAGE. Enter both to see everything</li>
+                    <li>A loading screen counts the crew as they arrive. Loading stops by itself after 5 minutes or 40,000 crew, and you can stop it early and keep what is loaded</li>
+                    <li>The roster is saved on your device, so the next visit opens at once. <strong>Reload</strong> reads it again; <strong>Forget this roster</strong> deletes the saved copy</li>
+                    <li>The addresses you type are sent only to the Star Atlas crew feed</li>
+                </ul>` },
+            { heading: 'The tabs', content: `
+                <ul>
+                    <li><strong>Filters:</strong> rarity, faction, species, aptitude and XP rate apply to every tab. Picking several aptitudes keeps crew that have all of them</li>
+                    <li><strong>Overview:</strong> the roster in a few sentences, counts by rarity, faction, species, university, body and age, and a table comparing any two of those. Click a bar or a number to filter</li>
+                    <li><strong>Aptitudes:</strong> how many crew have each aptitude at minor (+25% XP), major (+50%) and anomaly (+100%) rate, the perks each aptitude unlocks, and the best crew for the aptitudes you pick</li>
+                    <li><strong>Personality:</strong> the five personality traits as distributions, and their averages by species, faction, rarity or aptitude</li>
+                    <li><strong>Roster:</strong> every crew member as a card, sortable; click one for the full sheet, and click the portrait in the sheet to see it full size</li>
+                </ul>` },
+            { heading: 'Sounds', content: 'Clicks, tab changes and opening or closing a crew sheet make short, quiet sounds, and a soft chime plays when a whole roster has loaded. The speaker button in the top bar turns them off; the choice is remembered on this device.' },
+            { heading: 'Good to know', content: 'Perks come from the official Crew Aptitude Perks sheet, which describes planned features. Any crew can level any aptitude; a rolled aptitude only earns its XP faster. The feed does not publish XP or levels, so those are not shown.' }
+        ]
+    },
+
     c4Live: {
         title: 'C4 Live',
         sections: [

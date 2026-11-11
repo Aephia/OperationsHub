@@ -32,6 +32,12 @@
 - Testing checklist
 - Known issues and next steps
 
+### [CREW-DATA-HOW-TO.md](CREW-DATA-HOW-TO.md)
+**How Star Atlas Crew data is reached (the per-owner route is built as the Crew Explorer; a full crawl is not)**
+- The public crew feed, its fields and limits
+- Three ways to collect every card, with measured and estimated costs
+- Serving options and open decisions
+
 ---
 
 ## 🔄 Data Pipeline Documentation

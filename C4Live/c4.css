@@ -346,6 +346,8 @@ body.c4-app { min-height: 0; margin: 0; }
 @media (max-width: 699px) {
     :root { --edge: 8px; }
     .c4-topbar { right: var(--edge); flex-direction: column; gap: 0.4rem; }
+    /* the interface-sound button (SFX/ui-sfx.js) rides on the brand row instead of taking a row of its own */
+    .c4-topbar .ui-sfx-btn { position: absolute; top: 3px; right: 0; }
     .c4-brand { align-self: flex-start; padding: 0.25rem 0.7rem 0.25rem 0.3rem; }
     .c4-brand img { width: 24px; height: 24px; }
     .c4-brand-t small { display: none; }

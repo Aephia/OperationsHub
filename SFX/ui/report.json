@@ -1,0 +1,330 @@
+{
+ "tap": {
+  "picked": "tap_3.wav",
+  "rule": "live take with centroid nearest 1800 Hz",
+  "takes": [
+   {
+    "take": "tap_0.wav",
+    "dead": false,
+    "distance": 152.9000000000001,
+    "peak": 0.4277,
+    "rms": 0.0788,
+    "a_rms": 0.09,
+    "centroid": 1952.9,
+    "sub150": 0.0001,
+    "seconds": 0.09
+   },
+   {
+    "take": "tap_1.wav",
+    "dead": true,
+    "distance": 784.4,
+    "peak": 0.0002,
+    "rms": 0.0,
+    "a_rms": 0.0,
+    "centroid": 1015.6,
+    "sub150": 0.0048,
+    "seconds": 0.12
+   },
+   {
+    "take": "tap_2.wav",
+    "dead": true,
+    "distance": 1086.5,
+    "peak": 0.3717,
+    "rms": 0.0783,
+    "a_rms": 0.09,
+    "centroid": 2886.5,
+    "sub150": 0.0,
+    "seconds": 0.12
+   },
+   {
+    "take": "tap_3.wav",
+    "dead": false,
+    "distance": 112.0,
+    "peak": 0.3855,
+    "rms": 0.0787,
+    "a_rms": 0.09,
+    "centroid": 1912.0,
+    "sub150": 0.0,
+    "seconds": 0.12
+   }
+  ],
+  "shipped": {
+   "peak": 0.3854,
+   "rms": 0.0787,
+   "a_rms": 0.09,
+   "centroid": 1912.0,
+   "sub150": 0.0,
+   "seconds": 0.12
+  },
+  "max_seconds": 0.12
+ },
+ "tab": {
+  "picked": "tab_3.wav",
+  "rule": "live take with centroid nearest 1600 Hz",
+  "takes": [
+   {
+    "take": "tab_0.wav",
+    "dead": false,
+    "distance": 37.90000000000009,
+    "peak": 0.3233,
+    "rms": 0.081,
+    "a_rms": 0.09,
+    "centroid": 1562.1,
+    "sub150": 0.0001,
+    "seconds": 0.2
+   },
+   {
+    "take": "tab_1.wav",
+    "dead": false,
+    "distance": 817.7,
+    "peak": 0.6074,
+    "rms": 0.1177,
+    "a_rms": 0.09,
+    "centroid": 782.3,
+    "sub150": 0.0002,
+    "seconds": 0.2
+   },
+   {
+    "take": "tab_2.wav",
+    "dead": false,
+    "distance": 916.9,
+    "peak": 0.6409,
+    "rms": 0.1152,
+    "a_rms": 0.09,
+    "centroid": 683.1,
+    "sub150": 0.0002,
+    "seconds": 0.2
+   },
+   {
+    "take": "tab_3.wav",
+    "dead": false,
+    "distance": 234.0,
+    "peak": 0.4701,
+    "rms": 0.0815,
+    "a_rms": 0.09,
+    "centroid": 1834.0,
+    "sub150": 0.0001,
+    "seconds": 0.2
+   }
+  ],
+  "shipped": {
+   "peak": 0.4701,
+   "rms": 0.0815,
+   "a_rms": 0.09,
+   "centroid": 1834.0,
+   "sub150": 0.0001,
+   "seconds": 0.2
+  },
+  "max_seconds": 0.2
+ },
+ "open": {
+  "picked": "open_5.wav",
+  "rule": "live take with centroid nearest 1400 Hz",
+  "takes": [
+   {
+    "take": "open_0.wav",
+    "dead": false,
+    "distance": 457.79999999999995,
+    "peak": 0.4392,
+    "rms": 0.0964,
+    "a_rms": 0.09,
+    "centroid": 942.2,
+    "sub150": 0.0,
+    "seconds": 0.284
+   },
+   {
+    "take": "open_1.wav",
+    "dead": true,
+    "distance": 1695.3000000000002,
+    "peak": 0.4636,
+    "rms": 0.0791,
+    "a_rms": 0.09,
+    "centroid": 3095.3,
+    "sub150": 0.0003,
+    "seconds": 0.38
+   },
+   {
+    "take": "open_2.wav",
+    "dead": true,
+    "distance": 1846.6999999999998,
+    "peak": 0.4706,
+    "rms": 0.0808,
+    "a_rms": 0.0899,
+    "centroid": 3246.7,
+    "sub150": 0.0001,
+    "seconds": 0.38
+   },
+   {
+    "take": "open_3.wav",
+    "dead": true,
+    "distance": 1231.1999999999998,
+    "peak": 0.6214,
+    "rms": 0.0794,
+    "a_rms": 0.09,
+    "centroid": 2631.2,
+    "sub150": 0.0,
+    "seconds": 0.38
+   },
+   {
+    "take": "open_4.wav",
+    "dead": false,
+    "distance": 457.70000000000005,
+    "peak": 0.2381,
+    "rms": 0.0952,
+    "a_rms": 0.09,
+    "centroid": 942.3,
+    "sub150": 0.0,
+    "seconds": 0.38
+   },
+   {
+    "take": "open_5.wav",
+    "dead": false,
+    "distance": 96.09999999999991,
+    "peak": 0.2798,
+    "rms": 0.0832,
+    "a_rms": 0.09,
+    "centroid": 1496.1,
+    "sub150": 0.0001,
+    "seconds": 0.38
+   },
+   {
+    "take": "open_6.wav",
+    "dead": true,
+    "distance": 1943.9,
+    "peak": 0.4291,
+    "rms": 0.0794,
+    "a_rms": 0.09,
+    "centroid": 3343.9,
+    "sub150": 0.0001,
+    "seconds": 0.38
+   }
+  ],
+  "shipped": {
+   "peak": 0.2798,
+   "rms": 0.0832,
+   "a_rms": 0.09,
+   "centroid": 1496.1,
+   "sub150": 0.0001,
+   "seconds": 0.38
+  },
+  "max_seconds": 0.38
+ },
+ "close": {
+  "picked": "close_2.wav",
+  "rule": "live take with centroid nearest 1100 Hz",
+  "takes": [
+   {
+    "take": "close_0.wav",
+    "dead": false,
+    "distance": 143.20000000000005,
+    "peak": 0.3798,
+    "rms": 0.0978,
+    "a_rms": 0.09,
+    "centroid": 956.8,
+    "sub150": 0.0,
+    "seconds": 0.256
+   },
+   {
+    "take": "close_1.wav",
+    "dead": true,
+    "distance": 1926.5,
+    "peak": 0.5432,
+    "rms": 0.0802,
+    "a_rms": 0.0899,
+    "centroid": 3026.5,
+    "sub150": 0.0006,
+    "seconds": 0.34
+   },
+   {
+    "take": "close_2.wav",
+    "dead": false,
+    "distance": 758.5999999999999,
+    "peak": 0.5309,
+    "rms": 0.082,
+    "a_rms": 0.09,
+    "centroid": 1858.6,
+    "sub150": 0.0002,
+    "seconds": 0.34
+   },
+   {
+    "take": "close_3.wav",
+    "dead": false,
+    "distance": 1436.3000000000002,
+    "peak": 0.4608,
+    "rms": 0.079,
+    "a_rms": 0.09,
+    "centroid": 2536.3,
+    "sub150": 0.0,
+    "seconds": 0.34
+   }
+  ],
+  "shipped": {
+   "peak": 0.5308,
+   "rms": 0.082,
+   "a_rms": 0.09,
+   "centroid": 1858.6,
+   "sub150": 0.0002,
+   "seconds": 0.34
+  },
+  "max_seconds": 0.34
+ },
+ "done": {
+  "picked": "done_3.wav",
+  "rule": "live take with centroid nearest 1300 Hz",
+  "takes": [
+   {
+    "take": "done_0.wav",
+    "dead": false,
+    "distance": 459.4,
+    "peak": 0.4375,
+    "rms": 0.0984,
+    "a_rms": 0.09,
+    "centroid": 840.6,
+    "sub150": 0.0,
+    "seconds": 0.802
+   },
+   {
+    "take": "done_1.wav",
+    "dead": false,
+    "distance": 877.0,
+    "peak": 0.6479,
+    "rms": 0.1491,
+    "a_rms": 0.09,
+    "centroid": 423.0,
+    "sub150": 0.0,
+    "seconds": 0.85
+   },
+   {
+    "take": "done_2.wav",
+    "dead": false,
+    "distance": 715.3,
+    "peak": 0.5194,
+    "rms": 0.1179,
+    "a_rms": 0.09,
+    "centroid": 584.7,
+    "sub150": 0.0001,
+    "seconds": 0.85
+   },
+   {
+    "take": "done_3.wav",
+    "dead": false,
+    "distance": 273.0999999999999,
+    "peak": 0.5181,
+    "rms": 0.0895,
+    "a_rms": 0.09,
+    "centroid": 1026.9,
+    "sub150": 0.0,
+    "seconds": 0.85
+   }
+  ],
+  "shipped": {
+   "peak": 0.518,
+   "rms": 0.0895,
+   "a_rms": 0.09,
+   "centroid": 1026.9,
+   "sub150": 0.0,
+   "seconds": 0.85
+  },
+  "max_seconds": 0.85
+ }
+}

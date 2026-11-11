@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <!-- Crew names come from an outside feed and are rendered on this page: even if escaping ever failed, nothing could
+         run, and the page can only talk to this site (its own sound files), the crew feed and the portrait CDN. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://cdn.staratlas.com; connect-src 'self' https://galaxy.staratlas.com; base-uri 'none'; form-action 'none'">
+    <meta name="referrer" content="no-referrer">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Aephia Industries - Crew Explorer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/jpeg" href="../Images/channels4_profile.jpg">
+    <link rel="stylesheet" href="../ResourcesExplorer/styles.css?v=20261001">
+    <link rel="stylesheet" href="../ResourcesExplorer/resource-visual.css?v=20261023">
+    <link rel="stylesheet" href="crew.css?v=20261110e">
+</head>
+<body class="cr-app">
+    <div class="cr-bay" aria-hidden="true"></div>
+    <div class="cr-page">
+        <div class="cr-top">
+            <a class="cr-brand cr-glass" href="../index.html" title="Back to the Operations Hub">
+                <img src="../Images/channels4_profile.jpg" alt="">
+                <span class="cr-brand-t"><small>Aephia Industries</small><h1>Crew Explorer</h1></span>
+            </a>
+            <div class="cr-kpis cr-glass" id="crKpis" hidden></div>
+        </div>
+
+        <!-- entry: a wallet, a SAGE player profile, or both -->
+        <section class="cr-entry cr-glass" id="crEntry">
+            <form id="crForm" autocomplete="off" novalidate>
+                <label class="cr-field"><span>Wallet <i>crew held in the wallet</i></span>
+                    <input id="crWallet" type="text" spellcheck="false" maxlength="64" placeholder="your wallet address"></label>
+                <label class="cr-field"><span>SAGE player profile <i>crew deposited into SAGE</i></span>
+                    <input id="crProfile" type="text" spellcheck="false" maxlength="64" placeholder="your SAGE player profile address"></label>
+                <button class="cr-go" id="crGo" type="submit">Load crew</button>
+            </form>
+            <p class="cr-entry-msg" id="crMsg" role="alert" hidden></p>
+            <p class="cr-entry-note" id="crNote">Enter either one, or both. The wallet shows crew still held in it; the player profile shows crew deposited into SAGE. The addresses are sent only to the Star Atlas crew feed, and the roster is kept on this device.</p>
+            <div class="cr-sources" id="crSources" hidden></div>
+        </section>
+
+        <div class="cr-main" id="crMain" hidden>
+            <section class="cr-filters cr-glass" id="crFilters" aria-label="Filters"></section>
+            <nav class="cr-tabs" id="crTabs" role="tablist">
+                <button class="cr-tab active" data-tab="overview" role="tab">Overview</button>
+                <button class="cr-tab" data-tab="aptitudes" role="tab">Aptitudes</button>
+                <button class="cr-tab" data-tab="personality" role="tab">Personality</button>
+                <button class="cr-tab" data-tab="roster" role="tab">Roster</button>
+            </nav>
+            <section class="cr-sec active" id="sec-overview"></section>
+            <section class="cr-sec" id="sec-aptitudes"></section>
+            <section class="cr-sec" id="sec-personality"></section>
+            <section class="cr-sec" id="sec-roster"></section>
+        </div>
+        <p class="cr-foot">Crew data and portraits: Star Atlas public crew feed. Perks are from the official Crew Aptitude Perks sheet, which describes planned features.</p>
+    </div>
+
+    <!-- loading screen -->
+    <div class="cr-load" id="crLoad" hidden role="status" aria-live="polite">
+        <div class="cr-load-box cr-glass">
+            <div class="cr-load-ring" aria-hidden="true"></div>
+            <h2>Loading crew</h2>
+            <p class="cr-load-step" id="crLoadStep">Starting</p>
+            <b class="cr-load-n" id="crLoadN">0</b><span class="cr-load-u">crew loaded</span>
+            <div class="cr-load-bar" aria-hidden="true"><i id="crLoadBar"></i></div>
+            <p class="cr-load-t"><span id="crLoadT">0:00</span> of 5:00 at most</p>
+            <button class="cr-stop" id="crStop" type="button">Stop and show what is loaded</button>
+        </div>
+    </div>
+
+    <div class="cr-scrim" id="crScrim" hidden></div>
+    <aside class="cr-drawer" id="crDrawer" aria-hidden="true" tabindex="-1"></aside>
+    <div class="cr-zoom" id="crZoom" role="dialog" aria-label="Full portrait" hidden></div>
+
+    <script src="crew-model.js?v=20261110d"></script>
+    <script src="crew-fetch.js?v=20261110d"></script>
+    <script src="crew-store.js?v=20261110d"></script>
+    <script src="app.js?v=20261110d"></script>
+    <!-- quiet interface sounds; which elements sound is declared here, the on/off button goes in the top bar -->
+    <script src="../SFX/ui-sfx.js?v=20261110d" data-tap=".cr-chip, .cr-bar, .cr-cell, .cr-aptname, .cr-link, .cr-pager button, .cr-go, .cr-stop, .cr-card, .cr-x" data-tab=".cr-tab" data-open-class="#crDrawer:open" data-open-unhide="#crZoom" data-mute-mount=".cr-top"></script>
+</body>
+</html>
