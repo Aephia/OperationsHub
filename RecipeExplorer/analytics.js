@@ -8,6 +8,9 @@
 //      count the Resources Explorer shows), with a category filter, 50 per page, search keeps the global rank; click a
 //      row for the recipes that use it. Kept from the 2026-09-28 build because the click-through is recipe-side.
 //   5. Gated recipes - exotic outputs and research-gated recipes.
+// Alternative recipes (rule): a row whose name carries a bracketed tag makes its plain item, so it counts
+// as an inventory resource when its base name is one; the top row shows how many recipes are another way to make an
+// item (the tagged rows and the untagged same-tier siblings of an item's head, fix 2) and for how many items. Faction-exclusive counts read the canonical faction ("Ustur" rows are USTUR).
 // Gone: the recipe modal's complexity score (tier x 10 + ingredients x 5 + time / 10 + unique x 3), "resource
 // intensity", "time efficiency", "tier progression" and "material efficiency" labels - invented weights and thresholds.
 (function () {
@@ -35,9 +38,11 @@
         renderAnalytics() {
             const root = document.getElementById('analyticsContent'); if (!root) return;
             const st = this.m.stats;
+            // fix 2: every recipe that is another way to make an item - the tagged rows AND the untagged same-tier siblings
+            const ow = this.m.otherWayStats();
             root.innerHTML = `
                 <div class="an-root">
-                    <div class="an-stats">${[[st.total, 'recipes'], [st.types.length, 'output types'], [st.total - st.outputsNotResources, 'make an inventory resource'], [st.outputsNotResources, 'make a building, ship or extractor'], [st.exotic.length, 'exotic outputs'], [st.research.length, 'research-gated']].map(([n, l]) => `<div class="an-stat"><b>${num(n)}</b><span>${l}</span></div>`).join('')}</div>
+                    <div class="an-stats">${[[st.total, 'recipes'], [st.types.length, 'output types'], [st.total - st.outputsNotResources, 'make an inventory resource'], [st.outputsNotResources, 'make a building, ship or extractor'], [ow.recipes, `are intermediate recipes, for ${num(ow.items)} items`], [st.exotic.length, 'exotic outputs'], [st.research.length, 'research-gated']].map(([n, l]) => `<div class="an-stat"><b>${num(n)}</b><span>${l}</span></div>`).join('')}</div>
                     <nav class="an-jump"><a href="#anMakes">What the catalogue makes</a><a href="#anTime">Build time</a><a href="#anWhere">Where things are crafted</a><a href="#anDemand">Ingredient demand</a><a href="#anGated">Gated recipes</a></nav>
                     <section class="an-section" id="anMakes"></section>
                     <section class="an-section" id="anTime"></section>

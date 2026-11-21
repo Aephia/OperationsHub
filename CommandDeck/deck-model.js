@@ -107,7 +107,7 @@
                 out.route = route; out.cls = cls; out.body = { name: body.name, system: body.system, richness: body.deposits.get(res.id).richness, belt: body.cat === 3 };
                 out.zoneNode = this.zoneGrant(cls, prefer); out.zoneAlts = (this.zoneGrants[cls] || []).filter(n => n !== out.zoneNode);
                 const tags = new Set(out.zoneNode ? out.zoneNode.tags : []);
-                if (route === 'stake') { this.buildingGate(out.extractor.id).forEach(t => tags.add(t)); this.stakeGate(1).forEach(t => tags.add(t)); }
+                if (route === 'stake') { this.buildingGate(out.extractor.id).forEach(t => tags.add(t)); this.stakeGate(1, se.kindOf(out.extractor)).forEach(t => tags.add(t)); }
                 out.tags = Array.from(tags);
                 return out;
             };
@@ -269,7 +269,9 @@
             return tags;
         }
         buildingGate(id) { return this.gate.buildings[id] || []; }
-        stakeGate(tier) { return this.gate.claimStakes['claim-stake-tier-' + tier] || []; }
+        // kind 'cultivation' reads the cultivation stake's own gate (the same nodes as the claim stake's in the
+        // 2026-11-12 export, but a separate entry)
+        stakeGate(tier, kind) { return this.gate.claimStakes[(kind === 'cultivation' ? 'cultivation-stake-tier-' : 'claim-stake-tier-') + tier] || []; }
         habGate(id) { return this.gate.craftingHabs[id] || []; }
         shipSizeNode(sizeTier) { const v = SIZE_VALUE[sizeTier]; return v ? this.nodes.find(n => n.grants.max_ship_size === v) || null : null; }
         shipGate(ship) { const n = this.shipSizeNode(ship.sizeTier); return n ? n.tags : []; }
@@ -348,6 +350,9 @@
                 case 'scan_cool_down_modifier': return { text: `Scan cooldown ${pct(v)}` };
                 case 'respawn_time_modifier': return { text: `Fleet respawn time ${pct(v)}` };
                 case 'warp_lane_fee_modifier': return { text: `Warp lane fees ${pct(v)}` };
+                // export 2026-11-19: Warp Cooldown 1-4 and the Targeting ladder
+                case 'warp_cooldown_modifier': return { text: `Warp cooldown ${pct(v)}` };
+                case 'hit_chance_modifier': return { text: `Hit chance ${pct(v)}` };
                 case 'max_daily_streak_length': return { text: `Daily check-in streak up to ${n(v)} days` };
                 case 'cargo_categories': return { text: `Carry all ${Array.isArray(v) ? v.length : n(v)} cargo categories` };
                 case 'rare_mineral_discovery': {
@@ -411,7 +416,10 @@
             this.by = new Map(this.bl.map(b => [b.id, b]));
             this.rm = resourceModel;
             this.slots = {};
-            (B.claimStakeDefinitions || []).forEach(d => { if (d.id.startsWith('claim-stake-')) this.slots[d.tier] = d.slots; });
+            // two stake kinds since the 2026-11-12 export: a standard claim stake (central hub) and a cultivation stake
+            // (cultivation hub; the organic extractors stand only there). Slots are per kind and tier
+            this.slotsCult = {};
+            (B.claimStakeDefinitions || []).forEach(d => { if (d.id.startsWith('claim-stake-')) this.slots[d.tier] = d.slots; else if (d.id.startsWith('cultivation-stake-')) this.slotsCult[d.tier] = d.slots; });
             // extractors by the raw they extract, processors by tier
             this.extractors = new Map(); this.processors = new Map();
             this.bl.forEach(b => {
@@ -445,15 +453,18 @@
         inputs(b) { return Object.entries(b.resourceRate || {}).filter(([, v]) => v < 0); }
         outputs(b) { return Object.entries(b.resourceRate || {}).filter(([, v]) => v > 0); }
 
-        // can this building stand on this planet in a standard stake of this tier (hubs aside)?
+        // the stake kind a building is locked to: 'standard', 'cultivation', or null when it stands on either
+        kindOf(b) { const t = (b && b.requiredTags) || []; return t.includes('cultivation-stake-only') ? 'cultivation' : t.includes('standard-stake-only') ? 'standard' : null; }
+        slotsOf(tier, kind) { return kind === 'cultivation' && this.slotsCult[tier] != null ? this.slotsCult[tier] : this.slots[tier]; }
+        // can this building stand on this planet in a stake of its own kind at this tier (hubs aside)? The stake kind
+        // is not judged here: layout() refuses a stake that mixes standard and cultivation buildings
         usable(b, planet, tier) {
             if (b.tier !== tier) return false;
             return (b.requiredTags || []).every(t => {
                 if (/-t\d$/.test(t)) return true;                                   // upgrade-path tags: ignored (fixed-tier rule)
                 if (t.endsWith('-planet') || t === 'asteroid-belt') return t === PT_TAG[planet.cat];
                 if (FACTION.includes(t)) return t === planet.faction;
-                if (t === 'standard-stake-only') return true;
-                if (t === 'cultivation-stake-only' || t === 'organic-focused') return false;
+                if (t.endsWith('-stake-only') || t === 'organic-focused') return true;   // the stake kind: kindOf / layout
                 if (t === 'tier-3-plus') return tier >= 3;
                 let m;
                 if ((m = /^enables-(.+)-(extraction|farming)$/.exec(t))) return planet.deposits.has(m[1]);
@@ -472,18 +483,43 @@
         }
         extractorFor(planet, raw, tier) { return (this.extractors.get(raw + '|' + tier) || []).find(b => this.usable(b, planet, tier)) || null; }
         // raws this planet lets a tier-N stake extract, and the first-stage processors it lets it run
-        extractable(planet, tier) { const out = []; planet.deposits.forEach((d, raw) => { const b = this.extractorFor(planet, raw, tier); if (b) out.push({ raw, name: d.name, richness: d.richness, b, rate: b.resourceExtractionRate[raw] }); }); return out; }
+        extractable(planet, tier) { const out = []; planet.deposits.forEach((d, raw) => { const b = this.extractorFor(planet, raw, tier); if (b) out.push({ raw, name: d.name, richness: d.richness, b, rate: b.resourceExtractionRate[raw], kind: this.kindOf(b) || 'standard' }); }); return out; }
+        // the kind of what stands on a stake: 'standard', 'cultivation', or null while nothing kind-locked is placed.
+        // Counted in extractors (a processor counts one); the larger side wins and a tie reads standard
+        stakeKind(planet, tier, alloc, procs) {
+            const n = { standard: 0, cultivation: 0 };
+            Object.entries(alloc || {}).forEach(([raw, k]) => { const b = k > 0 ? this.extractorFor(planet, raw, tier) : null, kd = b && this.kindOf(b); if (kd) n[kd] += k; });
+            (procs || []).forEach(id => { const b = this.by.get(id), kd = b && this.usable(b, planet, tier) ? this.kindOf(b) : null; if (kd) n[kd] += 1; });
+            return n.cultivation > n.standard ? 'cultivation' : n.standard ? 'standard' : null;
+        }
+        // A saved stake against today's data. Drops the extractors the planet no longer has a deposit or a kit for
+        // (gone), the processors that cannot run here (goneProcs) and, when what is left mixes the two stake kinds,
+        // everything of the smaller kind (offKind). Returns the cleaned alloc and procs and what went, so the
+        // caller can say so
+        cleanStake(planet, tier, alloc, procs) {
+            const out = {}, gone = [], offKind = [];
+            Object.entries(alloc || {}).forEach(([raw, k]) => { if (!(k > 0)) return; if (this.extractorFor(planet, raw, tier)) out[raw] = k; else gone.push(raw); });
+            const runs = (procs || []).filter(id => { const b = this.by.get(id); return !!b && this.usable(b, planet, tier); });
+            const kind = this.stakeKind(planet, tier, out, runs);
+            Object.keys(out).forEach(raw => { const kd = this.kindOf(this.extractorFor(planet, raw, tier)); if (kd && kind && kd !== kind) { offKind.push(raw); delete out[raw]; } });
+            const keep = runs.filter(id => { const kd = this.kindOf(this.by.get(id)); return !kd || !kind || kd === kind; });
+            return { alloc: out, procs: keep, kind, gone, offKind, goneProcs: (procs || []).filter(id => !keep.includes(id)) };
+        }
         processable(planet, tier) { return (this.processors.get(tier) || []).filter(b => this.inputs(b).length && this.usable(b, planet, tier)); }
 
         // One stake: alloc {raw: extractor count}, procs [processor id]. Hubs follow what is placed (plus the storage
         // hub), then crew quarters and power plants until crew is housed and power is not negative.
         layout(planet, tier, alloc, procs, opts) {
             const o = Object.assign({ storage: true }, opts || {});
-            const S = this.slots[tier], central = this.infra(planet, 'central-hub', tier);
-            if (!central || !planet.stakeable) return { ok: false, reason: 'no stake can stand here', S, used: 0, items: [], extractors: 0, processors: 0, hubs: [], ncq: 0, npp: 0, crewNeed: 0, crewCap: 0, power: 0, storage: 0 };
             const items = [];                                                        // {b, n, role}
             Object.entries(alloc || {}).forEach(([raw, n]) => { if (n > 0) { const b = this.extractorFor(planet, raw, tier); if (b) items.push({ b, n, role: 'extractor', raw }); } });
             (procs || []).forEach(id => { const b = this.by.get(id); if (b && this.usable(b, planet, tier)) items.push({ b, n: 1, role: 'processor' }); });
+            // the stake's kind follows what stands on it: one cultivation-only building makes it a cultivation stake
+            // (the cultivation hub replaces the central hub); standard-only and cultivation-only buildings never share one
+            const kinds = new Set(items.map(it => this.kindOf(it.b)).filter(Boolean));
+            const mixed = kinds.size > 1, kind = kinds.has('cultivation') ? 'cultivation' : 'standard';
+            const S = this.slotsOf(tier, kind), central = this.infra(planet, kind === 'cultivation' ? 'cultivation-hub' : 'central-hub', tier);
+            if (!central || !planet.stakeable) return { ok: false, reason: 'no stake can stand here', kind, S, used: 0, items: [], extractors: 0, processors: 0, hubs: [], ncq: 0, npp: 0, crewNeed: 0, crewCap: 0, power: 0, storage: 0 };
             const hubs = new Set(); if (o.storage) hubs.add('storage-hub');
             items.forEach(it => (it.b.requiredTags || []).forEach(t => { if (HUB_FOR[t]) hubs.add(HUB_FOR[t]); }));
             const fixed = Array.from(hubs).map(k => this.infra(planet, k, tier)).filter(Boolean);
@@ -502,7 +538,8 @@
             const all = [{ b: central, n: 1, role: 'central' }].concat(fixed.map(b => ({ b, n: 1, role: 'hub' })), ncq ? [{ b: cq, n: ncq, role: 'crew' }] : [], npp ? [{ b: pp, n: npp, role: 'power' }] : [], items);
             const extractors = items.filter(i => i.role === 'extractor').reduce((a, i) => a + i.n, 0);
             return {
-                ok: used <= S, S, used, ncq, npp, hubs: Array.from(hubs), extractors, processors: items.filter(i => i.role === 'processor').length,
+                ok: used <= S && !mixed, kind, mixed, reason: mixed ? 'standard and cultivation buildings need separate stakes' : (used > S ? 'over the slot budget' : ''),
+                S, used, ncq, npp, hubs: Array.from(hubs), extractors, processors: items.filter(i => i.role === 'processor').length,
                 power: pw, crewCap: cap, crewNeed: need, items: all, central,
                 storage: all.reduce((a, it) => a + (it.b.storage || 0) * it.n, 0)
             };
@@ -510,7 +547,13 @@
 
         // spread as many extractors as fit over `raws` (in that order, round-robin)
         autoAlloc(planet, tier, raws, procs) {
-            const alloc = {}; const list = raws.filter(r => this.extractorFor(planet, r, tier));
+            const alloc = {}; let list = raws.filter(r => this.extractorFor(planet, r, tier));
+            if (!list.length) return alloc;
+            // one stake, one kind: the processors already on it decide, else the first raw in the caller's order
+            const kindOfRaw = r => this.kindOf(this.extractorFor(planet, r, tier));
+            const procKind = (procs || []).map(id => this.kindOf(this.by.get(id))).find(Boolean);
+            const kind = procKind || list.map(kindOfRaw).find(Boolean) || null;
+            if (kind) list = list.filter(r => { const k = kindOfRaw(r); return !k || k === kind; });
             if (!list.length) return alloc;
             for (let i = 0, guard = 0; guard < 5000; guard++, i = (i + 1) % list.length) {
                 const next = Object.assign({}, alloc); next[list[i]] = (next[list[i]] || 0) + 1;
@@ -552,7 +595,7 @@
         stakeWith(tier, raw, n) {
             const s = this.stakeBase(tier, raw); if (!s) return null;
             const k = Math.max(1, Math.min(s.max, Math.floor(n) || s.max)), L = this.layout(s.fake, tier, { [raw]: k }, []);
-            return { tier, raw, k, max: s.max, rate: s.rate, perTick: k * s.rate, storage: L.storage, ncq: L.ncq, npp: L.npp, used: L.used, S: L.S, crew: L.crewNeed };
+            return { tier, raw, k, max: s.max, rate: s.rate, perTick: k * s.rate, storage: L.storage, ncq: L.ncq, npp: L.npp, used: L.used, S: L.S, crew: L.crewNeed, kind: L.kind };
         }
         // a planet the extractor stands on, and how many fit (cached per tier and raw)
         stakeBase(tier, raw) {
@@ -563,7 +606,9 @@
             if (b) {
                 const fake = { slug: 'terrestrial', cat: Math.max(0, PT_TAG.findIndex(t => (b.requiredTags || []).includes(t))), faction: (b.requiredTags || []).find(t => FACTION.includes(t)) || 'oni', stakeable: true, deposits: new Map([[raw, { name: raw, richness: 1 }]]) };
                 fake.slug = PT_SLUG[fake.cat];
-                let max = 0; for (let n = 1; n < 5000; n++) { if (!this.layout(fake, tier, { [raw]: n }, []).ok) break; max = n; }
+                // "n fit" counts only when the layout really placed n extractors: a kit no stake accepts places none,
+                // and an empty layout is ok at every n (2026-11-11: that read as a 4,999-extractor stake)
+                let max = 0; for (let n = 1; n < 5000; n++) { const L = this.layout(fake, tier, { [raw]: n }, []); if (!L.ok || L.extractors !== n) break; max = n; }
                 if (max) out = { fake, rate: b.resourceExtractionRate[raw], max };
             }
             memo.set(key, out);

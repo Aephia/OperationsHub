@@ -8,8 +8,8 @@
       "description": "Tier 1 habitat module",
       "constructionTime": 1800,
       "constructionCost": {
-        "habitat-module": 1,
-        "environmental-control": 1
+        "environmental-control": 1,
+        "habitat-module": 1
       },
       "crew_slots": 0,
       "crew_needed": 0,
@@ -49,9 +49,8 @@
       "description": "Tier 2 habitat module",
       "constructionTime": 3600,
       "constructionCost": {
-        "hab-t1": 1,
-        "habitat-module": 1,
         "environmental-control": 1,
+        "habitat-module": 1,
         "safety-interlock": 1
       },
       "crew_slots": 0,
@@ -94,12 +93,11 @@
       "description": "Tier 3 habitat module",
       "constructionTime": 7200,
       "constructionCost": {
-        "hab-t2": 1,
-        "habitat-module": 1,
+        "drywater": 1,
         "environmental-control": 1,
-        "safety-interlock": 1,
+        "habitat-module": 1,
         "life-support-coordination": 1,
-        "drywater": 1
+        "safety-interlock": 1
       },
       "crew_slots": 0,
       "crew_needed": 0,
@@ -145,13 +143,12 @@
       "description": "Tier 4 habitat module",
       "constructionTime": 14400,
       "constructionCost": {
-        "hab-t3": 1,
-        "habitat-module": 1,
+        "drywater": 1,
         "environmental-control": 1,
-        "safety-interlock": 1,
+        "habitat-module": 1,
         "life-support-coordination": 1,
-        "structural-reinforcement-grid": 1,
-        "drywater": 1
+        "safety-interlock": 1,
+        "structural-reinforcement-grid": 1
       },
       "crew_slots": 0,
       "crew_needed": 0,
@@ -199,13 +196,12 @@
       "description": "Tier 5 habitat module",
       "constructionTime": 28800,
       "constructionCost": {
-        "hab-t4": 1,
-        "habitat-module": 1,
+        "drywater": 1,
         "environmental-control": 1,
-        "safety-interlock": 1,
+        "habitat-module": 1,
         "life-support-coordination": 1,
-        "structural-reinforcement-grid": 1,
-        "drywater": 1
+        "safety-interlock": 1,
+        "structural-reinforcement-grid": 1
       },
       "crew_slots": 0,
       "crew_needed": 0,
@@ -255,8 +251,8 @@
       "jobSlots": 1,
       "constructionTime": 900,
       "constructionCost": {
-        "material-processor": 1,
-        "industrial-control-matrix": 1
+        "industrial-control-matrix": 1,
+        "material-processor": 1
       },
       "slots": 8,
       "crew_slots": 0,
@@ -297,9 +293,8 @@
       "jobSlots": 2,
       "constructionTime": 1800,
       "constructionCost": {
-        "hab-crafting-station-xxs": 1,
-        "material-processor": 1,
         "industrial-control-matrix": 1,
+        "material-processor": 1,
         "safety-interlock": 1
       },
       "slots": 64,
@@ -343,11 +338,10 @@
       "jobSlots": 3,
       "constructionTime": 3600,
       "constructionCost": {
-        "hab-crafting-station-xs": 1,
-        "material-processor": 1,
         "industrial-control-matrix": 1,
-        "safety-interlock": 1,
-        "structural-foundation": 1
+        "material-processor": 1,
+        "structural-foundation": 1,
+        "safety-interlock": 1
       },
       "slots": 216,
       "crew_slots": 0,
@@ -392,9 +386,8 @@
       "jobSlots": 5,
       "constructionTime": 7200,
       "constructionCost": {
-        "hab-crafting-station-s": 1,
-        "material-processor": 1,
         "industrial-control-matrix": 1,
+        "material-processor": 1,
         "safety-interlock": 1,
         "structural-foundation": 1,
         "structural-reinforcement-grid": 1
@@ -412,13 +405,7 @@
         "2320": 1
       },
       "construction_time": 7200,
-      "refund_amount": {
-        "2264": 0,
-        "2274": 0,
-        "2303": 0,
-        "2318": 0,
-        "2320": 0
-      },
+      "refund_amount": {},
       "research_requirements": [],
       "required_tags": [
         10
@@ -485,10 +472,9 @@
       "jobSlotBonus": 1,
       "constructionTime": 3600,
       "constructionCost": {
-        "hab-cargo-storage-t1": 1,
         "cargo-container": 1,
-        "structural-foundation": 1,
-        "safety-interlock": 1
+        "safety-interlock": 1,
+        "structural-foundation": 1
       },
       "crew_slots": 0,
       "crew_needed": 0,
@@ -527,7 +513,6 @@
       "jobSlotBonus": 1,
       "constructionTime": 7200,
       "constructionCost": {
-        "hab-cargo-storage-t2": 1,
         "cargo-container": 1,
         "structural-foundation": 1,
         "safety-interlock": 1,
@@ -571,7 +556,6 @@
       "jobSlotBonus": 2,
       "constructionTime": 14400,
       "constructionCost": {
-        "hab-cargo-storage-t3": 1,
         "cargo-container": 1,
         "structural-foundation": 1,
         "safety-interlock": 1,
@@ -617,7 +601,6 @@
       "jobSlotBonus": 3,
       "constructionTime": 28800,
       "constructionCost": {
-        "hab-cargo-storage-t4": 1,
         "cargo-container": 1,
         "structural-foundation": 1,
         "safety-interlock": 1,

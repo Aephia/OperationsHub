@@ -2,7 +2,12 @@
 // (C4Live/c4-scene.js, window.C4Scene - optional: without it the panels still work) and renders the HUD, four tabbed
 // sections (Mining, Combat, Fleets, Owners) and the drawer (owner / asteroid / starbase). All numbers come from
 // C4Model (c4-ui-model.js). Chain strings (fleet names, system names) are untrusted: everything goes through esc().
-// Links IN: ?tab=mining|combat|fleets|owners  ?owner=<profile>  ?system=<address>  ?body=<address>
+// Links IN: ?tab=mining|resource|combat|fleets|owners  ?res=<resource name> (with tab=resource)  ?owner=<profile>
+// ?system=<address>  ?body=<address>
+// Resource tab (2026-11-13): pick a resource, the map draws one ring per system holding it (bigger and brighter = a
+// larger sum of its bodies' richness, M.resourceSystems = the scene's rule; rings, not columns, since the same
+// evening). It needs bodies.json, so opening it starts that load. The choice lives in S.res, sessionStorage 'c4.res' and the URL (?tab=resource&res=); scene contract (typeof-guarded):
+// setStatResource(name) before setStatLayer('resource').
 // v2 layout (2026-11-07): the map fills the viewport; the tabs, the system view and the drawer live in a right-side
 // glass dock (a bottom sheet under 700 px). Scene contract: setStatLayer(tab) on every tab change and at mount;
 // setInsets({left,right,top,bottom}) = map px covered by the dock / drawer / KPI bar, on every geometry change.
@@ -26,7 +31,16 @@
     const REFRESH_COOLDOWN_SEC = 5 * 60;   // the z.ink endpoint is shared and rate-limited
     const RETRY_COOLDOWN_SEC = 60;         // after any attempt, including one that failed
     const ATTEMPT_KEY = 'c4.read.at';
-    let saved = null;                      // public site: Map of file name -> JSON text from the last good read
+    const PROBE_KEY = 'c4.probe.at';       // the last "did the game change?" check, so a reload loop cannot hammer the endpoint
+    const AUTO_REFRESH_SEC = 60 * 60;      // a saved copy older than this is refreshed without a click
+    // a read the page started ON ITS OWN that failed: the automatic path waits REFRESH_COOLDOWN_SEC after it (kept in
+    // localStorage, so a reload or a second tab cannot retry it at once); the Refresh button keeps the 60 s rule
+    const AUTO_FAIL_KEY = 'c4.autoread.failed.at';
+    // The saved copy carries this version as its own entry. Another (or no) version = the copy is discarded on open and the
+    // visitor starts clean (loading screen, full read). Set to the release date when the chain or its files change shape.
+    const DATA_VERSION = '20261120';
+    const VERSION_KEY = 'data-version.json';
+    let saved = null;                     // public site: Map of file name -> JSON text from the last good read
     const RELOAD_MS = 5 * 60 * 1000;
     const RM = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
     const LAYERS = [['systems', 'Systems'], ['fleets', 'Fleets'], ['mining', 'Mining'], ['routes', 'Routes'], ['combat', 'Combat'], ['territory', 'Territory'], ['labels', 'Labels']];
@@ -41,6 +55,7 @@
         seenEvents: null, drawer: null, rendered: {},
         bodies: null, bodyIdx: null, bodiesP: null, bodiesErr: false, bodiesStale: false, sysView: null,
         view: 'tab',                                             // what the dock shows: 'tab' (S.tab) or 'system'
+        res: null, resQ: '',                                     // Resource tab: the chosen resource, the picker's filter text
         dock: { collapsed: false, w: 440, anim: false }, insets: null,
         // DACs: state 'loading' | 'ok' | 'off'; list = the parsed hand-kept file (NEVER written after load); example = the
         // preview toggle (memory only); cache = the derived views for the current snapshot + toggle
@@ -81,25 +96,40 @@
     function loadCollector() {
         return S.collectorP || (S.collectorP = new Promise((resolve, reject) => {
             const s = document.createElement('script');
-            s.src = 'c4-collect.js?v=20261108e';
+            s.src = 'c4-collect.js?v=20261120b';
             s.onload = resolve;
             s.onerror = () => { S.collectorP = null; reject(new Error('c4-collect.js failed to load')); };
             document.head.append(s);
         }));
     }
     // One read of the chain, saved only once the whole pass has succeeded. The lock stops two tabs racing each other.
-    async function readChain() {
+    // The saved files of this PC without the version entry; an empty Map when they carry another (or no) data version.
+    async function readStore() {
+        const all = await window.C4Store.getAll();
+        let v = null; try { v = JSON.parse(all.get(VERSION_KEY)); } catch (e) { /* no entry */ }
+        all.delete(VERSION_KEY);
+        return v === DATA_VERSION ? all : new Map();
+    }
+    const epochOf = files => { try { return JSON.parse(files.get('latest.json')).epoch || null; } catch (e) { return null; } };
+    const sameEpochAs = (a, b) => window.C4Collect && typeof window.C4Collect.sameEpoch === 'function' ? window.C4Collect.sameEpoch(a, b) : !!a && !!b && a.genesis === b.genesis && (a.sage === b.sage || a.sage == null || b.sage == null);
+    // staleEpoch: the chain version the page is showing when this read was started because the game changed. A copy that
+    // another tab saved in the meantime only counts as "just read" when it is NOT still that old version.
+    async function readChain(staleEpoch) {
         await loadCollector();
         const prices = await fetch('prices.json', { cache: 'no-cache' }).then(r => r.ok ? r.text() : null).catch(() => null);
         const run = async () => {
-            const base = await window.C4Store.getAll().catch(() => saved || new Map());
+            const base = await readStore().catch(() => saved || new Map());
             // Another tab may have read while this one waited for the lock: use its result instead of reading again.
-            if (generatedAtIn(base) > now() - REFRESH_COOLDOWN_SEC && generatedAtIn(base) <= now()) { saved = base; return; }
+            if (generatedAtIn(base) > now() - REFRESH_COOLDOWN_SEC && generatedAtIn(base) <= now() && !(staleEpoch && sameEpochAs(epochOf(base), staleEpoch))) { saved = base; return; }
             try { localStorage.setItem(ATTEMPT_KEY, String(now())); } catch (e) { /* private mode */ }
             const res = await window.C4Collect.run(base, prices);
+            // the check said the game changed, but this read still sees the old version: keep the clean saved copy (P2)
+            if (staleEpoch && !res.epochChanged && sameEpochAs(epochOf(res.files), staleEpoch)) throw new Error('the chain still reads as the version before the update');
             saved = res.files;
+            S.lastRead = { epochChanged: !!res.epochChanged };
             S.notSaved = false;
-            try { await window.C4Store.putAll(saved); } catch (e) { S.notSaved = true; console.warn('C4 Live: could not save to this PC', e); }
+            const out = new Map(saved); out.set(VERSION_KEY, JSON.stringify(DATA_VERSION));
+            try { await window.C4Store.putAll(out); } catch (e) { S.notSaved = true; console.warn('C4 Live: could not save to this PC', e); }
         };
         return navigator.locks ? navigator.locks.request('c4-live-read', run) : run();
     }
@@ -111,17 +141,51 @@
         const t = now(), g = S.latest ? S.latest.generatedAt : 0, a = lastAttempt();
         return Math.max(0, g && g <= t ? REFRESH_COOLDOWN_SEC - (t - g) : 0, a && a <= t ? RETRY_COOLDOWN_SEC - (t - a) : 0);
     }
-    async function refreshChain() {
-        if (S.refreshing || refreshWait() > 0) return;
-        S.refreshing = true; S.refreshErr = false; renderAge();
-        try { await readChain(); await load(false, true); }
-        catch (e) { S.refreshErr = true; console.warn('C4 Live: refresh failed', e); }
-        finally { S.refreshing = false; renderAge(); }
+    const retryWait = () => { const t = now(), a = lastAttempt(); return a && a <= t ? Math.max(0, RETRY_COOLDOWN_SEC - (t - a)) : 0; };
+    // the Refresh button: after a failed chain-update read the saved copy is of no use, so only the 60 s retry rule holds
+    const buttonWait = () => S.updateFailed ? retryWait() : refreshWait();
+    // chainUpdated: the game changed on chain, so the saved copy is of no use and the 5-minute rule for a fresh copy does
+    // not apply (only the 60 s retry rule does).
+    // auto: started by the page itself (autoUpdate), not by the Refresh button; a failure then stamps AUTO_FAIL_KEY.
+    async function refreshChain(chainUpdated, auto) {
+        if (S.refreshing || (chainUpdated ? retryWait() : refreshWait()) > 0) return;
+        S.refreshing = true; S.refreshErr = false; S.updateNote = false; S.updateFailed = false; S.updateReading = !!chainUpdated; S.lastRead = null; renderAge();
+        try {
+            await readChain(chainUpdated ? S.latest && S.latest.epoch : null);
+            await load(false, true);
+            if (S.lastRead && S.lastRead.epochChanged) S.updateNote = true;
+        }
+        catch (e) {
+            S.refreshErr = true; S.updateFailed = !!chainUpdated; console.warn('C4 Live: refresh failed', e);
+            if (auto === true) { try { localStorage.setItem(AUTO_FAIL_KEY, String(now())); } catch (e2) { /* private mode */ } }
+        }
+        finally { S.refreshing = false; S.updateReading = false; renderAge(); }
+    }
+    // Public site, after the saved copy is on screen: has the game been updated on chain, or is the copy old? Either one
+    // refreshes through the same path as the Refresh button. A failed check does nothing: the saved view stays.
+    async function autoUpdate() {
+        if (LOCAL || !S.latest || S.refreshing || document.hidden) return;
+        const t = now(), last = Math.max(lastAttempt(), (() => { try { return +localStorage.getItem(PROBE_KEY) || 0; } catch (e) { return 0; } })());
+        if (last && last <= t && t - last < RETRY_COOLDOWN_SEC) return;
+        const autoFail = (() => { try { return +localStorage.getItem(AUTO_FAIL_KEY) || 0; } catch (e) { return 0; } })();
+        if (autoFail && autoFail <= t && t - autoFail < REFRESH_COOLDOWN_SEC) return;   // P5: no automatic retry for 5 minutes
+        let changed = false;
+        if (S.latest.epoch) {
+            try {
+                await loadCollector();
+                if (typeof window.C4Collect.epoch !== 'function') return;
+                try { localStorage.setItem(PROBE_KEY, String(now())); } catch (e) { /* private mode */ }
+                const cur = await window.C4Collect.epoch();
+                changed = !sameEpochAs(cur, S.latest.epoch);
+            } catch (e) { console.warn('C4 Live: could not check the chain version', e); return; }
+        }
+        if (changed) await refreshChain(true, true);
+        else if (S.latest.generatedAt <= now() && now() - S.latest.generatedAt > AUTO_REFRESH_SEC) await refreshChain(false, true);
     }
     async function load(initial, fresh) {
         if (!LOCAL && !initial && !fresh) return;   // the public site only changes when its Refresh button says so
         if (!LOCAL && initial) {
-            saved = await window.C4Store.getAll().catch(() => new Map());
+            saved = await readStore().catch(() => new Map());
             if (!hasSaved()) {
                 showLoading();
                 await new Promise(r => setTimeout(r, refreshWait() * 1000));   // "Try again" reloads the page: keep the limit
@@ -138,10 +202,19 @@
         const [events, history, ownersSeries] = await Promise.all([side('events.json', []), side('history.json', []), side('owners.json', {})]);
         S.loadErr = failed;
         $('#c4Empty').hidden = true;
+        // a copy another tab read on the NEW chain version reaches this tab without epochChanged: compare the versions
+        const prevEpoch = S.latest && S.latest.epoch;
+        const epochMoved = !initial && !!prevEpoch && !!latest.epoch && !sameEpochAs(prevEpoch, latest.epoch);
+        if (epochMoved) S.updateNote = true;
         S.latest = latest; S.events = Array.isArray(events) ? events : []; S.history = Array.isArray(history) ? history : []; S.ownersSeries = ownersSeries || {};
         rebuild(!initial);
+        // a read that started a new chain version (this tab's read, or another tab's saved copy) makes the planets in memory
+        // another game's: drop them. S.bodies = [] (not null) so the reload below runs and the scene is handed an EMPTY list
+        if (!initial && (epochMoved || (S.lastRead && S.lastRead.epochChanged) || (latest.epoch && latest.epoch.changed))) { S.bodies = []; S.bodyIdx = null; S.bodiesStale = false; S.bodiesP = null; }
         if (!initial && S.bodies) { S.bodiesP = null; await loadBodies(false); }   // load() pushes the single setData below
         if (S.scene) { try { S.scene.setData(S.latest, S.events, S.bodies || undefined); } catch (e) { console.warn('C4 Live: scene.setData failed', e); } }
+        // rebuild() reopened the drawer while the old planets were still in memory: draw an open body drawer again
+        if (!initial && S.drawer && S.drawer.kind === 'body') reopenDrawer();
         pushDacs();
         if (S.sysView) renderSystemPanel();
         if (initial) { await S.dacP; applyParams(); }
@@ -259,9 +332,15 @@
             : a.state === 'late' ? ' - the next run is overdue.' : `, next run in about <b>${M.ago(a.next)}</b>. Counters project the current mining rates forward.`;
         const notes = M.qualityNotes(S.latest.quality).concat((S.loadErr || []).map(f => `${f} could not be loaded, so the panels that use it are empty.`));
         if (!LOCAL) {
-            const wait = refreshWait();
+            const wait = buttonWait();
             const label = S.refreshing ? 'Refreshing...' : wait > 0 ? `Refresh in ${M.ago(wait)}` : 'Refresh';
-            const extra = (S.refreshErr ? ['Could not reach z.ink, so this is still your saved data.'] : []).concat(S.notSaved ? ['This browser could not save the data, so it will load again next time.'] : []);
+            const extra = (S.updateReading ? ['The game was updated on chain. Reading the new state...'] : [])
+                .concat(S.updateFailed ? ['The game was updated on chain, but the new state could not be read. This is still your saved data from before the update. Press Refresh to try again.']
+                    : S.refreshErr ? ['Could not reach z.ink, so this is still your saved data.'] : [])
+                // this tab's read, or a saved copy (reload, another tab) whose read started the new version (P3)
+                .concat(S.updateNote || (S.latest.epoch && S.latest.epoch.changed === true) ? ['The game was updated on chain, so history and events start again from this read.'] : [])
+                .concat(Array.isArray(S.latest.fleets) && !S.latest.fleets.length ? ['No fleets were found on chain at this read.'] : [])
+                .concat(S.notSaved ?['This browser could not save the data, so it will load again next time.'] : []);
             el.innerHTML = `<div class="c4-glass c4-age c4-saved${a.state !== 'ok' ? ' stale' : ''}" id="c4AgeBox"><span>Saved data from <b>${M.ago(a.age)} ago</b> (${esc(when)})</span><button type="button" class="c4-refresh" data-c4-refresh${S.refreshing || wait > 0 ? ' disabled' : ''}>${label}</button></div>`
                 + notes.concat(extra).map(n => `<div class="c4-glass c4-age c4-qual">${esc(n)}</div>`).join('');
             $('.c4-live-dot').classList.toggle('stale', a.state !== 'ok');
@@ -333,13 +412,16 @@
     // ================================================================== dock (v2): tabs + system view, collapse, resize, insets
     // the scene draws the active tab's stats on the map; guarded because the scene may predate the contract
     function pushStatLayer() {
+        if (S.scene && typeof S.scene.setStatResource === 'function') { try { S.scene.setStatResource(S.res); } catch (e) { console.warn('C4 Live: setStatResource failed', e); } }
         if (S.scene && typeof S.scene.setStatLayer === 'function') { try { S.scene.setStatLayer(M.STAT_TABS.includes(S.tab) ? S.tab : S.tab === 'dacs' ? 'dacs' : null); } catch (e) { console.warn('C4 Live: setStatLayer failed', e); } }
     }
     function setTab(tab) {
         S.tab = tab;
+        if (tab === 'resource' && !S.bodyIdx) S.rendered.resource = false;   // re-entering after a failed load retries (F3)
         pushStatLayer();
         showView('tab');
         renderTab(tab, true);
+        resourceUrl();
     }
     // swap the dock content: the outgoing section fades out, the incoming one fades/rises in (CSS), cards stagger
     let viewTok = 0;
@@ -476,7 +558,7 @@
     function renderTab(tab, animate) {
         if (!S.D) return;
         const el = $('#sec-' + tab);
-        if (!S.rendered[tab]) { ({ mining: renderMining, combat: renderCombat, fleets: renderFleets, owners: renderOwners, dacs: renderDacs })[tab](el); S.rendered[tab] = true; }
+        if (!S.rendered[tab]) { ({ mining: renderMining, resource: renderResource, combat: renderCombat, fleets: renderFleets, owners: renderOwners, dacs: renderDacs })[tab](el); S.rendered[tab] = true; }
         if (animate) animateIn(el);
     }
     const card = (cls, i, title, sub, body) => `<div class="c4-card ${cls}" style="--i:${i}"><h3>${title}</h3>${sub ? `<p class="sub">${sub}</p>` : ''}${body}</div>`;
@@ -514,6 +596,99 @@
             ${card('w6', 3, 'Mined, settled on chain', 'Asteroid counters diffed over each run, scaled to an approximate hourly rate. Counters move only when a fleet\'s mining settles, so this lags the live rate.', minedChart())}
             ${card('w6', 4, 'Top mining owners', `${m.miningOwners} owners mine. Click for the owner.`, bars(ownRows))}
             ${card('w6', 5, 'Top mining fleets', 'Click to fly there and open the owner.', bars(fltRows))}
+        </div>`;
+    }
+    // ================================================================== Resource (2026-11-13)
+    // bodies.json is needed: the tab starts its (memoised) load and re-renders when it lands or fails
+    const RES_LIST = 12;
+    function resourceIndexNow() { return S.bodies ? M.resourceIndex(S.bodies, S.latest.systems) : []; }
+    function pickResource() {
+        if (S.res) return S.res;
+        let r = null; try { r = sessionStorage.getItem('c4.res'); } catch (e) { /* private mode */ }
+        const idx = resourceIndexNow();
+        S.res = r && idx.some(x => x.r === r) ? r : M.defaultResource(idx, S.D.mining.resources, M.placedCount(S.latest.systems));
+        return S.res;
+    }
+    // review F1: a pick rebuilds only #c4ResBody (verdict + cards), never the picker row, so the select keeps focus and
+    // ArrowUp / ArrowDown step through resources one change at a time
+    function setResource(name) {
+        if (typeof name !== 'string' || !name || name === S.res) return;
+        S.res = name;
+        try { sessionStorage.setItem('c4.res', name); } catch (e) { /* private mode */ }
+        sceneCall(s => { if (typeof s.setStatResource === 'function') s.setStatResource(name); });
+        const body = $('#c4ResBody'), sel = $('#c4ResSel');
+        if (S.tab === 'resource' && body && sel && S.bodyIdx) {
+            const idx = resourceIndexNow();
+            if (idx.some(x => x.r === name)) sel.querySelectorAll('option[data-nf]').forEach(o => o.remove());   // a stale "not found" entry goes
+            body.innerHTML = resourceBody(name);
+        } else { S.rendered.resource = false; if (S.tab === 'resource') renderTab('resource', false); }
+        resourceUrl();
+    }
+    // the URL follows the Resource tab (?tab=resource&res=...); leaving the tab drops both, other params stay
+    function resourceUrl() {
+        if (!window.history || typeof history.replaceState !== 'function') return;
+        try {
+            const u = new URL(location.href), p = u.searchParams;
+            if (S.tab === 'resource') { p.set('tab', 'resource'); if (S.res) p.set('res', S.res); else p.delete('res'); }
+            else if (p.get('tab') === 'resource') { p.delete('tab'); p.delete('res'); }
+            else return;
+            if (u.href !== location.href) history.replaceState(history.state, '', u.href);
+        } catch (e) { /* file: or a sandboxed frame */ }
+    }
+    function resourceOptions(idx) {
+        const q = S.resQ.trim().toLowerCase();
+        const shown = idx.filter(x => !q || x.r.toLowerCase().includes(q) || x.r === S.res);
+        const cur = idx.some(x => x.r === S.res) ? '' : `<option value="${esc(S.res || '')}" data-nf selected>${esc(S.res || 'none')} - not found</option>`;
+        return cur + shown.map(x => `<option value="${esc(x.r)}"${x.r === S.res ? ' selected' : ''}>${esc(x.r)} - ${x.systems} system${x.systems === 1 ? '' : 's'}</option>`).join('');
+    }
+    function renderResource(el) {
+        if (!S.bodyIdx) {
+            // review F3: no load in flight (never started, or the last one failed) -> start one, so re-entering the tab
+            // retries a failed bodies.json. Not while a settle is re-rendering this tab: that would retry in a loop.
+            if (!S.bodiesP && !S.resSettling) loadBodies();   // its settle re-renders this tab (resourceBodiesSettled)
+            const loading = !!S.bodiesP;
+            el.innerHTML = `<p class="c4-verdict">Richness by resource, from every planet and asteroid.</p>${note(loading ? 'Loading planets and asteroids...' : S.bodiesUnread ? esc(UNREAD_BODIES) : '<b>bodies.json could not be loaded</b>, so resource richness cannot be shown on the map or here. The other tabs still work; open this tab again to retry.')}`;
+            return;
+        }
+        const idx = resourceIndexNow();
+        if (!idx.length) { el.innerHTML = `<p class="c4-verdict">No body in this snapshot lists a resource.</p>${note('bodies.json loaded but holds no resources with a richness.')}`; return; }
+        const name = pickResource();
+        sceneCall(s => { if (typeof s.setStatResource === 'function') s.setStatResource(name); });
+        const picker = `<div class="c4-res-pick"><label for="c4ResSel">Resource</label>
+            <input id="c4ResQ" type="search" placeholder="filter ${idx.length} resources" autocomplete="off" spellcheck="false" value="${esc(S.resQ)}" aria-label="Filter the resource list">
+            <select id="c4ResSel" class="c4-dac-scope" data-res-pick aria-label="Resource shown on the map">${resourceOptions(idx)}</select></div>`;
+        el.innerHTML = `${picker}<div id="c4ResBody">${resourceBody(name)}</div>`;
+    }
+    // a small picture of the map's ring for one "where" (planet / belt / both): the same three marks as the scene shader
+    function ringMark(where) {
+        const dot = 'stroke-dasharray="1.9 2.1"';
+        const body = where === 'belt' ? `<circle cx="9" cy="9" r="5.5" ${dot}/>`
+            : where === 'both' ? `<circle cx="9" cy="9" r="4.2"/><circle cx="9" cy="9" r="7.4" ${dot}/>`
+                : '<circle cx="9" cy="9" r="5.5"/>';
+        return `<svg class="c4-ring-mark" viewBox="0 0 18 18" width="18" height="18" aria-hidden="true" fill="none" stroke="${M.RES_HEX}" stroke-width="1.6">${body}</svg>`;
+    }
+    // the verdict + cards for one resource (everything below the picker). Units (review F7): richness is a bare number
+    // everywhere ("best 6.5", no "x"); a system bar reads "total 52" because its number is a sum.
+    function resourceBody(name) {
+        const v = M.resourceView(S.latest, S.bodies, name, S.D.mining.resources);
+        if (!v.found) return `<p class="c4-verdict">${v.verdict}</p>${note('No planet or asteroid lists it, so the map shows no rings. Pick another resource above.')}`;
+        const bod = n => `${n} bod${n === 1 ? 'y' : 'ies'}`;
+        // WHERE the deposit sits (owner 2026-11-15): the map draws a dotted ring for "asteroid belt only", a solid ring for
+        // "planets only" and solid + dotted for both; the legend below names the three and counts the systems in each
+        const sysRows = v.systems.slice(0, RES_LIST).map(s => ({ lab: `${ringMark(s.where)}${esc(s.name)}`, labText: `${s.name} (${M.RES_WHERE_TEXT[s.where]})`, v: s.sum, c: M.RES_HEX,
+            val: `total ${M.fmtRich(s.sum)}<em>${bod(s.n)}</em>`, click: `data-sys="${esc(s.sys)}"`,
+            tip: `${s.name}\n${name} · total ${M.fmtRich(s.sum)} · best ${M.fmtRich(s.best)} · ${bod(s.n)}\n${M.RES_WHERE_TEXT[s.where]}\nclick to fly there` }));
+        const nWhere = { planet: 0, belt: 0, both: 0 };
+        for (const s of v.systems) nWhere[s.where] = (nWhere[s.where] || 0) + 1;
+        const legend = `<div class="c4-res-legend" aria-label="What the rings on the map mean">
+            <span>${ringMark('planet')}solid: planets only <b>${nWhere.planet}</b></span>
+            <span>${ringMark('belt')}dotted: asteroid belt only <b>${nWhere.belt}</b></span>
+            <span>${ringMark('both')}solid + dotted: both <b>${nWhere.both}</b></span></div>`;
+        const bodyRows = v.bodies.slice(0, RES_LIST).map(b => ({ lab: `${esc(b.name)} <small class="c4-res-in">${esc(b.sysName)}</small>`, labText: `${b.name} (${b.kind}) in ${b.sysName}`, v: b.rich, c: M.RES_HEX,
+            val: M.fmtRich(b.rich), click: `data-body="${esc(b.a)}"`, tip: `${b.name}\n${b.kind} in ${b.sysName}\n${name} richness ${M.fmtRich(b.rich)}\nclick for the full sheet` }));
+        return `<p class="c4-verdict">${v.verdict}</p>${legend}${S.bodiesStale ? note(STALE_BODIES) : ''}<div class="c4-grid">
+            ${card('w6', 0, 'Richest systems', `Total richness of ${esc(name)}: each system's bodies added up (a bigger, brighter ring on the map). ${v.nSystems} systems; click one to fly there.`, bars(sysRows))}
+            ${card('w6', 1, 'Richest bodies', `Richness of ${esc(name)} on single planets and asteroids. ${v.nBodies} bodies; click one for its sheet.`, bars(bodyRows))}
         </div>`;
     }
     // cumulative share curve (owners ranked by output); hover crosshair
@@ -1020,22 +1195,45 @@
     function loadBodies(push) {
         if (!S.bodiesP) {
             S.bodiesP = getJson('bodies.json').then(j => {
+                // the collector's marker after a chain update whose planets read failed: this game's planets could not be
+                // read. Nothing of the old game may stay: no list, no stale note, and the scene gets an EMPTY list (P1)
+                if (j && j.failed === true && j.bodies == null) {
+                    S.bodies = []; S.bodyIdx = null; S.bodiesErr = true; S.bodiesUnread = true; S.bodiesStale = false; S.bodiesP = null;
+                    if (push !== false) sceneCall(sc => sc.setData(S.latest, S.events, []));
+                    resourceBodiesSettled();
+                    return null;
+                }
                 const list = j && Array.isArray(j.bodies) ? j.bodies : null;
                 if (!list) throw new Error('bodies.json has no bodies[]');
+                S.bodiesUnread = false;
                 S.bodies = list; S.bodyIdx = M.indexBodies(list); S.bodiesErr = false; S.bodiesStale = false;
                 if (push !== false) sceneCall(sc => sc.setData(S.latest, S.events, S.bodies));
+                resourceBodiesSettled();
                 return S.bodyIdx;
             }).catch(e => {
                 console.warn('C4 Live: bodies.json', e);
+                S.bodiesUnread = false;
                 // a failed RE-load keeps the bodies we already have and says so; a failed first load has nothing to show
                 if (S.bodyIdx) S.bodiesStale = true; else S.bodiesErr = true;
                 S.bodiesP = S.bodyIdx ? Promise.resolve(S.bodyIdx) : null;
+                resourceBodiesSettled();
                 return S.bodyIdx;
             });
         }
         return S.bodiesP;
     }
+    // the Resource tab waits on bodies.json: redraw it (and re-send its layer) whenever a load lands or fails
+    function resourceBodiesSettled() {
+        S.rendered.resource = false;
+        if (S.tab === 'resource' && S.D) {   // also behind the System view
+            S.resSettling = true;
+            try { renderTab('resource', false); } finally { S.resSettling = false; }
+            pushStatLayer(); resourceUrl();
+        }
+    }
     const STALE_BODIES = 'Planets from the previous run; the latest bodies.json could not be loaded.';
+    // the bodies.json marker (P1): the read after a game update could not read the planets, and the old ones are gone
+    const UNREAD_BODIES = 'The planets and asteroids could not be read from the chain after the game update, so none are shown. A later refresh reads them again.';
     async function openSystemPanel(a, fromScene) {
         if (!S.latest) return;
         const sys = (S.latest.systems || []).find(x => x.a === a);
@@ -1080,7 +1278,7 @@
         const sys = (S.latest.systems || []).find(x => x.a === S.sysView);
         if (!sys) { closeSystemPanel(false); return; }
         if (!S.bodyIdx) {
-            el.innerHTML = `<div class="c4-sp-head"><button class="c4-act" data-galaxy>Back to galaxy</button><h2>${esc(sys.n)}</h2></div>${note(S.bodiesErr ? 'bodies.json could not be loaded, so planets and asteroids are not shown.' : 'Loading planets and asteroids...')}`;
+            el.innerHTML = `<div class="c4-sp-head"><button class="c4-act" data-galaxy>Back to galaxy</button><h2>${esc(sys.n)}</h2></div>${note(S.bodiesUnread ? esc(UNREAD_BODIES) : S.bodiesErr ? 'bodies.json could not be loaded, so planets and asteroids are not shown.' : 'Loading planets and asteroids...')}`;
             return;
         }
         const v = M.buildSystem(S.latest, S.events, S.bodyIdx, S.sysView);
@@ -1106,7 +1304,7 @@
             await loadBodies();
             if (!S.drawer || S.drawer.kind !== 'body' || S.drawer.id !== a) return;   // the user moved on meanwhile
         }
-        if (!S.bodyIdx) { openDrawer('body', a, `<div class="kind">Body</div>${note('bodies.json could not be loaded.')}`); return; }
+        if (!S.bodyIdx) { openDrawer('body', a, `<div class="kind">Body</div>${note(S.bodiesUnread ? esc(UNREAD_BODIES) : 'bodies.json could not be loaded.')}`); return; }
         const o = M.buildBody(S.latest, S.bodyIdx, a);
         if (!o) { openDrawer('body', a, `<div class="kind">Body</div><h2>${ownerLabel(a)}</h2>${note('This body is not in bodies.json.')}`); return; }
         const sys = (S.latest.systems || []).find(x => x.a === o.b.sys);
@@ -1235,7 +1433,10 @@
             body = a ? `<b>${esc(a.sysName)} asteroid</b>${a.fleets} fleets, ${a.ownerCount} owners<br>${M.fmt(a.ups)} u/s, mostly ${esc(a.topRes)}<br><em>click for who mines it</em>` : '';
         } else if (h.type === 'system') {
             const s = (S.latest.systems || []).find(x => x.a === h.id);
-            if (s) body = `<b>${esc(s.n)}</b>${s.f ? `${fa(s.f)} starbase, level ${s.lvl}` : 'no starbase'}<br><em>click for the starbase</em>`;
+            // Resource tab: the hovered system's richness for the chosen resource ("Iron Ore · best 2.4 · 3 bodies")
+            const rr = s && S.tab === 'resource' && S.res && S.bodyIdx ? M.resourceSystems(S.bodyIdx.bySys.get(s.a) || [], [s], S.res)[0] : null;
+            const rl = s && S.tab === 'resource' && S.res && S.bodyIdx ? `<br>${rr ? `${esc(S.res)} · total ${M.fmtRich(rr.sum)} · best ${M.fmtRich(rr.best)} · ${rr.n} bod${rr.n === 1 ? 'y' : 'ies'}` : `no ${esc(S.res)} here`}` : '';
+            if (s) body = `<b>${esc(s.n)}</b>${s.f ? `${fa(s.f)} starbase, level ${s.lvl}` : 'no starbase'}${rl}<br><em>click for the starbase</em>`;
         }
         else if (h.type === 'body') {
             const o = S.bodyIdx && S.latest ? M.buildBody(S.latest, S.bodyIdx, h.id) : null;
@@ -1270,7 +1471,7 @@
             if (t.closest('#c4DockToggle')) { setDockCollapsed(!S.dock.collapsed); return; }
             if (t.closest('[data-dac-example]')) { setDacExample(!S.dac.example); return; }
             if (t.closest('[data-age-detail]')) { S.ageOpen = !S.ageOpen; renderAge(); return; }
-            if (t.closest('[data-c4-refresh]')) { refreshChain(); return; }
+            if (t.closest('[data-c4-refresh]')) { refreshChain(!!S.updateFailed); return; }   // F3: a retry of a failed update read
             if (t.closest('[data-c4-retry]')) { location.reload(); return; }
             const dcol = t.closest('[data-dac-colour]'); if (dcol) { setLensOn(dcol.dataset.dacColour === 'dac'); return; }
             const dmet = t.closest('[data-dac-metric]'); if (dmet) { toggleLensMetric(dmet.dataset.dacMetric); return; }
@@ -1299,11 +1500,14 @@
             const l = e.target.closest('[data-layer]');
             if (l) { S.layers[l.dataset.layer] = l.checked; sceneCall(s => s.setLayer(l.dataset.layer, l.checked)); }
             const sc = e.target.closest('[data-dac-scope]'); if (sc) setLensScope(sc.value || null);
+            const rp = e.target.closest('[data-res-pick]'); if (rp) setResource(rp.value);
         });
         let qT;
         document.addEventListener('input', e => {
             if (e.target.id === 'c4FleetQ') { clearTimeout(qT); qT = setTimeout(() => { S.fleetQ = e.target.value; S.fleetLimit = 30; renderFleetTable(); }, 150); }
             if (e.target.id === 'c4OwnerQ') { clearTimeout(qT); qT = setTimeout(() => { S.ownerLimit = 50; renderOwnerTable(); }, 150); }
+            // Resource picker filter: narrows the select's options in place (the input keeps focus); the current pick stays listed
+            if (e.target.id === 'c4ResQ') { S.resQ = e.target.value; const sel = $('#c4ResSel'); if (sel && S.bodies) sel.innerHTML = resourceOptions(resourceIndexNow()); }
         });
         $('#c4Find').addEventListener('keydown', e => { if (e.key === 'Enter') find(e.target.value); });
         document.addEventListener('keydown', e => {
@@ -1332,7 +1536,7 @@
             ct.hidden = true;
             document.querySelectorAll('svg[data-lorenz] .xh').forEach(x => { x.setAttribute('x1', -10); x.setAttribute('x2', -10); });
         });
-        document.addEventListener('visibilitychange', () => { if (!document.hidden) { renderAge(); load(false); } });
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) { renderAge(); load(false); autoUpdate(); } });
     }
     // plain text only: line 1 bold, the rest as lines. textContent, so a fleet name in a tip can never become markup
     function showTip(ct, text, e) {
@@ -1345,7 +1549,8 @@
     }
     function applyParams() {
         const p = new URLSearchParams(location.search);
-        const tab = p.get('tab'); if (['mining', 'combat', 'fleets', 'owners'].includes(tab) || (tab === 'dacs' && S.dac.state === 'ok')) setTab(tab);
+        const res = p.get('res'); if (res && res.length <= 80) S.res = res;   // untrusted: compared and escaped, never markup
+        const tab = p.get('tab'); if (['mining', 'resource', 'combat', 'fleets', 'owners'].includes(tab) || (tab === 'dacs' && S.dac.state === 'ok')) setTab(tab);
         const o = p.get('owner'); if (o) openOwner(o);
         const sy = p.get('system'); if (sy) openSystemPanel(sy, false);
         const bo = p.get('body'); if (bo) openBody(bo);
@@ -1357,6 +1562,7 @@
     pushInsets(true);
     S.dacP = loadDacs();      // never rejects; load(true) waits for it before applying ?tab=dacs
     load(true).then(() => {
+        autoUpdate();   // public site: the saved copy is up; check for a chain update or an old copy without a click
         requestAnimationFrame(tick);
         // the scene's system view needs bodies: preload on idle (2 s fallback) instead of waiting for a drawer.
         // loadBodies() is memoised, so a drawer opened meanwhile shares the same single fetch.
@@ -1368,5 +1574,6 @@
     loadScene();
     loadSilhouettes();
     setInterval(() => load(false), RELOAD_MS);
+    setInterval(autoUpdate, RELOAD_MS);   // public site, a tab left open: the same check as on open, every 5 minutes (P4)
     setInterval(() => { renderAge(); refreshAgo(); }, 15000);
 })();

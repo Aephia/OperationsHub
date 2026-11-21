@@ -128,7 +128,7 @@ page's surface; category bars are single-hue by design.
 ---
 
 ### 2. 🧪 **Recipe Explorer**
-The 5,251 recipes as a **production planner** (rebuilt 2026-10-01). Sits on the Resources Explorer's data model
+Every recipe in the export as a **production planner** (rebuilt 2026-10-01). Sits on the Resources Explorer's data model
 (`ResourcesExplorer/resource-model.js`: recipe per output name live-first, deduplicated supply DAG, deposits,
 extractor kits) plus `recipe-model.js` (recipes by `outputId` - 318 output names repeat across tiers - and the
 quantity expansion). The chain graph is the shared `Utils/ChainGraph.js`, the same one the Resources sheet draws.
@@ -364,13 +364,13 @@ on the Resources and Recipe explorers' own models (so every count agrees with th
 research tree, a same-tier claim-stake engine, an empire coverage model, and a loadout engine (deck-loadout.js) on the Ship Explorer's
 configuration calculator. Four tabs, everything always visible, no Chart.js, no animation.
 
-- **Research tab:** the export's research tree, which no other module shows - 282 nodes on seven tracks drawn as one
+- **Research tab:** the export's research tree, which no other module shows - 425 nodes on seven tracks drawn as one
   SVG (a band per track, a node one column right of the deepest node it requires, an arrow per required research
   tag; 12 nodes with no track and no numbers are left out, 40 that the export names but gives no numbers are drawn
   dashed). **Path to...** takes a recipe, a stake building, a hull, a stake or hab tier or a node, lights the
   prerequisite closure and prices it: the level each track must reach and the XP that takes (`levelThresholds`),
   track points, ATLAS (node cost in base units / 10^8) and tokens. A recipe's path is the gates of its **whole
-  chain** (3,630 of the 5,251 recipes sit behind at least one gate; all 1,501 gated stake buildings are covered).
+  chain** (most recipes sit behind at least one gate; every gated stake building is covered).
   **A recipe's path also covers getting its raws**, by the player's choice of *claim stakes* (a fleet where no
   stake can), *a mining fleet*, or *already in hand*: a stake adds the extractor's own gates (drill type, Mining
   Gear T1, hardness, a faction-building node for a faction-locked kit) and the tier-1 stake node; any raw not
@@ -525,6 +525,18 @@ configuration calculator. Four tabs, everything always visible, no Chart.js, no 
   *Contested Space Scanning*, Data Running 5), three grant enemy-zone access; the export does not say whether each
   covers every activity, so the page uses the grant on the activity's own track, or else the cheapest, and names
   the others. The export puts no research gate on what a ship may mine
+- **Two stake kinds (2026-11-11, export of 2026-11-12):** the export locks the extractors of 15 organic raws
+  (Magmaroot, Tidal Kelp, Shadowmoss ...) to **cultivation stakes** and 1,195 other buildings to standard ones. The
+  Stake Engine reads the kind from what stands on the stake (`kindOf`, `layout().kind`): a cultivation stake stands on
+  the planet type's cultivation hub in place of the central hub and adds the farm hub; a stake never mixes the two
+  kinds (`layout().ok` is false and says why), so a planet with both needs two stakes. Ships vs Stakes names the kind
+  on the stake card; in Empire the + of a raw of the other kind is off with the reason in its tooltip, and auto-fill
+  keeps to the stake's kind (an emptied stake may become either). **Saved stakes are cleaned at load**
+  (`StakeEngine.cleanStake`): extractors for a raw the planet no longer holds, processors that cannot run and, on a
+  stake that mixes kinds, the smaller kind are dropped, and the card says what went for that session (the note is
+  not stored). Farms (a second, slower organic building) are not modelled.
+  Check: the *cultivation stakes* block of `node Test/command-deck-loadout-check.js` (expected values searched by hand
+  from the building rows; `--old-model=<dir>` loads a pre-change `deck-model.js` and must fail)
 - **Owner rules applied:** a stake holds tier-N buildings only; a belt holds no stake; the central hub yields only
   raws the planet has a deposit of; release status is never shown
 - **Data:** `Data/research-data.js`, from `JSON/research.json`, which `split-uber-export.js` now writes from the
@@ -551,6 +563,14 @@ the live chain; every other module reads the static uber-export. It has two halv
   origins), so reference prices are the shipped `prices.json`. Combat history and trends build up per browser.
   The chain code needs a secure context, so this works on HTTPS or localhost only. Localhost keeps reading
   `Data/c4-live/` unless `?chain=1` is added.
+- **A chain update comes through on its own (2026-11-20).** Every read records the game's chain version: the
+  chain's genesis hash and the SAGE program's last deploy slot. On open, on return to the tab and every 5 minutes
+  the page makes that small check (3 calls). If the version changed it reads the chain without a click and starts
+  history and events again from that read, so nothing of the old game is diffed against or shown as current. A
+  saved copy older than 60 minutes is refreshed the same way. A read that decodes as nonsense (no star systems,
+  or under 95 % of systems or fleets readable) is refused and the last good copy stays up. `DATA_VERSION` in
+  `C4Live/app.js` discards every visitor's saved copy once when it is bumped: bump it together with a rebuilt
+  `c4-collect.js` if a game update changes account layouts and the reader has to be updated.
 - **Collector** (`Tools/c4-live/`, Node, for local copies): reads every fleet, star system, asteroid being mined, claim stake
   and player owner through Aephia's [Atlas Kit](https://docs.atlaskit.dev/) (`@aephia/atlas-kit` 0.6.1,
   pinned by lockfile, own folder, `npm ci --ignore-scripts`). It runs **once an hour**: `npm run collect`
@@ -559,8 +579,15 @@ the live chain; every other module reads the static uber-export. It has two halv
   gates, corrupt-file abort) and what is measured versus derived are in
   [Tools/c4-live/README.md](Tools/c4-live/README.md).
 - **Module** (`C4Live/`): a 3D galaxy map (three.js, bundled from `C4Live/scene-src/` into
-  `C4Live/c4-scene.js` by `node C4Live/scene-src/build.mjs`) under a glass HUD, plus Mining, Combat, Fleets
-  and Owners tabs.
+  `C4Live/c4-scene.js` by `node C4Live/scene-src/build.mjs`) under a glass HUD, plus Mining, Resource, Combat,
+  Fleets and Owners tabs.
+  - **Resource** (2026-11-13): pick a resource; every system holding it gets a flat green ring on the map (no
+    column), bigger, brighter and thicker-stroked the larger the SUM of `rich` over its bodies that list it (world
+    scale, sized like the Combat heat rings, linear between the resource's poorest and richest system; best body and
+    body count in the callout). The rings draw with a MAX blend, so a dense cluster stays separate green outlines
+    instead of adding up to white, and systems without the resource are dimmed while the rings stand. Needs `bodies.json`, loaded when
+    the tab opens. One rule in two files (`scene-src/model.js` and `c4-ui-model.js` `resourceSystems`), recounted
+    by hand in `Test/c4-live-check.js` [18] (`C4_ONLY=resource` runs it alone). Link: `?tab=resource&res=<name>`.
   - **Map**: fleets move along their real warp and subwarp legs on the wall clock, mining fleets beam to
     their asteroids, and combat plays as pulses with tracers between paired fleets.
   - **Verdict first**: every tab opens with a sentence computed from the data.
@@ -645,9 +672,9 @@ when a whole roster arrives. This is separate from the older `SFX/sounds.js` the
 
 All analytics are powered by the **CrossExplorerAnalytics** engine, combining data from:
 - 3,901 planets
-- 5,251 recipes
+- every recipe in the export
 - 93 resource types
-- 1,620 buildings
+- 1,625 buildings
 - 67 ships with configurations
 
 ### Available Analytics:
@@ -702,7 +729,7 @@ Enterprise-grade data validation and processing pipeline that transforms raw JSO
 ```bash
 # 1. Split a SAGE uber-export into the per-dataset sources under JSON/
 #    (refuses to write if the component tree does not cover every ship configuration)
-node RefreshData/split-uber-export.js "C:\Users\khawa\Desktop\StarAtlas\uber-export-latest.json"
+node RefreshData/split-uber-export.js "<path to>\uber-export-latest.json"
 
 # 2. Validate and regenerate Data/*.js
 npm run refresh
@@ -749,7 +776,7 @@ A malformed section keeps the previous file and warns instead of failing the imp
 only that file, or pull it from the live SAGE Editor Suite (same 78 descriptions as of 2026-09-13):
 
 ```bash
-node RefreshData/stat-descriptions.js "C:\Users\khawa\Desktop\StarAtlas\uber-export-latest.json"
+node RefreshData/stat-descriptions.js "<path to>\uber-export-latest.json"
 node RefreshData/stat-descriptions.js --ses
 ```
 
@@ -785,9 +812,9 @@ OperationsHub/
 │   └── DataLoader.js                  # Data loading system
 │
 ├── Data/                               # Processed data files
-│   ├── recipes-data.js                 # 5,251 recipes (5.1 MB)
-│   ├── buildings-data.js               # 1,620 buildings (2.1 MB)
-│   ├── planet-data.js                  # 3,901 planets (7.4 MB)
+│   ├── recipes-data.js                 # every recipe (about 5 MB)
+│   ├── buildings-data.js               # 1,625 buildings (2.1 MB)
+│   ├── planet-data.js                  # 3,901 planets (4.3 MB)
 │   ├── resources-data.js               # 93 resources (864 KB)
 │   ├── ships-data.js + .json           # 67 ships (12 MB each)
 │   ├── crafting-hab-data.js            # Hub buildings
@@ -899,7 +926,7 @@ node Test/crew-explorer-check.js
 - Canvas support (for 3D viewer)
 
 ### Data Sources
-- Star Atlas game data: SAGE uber-export of 2026-09-11 (5,251 recipes, 1,620 buildings, 3,901 planets with lore names, 3,756 ship components)
+- Star Atlas game data: the SAGE uber-export (2026-11-19; `Data/REFRESH-REPORT.json` records the last refresh) - recipes, buildings, planets with lore names, ship components
 - Legacy SAGE system codes (`004-MUD-KING-01`) recovered from the May 2026 export, keyed by system key
 - Manually curated component formulas
 - Community-validated recipes
@@ -1006,7 +1033,7 @@ MIT License - see [LICENSE](LICENSE) file for details
 
 ---
 
-**Last Updated:** October 26, 2026 (Command Deck Empire map + ledger; data from the 2026-09-11 uber-export)
+**Last Updated:** November 19, 2026 (data from the 2026-11-19 SAGE uber-export)
 **Version:** 2.1
 **Status:** Production Ready 🚀
 

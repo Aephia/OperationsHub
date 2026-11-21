@@ -45,6 +45,16 @@
             const idOr = (v, p) => (typeof v === 'string' && /^[\w-]{1,40}$/.test(v) ? v : uid(p));
             this.stakes = arr(saved.stakes).filter(s => obj(s) && [1, 2, 3, 4, 5].includes(+s.tier) && this.se.planetByKey.has(s.key) && this.se.planetByKey.get(s.key).stakeable)
                 .map(s => ({ id: idOr(s.id, 's'), key: s.key, tier: +s.tier, alloc: obj(s.alloc) ? Object.fromEntries(Object.entries(s.alloc).filter(([, n]) => +n > 0).map(([k, n]) => [k, Math.floor(+n)])) : {}, procs: arr(s.procs).filter(x => typeof x === 'string') }));
+            // the data may have moved under a saved stake (2026-11-12 export: thinner deposits, and standard and
+            // cultivation extractors no longer share a stake): drop what cannot stand any more and say so on the card
+            this.stakes.forEach(s => {
+                const c = this.se.cleanStake(this.se.planetByKey.get(s.key), s.tier, s.alloc, s.procs), nm = id => this.se.resName(id), parts = [];
+                if (c.gone.length) parts.push(`${c.gone.map(nm).join(', ')} (no deposit or no extractor kit here in the current data)`);
+                if (c.offKind.length) parts.push(`${c.offKind.map(nm).join(', ')} (${c.kind === 'cultivation' ? 'standard' : 'cultivation'} extractors need a stake of their own)`);
+                if (c.goneProcs.length) parts.push(`${c.goneProcs.length} processor${c.goneProcs.length > 1 ? 's' : ''} that cannot run here`);
+                s.alloc = c.alloc; s.procs = c.procs;
+                if (parts.length) s.note = 'The game data changed under this saved stake. Removed: ' + parts.join('; ') + '.';
+            });
             // a fleet's job (2026-10-26): mine (raw at body, dest = drop-off system or ''), haul / supply (stake `from` <-> dest)
             const G = ctx.galaxy, sysOr = v => (typeof v === 'string' && G && G.byKey.has(v) ? v : '');
             this.fleets = arr(saved.fleets).filter(f => obj(f) && this.empire.shipByName.has(f.ship)).map(f => ({ id: idOr(f.id, 'f'), task: ['haul', 'supply'].includes(f.task) ? f.task : 'mine', ship: f.ship, count: Math.max(1, Math.min(999, Math.floor(+f.count) || 1)), raw: str(f.raw), richness: +f.richness > 0 ? +f.richness : 1, body: str(f.body), dest: sysOr(f.dest), from: str(f.from) }))
@@ -61,8 +71,9 @@
         }
         visible() { return this.root.closest('.tab-content').classList.contains('active'); }
         show() { this.render(); }                                   // the plan may have changed in another tab or module
-        save() { Store.write(KEY, { stakes: this.stakes, fleets: this.fleets }); }
-        items() { const v = Store.read(PLAN_KEY, []); return Array.isArray(v) ? v.filter(x => x && this.rc.byId.has(x.id)).map(x => ({ id: x.id, qty: Math.max(1, Math.min(100000, +x.qty || 1)) })) : []; }
+        // a stake's note (what the load-time clean removed) is this session's notice: never written to storage
+        save() { Store.write(KEY, { stakes: this.stakes.map(s => ({ id: s.id, key: s.key, tier: s.tier, alloc: s.alloc, procs: s.procs })), fleets: this.fleets }); }
+        items() { const v = Store.read(PLAN_KEY, []); return Array.isArray(v) ? v.filter(x => x && this.rc.byId.has(x.id)).map(x => Object.assign({}, x, { qty: Math.max(1, Math.min(100000, +x.qty || 1)) })) : []; }   // keeps the Recipe Explorer's own fields (pin, way)
         saveItems(items) { Store.write(PLAN_KEY, items); }
 
         // ------------------------------------------------------------------ actions
@@ -76,7 +87,7 @@
             root.addEventListener('toggle', e => { const d = e.target; if (d.dataset && d.dataset.step) { this.open[d.dataset.step] = d.open; Store.write(OPEN_KEY, this.open); } }, true);
             root.addEventListener('change', e => {
                 const t = e.target;
-                if (t.dataset.goalQty) { const items = this.items(); const it = items.find(i => i.id === t.dataset.goalQty); if (it) { it.qty = Math.max(1, Math.min(100000, parseInt(t.value, 10) || 1)); this.saveItems(items); this.render(); } return; }
+                if (t.dataset.goalQty) { const items = this.items(), gi = items[+t.dataset.goalI]; const it = gi && gi.id === t.dataset.goalQty ? gi : items.find(i => i.id === t.dataset.goalQty); if (it) { it.qty = Math.max(1, Math.min(100000, parseInt(t.value, 10) || 1)); this.saveItems(items); this.render(); } return; }
                 const f = t.dataset.fleet && this.fleets.find(x => x.id === t.dataset.fleet);
                 if (f) {
                     const G = this.ctx.galaxy, field = t.dataset.field;
@@ -102,9 +113,9 @@
                 const q = sel => e.target.closest(sel);
                 let el;
                 if ((el = q('[data-goal-add]'))) { const items = this.items(); if (!items.some(i => i.id === el.dataset.goalAdd)) items.push({ id: el.dataset.goalAdd, qty: 1 }); this.saveItems(items); this.goalQ = ''; snd('success'); this.render(); return; }
-                if ((el = q('[data-goal-remove]'))) { this.saveItems(this.items().filter(i => i.id !== el.dataset.goalRemove)); snd('deselect'); this.render(); return; }
+                if ((el = q('[data-goal-remove]'))) { const gi = +el.dataset.goalI; /* remove by row: a pinned and an unpinned entry can share an id */ this.saveItems(this.items().filter((it, i) => Number.isInteger(gi) && el.dataset.goalI !== '' ? i !== gi : it.id !== el.dataset.goalRemove)); snd('deselect'); this.render(); return; }
                 if ((el = q('[data-stake-remove]'))) { const id = el.dataset.stakeRemove; this.stakes = this.stakes.filter(s => s.id !== id); this.fleets = this.fleets.filter(f => f.task === 'mine' || f.from !== id); snd('deselect'); this.save(); this.render(); return; }
-                if ((el = q('[data-stake-auto]'))) { const s = this.stakes.find(x => x.id === el.dataset.stakeAuto); if (s) { this.refill(s); snd('select'); this.save(); this.render(); } return; }
+                if ((el = q('[data-stake-auto]'))) { const s = this.stakes.find(x => x.id === el.dataset.stakeAuto); if (s) { delete s.note; this.refill(s); snd('select'); this.save(); this.render(); } return; }
                 if ((el = q('[data-alloc]'))) { const [id, raw, d] = el.dataset.alloc.split('|'); this.bump(id, raw, +d); return; }
                 if ((el = q('[data-proc]'))) { const [id, pid] = el.dataset.proc.split('|'); this.toggleProc(id, pid); return; }
                 if ((el = q('[data-fleet-add]'))) { this.addFleet(); return; }
@@ -125,7 +136,10 @@
         }
         // spread every extractor that fits: over the raws the bill still lacks, else the raws it needs, else all
         refill(s) {
-            const planet = this.se.planetByKey.get(s.key), ext = this.se.extractable(planet, s.tier);
+            // a stake keeps its kind: with a processor or extractors on it, only raws of that kind are candidates
+            // (an emptied stake is free to become either)
+            const planet = this.se.planetByKey.get(s.key), cur = this.se.stakeKind(planet, s.tier, s.alloc, s.procs);
+            const ext = this.se.extractable(planet, s.tier).filter(x => !cur || !this.se.kindOf(x.b) || x.kind === cur);
             const rows = this.cov ? this.cov.rows : [];
             const order = name => { const i = rows.findIndex(r => r.name === name); return i < 0 ? 1e9 : i; };
             const lacking = ext.filter(x => rows.some(r => r.name === x.name && r.perHour <= 0));
@@ -266,7 +280,7 @@
             return `<div class="cd-goalbar">
                 <p class="rx-note">The recipes you want to craft, and how many. This is the same plan the Recipe Explorer holds: edit it here or there. <a href="../RecipeExplorer/index.html" target="_blank" rel="noopener">Open the planner</a></p>
                 <div class="rp-items">
-                    ${items.map(it => { const r = this.rc.byId.get(it.id); return `<div class="rp-item"><span class="rp-item-name"><i class="t t${r.outputTier}">T${r.outputTier}</i>${esc(recipeName(r))}<small>${esc(r.typeLabel)}</small></span><label>&times;<input type="number" min="1" max="100000" value="${it.qty}" data-goal-qty="${esc(it.id)}"></label><button type="button" class="rp-x" data-goal-remove="${esc(it.id)}" title="Remove from the plan">&times;</button></div>`; }).join('')}
+                    ${items.map((it, gi) => { const r = this.rc.byId.get(it.id); return `<div class="rp-item"><span class="rp-item-name"><i class="t t${r.outputTier}">T${r.outputTier}</i>${esc(recipeName(r))}<small>${esc(r.typeLabel)}</small></span><label>&times;<input type="number" min="1" max="100000" value="${it.qty}" data-goal-qty="${esc(it.id)}" data-goal-i="${gi}"></label><button type="button" class="rp-x" data-goal-remove="${esc(it.id)}" data-goal-i="${gi}" title="Remove from the plan">&times;</button></div>`; }).join('')}
                     <div class="cd-find cd-goalfind"><input type="search" class="sb-input" id="cdeGoalFind" placeholder="Add a recipe to the plan…" autocomplete="off" spellcheck="false" value="${esc(this.goalQ)}"><div class="cd-results" id="cdeGoalResults" hidden></div></div>
                 </div>
             </div>`;
@@ -348,18 +362,22 @@
             const inBill = name => rows.some(r => r.name === name);
             const ext = this.se.extractable(planet, s.tier).sort((x, y) => (inBill(y.name) - inBill(x.name)) || ((s.alloc[y.raw] || 0) - (s.alloc[x.raw] || 0)) || x.name.localeCompare(y.name));
             const canAdd = raw => { const next = Object.assign({}, s.alloc); next[raw] = (next[raw] || 0) + 1; return this.se.layout(planet, s.tier, next, s.procs).ok; };
-            const anyRoom = ext.length ? canAdd(ext[0].raw) : false;
-            const procs = this.se.processable(planet, s.tier);
+            // a stake is standard or cultivation by what stands on it: a raw of the other kind needs its own stake
+            const cur = (L.extractors || L.processors) ? L.kind : null;
+            const fits = x => !cur || !this.se.kindOf(x.b) || x.kind === cur;
+            const firstFit = ext.find(fits), anyRoom = firstFit ? canAdd(firstFit.raw) : false;
+            const procs = this.se.processable(planet, s.tier).filter(b => !cur || !this.se.kindOf(b) || this.se.kindOf(b) === cur);   // processors are standard-stake buildings
             const procOut = b => this.se.outputs(b).map(([k]) => this.se.resName(k));
             const shown = procs.filter(b => s.procs.includes(b.id) || procOut(b).some(n => this.intermediates.has(n) || inBill(n)));
             const pct = Math.min(100, 100 * L.used / L.S);
             return `<article class="cd-stake${L.ok ? '' : ' over'}">
-                <div class="cd-stake-head"><i class="t t${s.tier}">T${s.tier}</i><b>${esc(planet.name)}</b><small>${esc(planet.system)} · ${esc(planet.catName)} · <span class="f-${planet.faction}">${FAC_LABEL[planet.faction]}</span> · ${this.zoneBadge(planet)}</small><button type="button" class="rp-x" data-stake-remove="${s.id}" title="Remove this stake">&times;</button></div>
+                <div class="cd-stake-head"><i class="t t${s.tier}">T${s.tier}</i><b>${esc(planet.name)}</b><small>${esc(planet.system)} · ${esc(planet.catName)}${L.kind === 'cultivation' ? ' · cultivation stake' : ''} · <span class="f-${planet.faction}">${FAC_LABEL[planet.faction]}</span> · ${this.zoneBadge(planet)}</small><button type="button" class="rp-x" data-stake-remove="${s.id}" title="Remove this stake">&times;</button></div>
                 <div class="hb-gauge${L.ok ? '' : ' over'}"><div class="hb-gauge-head"><span>Slots</span><b>${num(L.used)} / ${num(L.S)}</b></div><div class="hb-gauge-bar"><b style="width:${pct.toFixed(1)}%;background:#4fd8ff"></b></div><small>${L.extractors} extractors${L.processors ? ` · ${L.processors} processor${L.processors > 1 ? 's' : ''}` : ''} · ${L.ncq} crew quarters · ${L.npp} power plant${L.npp === 1 ? '' : 's'} · ${L.hubs.map(h => esc(window.CommandDeck.StakeEngine.HUB_LABEL[h])).join(', ')} · crew ${num(L.crewNeed)} / ${num(L.crewCap)}</small></div>
                 <div class="cd-alloc">
-                    ${ext.map(x => { const n = s.alloc[x.raw] || 0, out = (p.extracted.get(x.raw) || 0); return `<div class="cd-alloc-row${n ? ' on' : ''}"><span class="nm${inBill(x.name) ? ' need' : ''}" title="${esc(x.name)} - ${inBill(x.name) ? 'in the bill' : 'not in the bill'}">${esc(x.name)}</span><span class="rk">×${num(x.richness)}</span><span class="rt">${num(x.rate)} / tick</span><span class="st"><button type="button" data-alloc="${s.id}|${esc(x.raw)}|-1" ${n ? '' : 'disabled'} aria-label="One fewer ${esc(x.name)} extractor">−</button><b>${n}</b><button type="button" data-alloc="${s.id}|${esc(x.raw)}|1" ${anyRoom ? '' : 'disabled'} aria-label="One more ${esc(x.name)} extractor">+</button></span><span class="ot">${n ? num(out) + ' / tick' : ''}</span></div>`; }).join('') || '<p class="rx-note">No raw on this planet has an extractor a stake of this tier can run.</p>'}
+                    ${ext.map(x => { const n = s.alloc[x.raw] || 0, out = (p.extracted.get(x.raw) || 0); return `<div class="cd-alloc-row${n ? ' on' : ''}"><span class="nm${inBill(x.name) ? ' need' : ''}" title="${esc(x.name)} - ${inBill(x.name) ? 'in the bill' : 'not in the bill'}">${esc(x.name)}</span><span class="rk">×${num(x.richness)}${x.kind === 'cultivation' ? ' · cult.' : ''}</span><span class="rt">${num(x.rate)} / tick</span><span class="st"><button type="button" data-alloc="${s.id}|${esc(x.raw)}|-1" ${n ? '' : 'disabled'} aria-label="One fewer ${esc(x.name)} extractor">−</button><b>${n}</b><button type="button" data-alloc="${s.id}|${esc(x.raw)}|1" ${anyRoom && fits(x) ? '' : 'disabled'} ${fits(x) ? '' : `title="${x.kind === 'cultivation' ? 'Needs a cultivation stake' : 'Needs a standard claim stake'}: this one is a ${cur} stake. Place a second stake on the planet for it."`} aria-label="One more ${esc(x.name)} extractor">+</button></span><span class="ot">${n ? num(out) + ' / tick' : ''}</span></div>`; }).join('') || '<p class="rx-note">No raw on this planet has an extractor a stake of this tier can run.</p>'}
                 </div>
                 ${shown.length ? `<div class="cd-procs"><span>Processors</span>${shown.map(b => { const on = s.procs.includes(b.id); const row = on && p.procs.find(r => r.b.id === b.id); return `<button type="button" class="chip${on ? ' on' : ''}" data-proc="${s.id}|${esc(b.id)}" title="${esc(this.se.inputs(b).map(([k, v]) => `${-v} ${this.se.resName(k)}`).join(' + '))} → ${esc(this.se.outputs(b).map(([k, v]) => `${v} ${this.se.resName(k)}`).join(' + '))} per tick">${esc(procOut(b).join(', '))}${row ? `<small>${num(row.makes[0].out)} of ${num(row.makes[0].rate)} / tick · ${(100 * row.fed).toFixed(0)} % fed</small>` : ''}</button>`; }).join('')}</div>` : ''}
+                ${L.mixed ? `<p class="rx-note warn">${esc(L.reason)}: remove the extractors of one kind.</p>` : ''}${s.note ? `<p class="rx-note warn">${esc(s.note)}</p>` : ''}
                 <div class="cd-stake-foot"><span>${Array.from(p.passive.keys()).length ? `Hub passive: ${Array.from(p.passive.entries()).map(([k, v]) => `${esc(this.se.resName(k))} ${num(v)}`).join(', ')} / tick. ` : ''}${p.fuel ? `Burns ${num(p.fuel)} fuel / tick.` : ''}${procs.length > shown.length ? ` ${procs.length - shown.length} other first-stage processors could run here; none makes anything in the plan.` : ''}</span><button type="button" class="sb-btn ghost" data-stake-auto="${s.id}" title="Clear this stake's extractors and fill every slot that fits again - the raws the plan still lacks first, then the ones it needs. Processors stay.">Auto-fill extractors</button></div>
             </article>`;
         }
@@ -482,7 +500,7 @@
             const run = new Set(), craft = new Set(), zones = new Map();
             const zone = (body, prefer) => { if (!body) return; const cls = R.zoneClass(body, Store.s.faction), n = R.zoneGrant(cls, prefer); if (n) { n.tags.forEach(t => run.add(t)); zones.set(cls + '|' + n.name, { cls, n }); } };
             cov.sources.forEach(x => {
-                if (x.kind === 'stake') { R.stakeGate(x.tier).forEach(t => run.add(t)); x.prod.layout.items.forEach(it => R.buildingGate(it.b.id).forEach(t => run.add(t))); zone(x.planet, 'Building'); }
+                if (x.kind === 'stake') { R.stakeGate(x.tier, x.prod.layout.kind).forEach(t => run.add(t)); x.prod.layout.items.forEach(it => R.buildingGate(it.b.id).forEach(t => run.add(t))); zone(x.planet, 'Building'); }
                 else { R.shipGate({ sizeTier: x.ship.size }).forEach(t => run.add(t)); const f = this.fleets.find(q => q.id === x.id); zone(f && this.se.planetByKey.get(f.body), 'Mining'); }
             });
             this.fleets.filter(f => f.task === 'haul' || f.task === 'supply').forEach(f => { const s = this.empire.shipByName.get(f.ship); if (s) R.shipGate({ sizeTier: s.size }).forEach(t => run.add(t)); });   // haulers fly too

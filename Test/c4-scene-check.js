@@ -404,6 +404,7 @@ async function browserDrive(chromium, latest, bodies) {
   const shots = process.env.SHOT_DIR || os.tmpdir();
   const browser = await chromium.launch({headless: true, args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist', '--enable-unsafe-swiftshader']});
   try {
+    if (process.env.ONLY_TRES) { await taskRes(browser, port, latest, bodies); return; } // the Resource layer block alone (2026-11-13)
     if (process.env.ONLY_T56S) { await task56stars(browser, port, latest); return; } // the #56 starfield block alone
     if (process.env.ONLY_V10) { await taskV10(browser, port, latest, bodies); return; } // the v10 one-world block alone (V10_PARTS=a,b,...)
     if (process.env.ONLY_T58) { await task58(browser, port, latest); return; } // the task #58 / #57 block alone
@@ -1432,6 +1433,8 @@ async function browserDrive(chromium, latest, bodies) {
     // v10 (one continuous world: continuity, coexistence, scale, picking, depth, fps, systemView hysteresis) + the #56 starfield rule
     await task56stars(browser, port, latest);
     await taskV10(browser, port, latest, bodies);
+    // 2026-11-13 Resource layer (setStatResource + setStatLayer('resource'): columns = bodies' richness per system)
+    await taskRes(browser, port, latest, bodies);
 
     // dispose cleans up
     const disp = await page.evaluate(() => { window.scene.dispose(); return document.querySelectorAll('#map canvas').length; });
@@ -3925,3 +3928,253 @@ async function task50(browser, port, latest, events, bodies) {
   check('task #50 pages: no page errors', errs.length === 0, errs.slice(0, 5));
 }
 const T50_FILL_MAX = 20, T50_FLICK_MAX = 0.03; // v4 bundle measured 29.4 and 0.068; v5 11.9 and 0.004 (2026-11-07)
+
+// ---- 2026-11-13 Resource layer: scene.setStatResource(name) + setStatLayer('resource') draw one flat RING on the plane
+// per system holding the resource (value = the SUM of its bodies' richness; radius + brightness from M.resourceRing) and
+// NO column (owner: "something like the rings we have from combat ... and no bars"). Expectations are recounted HERE from
+// bodies.json; the pixels are read back (layer on minus off, callouts and labels hidden) for the accent's hue, for the
+// ring's measured size and brightness, and for the absence of light above the plane where a column used to stand.
+// ONLY_TRES=1 runs this block alone; OLD_BUNDLE=<pre-ring c4-scene.js> must turn the ring checks red.
+async function taskRes(browser, port, latest, bodies) {
+  console.log('\n[Resource layer] setStatResource + setStatLayer("resource") - rings, no columns');
+  const errs = [];
+  const placed = new Set(latest.systems.filter((s) => Number.isFinite(s.x) && Number.isFinite(s.y)).map((s) => s.a));
+  const recount = (name) => { const m = new Map(); for (const b of bodies) { if (!b || !placed.has(b.sys) || !Array.isArray(b.res)) continue; let best = 0; for (const r of b.res) if (r && r.r === name && typeof r.rich === 'number' && r.rich > best) best = r.rich; if (best > 0) m.set(b.sys, (m.get(b.sys) || 0) + best); } return m; };
+  const A = 'Arco', Bn = 'Raw Chisenic', NONE = 'Unobtainium Ore (none)', DOT = ' · ';
+  const eA = recount(A), eB = recount(Bn);
+  // positive control: both resources are in the file - one dense, one rare
+  check('resource layer: positive control - Arco and Raw Chisenic are both in bodies.json (dense vs rare)', eA.size > 100 && eB.size > 0 && eB.size < 20, {arco: eA.size, chisenic: eB.size});
+  const pg = await browser.newPage({viewport: {width: 1280, height: 720}});
+  pg.on('pageerror', (e) => errs.push(String(e))); pg.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errs.push(m.text()); });
+  try {
+    await pg.goto(`http://127.0.0.1:${port}/C4Live/scene-src/dev.html`);
+    await pg.waitForFunction((n) => window.scene && window.scene.getStats().frames > 20 && window.scene.getStats().bodies === n, bodies.filter((b) => b && b.a && b.sys).length, {timeout: 30000});
+    await pg.evaluate(() => { const b = document.getElementById('bar'); if (b) b.style.display = 'none'; window.noFocusOnPick = true; });
+    // Keep the camera still for the whole block: the scene starts its idle orbit after 12 s without input and one pixel
+    // grab takes about 13 s, so positions read after a grab drifted away from the picture they were measured on.
+    await pg.evaluate(() => { setInterval(() => { const c = document.querySelector('canvas'); if (c) c.dispatchEvent(new PointerEvent('pointermove', {clientX: 5, clientY: 5, bubbles: true})); }, 2000); });
+    await sleep(3500); // intro fly-in
+    const sl = () => pg.evaluate(() => window.scene.getStats().statLayer);
+    const call = (fn, ...a) => pg.evaluate(([fn, a]) => { try { return typeof window.scene[fn] === 'function' ? window.scene[fn](...a) : 'missing'; } catch (e) { return 'threw ' + e.message; } }, [fn, a]);
+    // the combat heat rings before anything: drawn on Combat, with a count the resource layer must not change (task #57)
+    await call('setStatLayer', 'combat'); await sleep(300);
+    const cr0 = (await sl()).combatRings;
+    check('resource layer: positive control - the combat heat rings are drawn on the Combat layer', !!cr0 && cr0.drawn === true && cr0.n > 0, cr0);
+    const r1 = await call('setStatResource', A), r2 = await call('setStatLayer', 'resource');
+    check('resource layer: setStatResource and setStatLayer("resource") are accepted (true)', r1 === true && r2 === true, {r1, r2});
+    await sleep(700);
+    let s = await sl();
+    check(`resource layer: ${A} draws one ring per system holding it (${eA.size} = the recount) and NO column`, s.name === 'resource' && s.res === A && s.rings === eA.size && s.columns === 0, {name: s.name, res: s.res, rings: s.rings, columns: s.columns});
+    check('resource layer: the combat heat rings are hidden on the Resource layer and their count is unchanged', !!s.combatRings && s.combatRings.drawn === false && cr0 && s.combatRings.n === cr0.n, s.combatRings);
+    const top = [...eA.entries()].sort((p, q) => q[1] - p[1])[0];
+    check(`resource layer: the rank-1 callout is a system with the top recounted total (${top[1]}) and names the resource`, !!s.callouts[0] && Math.abs(s.callouts[0].v - top[1]) < 1e-6 && s.callouts[0].line.startsWith(A + DOT + 'total '), s.callouts[0]);
+    check('resource layer: settled after the grow-in (not growing 700 ms later)', s.growing === false, s.growing);
+    // the callout is anchored at the ring (its upper edge on screen), not above it where a column top stood
+    const ring0 = await call('statRingScreen', 0);
+    const mk0 = s.callouts[0] && s.callouts[0].marker;
+    check('resource layer: the rank-1 callout marker sits at its ring (within 3 px of the ring\'s upper edge)', !!ring0 && typeof ring0 === 'object' && !!mk0 && (s.callouts[0].under || Math.hypot(mk0[0] - ring0.top.clientX, mk0[1] - ring0.top.clientY) <= 3), {marker: mk0, ringTop: ring0 && ring0.top, under: s.callouts[0] && s.callouts[0].under});
+    // pixels: layer on vs off (callouts + labels hidden in both), the added light carries the accent hue (#10b981 ~ 160 deg)
+    // the idle auto-orbit starts 12 s after the last input and would turn the map between two grabs: a pointer move on
+    // the canvas before each grab keeps the camera still (the on / off pair must differ only by the layer)
+    const still = () => pg.evaluate(() => { const c = document.querySelector('canvas'); if (c) c.dispatchEvent(new PointerEvent('pointermove', {clientX: 5, clientY: 5, bubbles: true})); });
+    const grab = async () => {
+      await still(); await sleep(250);
+      await pg.evaluate(() => { for (const e of document.querySelectorAll('.c4-stat-layer, .c4-sys-label')) e.style.visibility = 'hidden'; const l = document.querySelector('.c4-sys-label'); if (l && l.parentElement) l.parentElement.style.visibility = 'hidden'; });
+      const b64 = (await pg.screenshot()).toString('base64');
+      return pg.evaluate(async (d) => { const img = new Image(); img.src = 'data:image/png;base64,' + d; await img.decode(); const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const x = c.getContext('2d'); x.drawImage(img, 0, 0); return Array.from(x.getImageData(0, 0, c.width, c.height).data); }, b64);
+    };
+    const W = 1280, H = 720;
+    // accent-lit test on the (on - off) difference at pixel index i: returns the green rise or 0
+    const lit = (on, off, i) => {
+      const d = [Math.max(0, on[i] - off[i]), Math.max(0, on[i + 1] - off[i + 1]), Math.max(0, on[i + 2] - off[i + 2])];
+      const mx = Math.max(...d), mn = Math.min(...d); if (mx < 24) return 0;
+      const h = mx === d[0] ? (((d[1] - d[2]) / (mx - mn || 1)) % 6) * 60 : mx === d[1] ? ((d[2] - d[0]) / (mx - mn || 1) + 2) * 60 : ((d[0] - d[1]) / (mx - mn || 1) + 4) * 60;
+      const hh = (h + 360) % 360; return hh >= 120 && hh <= 200 && (mx - mn) / mx > 0.25 ? d[1] : 0;
+    };
+    const diff = async () => {
+      await call('setStatLayer', 'resource'); await sleep(700);
+      const on = await grab();
+      await call('setStatLayer', null); await sleep(600);
+      const off = await grab();
+      await sleep(600);
+      const off2 = await grab(); // a second OFF frame: what changes on its own (twinkle, orbits) is masked out of the hue share
+      await call('setStatLayer', 'resource'); await sleep(700);
+      return {on, off, off2};
+    };
+    await pg.evaluate(() => { window.scene.setLayer('fleets', false); window.scene.setLayer('mining', false); window.scene.setLayer('routes', false); window.scene.setLayer('combat', false); });
+    await sleep(400);
+    let P = await diff();
+    // accent-lit pixels added by the layer (on - off) against the same count the other way round (off - on): frame-to-frame
+    // change (twinkle, orbits, the dimmed territory) lights both directions alike, the rings only the first. A thin ring
+    // lights far fewer pixels than a column did, so the column-era "share of all lit pixels" test drowned in that noise.
+    // Pixels that change between the two OFF frames (the territory's radar sweep, glyph twinkle) are masked out of both.
+    let green = 0, rev = 0, noise = 0;
+    for (let i = 0; i < P.on.length; i += 4) {
+      if (Math.max(Math.abs(P.off2[i] - P.off[i]), Math.abs(P.off2[i + 1] - P.off[i + 1]), Math.abs(P.off2[i + 2] - P.off[i + 2])) >= 16) { noise++; continue; }
+      if (lit(P.on, P.off, i)) green++;
+      if (lit(P.off, P.on, i)) rev++;
+    }
+    check('resource layer: the rings are drawn - accent-hue (120-200 deg) pixels added with the layer on >= 1500 and >= 3x those it removes (pixels that move on their own masked)', green >= 1500 && green >= 3 * rev, {added: green, removed: rev, masked: noise});
+    // NO column: a strip straight up the screen from the rank-1 system (10..90 px above its centre, 5 px wide) where its
+    // column stood must not be a lit vertical bar. Neighbouring rings cross it in a few rows; a column lights most rows.
+    // (the system's screen point from screenOf - a contract call every bundle has - so the old bundle's column is SEEN)
+    const topSys = latest.systems.find((q) => q.a === top[0]);
+    const r0 = topSys ? await call('screenOf', topSys.x, topSys.y) : null;
+    let rowsLit = 0, rows = 0, run = 0, runMax = 0;
+    if (r0 && typeof r0 === 'object') {
+      const cx = Math.round(r0.clientX), cy = Math.round(r0.clientY);
+      for (let y = cy - 90; y <= cy - 10; y++) {
+        if (y < 0 || y >= H) continue; rows++;
+        let any = false; for (let x = cx - 2; x <= cx + 2; x++) if (x >= 0 && x < W && lit(P.on, P.off, (y * W + x) * 4) >= 100) any = true;
+        if (any) { rowsLit++; run++; runMax = Math.max(runMax, run); } else run = 0;
+      }
+    }
+    // (round 2: the rings are big enough to overlap, so strokes and inner glows cross the strip; a column is ONE unbroken
+    // vertical run of BRIGHT light, so the test is the longest run of rows lit by >= 100 green levels - a ring stroke crosses
+    // the strip in a few rows, its soft inner glow stays under that level)
+    // 2026-11-15: a system holding the resource on planets AND a belt now carries a second, dotted ring 1.24x out, and its
+    // neighbours do too, so more strokes cross the strip and join: the run measured 36 (was <= 30). Limit raised to 45,
+    // still well under the 59 a real column lit.
+    check('resource layer: no lit column above the rank-1 system (longest unbroken run of brightly accent-lit rows in the strip 10..90 px above it <= 45; the pre-ring column measured 59)', rows > 40 && runMax <= 45, {rows, rowsLit, runMax, at: r0 && [Math.round(r0.clientX), Math.round(r0.clientY)]});
+    // the rings never take the pointer: what a hover reports at the rank-1 system and on its ring's stroke is the same
+    // with the layer on and off (positive control: the centre picks that very system)
+    const ringH = await call('statRingScreen', 0);
+    const pts = ringH && typeof ringH === 'object' ? [[ringH.centre.clientX, ringH.centre.clientY], [ringH.top.clientX, ringH.top.clientY], [ringH.centre.clientX + ringH.radiusPx, ringH.centre.clientY]] : [];
+    const picks = () => pg.evaluate((pts) => pts.map(([x, y]) => { const p = window.scene.pickAt(x, y); return p ? p.type + ':' + (p.id || p.a || p.sys || '') : 'none'; }), pts);
+    await still(); const pOn = await picks();
+    await call('setStatLayer', null); await sleep(300); const pOff = await picks();
+    await call('setStatLayer', 'resource'); await sleep(700);
+    check('resource layer: picking ignores the rings (same hover result at the ring centre, top and side with the layer on and off; the centre is the system)', pts.length === 3 && JSON.stringify(pOn) === JSON.stringify(pOff) && pOn[0] === 'system:' + top[0], {on: pOn, off: pOff});
+    // ring SIZE and BRIGHTNESS follow the value: the rank-1 system's ring vs the lowest-valued system's, each measured on
+    // screen at the SAME zoom (focusPoint zoom 6 on each), walking out from the centre in 8 directions to the first
+    // accent-lit pixel (the stroke; the faint fill stays under the lit threshold)
+    const measure = async (idx) => {
+      const rs = await call('statRingScreen', idx);
+      if (!rs || typeof rs !== 'object') return null;
+      await call('focusPoint', rs.x, rs.y, 6); await sleep(1500);
+      await pg.waitForFunction(() => !window.scene.getStats().flying, null, {timeout: 15000}).catch(() => {}); await sleep(500);
+      const Q = await diff();
+      const now = await call('statRingScreen', idx);
+      const cx = now.centre.clientX, cy = now.centre.clientY, radii = [];
+      const peaks = []; // per ray: the stroke's green rise (the MEDIAN is reported: a ray may meet a brighter overlapping neighbour)
+      const lim = Math.round(1.6 * now.radiusPx + 6);
+      for (let k = 0; k < 8; k++) {
+        const a = k * Math.PI / 4;
+        // the stroke = the BRIGHTEST accent-lit pixel on the ray out to 1.6 x the probe radius + 6 px (the faint inner fill
+        // is lit too at this zoom, and a neighbour's ring may lie further out)
+        let bestG = 0, bestR = 0;
+        for (let r = 2; r <= lim; r++) {
+          const x = Math.round(cx + r * Math.cos(a)), y = Math.round(cy + r * Math.sin(a));
+          if (x < 0 || y < 0 || x >= W || y >= H) break;
+          const g = lit(Q.on, Q.off, (y * W + x) * 4);
+          if (g > bestG) { bestG = g; bestR = r; }
+        }
+        if (bestG) { radii.push(bestR); peaks.push(bestG); }
+      }
+      radii.sort((p, q) => p - q); peaks.sort((p, q) => p - q);
+      const peak = peaks.length ? peaks[Math.floor(peaks.length / 2)] : 0;
+      return {sys: rs.sys, v: rs.v, found: radii.length, medianPx: radii.length ? radii[Math.floor(radii.length / 2)] : null, peak, probePx: +now.radiusPx.toFixed(1)};
+    };
+    s = await sl();
+    const last = s.rings - 1;
+    const big = await measure(0), small = await measure(last);
+    check('resource layer: the rank-1 ring is measured on screen (stroke found in >= 6 of 8 directions)', !!big && big.found >= 6, big);
+    check('resource layer: the lowest-valued system\'s ring is still visible (stroke found in >= 6 of 8 directions)', !!small && small.found >= 6, small);
+    check('resource layer: the rank-1 ring is on-screen larger than the lowest-valued one at the same zoom (>= 2x radius)', !!big && !!small && big.medianPx >= 2 * small.medianPx, {big: big && big.medianPx, small: small && small.medianPx});
+    check('resource layer: the rank-1 ring is brighter than the lowest-valued one (peak green rise)', !!big && !!small && big.peak > small.peak + 10, {big: big && big.peak, small: small && small.peak});
+    check('resource layer: the probe radius matches the measured stroke (within 25 % + 3 px)', !!big && big.medianPx && Math.abs(big.probePx - big.medianPx) <= 0.25 * big.probePx + 3, big && {probe: big.probePx, measured: big.medianPx});
+    // deep in one system (camera distance < MARK_NEAR) the rings fade out with the other galaxy markers: the layer adds
+    // (almost) no accent light there. Compared against the MINING stat layer (it dims the territory the same way, and its
+    // columns are galaxy markers too), so only the rings can differ. Positive control: the same comparison at zoom 6.
+    {
+      const vsMining = async () => {
+        const shot = async (layer) => { await call('setStatLayer', layer); await sleep(700); return grab(); };
+        const on = await shot('resource'), off = await shot('mining'), off2 = await shot('mining');
+        await call('setStatLayer', 'resource'); await sleep(500);
+        let add = 0;
+        for (let i = 0; i < on.length; i += 4) {
+          if (Math.max(Math.abs(off2[i] - off[i]), Math.abs(off2[i + 1] - off[i + 1]), Math.abs(off2[i + 2] - off[i + 2])) >= 16) continue;
+          if (lit(on, off, i)) add++;
+        }
+        return add;
+      };
+      const near6 = await vsMining();
+      check('resource layer: positive control - at zoom 6 the rings add accent light over the Mining layer (>= 300 px)', near6 >= 300, {added: near6});
+      const t0 = latest.systems.find((q) => q.a === top[0]);
+      await call('focusPoint', t0.x, t0.y, 70); await sleep(1500);
+      await pg.waitForFunction(() => !window.scene.getStats().flying, null, {timeout: 15000}).catch(() => {}); await sleep(800);
+      const fade = (await pg.evaluate(() => window.scene.getStats().galaxyFade));
+      const add = await vsMining();
+      check('resource layer: zoomed deep into the rank-1 system the rings fade out with the galaxy markers (galaxyFade 0, < 150 accent px added)', fade === 0 && add < 150, {galaxyFade: fade, added: add});
+    }
+    // a resource CHANGE re-grows the rings (growing right after), a re-send of the same name does not
+    await call('setStatResource', Bn);
+    const g1 = (await sl()).growing; await sleep(700);
+    s = await sl();
+    check(`resource layer: switching to ${Bn} re-grows the rings and draws ${eB.size} (= the recount), no column`, g1 === true && s.res === Bn && s.rings === eB.size && s.columns === 0, {growingRightAfter: g1, rings: s.rings, columns: s.columns});
+    // round 2: while the rings stand, systems WITHOUT the resource step back - what a player sees: their glyphs are
+    // darker with the Resource layer on than with no stat layer, and the systems that HOLD it are not darker. Measured
+    // at the zoom-6 view on the richest Raw Chisenic system (glyphs a few px wide): glyph core = brightest channel in a
+    // 5x5 box at each system's screen point, re-projected for EVERY frame (round 3: the old check sampled whole-map
+    // points once while the camera was still easing out from zoom 70, so "off" read the background beside the glyphs).
+    // Frames off -> on -> off again: the two OFF frames must agree (camera-still control). The pre-round-2 bundle and a
+    // mutant with the dim disabled leave the far glyphs as they are (ratio ~1) -> the dim check fails there.
+    {
+      const P0 = latest.systems.filter((q) => Number.isFinite(q.x) && Number.isFinite(q.y));
+      const hold = P0.filter((q) => eB.has(q.a));
+      const h0 = hold.slice().sort((p, q) => eB.get(q.a) - eB.get(p.a))[0];
+      await call('focusPoint', h0.x, h0.y, 6); await sleep(2200);
+      await pg.waitForFunction(() => !window.scene.getStats().flying, null, {timeout: 15000}).catch(() => {});
+      // wait for the camera to stop: the screen point of h0 moves < 0.5 px over 300 ms (10 s cap)
+      for (let k = 0, prev = null; k < 33; k++) { const sp = await call('screenOf', h0.x, h0.y); if (prev && sp && Math.hypot(sp.clientX - prev.clientX, sp.clientY - prev.clientY) < 0.5) break; prev = sp; await sleep(300); }
+      const onScreen = (sp) => sp && sp.visible !== false && !sp.covered && sp.clientX > 10 && sp.clientX < W - 10 && sp.clientY > 10 && sp.clientY < H - 10;
+      const ringR = 2.5; // map units: farther than the biggest ring from every holder, so no ring stroke falls in the box
+      const farSys = P0.filter((q) => !eB.has(q.a) && hold.every((h) => Math.hypot(h.x - q.x, h.y - q.y) > ringR));
+      const frame = async (layer) => {
+        await call('setStatLayer', layer); await sleep(700);
+        const proj = async (list) => { const o = []; for (const q of list) { const sp = await call('screenOf', q.x, q.y); o.push(onScreen(sp) ? [Math.round(sp.clientX), Math.round(sp.clientY)] : null); } return o; };
+        const pf = await proj(farSys), ph = await proj(hold);
+        const img = await grab();
+        // peak = brightest channel in the 5x5 core (is a glyph there at all); light = MEAN brightest channel over a 9x9 box
+        // (the glyph and its halo: the white-hot centre pixel saturates and barely moves, the light around it is what dims)
+        const box = (p, r, f) => { if (!p) return null; let m = 0, s = 0, n = 0; for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) { const k = ((p[1] + j) * W + p[0] + i) * 4, c = Math.max(img[k], img[k + 1], img[k + 2]); m = Math.max(m, c); s += c; n++; } return f === 'peak' ? m : s / n; };
+        if (process.env.RES_DIM_DIR) await pg.screenshot({path: require('path').join(process.env.RES_DIM_DIR, `dim-${layer || 'off'}-${Date.now()}.png`)});
+        return {far: pf.map((p) => box(p, 2, 'peak')), farL: pf.map((p) => box(p, 4)), hold: ph.map((p) => box(p, 2, 'peak')), holdL: ph.map((p) => box(p, 4))};
+      };
+      const off = await frame(null), on = await frame('resource'), off2 = await frame(null);
+      await call('setStatLayer', 'resource'); await sleep(700);
+      const med = (a) => { const s = a.slice().sort((p, q) => p - q); return s.length ? s[Math.floor(s.length / 2)] : NaN; };
+      // only glyphs that are really there with the layer off (core >= 60 on both OFF frames)
+      const fi = off.far.map((v, i) => i).filter((i) => off.far[i] >= 60 && off2.far[i] >= 60 && on.far[i] != null);
+      const stillR = med(fi.map((i) => off2.farL[i] / off.farL[i]));
+      check('resource layer: dim probe control - the camera held still (median off2/off glyph light within 0.85..1.15 over >= 12 far systems; twinkle moves a halo ~10 %)', fi.length >= 12 && stillR >= 0.85 && stillR <= 1.15, {n: fi.length, ratio: +(stillR || 0).toFixed(2)});
+      const offL = (i) => (off.farL[i] + off2.farL[i]) / 2; // the two OFF frames averaged (twinkle)
+      const farR = med(fi.map((i) => on.farL[i] / offL(i))), farP = med(fi.map((i) => on.far[i] / off.far[i]));
+      check(`resource layer: systems without ${Bn} are dimmed while its rings stand (median glyph light on/off < 0.75 over ${fi.length} systems on screen)`, fi.length >= 12 && farR < 0.75, {n: fi.length, medianLight: +(farR || 0).toFixed(2), medianPeak: +(farP || 0).toFixed(2)});
+      const hi = hold.map((q, i) => i).filter((i) => off.hold[i] != null && on.hold[i] != null && off.hold[i] >= 60);
+      const holdR = hi.map((i) => on.holdL[i] / ((off.holdL[i] + off2.holdL[i]) / 2));
+      check(`resource layer: the ${Bn} systems on screen are NOT dimmed (each glyph light on/off >= 0.8; the dim would put them near 0.6)`, hi.length >= 1 && holdR.every((r) => r >= 0.8), {n: hi.length, ratios: holdR.map((r) => +r.toFixed(2))});
+    }
+    await call('setStatResource', Bn);
+    check('resource layer: re-sending the same resource does not restart the grow-in', (await sl()).growing === false);
+    await call('setStatLayer', 'resource');
+    check('resource layer: re-sending the same layer does not restart the grow-in', (await sl()).growing === false);
+    await call('setStatResource', NONE); await sleep(400);
+    s = await sl();
+    check('resource layer: a resource no body holds draws zero rings, zero columns and zero callouts', s.rings === 0 && s.columns === 0 && s.callouts.length === 0, {rings: s.rings, columns: s.columns, callouts: s.callouts.length});
+    await call('setStatResource', '<img src=x onerror=window.__pwn=1>'); await sleep(300);
+    check('resource layer: a hostile name reaches nothing (no element, no script ran)', await pg.evaluate(() => !window.__pwn && !document.querySelector('.c4-stat-layer img')));
+    // a layer other than 'resource' ignores the resource: Mining keeps its columns and draws no ring
+    // the combat layer switch back ON first: 'hidden on Mining' must be the tab's doing, not the switch's
+    await pg.evaluate(() => window.scene.setLayer('combat', true));
+    await call('setStatResource', A); await call('setStatLayer', 'mining'); await sleep(400);
+    s = await sl();
+    check('resource layer: the Mining layer is unchanged by a chosen resource (its own columns, no ring, no resource lines)', s.name === 'mining' && s.columns > 0 && s.rings === 0 && s.callouts.every((c) => !c.line.startsWith(A + DOT + 'total')), {columns: s.columns, rings: s.rings});
+    check('resource layer: the combat heat rings stay hidden on Mining', !!s.combatRings && s.combatRings.drawn === false, s.combatRings);
+    await call('setStatLayer', 'combat'); await sleep(300);
+    s = await sl();
+    check('resource layer: back on Combat - its heat rings drawn again with the same count, no resource ring', !!s.combatRings && s.combatRings.drawn === true && cr0 && s.combatRings.n === cr0.n && s.rings === 0, {combatRings: s.combatRings, rings: s.rings});
+  } catch (e) { check('resource layer drive completed without throwing', false, String(e && e.message || e).slice(0, 200)); }
+  await pg.close();
+  check('resource layer page: no page errors', errs.length === 0, errs.slice(0, 5));
+}

@@ -416,6 +416,70 @@ function slimFleet(f) {
   };
 }
 
+// ==== chain version ("epoch") =========================================================================
+// The game can be updated on chain: a new genesis (the test chain was reset) or a new deploy of the SAGE
+// program. Either can wipe or re-create every account, so diffing the new chain against the saved state would
+// mix two games (fake `gone` events, a vanish guard firing three passes running, old history beside new).
+// epoch = { genesis, sage }: genesis = getGenesisHash; sage = the program's last deploy slot. SAGE is owned by
+// the upgradeable BPF loader: its 36-byte account is a u32 tag (2 = Program) + the programdata address, and the
+// programdata account holds the last deploy slot as u64 LE at bytes 4..12 (read 2026-11-20: tag 2, slot
+// 59540350). Three calls; nothing else is read.
+export const SAGE_PROGRAM = 'C4SAgeKLgb3pTLWhVr6NRwWyYFuTR7ZeSXFrzoLwfMzF'; // = atlas-kit SAGE_PROGRAM_ADDRESS (checked by the test)
+export const UPGRADEABLE_LOADER = 'BPFLoaderUpgradeab1e11111111111111111111111';
+const b64Data = (d) => (Array.isArray(d) && typeof d[0] === 'string' ? Buffer.from(d[0], 'base64') : null);
+// Throws when the genesis hash cannot be read. `sage` is null when the program account is not the
+// upgradeable-loader shape, or its programdata cannot be read (null never forces a new epoch: see sameEpoch).
+export async function readChainEpoch(rpc, signal) {
+  const opt = signal ? { abortSignal: signal } : undefined;
+  const genesis = await rpc.getGenesisHash().send(opt);
+  if (typeof genesis !== 'string' || !/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(genesis)) throw new Error(`genesis hash unreadable: ${String(genesis).slice(0, 60)}`);
+  let sage = null;
+  try {
+    const p = (await rpc.getAccountInfo(SAGE_PROGRAM, { encoding: 'base64' }).send(opt))?.value;
+    const pb = p && p.owner === UPGRADEABLE_LOADER ? b64Data(p.data) : null;
+    // tag u32 LE = 2, read byte by byte: the browser's Buffer stand-in (collect-src/buffer-shim.js) has no readUInt32LE
+    if (pb && pb.length === 36 && pb[0] === 2 && pb[1] === 0 && pb[2] === 0 && pb[3] === 0) {
+      const pd = getAddressDecoder().decode(pb.subarray(4, 36));
+      const d = (await rpc.getAccountInfo(pd, { encoding: 'base64', dataSlice: { offset: 4, length: 8 } }).send(opt))?.value;
+      const sb = d && d.owner === UPGRADEABLE_LOADER ? b64Data(d.data) : null;
+      if (sb && sb.length === 8) { const slot = Number(sb.readBigUInt64LE(0)); if (Number.isSafeInteger(slot) && slot > 0) sage = slot; }
+    }
+  } catch (e) {
+    if (signal?.aborted) throw e; // a timeout is the caller's failure, not "no program"
+    sage = null;
+  }
+  return { genesis, sage };
+}
+// Same game version = same genesis AND (same SAGE deploy slot, or either side does not know it). Anything that
+// is not a { genesis: string } is never "the same" - callers decide what a missing epoch means.
+export function sameEpoch(a, b) {
+  if (!a || !b || typeof a.genesis !== 'string' || typeof b.genesis !== 'string' || !a.genesis) return false;
+  if (a.genesis !== b.genesis) return false;
+  const known = (v) => v !== null && v !== undefined;
+  return !known(a.sage) || !known(b.sage) || a.sage === b.sage;
+}
+// An RPC for C4Collect.epoch() in the browser (main.js cannot import the kit itself).
+export const openRpc = () => createSolanaRpc(RPC_URL);
+// Decode sanity: a changed account layout can decode to nonsense instead of throwing. Refuse such a pass before
+// anything is written. Measured on the 2026-11-20 chain: see the hand-in of task #15 (systems and fleets 100 %).
+export const SANE_SHARE = 0.95;
+export const FLEET_KINDS = new Set(['idle', 'docked', 'mining', 'warp', 'subwarp', 'claimStakeTransfer', 'destroyed', 'respawn']);
+export function decodeSanity(systemsRaw, fleetsRaw) {
+  const sysOk = systemsRaw.filter((s) => Number.isFinite(s?.coordinates?.x) && Number.isFinite(s?.coordinates?.y)
+    && typeof s?.name === 'string' && s.name.trim() !== '').length;
+  const fleetOk = fleetsRaw.filter((f) => FLEET_KINDS.has(f?.state?.kind)).length;
+  const r = { systems: systemsRaw.length, systemsOk: sysOk, fleets: fleetsRaw.length, fleetsOk: fleetOk, problem: null };
+  if (!systemsRaw.length) r.problem = 'no star system was read';
+  else if (sysOk < systemsRaw.length * SANE_SHARE) r.problem = `only ${sysOk} of ${systemsRaw.length} star systems have a position and a name`;
+  else if (fleetsRaw.length && fleetOk < fleetsRaw.length * SANE_SHARE) r.problem = `only ${fleetOk} of ${fleetsRaw.length} fleets are in a state this collector knows`;
+  return r;
+}
+const NOTE_NEW_EPOCH = 'The game was updated on chain. History and events start again from this read.';
+const NOTE_EPOCH_UNREAD = 'Could not check whether the game was updated on chain; this read is compared with the saved one as usual.';
+const NOTE_EMPTY_GALAXY = 'No fleets were read. This is the first read of this game version, so the galaxy is shown without fleets.';
+const NOTE_EMPTY_AGAIN = 'No fleets were read, and the previous read of this game version had none either, so the galaxy is shown without fleets.';
+const freshDb = () => ({ v: 1, state: { runAt: 0, cumAt: 0, fleets: {}, starbases: {}, asteroidCum: {} }, history: [], events: [], owners: {} });
+
 // `pass` is shared with main(): on timeout main sets pass.aborted and disposes pass.ctx, which aborts the
 // kit's in-flight reads; a pass that still reaches the commit point checks the flag and writes nothing.
 // `deps` exists for Test/c4-collector-check.js: it swaps the enrichment readers to prove a failing one
@@ -423,39 +487,81 @@ function slimFleet(f) {
 export async function collect(pass, deps = {}) {
   const readIdent = deps.readIdentities || readIdentities;
   const readPrices = deps.refreshPrices || refreshPrices;
+  const readEpoch = deps.readEpoch || readChainEpoch;
+  // deps.chain swaps the kit readers (offline tests only); the real pass always uses the kit.
+  const K = { createSageContext, discoverFleetAddresses, getFleets, getStarSystems, getAllClaimStakes, getFleetMiningState,
+    getCharacterForProfile, listClaimStakeDefinitions, getAllCelestialBodies, listCargoDefinitions, ...(deps.chain || {}) };
   const t0 = Date.now();
+  // Taken from the pass START, before the reads: a chain event landing during this pass's reads then
+  // falls in the NEXT history window instead of slipping between two windows.
+  const nowSec = Math.floor(t0 / 1000);
   mkdirSync(OUT, { recursive: true });
   const unlock = takeLock();
   let ctx;
   try {
-    const db = loadDb(); // a corrupt file aborts here, before any network read
+    let db = loadDb(); // a corrupt file aborts here, before any network read
     const rpc = createSolanaRpc(RPC_URL);
     pass.abort ??= new AbortController();
-    ctx = createSageContext({ cluster: 'zink-ptr', rpc });
+    ctx = K.createSageContext({ cluster: 'zink-ptr', rpc });
     pass.ctx = ctx;
+    // ---- chain version: a new one starts a fresh cursor BEFORE anything is diffed ----------------
+    // Read failed: go on as before, keep the stored epoch, say so. No stored epoch (data saved before this
+    // check existed): adopt the one read, no reset. Stored differs from read: NEW EPOCH - empty state,
+    // history, events, owner series and identity cache, so the pass runs with first-run semantics.
+    const epochNotes = [];
+    let epochRead = null;
+    try { epochRead = await readEpoch(rpc, pass.abort.signal); } catch (e) {
+      epochNotes.push(NOTE_EPOCH_UNREAD);
+      log('WARN chain version read failed - comparing with the saved state as usual', e.code || '', String(e.message).slice(0, 120));
+    }
+    const stored = db.state.epoch && typeof db.state.epoch.genesis === 'string' ? db.state.epoch : null;
+    let epoch = stored, epochChanged = false;
+    if (epochRead) {
+      if (!stored) epoch = { genesis: epochRead.genesis, sage: epochRead.sage ?? null, since: nowSec };
+      else if (sameEpoch(stored, epochRead)) epoch = { genesis: stored.genesis, sage: stored.sage ?? epochRead.sage ?? null, since: stored.since ?? nowSec };
+      else {
+        epochChanged = true;
+        epoch = { genesis: epochRead.genesis, sage: epochRead.sage ?? null, since: nowSec };
+        db = freshDb();
+        epochNotes.push(NOTE_NEW_EPOCH);
+        log(`NEW CHAIN VERSION: genesis ${stored.genesis} -> ${epochRead.genesis}, SAGE deploy slot ${stored.sage} -> ${epochRead.sage} - fresh cursor, history and events start again`);
+      }
+    }
     // ---- reads -------------------------------------------------------------------------------
     // getFleets is all-or-nothing: a fleet closed between discovery and read throws. Re-discover once.
-    let addrs = await discoverFleetAddresses(ctx);
+    let addrs = await K.discoverFleetAddresses(ctx);
     let fleetsRaw;
-    try { fleetsRaw = await getFleets(ctx, addrs); } catch (e) {
+    try { fleetsRaw = await K.getFleets(ctx, addrs); } catch (e) {
       if (e.code !== 'ACCOUNT_NOT_FOUND') throw e;
       log('WARN a fleet vanished between discovery and read - re-discovering once');
-      addrs = await discoverFleetAddresses(ctx);
-      fleetsRaw = await getFleets(ctx, addrs, { refresh: true });
+      addrs = await K.discoverFleetAddresses(ctx);
+      fleetsRaw = await K.getFleets(ctx, addrs, { refresh: true });
     }
     log('fleets discovered', addrs.length, 'read', fleetsRaw.length);
-    // Guard: an empty read must never overwrite a good snapshot (LESSONS #14).
-    if (!fleetsRaw.length) throw new Error('zero fleets read - refusing to write');
+    const systemsRaw = await K.getStarSystems(ctx);
+    // Guard: an empty read must never overwrite a good snapshot (LESSONS #14). The exceptions, all needing star
+    // systems read: a first run, a new chain version, or a stored snapshot that itself has no fleets (an empty
+    // galaxy written before) - in each there is no fleet of THIS game to protect.
+    if (!fleetsRaw.length) {
+      const firstOfVersion = epochChanged || !db.state.runAt;
+      const nothingToProtect = firstOfVersion || !Object.keys(db.state.fleets || {}).length;
+      if (!(nothingToProtect && systemsRaw.length)) throw new Error('zero fleets read - refusing to write');
+      epochNotes.push(firstOfVersion ? NOTE_EMPTY_GALAXY : NOTE_EMPTY_AGAIN);
+      log('WARN zero fleets with', systemsRaw.length, 'systems and no saved fleets of this game version - writing the empty galaxy');
+    }
+    // Decode sanity: a changed account layout must throw here, not be written as a galaxy of nonsense.
+    const sanity = decodeSanity(systemsRaw, fleetsRaw);
+    log(`decode sanity: systems ${sanity.systemsOk}/${sanity.systems} named + placed, fleets ${sanity.fleetsOk}/${sanity.fleets} in a known state`);
+    if (sanity.problem) throw new Error(`decode sanity failed: ${sanity.problem} - the account layout may have changed; nothing written`);
 
-    const systemsRaw = await getStarSystems(ctx);
-    const stakesRaw = await getAllClaimStakes(ctx);
+    const stakesRaw = await K.getAllClaimStakes(ctx);
     const fleets = fleetsRaw.map(slimFleet);
 
     const miningFleets = fleets.filter((f) => f.s.kind === 'mining');
-    const { out: miningStates, failed: mineFailed } = await pool(miningFleets, CONCURRENCY, (f) => getFleetMiningState(ctx, f.a));
+    const { out: miningStates, failed: mineFailed } = await pool(miningFleets, CONCURRENCY, (f) => K.getFleetMiningState(ctx, f.a));
 
     const ownerIds = [...new Set(fleets.filter((f) => !f.npc && f.o).map((f) => f.o))];
-    const { out: chars, failed: charFailed } = await pool(ownerIds, CONCURRENCY, (p) => getCharacterForProfile(ctx, p));
+    const { out: chars, failed: charFailed } = await pool(ownerIds, CONCURRENCY, (p) => K.getCharacterForProfile(ctx, p));
     log('mining states', miningStates.filter(Boolean).length, '/', miningFleets.length, 'failed', mineFailed,
       '| characters', chars.filter(Boolean).length, '/', ownerIds.length, 'failed', charFailed,
       '| systems', systemsRaw.length, '| stakes', stakesRaw.length);
@@ -466,10 +572,7 @@ export async function collect(pass, deps = {}) {
       partial: mineFailed > miningFleets.length * MAX_FAIL_SHARE || charFailed > ownerIds.length * MAX_FAIL_SHARE,
     };
     if (quality.partial) log(`WARN PARTIAL pass (mining ${mineFailed}/${miningFleets.length}, characters ${charFailed}/${ownerIds.length} failed) - latest.json is marked partial and no history/owner points are added`);
-
-    // Taken from the pass START, before the reads: a chain event landing during this pass's reads then
-    // falls in the NEXT history window instead of slipping between two windows.
-    const nowSec = Math.floor(t0 / 1000);
+    // nowSec: taken at the pass start (top of collect), before the epoch read and every other read
 
     // ---- systems + body -> system map -------------------------------------------------------
     const bodyToSystem = {};
@@ -547,7 +650,7 @@ export async function collect(pass, deps = {}) {
     // ---- owner identity (names, wallet) - enrichment, degrades to the last known values ------------
     // A failed or suspect read keeps each owner's previous value with the time it was read (nameAt /
     // walletAt) and adds a quality note. It never touches quality.partial.
-    quality.notes = [];
+    quality.notes = [...epochNotes];
     const prevIdent = db.state.ident || {};
     let ident;
     try { ident = await readIdent(rpc, ownerIds, pass.abort.signal); } catch (e) { ident = { names: null, wallets: null, notes: [`identity read failed: ${String(e.message).slice(0, 120)}`], calls: 0, ms: 0 }; }
@@ -615,7 +718,7 @@ export async function collect(pass, deps = {}) {
     // only `def` (the raw id).
     let stakeDefs = {};
     try {
-      stakeDefs = Object.fromEntries((await listClaimStakeDefinitions(ctx)).map((d) => [d.id, { name: d.name, tier: d.tier, slots: num(d.slots) }]));
+      stakeDefs = Object.fromEntries((await K.listClaimStakeDefinitions(ctx)).map((d) => [d.id, { name: d.name, tier: d.tier, slots: num(d.slots) }]));
     } catch (e) {
       quality.stakeDefsFailed = true; // the page shows "tier unknown (read failed)", not a blank
       log('WARN claim stake definitions read failed', e.code || '', String(e.message).slice(0, 120));
@@ -640,7 +743,7 @@ export async function collect(pass, deps = {}) {
     // the scene lays bodies out on stylised orbits.
     let bodies = null;
     try {
-      const [bodiesRaw, cargoDefs] = await Promise.all([getAllCelestialBodies(ctx), listCargoDefinitions(ctx)]);
+      const [bodiesRaw, cargoDefs] = await Promise.all([K.getAllCelestialBodies(ctx), K.listCargoDefinitions(ctx)]);
       const cargoName = Object.fromEntries(cargoDefs.map((c) => [c.id, c.name]));
       const stakesByBody = {};
       for (const k of stakes) if (k.body) (stakesByBody[k.body] ??= []).push(k.a);
@@ -665,7 +768,9 @@ export async function collect(pass, deps = {}) {
       log('bodies', bodies.length, '(planets', bodies.filter((b) => b.k === 'planet').length, ')');
     } catch (e) {
       quality.bodiesFailed = true;
-      log('WARN bodies read failed - keeping the previous bodies.json', e.code || '', String(e.message).slice(0, 160));
+      // Within one chain version the previous bodies.json is kept. On a new one it belongs to the OLD game, so it
+      // is replaced by { bodies: null, failed: true } at the write below (the page then shows "could not be loaded").
+      log(`WARN bodies read failed - ${epochChanged ? 'new chain version: the old bodies.json is replaced by an empty failed marker' : 'keeping the previous bodies.json'}`, e.code || '', String(e.message).slice(0, 160));
     }
 
     // ---- diff against the previous run -> events ----------------------------------------------
@@ -834,12 +939,18 @@ export async function collect(pass, deps = {}) {
       v: 1, generatedAt: nowSec, rpc: RPC_LABEL, intervalMin: INTERVAL_MIN, quality,
       tookMs: Date.now() - t0, kpis, fleets, owners: Object.values(owners), systems,
       asteroids: Object.values(asteroids), stakes, ref,
+      // the chain version this snapshot belongs to; changed = this pass started it (history began again here).
+      // null only when no version was ever read (the read failed and nothing was stored).
+      epoch: epoch ? { genesis: epoch.genesis, sage: epoch.sage ?? null, since: epoch.since, changed: epochChanged } : null,
     };
 
     // ---- write ---------------------------------------------------------------------------------
     // 1. db.json - the commit point (one atomic rename). 2. served copies. latest.json last, so the page
     // never shows a snapshot whose history/events are not on disk yet.
     if (pass.aborted) throw new Error('pass was timed out - discarding its results (nothing written)');
+    // 0. A new chain version: retire the old game's bodies BEFORE the commit point, so a crash after db.json can
+    // never leave the new version's db.json beside the old game's planets. The new bodies (if read) follow below.
+    if (epochChanged) writeJson('bodies.json', { generatedAt: nowSec, bodies: null, failed: true });
     writeJson('db.json', {
       v: 1,
       state: {
@@ -850,6 +961,7 @@ export async function collect(pass, deps = {}) {
         starbases: Object.fromEntries(systems.map((s) => [s.a, { lc: s.lc, hp: s.hp, f: s.f }])),
         asteroidCum,
         ident: nextIdent, // last known name / wallet per owner, with the time each was read
+        ...(epoch ? { epoch: { genesis: epoch.genesis, sage: epoch.sage ?? null, since: epoch.since } } : {}),
       },
       history, events, owners: ownerSeries,
     });
@@ -859,11 +971,12 @@ export async function collect(pass, deps = {}) {
     writeJson('history.json', history);
     writeJson('events.json', events);
     writeJson('owners.json', ownerSeries);
-    if (bodies && bodies.length) writeJson('bodies.json', { generatedAt: nowSec, bodies });
+    // On a new chain version an EMPTY read is written too (this game has no bodies); a failed read leaves the marker.
+    if (bodies && (bodies.length || epochChanged)) writeJson('bodies.json', { generatedAt: nowSec, bodies });
     writeJson('latest.json', latest);
     log(`WROTE fleets=${fleets.length} owners=${ownerIds.length} mining=${byState.mining || 0} asteroids=${kpis.activeAsteroids}`,
       `galaxyUps=${kpis.galaxyUps} addedEvents=${added.length} totalEvents=${events.length} history=${history.length}`,
-      `partial=${quality.partial} firstRun=${firstRun} took=${Date.now() - t0}ms`);
+      `partial=${quality.partial} firstRun=${firstRun} epochChanged=${epochChanged} took=${Date.now() - t0}ms`);
     return quality.partial ? 2 : 0;
   } finally {
     try { await ctx?.dispose?.(); } catch (e) { log('WARN dispose failed', e.message); }

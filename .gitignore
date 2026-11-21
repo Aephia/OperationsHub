@@ -26,3 +26,10 @@ Tools/c4-live/probe-out/
 Tools/c4-live/collector.log
 Tools/c4-live/collector.log.1
 Tools/c4-live/collector.last.log
+
+# Local-only test fixtures (never commit)
+Test/fixtures/local/
+
+# Leftovers of interrupted test runs and local agent settings
+Tools/c4-live/.mutant-*.mjs
+.claude/settings.json

@@ -27,17 +27,21 @@ class RecipeExplorerApp extends BaseApp {
         const q = params.get('search');
         if (q) { const input = document.getElementById('searchInput'); if (input) input.value = q; this.modules.explorer.handleSearch(q); }
         const rp = params.get('recipe');
+        // a link naming a tagged (alternative) recipe adds its ITEM with that way picked; a link by NAME adds the
+        // item; a bare untagged sibling id adds the item with that recipe, NOT pinned (fix 2 M-b, decided in norm()); a link never
+        // changes an entry already in the plan (fix 1 L2)
         if (rp) {
-            const m = this.model, lower = rp.toLowerCase();
-            const r = m.byId.get(rp) || m.recipes.find(x => x.outputId.toLowerCase() === lower) || m.recipes.find(x => x.outputName.toLowerCase() === lower) || m.recipes.find(x => x.outputId.toLowerCase().endsWith('-' + lower));
-            if (r) this.modules.explorer.addItem(r.outputId, 1);
+            const hit = this.model.resolveLink(rp);
+            if (hit) this.modules.explorer.addItem((hit.way || hit.item).outputId, 1);
         }
         // ?plan=id:qty,id:qty replaces the plan with several recipes at once (the Hub Explorer hands a hab build over this way)
         const pl = params.get('plan');
         if (pl) {
-            const P = this.modules.explorer; P.items = [];
-            pl.split(',').forEach(part => { const [id, q] = part.split(':'); if (this.model.byId.has(id)) P.items.push({ id, qty: Math.max(1, Math.min(100000, parseInt(q, 10) || 1)) }); });
-            P.save(); P.renderList(); P.renderPlan();
+            // tagged ids hold ':' themselves ("candidate:starter:x:hash:2"): a whole part that is an id has qty 1, else
+            // the quantity is after the LAST ':'
+            // the quantity goes through the one plan-quantity parser (RecipeModel.qty, fix 2 L-b); duplicates of one item + way add up (fix 1 M2)
+            const pairs = pl.split(',').map(part => { if (this.model.byId.has(part)) return { id: part, qty: 1 }; const k = part.lastIndexOf(':'); return k >= 0 ? { id: part.slice(0, k), qty: window.RecipeModel.qty(part.slice(k + 1)) } : { id: part, qty: 1 }; });
+            this.modules.explorer.setPlan(pairs);
         }
     }
 

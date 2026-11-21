@@ -36,7 +36,7 @@
     "shield_recharge_rate": 2.8,
     "shield_break_delay": 34,
     "damage": 115,
-    "max_ap": 115,
+    "max_ap": 98,
     "ap_recharge_time": 6.3,
     "repair_cost": 5500,
     "repair_rate": 49,
@@ -47,7 +47,7 @@
     "ship_size_value": 88000,
     "lp_value\r": 4350,
     "xp_value": 50,
-    "damage_kinetic": 0,
+    "damage_kinetic": 115,
     "damage_energy": 0,
     "damage_emp": 0,
     "damage_superchill": 0,
@@ -83,15 +83,24 @@
       "name": "Default",
       "components": {
         "Ship Component": {
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {},
         "Ship Weapons": {},
         "Countermeasures": {},
         "Missiles": {},
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
-      "locked": true
+      "locked": true,
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
+      }
     },
     {
       "name": "Tier One",
@@ -128,7 +137,8 @@
             115075,
             115075
           ],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -165,9 +175,17 @@
             113407
           ]
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
-      "locked": true
+      "locked": true,
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
+      }
     },
     {
       "name": "Tier Two",
@@ -204,7 +222,8 @@
             115076,
             115076
           ],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -237,9 +256,17 @@
           "Explosive": [],
           "Photon": []
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
-      "locked": true
+      "locked": true,
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
+      }
     },
     {
       "name": "Tier Three",
@@ -276,7 +303,8 @@
             115077,
             115077
           ],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -309,9 +337,17 @@
           "Explosive": [],
           "Photon": []
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
-      "locked": true
+      "locked": true,
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
+      }
     },
     {
       "name": "Tier Four",
@@ -348,7 +384,8 @@
             115078,
             115078
           ],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -381,9 +418,17 @@
           "Explosive": [],
           "Photon": []
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
-      "locked": true
+      "locked": true,
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
+      }
     },
     {
       "name": "Tier Five",
@@ -420,7 +465,8 @@
             115079,
             115079
           ],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -453,9 +499,17 @@
           "Explosive": [],
           "Photon": []
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
-      "locked": true
+      "locked": true,
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
+      }
     },
     {
       "name": "Scanning Min",
@@ -473,7 +527,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -491,9 +546,17 @@
           "Explosive": [],
           "Photon": []
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
-      "locked": true
+      "locked": true,
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
+      }
     },
     {
       "name": "Scanning Mid",
@@ -515,7 +578,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -533,9 +597,17 @@
           "Explosive": [],
           "Photon": []
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
-      "locked": true
+      "locked": true,
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
+      }
     },
     {
       "name": "Scanning Max",
@@ -567,7 +639,8 @@
             114749
           ],
           "Missile Bay": [],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -585,9 +658,17 @@
           "Explosive": [],
           "Photon": []
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
-      "locked": true
+      "locked": true,
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
+      }
     },
     {
       "name": "Salvage Min",
@@ -605,7 +686,8 @@
           ],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -623,9 +705,17 @@
           "Explosive": [],
           "Photon": []
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
-      "locked": true
+      "locked": true,
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
+      }
     },
     {
       "name": "Salvage Mid",
@@ -647,7 +737,8 @@
           ],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -669,11 +760,19 @@
           "Explosive": [],
           "Photon": []
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -706,7 +805,8 @@
             114749
           ],
           "Missile Bay": [],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -728,11 +828,19 @@
           "Explosive": [],
           "Photon": []
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -749,7 +857,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -775,11 +884,19 @@
           "Explosive": [],
           "Photon": []
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
       "locked": true,
       "_convertMetadata": {
         "Countermeasures": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -800,7 +917,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -826,11 +944,19 @@
           "Explosive": [],
           "Photon": []
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
       "locked": true,
       "_convertMetadata": {
         "Countermeasures": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -861,7 +987,8 @@
             114749
           ],
           "Missile Bay": [],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -887,11 +1014,19 @@
           "Explosive": [],
           "Photon": []
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
       "locked": true,
       "_convertMetadata": {
         "Countermeasures": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -908,7 +1043,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -926,9 +1062,17 @@
           "Explosive": [],
           "Photon": []
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
-      "locked": true
+      "locked": true,
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
+      }
     },
     {
       "name": "Rescue Mid",
@@ -948,7 +1092,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -971,11 +1116,19 @@
           "Explosive": [],
           "Photon": []
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -1006,7 +1159,8 @@
             114749
           ],
           "Missile Bay": [],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -1029,11 +1183,19 @@
           "Explosive": [],
           "Photon": []
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -1054,7 +1216,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -1082,11 +1245,19 @@
           "Explosive": [],
           "Photon": []
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -1115,7 +1286,8 @@
           ],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -1138,11 +1310,19 @@
           "Explosive": [],
           "Photon": []
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -1175,7 +1355,8 @@
             114749
           ],
           "Missile Bay": [],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -1198,11 +1379,19 @@
           "Explosive": [],
           "Photon": []
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -1219,7 +1408,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -1244,11 +1434,19 @@
           "Explosive": [],
           "Photon": []
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -1277,7 +1475,8 @@
             114747
           ],
           "Missile Bay": [],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -1299,11 +1498,19 @@
           "Explosive": [],
           "Photon": []
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -1332,7 +1539,8 @@
             114749
           ],
           "Missile Bay": [],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -1354,11 +1562,19 @@
           "Explosive": [],
           "Photon": []
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -1377,7 +1593,10 @@
           ],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Mining Rig": []
+          "Mining Rig": [
+            114965
+          ],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -1402,11 +1621,19 @@
           "Explosive": [],
           "Photon": []
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -1429,7 +1656,10 @@
           ],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Mining Rig": []
+          "Mining Rig": [
+            114967
+          ],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -1451,11 +1681,19 @@
           "Explosive": [],
           "Photon": []
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -1488,7 +1726,10 @@
             114749
           ],
           "Missile Bay": [],
-          "Mining Rig": []
+          "Mining Rig": [
+            114969
+          ],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -1507,14 +1748,8 @@
             "",
             ""
           ],
-          "Heat": [
-            79241,
-            79241
-          ],
-          "Shockwave": [
-            78802,
-            78802
-          ]
+          "Heat": [],
+          "Shockwave": []
         },
         "Countermeasures": {
           "Energy Capacitor": [],
@@ -1524,12 +1759,20 @@
           "Explosive": [],
           "Photon": []
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {},
         "Ship Weapons": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -1546,7 +1789,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -1578,12 +1822,20 @@
           "Explosive": [],
           "Photon": []
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {},
         "Ship Weapons": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -1607,7 +1859,8 @@
             115077,
             115077
           ],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -1649,7 +1902,8 @@
             ""
           ]
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
       "locked": true,
       "_convertMetadata": {
@@ -1657,6 +1911,13 @@
         "Ship Weapons": {},
         "Missiles": {},
         "Countermeasures": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -1690,7 +1951,8 @@
             115079,
             115079
           ],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -1730,7 +1992,8 @@
             ""
           ]
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
       "locked": true,
       "_convertMetadata": {
@@ -1738,6 +2001,13 @@
         "Ship Weapons": {},
         "Missiles": {},
         "Countermeasures": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -1754,7 +2024,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -1786,12 +2057,20 @@
           "Explosive": [],
           "Photon": []
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {},
         "Ship Weapons": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -1815,7 +2094,8 @@
             115077,
             115077
           ],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -1855,7 +2135,8 @@
             116125
           ]
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
       "locked": true,
       "_convertMetadata": {
@@ -1863,6 +2144,13 @@
         "Ship Weapons": {},
         "Missiles": {},
         "Countermeasures": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -1896,7 +2184,8 @@
             115079,
             115079
           ],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -1936,7 +2225,8 @@
             116287
           ]
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
       "locked": true,
       "_convertMetadata": {
@@ -1944,6 +2234,13 @@
         "Ship Weapons": {},
         "Missiles": {},
         "Countermeasures": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -1960,7 +2257,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -1996,12 +2294,20 @@
           "Explosive": [],
           "Photon": []
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {},
         "Ship Weapons": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -2025,7 +2331,8 @@
             115077,
             115077
           ],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -2077,7 +2384,8 @@
             116123
           ]
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
       "locked": true,
       "_convertMetadata": {
@@ -2085,6 +2393,13 @@
         "Ship Weapons": {},
         "Missiles": {},
         "Countermeasures": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -2118,7 +2433,8 @@
             115079,
             115079
           ],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -2170,7 +2486,8 @@
             116285
           ]
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
       "locked": true,
       "_convertMetadata": {
@@ -2178,6 +2495,13 @@
         "Ship Weapons": {},
         "Missiles": {},
         "Countermeasures": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -2194,7 +2518,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -2230,12 +2555,20 @@
           "Explosive": [],
           "Photon": []
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {},
         "Ship Weapons": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -2259,7 +2592,8 @@
             115077,
             115077
           ],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -2311,7 +2645,8 @@
             116121
           ]
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
       "locked": true,
       "_convertMetadata": {
@@ -2319,6 +2654,13 @@
         "Ship Weapons": {},
         "Missiles": {},
         "Countermeasures": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -2352,7 +2694,8 @@
             115079,
             115079
           ],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -2404,7 +2747,8 @@
             116283
           ]
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
       "locked": true,
       "_convertMetadata": {
@@ -2412,6 +2756,13 @@
         "Ship Weapons": {},
         "Missiles": {},
         "Countermeasures": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -2428,7 +2779,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -2464,12 +2816,20 @@
           "Explosive": [],
           "Photon": []
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {},
         "Ship Weapons": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -2493,7 +2853,8 @@
             115077,
             115077
           ],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -2545,7 +2906,8 @@
             116124
           ]
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
       "locked": true,
       "_convertMetadata": {
@@ -2553,6 +2915,13 @@
         "Ship Weapons": {},
         "Missiles": {},
         "Countermeasures": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -2586,7 +2955,8 @@
             115079,
             115079
           ],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -2638,7 +3008,8 @@
             116286
           ]
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
       "locked": true,
       "_convertMetadata": {
@@ -2646,6 +3017,13 @@
         "Ship Weapons": {},
         "Missiles": {},
         "Countermeasures": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -2662,7 +3040,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -2698,12 +3077,20 @@
           "Explosive": [],
           "Photon": []
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {},
         "Ship Weapons": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -2727,7 +3114,8 @@
             115077,
             115077
           ],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -2779,7 +3167,8 @@
             116122
           ]
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
       "locked": true,
       "_convertMetadata": {
@@ -2787,6 +3176,13 @@
         "Ship Weapons": {},
         "Missiles": {},
         "Countermeasures": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -2820,7 +3216,8 @@
             115079,
             115079
           ],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -2872,7 +3269,8 @@
             116284
           ]
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
       "locked": true,
       "_convertMetadata": {
@@ -2880,6 +3278,13 @@
         "Ship Weapons": {},
         "Missiles": {},
         "Countermeasures": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -2896,7 +3301,8 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -2932,12 +3338,20 @@
           "Explosive": [],
           "Photon": []
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {},
         "Ship Weapons": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -2961,7 +3375,8 @@
             115077,
             115077
           ],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -3013,7 +3428,8 @@
             116120
           ]
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
       "locked": true,
       "_convertMetadata": {
@@ -3021,6 +3437,13 @@
         "Ship Weapons": {},
         "Missiles": {},
         "Countermeasures": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -3054,7 +3477,8 @@
             115079,
             115079
           ],
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {
           "Ammo Module": [
@@ -3106,7 +3530,8 @@
             116282
           ]
         },
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
       "locked": true,
       "_convertMetadata": {
@@ -3114,6 +3539,13 @@
         "Ship Weapons": {},
         "Missiles": {},
         "Countermeasures": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     }
   ],

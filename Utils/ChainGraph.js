@@ -12,7 +12,17 @@
     const ICON = 30;   // px, the rendered form icon inside a pill when ResourceIcons.js is loaded
 
     class ChainGraph {
-        // opts: { onOpen(name), sound(name), label(node) -> second line text, edgeLabel(edge) -> title, kMax }
+        // opts: { onOpen(name), sound(name), label(node) -> second line text, edgeLabel(edge) -> title, kMax,
+        //         display(name) -> the text shown on the pill (optional; default the node's name - the key,
+        //         onOpen and the hover title always keep the name)
+        //         OPTIONAL (Recipe Explorer alternative ores; absent = the output is byte-identical):
+        //         groups: [{ members: [names] }] - disjoint "one of these" sets: members with no children of their own
+        //           move to the deepest member's layer, sit side by side, and get a dashed frame with "or" between them;
+        //         nodeClass(node) / edgeClass(edge) -> extra class names; title(node) -> the hover title text;
+        //         onSub(name) -> a click on a pill's second line (text.tr; the page's CSS must give it pointer-events)
+        //           calls it instead of onOpen unless it returns false
+        //         hitTest - accepted and ignored: the clicked node is ALWAYS found under the pointer (document.elementFromPoint);
+        //           the host holds pointer capture, so in Chromium pointerup's target is the host, never a node }
         constructor(host, opts) {
             this.host = host; this.opts = opts || {};
             this.g = null;
@@ -23,6 +33,8 @@
             return l == null ? '' : String(l);
         }
 
+        textOf(name) { return this.opts.display ? String(this.opts.display(name)) : name; }
+
         // dag: { root, nodes: Map(name -> {name, res, leaf}), edges: [{from, to, quantity, label?}] }
         layout(dag) {
             const layer = new Map(); layer.set(dag.root, 0);
@@ -32,20 +44,25 @@
             const visit = n => { if (state.get(n)) return; state.set(n, 1); (kids.get(n) || []).forEach(e => visit(e.to)); state.set(n, 2); order.push(n); };
             visit(dag.root); order.reverse();
             order.forEach(n => { (kids.get(n) || []).forEach(e => { layer.set(e.to, Math.max(layer.get(e.to) || 0, (layer.get(n) || 0) + 1)); }); });
+            const groups = this.opts.groups ? this.opts.groups.map(g => g.members.filter(n => layer.has(n))).filter(g => g.length > 1) : null;
+            if (groups) groups.forEach(g => { const l = Math.max(...g.map(n => layer.get(n))); g.forEach(n => { if (!kids.has(n)) layer.set(n, l); }); });
+            // a group's members on one row sit side by side, in the group's order, where its first member was
+            const cluster = groups ? row => groups.forEach(g => { const at = row.map((n, i) => (g.includes(n) ? i : -1)).filter(i => i >= 0); if (at.length < 2) return; const mine = g.filter(n => row.includes(n)); for (let i = at.length - 1; i >= 0; i--) row.splice(at[i], 1); row.splice(at[0], 0, ...mine); }) : null;
             const rows = []; layer.forEach((l, n) => { (rows[l] = rows[l] || []).push(n); });
             // width fits the wider of the two lines (name at 12.5 px, the sub line at 9.5 px), plus the icon
-            const W = n => { const d = dag.nodes.get(n), sub = this.labelOf({ name: n, res: d && d.res, data: d }); return Math.min(176, Math.max(92, 14 + 7.2 * n.length, 16 + 5.0 * sub.length)) + (window.ResourceIcons ? ICON : 0); }, GAP = 16, ROW = 92;
+            const W = n => { const d = dag.nodes.get(n), sub = this.labelOf({ name: n, res: d && d.res, data: d }); return Math.min(176, Math.max(92, 14 + 7.2 * this.textOf(n).length, 16 + 5.0 * sub.length)) + (window.ResourceIcons ? ICON : 0); }, GAP = 16, ROW = 92;
             const pos = new Map();
             rows.forEach(row => row.sort());
+            if (cluster) rows.forEach(cluster);
             const place = row => { const widths = row.map(W); const total = widths.reduce((a, b) => a + b, 0) + GAP * (row.length - 1); let x = -total / 2; row.forEach((n, i) => { pos.set(n, { x: x + widths[i] / 2, w: widths[i] }); x += widths[i] + GAP; }); };
             rows.forEach(place);
-            const bary = (row, rel) => { const key = new Map(row.map(n => { const es = rel.get(n) || []; const xs = es.map(e => pos.get(rel === parents ? e.from : e.to)).filter(Boolean).map(p => p.x); return [n, xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : (pos.get(n) || { x: 0 }).x]; })); row.sort((a, b) => key.get(a) - key.get(b)); place(row); };
+            const bary = (row, rel) => { const key = new Map(row.map(n => { const es = rel.get(n) || []; const xs = es.map(e => pos.get(rel === parents ? e.from : e.to)).filter(Boolean).map(p => p.x); return [n, xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : (pos.get(n) || { x: 0 }).x]; })); row.sort((a, b) => key.get(a) - key.get(b)); if (cluster) cluster(row); place(row); };
             for (let i = 1; i < rows.length; i++) bary(rows[i], parents);
             for (let i = rows.length - 2; i >= 1; i--) bary(rows[i], kids);
             for (let i = 1; i < rows.length; i++) bary(rows[i], parents);
             const nodes = []; let minX = Infinity, maxX = -Infinity;
             rows.forEach((row, l) => row.forEach(n => { const p = pos.get(n); const d = dag.nodes.get(n); nodes.push({ name: n, x: p.x, y: l * ROW, w: p.w, layer: l, res: d && d.res, data: d }); minX = Math.min(minX, p.x - p.w / 2); maxX = Math.max(maxX, p.x + p.w / 2); }));
-            return { nodes, rows: rows.length, minX, maxX, height: (rows.length - 1) * ROW + 44, kids, parents };
+            return { nodes, rows: rows.length, minX, maxX, height: (rows.length - 1) * ROW + 44, kids, parents, groups };
         }
 
         draw(dag) {
@@ -57,19 +74,29 @@
                 const x1 = a.x, y1 = a.y + H / 2, x2 = b.x, y2 = b.y - H / 2, c = (y2 - y1) * 0.5;
                 const cat = (b.res && b.res.category) || (b.data && b.data.cat) || 'processed';
                 const title = this.opts.edgeLabel ? this.opts.edgeLabel(e) : `${e.from} needs ${e.to} ×${e.quantity}`;
-                return `<path class="ed cat-${cat}" data-from="${esc(e.from)}" data-to="${esc(e.to)}" d="M${x1.toFixed(1)},${y1.toFixed(1)} C${x1.toFixed(1)},${(y1 + c).toFixed(1)} ${x2.toFixed(1)},${(y2 - c).toFixed(1)} ${x2.toFixed(1)},${y2.toFixed(1)}"><title>${esc(title)}</title></path>`;
+                return `<path class="ed cat-${cat}${this.opts.edgeClass ? ' ' + this.opts.edgeClass(e) : ''}" data-from="${esc(e.from)}" data-to="${esc(e.to)}" d="M${x1.toFixed(1)},${y1.toFixed(1)} C${x1.toFixed(1)},${(y1 + c).toFixed(1)} ${x2.toFixed(1)},${(y2 - c).toFixed(1)} ${x2.toFixed(1)},${y2.toFixed(1)}"><title>${esc(title)}</title></path>`;
             }).join('');
             const nodes = L.nodes.map(n => {
                 const cat = (n.res && n.res.category) || (n.data && n.data.cat) || 'processed';
-                const text = n.name.length > 24 ? n.name.slice(0, 23) + '…' : n.name;
+                const shown = this.textOf(n.name), text = shown.length > 24 ? shown.slice(0, 23) + '…' : shown;
                 const sub = label(n);
                 // form icon (Utils/ResourceIcons.js) at the pill's left; the text centres in what is left
-                const icon = window.ResourceIcons && CAT_LABEL[cat] ? `<image class="ic" href="${window.ResourceIcons.url(n.name, cat)}" x="${(-n.w / 2 + 4).toFixed(1)}" y="${-ICON / 2 + 1}" width="${ICON}" height="${ICON}"/>` : '';
+                const icon = window.ResourceIcons && CAT_LABEL[cat] ? `<image class="ic" href="${window.ResourceIcons.url(shown, cat)}" x="${(-n.w / 2 + 4).toFixed(1)}" y="${-ICON / 2 + 1}" width="${ICON}" height="${ICON}"/>` : '';
                 const tx = icon ? (ICON / 2).toFixed(1) : 0;
-                return `<g class="nd cat-${cat}${n.layer === 0 ? ' root' : ''}" data-name="${esc(n.name)}" transform="translate(${n.x.toFixed(1)},${n.y.toFixed(1)})"><g class="in" style="animation-delay:${Math.min(1200, n.layer * 70)}ms"><rect x="${(-n.w / 2).toFixed(1)}" y="${-H / 2}" width="${n.w.toFixed(1)}" height="${H}" rx="9"/>${icon}<text class="nm" x="${tx}" y="${sub ? -2 : 5}">${esc(text)}</text>${sub ? `<text class="tr" x="${tx}" y="13">${esc(sub)}</text>` : ''}<title>${esc(n.name)}</title></g></g>`;
+                return `<g class="nd cat-${cat}${n.layer === 0 ? ' root' : ''}${this.opts.nodeClass ? ' ' + this.opts.nodeClass(n) : ''}" data-name="${esc(n.name)}" transform="translate(${n.x.toFixed(1)},${n.y.toFixed(1)})"><g class="in" style="animation-delay:${Math.min(1200, n.layer * 70)}ms"><rect x="${(-n.w / 2).toFixed(1)}" y="${-H / 2}" width="${n.w.toFixed(1)}" height="${H}" rx="9"/>${icon}<text class="nm" x="${tx}" y="${sub ? -2 : 5}">${esc(text)}</text>${sub ? `<text class="tr" x="${tx}" y="13">${esc(sub)}</text>` : ''}<title>${esc(this.opts.title ? this.opts.title(n) : n.name)}</title></g></g>`;
             }).join('');
+            // optional "one of these" frames: one per group and row, with "or" in each gap between two members
+            const frames = L.groups ? L.groups.map(g => {
+                const rowsOf = new Map(); g.forEach(name => { const n = byName.get(name); if (n) (rowsOf.get(n.y) || rowsOf.set(n.y, []).get(n.y)).push(n); });
+                return Array.from(rowsOf.values()).map(ms => {
+                    ms.sort((a, b) => a.x - b.x);
+                    const x0 = ms[0].x - ms[0].w / 2 - 6, x1 = ms[ms.length - 1].x + ms[ms.length - 1].w / 2 + 6, y = ms[0].y;
+                    const ors = ms.slice(1).map((n, i) => `<text class="cg-or" x="${((ms[i].x + ms[i].w / 2 + n.x - n.w / 2) / 2).toFixed(1)}" y="${(y + 3).toFixed(1)}">or</text>`).join('');
+                    return `<g class="cg-grp"><rect x="${x0.toFixed(1)}" y="${(y - H / 2 - 7).toFixed(1)}" width="${(x1 - x0).toFixed(1)}" height="${H + 14}" rx="13"/><text class="cg-grp-t" x="${(x0 + 10).toFixed(1)}" y="${(y - H / 2 - 4).toFixed(1)}">one of</text>${ors}</g>`;
+                }).join('');
+            }).join('') : '';
             const vbW = (L.maxX - L.minX) + PAD * 2, vbH = L.height + PAD * 2;
-            host.innerHTML = `<svg class="cg-svg" viewBox="${(L.minX - PAD).toFixed(1)} ${-PAD - H / 2} ${vbW.toFixed(1)} ${vbH.toFixed(1)}"><g class="edges">${edges}</g><g class="nodes">${nodes}</g></svg>`;
+            host.innerHTML = `<svg class="cg-svg" viewBox="${(L.minX - PAD).toFixed(1)} ${-PAD - H / 2} ${vbW.toFixed(1)} ${vbH.toFixed(1)}">${frames ? `<g class="groups">${frames}</g>` : ''}<g class="edges">${edges}</g><g class="nodes">${nodes}</g></svg>`;
             this.g = { svg: host.querySelector('svg'), kids: L.kids, parents: L.parents, vbW, vbH, k: 1, s: 1, tx: 0, ty: 0, hover: null };
             if (!host.dataset.cgBound) { host.dataset.cgBound = '1'; this.bind(); }
             this.fit();
@@ -98,7 +125,7 @@
                 const nd = e.target.closest('.nd'); const name = nd ? nd.dataset.name : null;
                 if (name !== g.hover) { g.hover = name; this.trace(name); }
             });
-            const up = e => { if (!drag) return; const was = drag; drag = null; if (!was.moved) { const nd = e.target.closest('.nd'); if (nd && this.opts.onOpen) { snd('click'); this.trace(null); this.opts.onOpen(nd.dataset.name); } } };
+            const up = e => { if (!drag) return; const was = drag; drag = null; if (!was.moved) { const tg = (document.elementFromPoint(e.clientX, e.clientY) || e.target); const nd = tg.closest('.nd'); if (nd && this.opts.onSub && tg.closest('text.tr') && this.opts.onSub(nd.dataset.name) !== false) { snd('click'); this.trace(null); return; } if (nd && this.opts.onOpen) { snd('click'); this.trace(null); this.opts.onOpen(nd.dataset.name); } } };
             host.addEventListener('pointerup', up); host.addEventListener('pointercancel', () => { drag = null; });
             host.addEventListener('pointerleave', () => { if (!drag && this.g) { this.g.hover = null; this.trace(null); } });
             host.addEventListener('wheel', e => { const g = this.g; if (!g) return; e.preventDefault(); const f = e.deltaY < 0 ? 1.15 : 1 / 1.15; g.s = Math.max(0.3, Math.min(4, g.s * f)); this.apply(); }, { passive: false });

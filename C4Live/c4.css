@@ -510,3 +510,21 @@ p.c4-dac-legend.none { display: block; margin: 0.2rem 0 0; font-size: 0.78rem; c
 @keyframes c4-stoppulse { 50% { opacity: 0.25; } }
 .c4-stopchip:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 .c4-stopdetail { display: block; margin-top: 0.25rem; max-width: 30rem; white-space: normal; }
+
+/* ------------------------------------------------------------------ Resource tab (2026-11-13): pick a resource, the map
+   shows each system's richness for it. Accent = --accent-green (ResourcesExplorer/styles.css), the same hex as the map's
+   resource columns (C4Model.RES_HEX / scene RES_HEX), distinct from every faction colour the Mining columns use. */
+.c4-dock[data-acc="resource"] { --acc: var(--accent-green, #10b981); }
+.ti-resource { --ico: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 15V9M6 15V5M10 15V7M14 15V2' stroke='%23000' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E"); }
+.c4-res-pick { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.35rem 0.5rem; align-items: center; margin: 0 0 0.55rem; }
+.c4-res-pick label { font-family: 'Orbitron', sans-serif; font-size: 0.5rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--acc); grid-row: span 2; }
+.c4-res-pick input { font: 500 0.8rem 'Rajdhani', sans-serif; color: #fff; background: rgba(9, 13, 28, 0.9); border: 1px solid var(--line); border-radius: 6px; padding: 0.2rem 0.45rem; min-width: 0; }
+.c4-res-pick input:focus-visible { outline: 2px solid var(--acc); outline-offset: 1px; }
+.c4-res-pick select { width: 100%; font-size: 0.86rem; }
+/* Resource tab: what the three ring styles on the map mean (dotted = asteroid belt only), with a count each */
+.c4-res-legend { display: flex; flex-wrap: wrap; gap: 0.3rem 1rem; margin: 0 0 0.6rem; font: 500 0.78rem 'Rajdhani', sans-serif; color: var(--text-muted); }
+.c4-res-legend span { display: inline-flex; align-items: center; gap: 0.3rem; white-space: nowrap; }
+.c4-res-legend b { color: #fff; font-weight: 600; }
+.c4-ring-mark { flex: none; vertical-align: -0.28em; margin-right: 0.3rem; }
+.c4-res-legend .c4-ring-mark { margin-right: 0; }
+.c4-bar .lab .c4-res-in { color: var(--text-muted); font-size: 0.72rem; margin-left: 0.2rem; }

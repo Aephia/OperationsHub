@@ -31,7 +31,19 @@ the real `collect()` three times against z.ink in temp dirs, never touching `Dat
   one atomic rename. A crash can therefore never pair a new history point with an old cursor.
 - The served `history.json`, `events.json` and `owners.json` are copies of `db.json`. `latest.json` is written
   last.
-- A pass that reads zero fleets refuses to write.
+- A pass that reads zero fleets refuses to write, except when at least one star system was read AND there is no
+  fleet of this game to protect: a first run, a new chain version, or a saved state that itself has zero fleets
+  (an empty galaxy written before). The empty galaxy is then written with a quality note.
+- **Chain version** (2026-11-20): every pass first reads `{ genesis, sage }` = the genesis hash and the SAGE
+  program's last deploy slot (3 calls; `readChainEpoch`). Stored in `db.json` `state.epoch` with `since`.
+  Same version = same genesis and (same slot, or either slot unknown; `sameEpoch`). A **new version** starts a
+  fresh cursor before anything is diffed: state, history, events, owner series and the identity cache start
+  again (first-run semantics, no `gone` events, not partial), `latest.epoch.changed` is true and a note says so.
+  A failed version read changes nothing (the pass diffs as usual, with a note); data saved without a version
+  adopts the one read.
+- **Decode sanity**: the pass throws, writing nothing, when no star system was read, or fewer than 95 % of systems
+  have a finite position and a name, or fewer than 95 % of fleets are in a state the collector knows. Measured
+  2026-11-20: 945/945 systems and 1,641/1,641 fleets pass.
 - An unreadable data file is moved to `<name>.corrupt-<ms>` and the pass aborts before any network read; it
   is never treated as empty.
 - One collector at a time: a `.lock` in the output dir, taken over when older than 30 minutes.
@@ -126,7 +138,8 @@ The chain keeps **no combat log and no mining history**, so the collector derive
   systems: [{ a, n, r region, x, y, f starbase faction, lvl, hp, sp, lc, built (builtDestroyedAt), links }],
   asteroids: [{ a, sys, sysName, x, y, fleets, ups, res:{resource:{cum, miners, ups, rich}} }],
   stakes: [{ a, o, st, def, defName ("Claim Stake Tier 1" / "Cultivation Stake Tier 2"), tier (1..n), slots, b buildings,
-            sys, sysName, x, y, crew, body (planet address) }] }
+            sys, sysName, x, y, crew, body (planet address) }],
+  epoch: null | { genesis, sage (deploy slot | null), since (unix s this store first saw it), changed (this pass started it) } }
 ```
 Sum of `owners[].ups` plus NPC fleets' `mine.ups` equals `kpis.galaxyUps`, and so does the sum of `byFaction[].ups`.
 
@@ -136,7 +149,10 @@ res: [{ r resource, rich, mined? (asteroid counter, units), miners? (active mine
 planets and 1,358 asteroids, up to 7 planets and 4 asteroids per system. **The chain gives no position for a body
 inside its system**, so the scene lays the bodies out on stylised orbits. `stakes[].body` links a claim stake to its
 planet; `fleets[].s.asteroid` links a mining fleet to its asteroid. A failed bodies read keeps the previous file and
-sets `quality.bodiesFailed`.
+sets `quality.bodiesFailed`, except on a new chain version: the old file then belongs to the old game and is replaced
+by `{ generatedAt, bodies: null, failed: true }`. On a new chain version that marker is written BEFORE the `db.json`
+commit point (a crash after it never leaves the new version's cursor beside the old game's planets) and replaced by
+the new read, even an empty one, after it.
 
 `history.json`: `[{ t, fleets, ships, players, mining, galaxyUps, resUps, minedDelta, minedDtSec, combat, destroyed, byFaction, atlasTotal }]`, one per full run, last 90 days.
 `events.json`: `[{ t, k: combat|destroyed|gone|newFleet|starbaseCombat|captured, f|sys, n, o?, fa, from?, npc?, x, y, hp0?, hp1?, sp0?, sp1?, hpMax?, dmg?, vs?[{f,n,o,fa,npc}], dead?, afterCombat?, seed?, ships? }]`, sorted by `t`, last 8,000.

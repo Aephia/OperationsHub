@@ -36,6 +36,8 @@ if (BREAK === 'bodyverdict') { const orig = M.buildBody; M.buildBody = (...a) =>
 if (BREAK === 'sysmember') { const orig = M.buildSystem; M.buildSystem = (l, e, i, a) => { const v = orig(l, e, i, a); const sys = l.systems.find(x => x.a === a); v.fleets = v.fleets.filter(f => Math.abs(f.x - sys.x) < 0.05 && Math.abs(f.y - sys.y) < 0.05 || f.s.kind === 'docked' || f.s.kind === 'mining'); return v; }; }
 if (BREAK === 'destroyed') M.destroyedFleets = evs => ({ size: evs.filter(e => e.k === 'destroyed' || (e.k === 'combat' && e.dead)).length });
 if (BREAK === 'stale') M.liveMined = (ups, l, t) => ({ units: M.projectMined(ups, l.generatedAt, t), frozen: false });
+// ressum (2026-11-13): the Resource tab's system value becomes the BEST body instead of the SUM ([18] must go red)
+if (BREAK === 'ressum' && M.resourceSystems) { const orig = M.resourceSystems; M.resourceSystems = (b, s, n) => orig(b, s, n).map(r => ({ ...r, sum: r.best })); }
 if (BREAK === 'dtsec') { const orig = M.minedSeries; M.minedSeries = h => { const r = orig(h.map((x, i) => i ? { ...x, minedDtSec: x.t - h[i - 1].t } : x)); return r; }; }
 
 let pass = 0, fail = 0;
@@ -63,6 +65,17 @@ const build = (f, lat, ev) => { lat = lat || L; ev = ev || E;
     }
     return D;
 };
+
+// C4_ONLY=resource: run only block [18] (the Resource tab model, no browser, ~2 s) and exit with its totals;
+// C4_ONLY=resource-page: only the Resource page scenarios of [14] (headless Chromium, ~1 min)
+// C4_ONLY=chain-update: only block [19] (public mode: data version, chain-update check on open, automatic refresh of an
+// old copy; headless Chromium with a stubbed store and a stubbed collector, ~1-2 min)
+// C4_ONLY=v7-fixes: only the v7 fix scenarios [17c] of [14] (wallet chip, hull names, stopped chip, deep-space Hot spots)
+if (process.env.C4_ONLY === 'resource' || process.env.C4_ONLY === 'resource-page' || process.env.C4_ONLY === 'chain-update' || process.env.C4_ONLY === 'v7-fixes') {
+    (async () => { if (process.env.C4_ONLY === 'resource') await resourceChecks(); else if (process.env.C4_ONLY === 'chain-update') await chainUpdateChecks(); else await browserLayout(); console.log(`\n${pass} passed, ${fail} failed  (C4_ONLY=${process.env.C4_ONLY})`); process.exit(fail ? 1 : 0); })()
+        .catch(e => { console.log('FAIL [18] could not run: ' + (e && e.stack || e)); process.exit(1); });
+    return;
+}
 
 console.log(`C4 Live check - snapshot ${new Date(L.generatedAt * 1000).toISOString()}, ${L.fleets.length} fleets, ${E.length} events, ${H.length} history points`);
 const D = build('all');
@@ -267,6 +280,9 @@ else {
     const withName = L.stakes.filter(k => k.defName).length;
     check(`real data: stakes carry defName (${withName} of ${L.stakes.length}) and the label shows it`, L.stakes.every(k => !k.defName || M.stakeLabel(k, L.quality) === k.defName), JSON.stringify(L.stakes.reduce((m, k) => (m[k.defName || 'null'] = (m[k.defName || 'null'] || 0) + 1, m), {})));
     check('quality notes: bodiesFailed and stakeDefsFailed each produce a note', M.qualityNotes({ bodiesFailed: true }).length === 1 && /stake tiers are unknown/.test(M.qualityNotes({ stakeDefsFailed: true })[0]));
+// P3 (2026-11-20): after a game update a failed planets read leaves NO bodies (the collector's marker), so the note must
+// be true in both cases; the old "bodies.json is from an earlier run" was false there
+check('quality notes: the bodiesFailed note covers both cases (kept from an earlier read / none after a game update)', /earlier read/.test(M.qualityNotes({ bodiesFailed: true })[0] || '') && /none are shown after a game update/.test(M.qualityNotes({ bodiesFailed: true })[0] || ''), M.qualityNotes({ bodiesFailed: true })[0]);
     // hover tip = the scene's bodyLabel facts
     const tipAst = M.buildBody(L, I, L.asteroids[0].a);
     const tipPl = M.buildBody(L, I, planetsWithStakes[0].a);
@@ -418,7 +434,9 @@ else (() => {
     }
     await crossImplHotSpots();
     try { dacChecks(); } catch (e) { check('[16] DAC checks ran without throwing', false, String(e).split('\n')[0]); }
+    try { await resourceChecks(); } catch (e) { check('[18] Resource tab checks ran without throwing', false, String(e).split('\n')[0]); }
 
+    try { await chainUpdateChecks(); } catch (e) { check('[19] chain update checks ran without throwing', false, String(e && e.stack || e).split('\n')[0]); }
     await browserLayout();
     console.log(`\n${pass} passed, ${fail} failed${BREAK ? `  (C4_BREAK=${BREAK})` : ''}`);
     process.exit(fail ? 1 : 0);
@@ -520,7 +538,7 @@ async function browserLayout() {
         window.C4Scene = { mount(el) { const h = {}; const rec = n => (...a) => { window.__calls.push([n, a.length && typeof a[0] !== 'object' || n === 'setInsets' || n === 'focusSystem' || n === 'setDacs' ? JSON.parse(JSON.stringify(a)) : []]); };
             window.__emit = (ev, v) => h[ev] && h[ev](v);
             return { on: (ev, fn) => { h[ev] = fn; }, setData: rec('setData'), setFilter: rec('setFilter'), setLayer: rec('setLayer'), focusOwner: rec('focusOwner'), focusPoint: rec('focusPoint'),
-                focusSystem: rec('focusSystem'), pulseEvent: rec('pulseEvent'), dispose() {}, screenOf: () => null, setStatLayer: rec('setStatLayer'), setInsets: rec('setInsets'), setDacs: rec('setDacs') }; } };`;
+                focusSystem: rec('focusSystem'), pulseEvent: rec('pulseEvent'), dispose() {}, screenOf: () => null, setStatLayer: rec('setStatLayer'), setStatResource: rec('setStatResource'), setInsets: rec('setInsets'), setDacs: rec('setDacs') }; } };`;
     let mut = {};   // url path -> transform(text)
     const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json', '.css': 'text/css', '.webp': 'image/webp', '.png': 'image/png', '.jpg': 'image/jpeg' };
     let useStub = true;
@@ -660,8 +678,17 @@ async function browserLayout() {
         const staleMut = t => { const j = JSON.parse(t); if (nowS - j.generatedAt < 3 * 3600) j.generatedAt = nowS - 4 * 3600; return JSON.stringify(j); };
         const hullOwner = L.owners.find(o => o.holdings && o.holdings.hulls && Object.keys(o.holdings.hulls).some(k => / Min Config$/.test(k) && o.holdings.hulls[k] > 0)
             && Object.entries(o.holdings.hulls).filter(e => e[1] > 0).sort((a, b) => b[1] - a[1]).slice(0, 8).some(e => / Min Config$/.test(e[0])));
-        async function run(appMut, cssMut) {
-            mut = { '/Data/c4-live/latest.json': staleMut }; if (appMut) mut['/C4Live/app.js'] = appMut; if (cssMut) mut['/C4Live/c4.css'] = cssMut;
+        // fix E (2026-11-20 review): the card lists the top 8 spots, and on the frozen data the best deep-space spot ranks
+        // 10th. The served events gain 20 copies of a real (non-kill) combat event far east of every system, in the 24 h
+        // window of the served (stale-shifted) snapshot, so a deep-space spot ranks FIRST. Files on disk are untouched.
+        const genServed = nowS - L.generatedAt < 3 * 3600 ? nowS - 4 * 3600 : L.generatedAt;
+        const maxX = Math.max(...L.systems.filter(s => Number.isFinite(s.x)).map(s => s.x));
+        const combatEv = E.find(e => e.k === 'combat' && e.dead !== true && e.f);
+        const deepMut = t => { const j = JSON.parse(t); if (!Array.isArray(j) || !combatEv) throw new Error('no combat event to copy');
+            for (let i = 0; i < 20; i++) j.push(Object.assign({}, combatEv, { x: maxX + 10, y: 0, t: genServed - 60 - i, f: 'FAKE' + i }));
+            return JSON.stringify(j); };
+        async function run(appMut, cssMut, modelMut) {
+            mut = { '/Data/c4-live/latest.json': staleMut, '/Data/c4-live/events.json': deepMut }; if (appMut) mut['/C4Live/app.js'] = appMut; if (cssMut) mut['/C4Live/c4.css'] = cssMut; if (modelMut) mut['/C4Live/c4-ui-model.js'] = modelMut;
             const o = { errors: [] };
             const { page, ctx, errors } = await open(1600, 900, '?tab=owners', { reducedMotion: 'reduce' });
             page.setDefaultTimeout(5000);
@@ -708,6 +735,8 @@ async function browserLayout() {
         check('fix B - negative control: the hover-only chip (opacity 0 at rest) is caught', !walOk(N1), JSON.stringify(N1.wal));
         const N2 = await run(t => replaceOnce(t, '${silIcon(c)}${hullCell(c)}', '${silIcon(c)}${esc(String(c).replace(/ Default Config$/, \'\'))}'));
         check('fix C - negative control: the v5 full config name is caught', !hullOk(N2), JSON.stringify((N2.hulls || []).slice(0, 2)));
+        const N3 = await run(null, null, t => replaceOnce(t, "return best ? `Deep space near ${best.n || shortAddr(best.a)}` : 'Deep space';", 'return `Deep space ${Math.round(x)}, ${Math.round(y)}`;'));
+        check('fix E - negative control: a deepSpaceName that returns the old coordinate label is caught', !hotOk(N3), (N3.hot || '').slice(0, 160));
     }
     // ------------------------------------------------------------------ v5 (task #49): names, wallet chip, wealth, Find, XSS
     // A COPY of latest.json is served with three owners rewritten: the top miner gets a HOSTILE name (an <img onerror>
@@ -843,6 +872,8 @@ async function browserLayout() {
         } finally { await ctx.close(); }
     }
     try {
+        if (process.env.C4_ONLY === 'resource-page') { await resourcePageScenarios(); return; }   // the Resource page block alone
+        if (process.env.C4_ONLY === 'v7-fixes') { await fixScenarios(); return; }                 // the v7 fix scenarios alone
         // full screen at the two acceptance sizes
         for (const [w, h] of [[1600, 900], [1280, 720]]) {
             const { page, ctx, errors } = await open(w, h);
@@ -957,7 +988,8 @@ async function browserLayout() {
                         }
                         if (nav.scrollWidth > nav.clientWidth + 1) bad.push(`row overflows: scrollWidth ${nav.scrollWidth} > clientWidth ${nav.clientWidth}`);
                         // 5 = four data tabs + System; the DACs tab (2026-11-07) adds one when dacs.json loaded
-                        const want = nav.querySelector('.c4-tab[data-tab="dacs"]:not([hidden])') ? 6 : 5;
+                        // the Resource tab (2026-11-13) is always there: +1 unconditionally, so a missing button FAILS (review F4)
+                        const want = (nav.querySelector('.c4-tab[data-tab="dacs"]:not([hidden])') ? 6 : 5) + 1;
                         if (tabs.length !== want) bad.push(`${tabs.length} tabs shown, expected ${want}`);
                         return { bad, fit: nav.dataset.fit, sysLabel: getComputedStyle(nav.querySelector('.c4-tab-sys span')).display !== 'none', dockW: Math.round(dock.right - dock.left) };
                     });
@@ -974,15 +1006,19 @@ async function browserLayout() {
             }
             for (const [w, h] of [[1600, 900], [1280, 720]]) for (const dw of [360, 440, 720]) {
                 const r = await tabsScenario(w, h, dw);
-                check(`tabs (v4) ${w}x${h}, dock ${dw}: all tabs (6 with DACs) incl. System ("${longSys.n}") fully visible and hit at their centres, row does not scroll`, r.ok, r.detail);
+                check(`tabs (v4) ${w}x${h}, dock ${dw}: all tabs (5 data tabs + System, 7 with DACs) incl. System ("${longSys.n}") fully visible and hit at their centres, row does not scroll`, r.ok, r.detail);
             }
             {
                 const r = await tabsScenario(390, 844, null);
-                check(`tabs (v4) phone sheet 390x844: all five tabs incl. System fully visible and hit at their centres`, r.ok, r.detail);
+                check(`tabs (v4) phone sheet 390x844: every tab (5 data tabs + System, 7 with DACs) fully visible and hit at their centres`, r.ok, r.detail);
             }
             mut = { '/C4Live/app.js': t => replaceOnce(t, 'nav.dataset.fit = String(lv);', 'nav.dataset.fit = "0";') };
             const rm = await tabsScenario(1600, 900, 440); mut = {};
             check('tabs - negative control: with fitTabs neutered (labels never shed) the check FAILS at 1600x900 dock 440', !rm.ok, rm.detail.slice(0, 200));
+            // review F4: the count is unconditional, so a page whose Resource button is gone FAILS it
+            mut = { '/C4Live/index.html': t => replaceOnce(t, '<button class="c4-tab" data-tab="resource" role="tab" title="Resource richness"><i class="ti ti-resource" aria-hidden="true"></i><span>Resource</span></button>', '') };
+            const rr = await tabsScenario(1600, 900, 440); mut = {};
+            check('tabs - negative control: with the Resource button deleted the tab-count check FAILS', !rr.ok && /tabs shown, expected/.test(rr.detail), rr.detail.slice(0, 200));
         }
         {   // phone: bottom sheet
             const { page, ctx, errors } = await open(390, 844);
@@ -1240,8 +1276,90 @@ async function browserLayout() {
             await page.screenshot({ path: path.join(require('os').tmpdir(), 'c4-live-v2-1600.png') });
             await ctx.close(); useStub = true;
         }
+        await resourcePageScenarios();
     } finally { await browser.close(); server.close(); }
     check('every negative-control mutation found its target text (a missing target would make its control meaningless)', !mutErrors.length, mutErrors.join(' | ') || `all applied`);
+
+    // ---- Resource tab in the page (review F1 / F3 / F4, 2026-11-13). Stub scene unless said; a mutated page must FAIL each.
+    async function resourcePageScenarios() {
+        const RAW = 'Raw Chisenic', ARCO = 'Arco';
+        let BB = null; try { BB = JSON.parse(fs.readFileSync(path.join(DIR, 'bodies.json'), 'utf8')).bodies; } catch (e) { BB = null; }
+        if (!Array.isArray(BB)) { console.log('  SKIP Resource page scenarios: no bodies.json'); return; }
+        // in-test recount (no model helper): systems holding RAW and the bodies holding it
+        const placedA = new Set(L.systems.filter(s => Number.isFinite(s.x) && Number.isFinite(s.y)).map(s => s.a));
+        const holds = (b, n) => b && b.a && placedA.has(b.sys) && Array.isArray(b.res) && b.res.some(r => r && r.r === n && typeof r.rich === 'number' && Number.isFinite(r.rich) && r.rich > 0);
+        const rawBodies = BB.filter(b => holds(b, RAW)), rawSys = new Set(rawBodies.map(b => b.sys));
+        const resSel = '#sec-resource.active select[data-res-pick]';
+        // F4: the deep link draws exactly the recounted rings, and no column (REAL scene; rings since 2026-11-13) and lists the recounted bars
+        const rawRun = async () => {
+            useStub = false;
+            const { page, ctx, errors } = await open(1600, 900, '?tab=resource&res=' + encodeURIComponent(RAW));
+            try {
+                await page.waitForSelector(resSel, { timeout: 30000 });
+                await page.waitForFunction(n => window.__scene && window.__scene.getStats().statLayer.res === n && window.__scene.getStats().statLayer.rings > 0, RAW, { timeout: 30000 }).catch(() => {});
+                await sleep(600);
+                return await page.evaluate(() => ({ legend: [...document.querySelectorAll('#sec-resource .c4-res-legend b')].map(b => b.textContent.trim()), st: window.__scene ? window.__scene.getStats().statLayer : null, sysBars: document.querySelectorAll('#sec-resource .c4-card:nth-child(1) .c4-bar').length,
+                    bodyBars: document.querySelectorAll('#sec-resource .c4-card:nth-child(2) .c4-bar').length, sysNames: [...document.querySelectorAll('#sec-resource .c4-card:nth-child(1) .c4-bar .lab')].map(e => e.textContent) })).then(r => ({ ...r, errors }));
+            } finally { await ctx.close(); useStub = true; }
+        };
+        const rawOk = r => !!r.st && r.st.name === 'resource' && r.st.res === RAW && r.st.rings === rawSys.size && r.st.columns === 0 && r.sysBars === Math.min(12, rawSys.size) && r.bodyBars === Math.min(12, rawBodies.length)
+            && r.sysNames.every(nm => L.systems.some(s => rawSys.has(s.a) && s.n === nm)) && !r.errors.length;
+        check(`positive control: "${RAW}" is in bodies.json on ${rawSys.size} systems / ${rawBodies.length} bodies (recounted here)`, rawSys.size > 0 && rawBodies.length > 0);
+        const R1 = await rawRun();
+        check(`Resource deep link ?tab=resource&res=${RAW} (REAL scene): ${rawSys.size} rings and 0 columns, ${Math.min(12, rawSys.size)} system bars, ${Math.min(12, rawBodies.length)} body bars, all = the recount`, rawOk(R1), JSON.stringify({ rings: R1.st && R1.st.rings, cols: R1.st && R1.st.columns, res: R1.st && R1.st.res, sysBars: R1.sysBars, bodyBars: R1.bodyBars, err: R1.errors.slice(0, 1) }));
+        mut = { '/C4Live/app.js': t => replaceOnce(t, 'const RES_LIST = 12;', 'const RES_LIST = 1;') };
+        const R1m = await rawRun(); mut = {};
+        check('Resource deep link - negative control: a page that lists only 1 bar per card FAILS it', !rawOk(R1m), JSON.stringify({ sysBars: R1m.sysBars, bodyBars: R1m.bodyBars }));
+        // P8 (2026-11-20): the legend's three counts (solid / dotted / both) = the where-tally of M.resourceSystems
+        const wantLeg = { planet: 0, belt: 0, both: 0 };
+        for (const s of M.resourceSystems(BB, L.systems, RAW)) wantLeg[s.where] = (wantLeg[s.where] || 0) + 1;
+        const wantArr = [wantLeg.planet, wantLeg.belt, wantLeg.both].map(String);
+        const legOk = r => Array.isArray(r.legend) && JSON.stringify(r.legend) === JSON.stringify(wantArr);
+        check(`Resource deep link: the ring legend counts ${wantArr.join(' / ')} (planets / belt / both) = the where-tally of M.resourceSystems for ${RAW} (positive control: ${rawSys.size} systems in all)`,
+            legOk(R1) && wantLeg.planet + wantLeg.belt + wantLeg.both === rawSys.size, JSON.stringify(R1.legend));
+        // mutant: a 'both' system counted as planets only (the tally must hold a 'both' or a belt system for this to bite)
+        mut = { '/C4Live/app.js': t => replaceOnce(t, 'for (const s of v.systems) nWhere[s.where] = (nWhere[s.where] || 0) + 1;', "for (const s of v.systems) nWhere[s.where === 'planet' ? 'planet' : 'both'] = (nWhere[s.where === 'planet' ? 'planet' : 'both'] || 0) + 1;") };
+        const R1l = await rawRun(); mut = {};
+        check('Resource deep link legend - negative control: a page that folds belt-only systems into "both" FAILS it', !legOk(R1l), JSON.stringify(R1l.legend));
+        // F1: keyboard - focus the select, ArrowDown twice: two steps, two map changes, focus still on the select
+        const keyRun = async () => {
+            const { page, ctx, errors } = await open(1600, 900, '?tab=resource&res=' + encodeURIComponent(ARCO));
+            try {
+                await page.waitForSelector(resSel, { timeout: 30000 }); await sleep(300);
+                await page.focus('#c4ResSel');
+                const i0 = await page.evaluate(() => document.getElementById('c4ResSel').selectedIndex);
+                await page.keyboard.press('ArrowDown'); await sleep(250);
+                await page.keyboard.press('ArrowDown'); await sleep(250);
+                return await page.evaluate(i0 => { const s = document.getElementById('c4ResSel'); const sent = window.__calls.filter(c => c[0] === 'setStatResource').map(c => c[1][0]);
+                    return { i0, i1: s ? s.selectedIndex : -1, focus: document.activeElement && document.activeElement.id, val: s && s.value, url: decodeURIComponent(location.search.replace(/\+/g, ' ')), sent: sent.slice(-3) }; }, i0).then(r => ({ ...r, errors }));
+            } finally { await ctx.close(); }
+        };
+        const keyOk = r => r.i1 === r.i0 + 2 && r.focus === 'c4ResSel' && r.url.includes('res=' + r.val) && r.sent[r.sent.length - 1] === r.val && !r.errors.length;
+        const K1 = await keyRun();
+        check('Resource keyboard: focus the picker, ArrowDown twice -> two steps, the map follows, focus stays on the select', keyOk(K1), JSON.stringify(K1));
+        mut = { '/C4Live/app.js': t => replaceOnce(t, "if (S.tab === 'resource' && body && sel && S.bodyIdx) {", 'if (false) {') };
+        const K1m = await keyRun(); mut = {};
+        check('Resource keyboard - negative control: a page that re-renders the picker on every pick FAILS it', !keyOk(K1m), JSON.stringify({ i0: K1m.i0, i1: K1m.i1, focus: K1m.focus }));
+        // F3: bodies.json 404 -> the note; restored -> leave the tab and come back -> the view loads (retry)
+        const retryRun = async () => {
+            gone = { '/Data/c4-live/bodies.json': true };
+            const { page, ctx, errors } = await open(1600, 900, '?tab=resource');
+            try {
+                await page.waitForFunction(() => /could not be loaded/.test((document.querySelector('#sec-resource .c4-note') || {}).textContent || ''), null, { timeout: 15000 }).catch(() => {});
+                const failNote = await page.evaluate(() => (document.querySelector('#sec-resource .c4-note') || {}).textContent || '');
+                gone = {};
+                await page.click('.c4-tab[data-tab="combat"]'); await sleep(400);
+                await page.click('.c4-tab[data-tab="resource"]');
+                const loaded = await page.waitForSelector(resSel, { timeout: 15000 }).then(() => true, () => false);
+                return { failNote: /could not be loaded/.test(failNote), loaded, errors };
+            } finally { gone = {}; await ctx.close(); }
+        };
+        const T1 = await retryRun();
+        check('Resource retry: bodies.json 404 shows the note; restored + leave and return -> the view loads', T1.failNote && T1.loaded, JSON.stringify(T1));
+        mut = { '/C4Live/app.js': t => replaceOnce(t, "if (tab === 'resource' && !S.bodyIdx) S.rendered.resource = false;", '') };
+        const T1m = await retryRun(); mut = {};
+        check('Resource retry - negative control: a page that does not retry on re-entry FAILS it', !(T1m.failNote && T1m.loaded), JSON.stringify(T1m));
+    }
 }
 
 // ---------------------------------------------------------------------------------------------------------------- [16]
@@ -1511,4 +1629,604 @@ function conquestChecks(parsedDacs) {
         f => f(DS, 0, 0) === 'Deep space near Ace' && f(DS.slice().reverse(), 0, 0) === 'Deep space near Ace' && f(DS, 1.5, 9) === 'Deep space near Zed' && f(DS, 0, 40) === 'Deep space near Mid',
         M.deepSpaceName || (() => null),
         (sys, x, y) => `Deep space ${Math.round(x)}, ${Math.round(y)}`);
+}
+
+// ---------------------------------------------------------------------------------------------------------------- [18]
+// Resource tab (2026-11-13, owner: "select the resource then it will show a bar depending on the richness on the map").
+// The panel (C4Model.resourceSystems / resourceIndex / resourceView / defaultResource) and the scene (scene-src/model.js
+// statColumns('resource'), imported as is) against a recount written HERE from bodies.json: a body holds a resource when
+// its res[] lists the name with a finite richness > 0 (once per body, at its best); a system's value = the SUM over its
+// holding bodies, beside the best body and the body count; only systems with finite x, y. C4_ONLY=resource runs this
+// block alone; C4_BREAK=ressum turns the sum into the best body and must turn it red.
+async function resourceChecks() {
+    console.log('\n[18] Resource tab: richness per system = an independent recount of bodies.json (panel AND scene)');
+    let B = null, LL = null;
+    try { B = JSON.parse(fs.readFileSync(path.join(DIR, 'bodies.json'), 'utf8')).bodies; LL = JSON.parse(fs.readFileSync(path.join(DIR, 'latest.json'), 'utf8')); } catch (e) { B = null; }
+    if (!Array.isArray(B) || !LL) { console.log('  SKIP no Data/c4-live/bodies.json'); return; }
+    const has = typeof M.resourceSystems === 'function' && typeof M.resourceView === 'function' && typeof M.resourceIndex === 'function' && typeof M.defaultResource === 'function';
+    check('model exports resourceSystems / resourceIndex / resourceView / defaultResource / RES_HEX / fmtRich', has && /^#[0-9a-f]{6}$/.test(M.RES_HEX || '') && typeof M.fmtRich === 'function');
+    if (!has) return;
+    const SM = await import(require('url').pathToFileURL(path.join(ROOT, 'C4Live', 'scene-src', 'model.js')).href);
+    // ---- the recount (no model helper used)
+    const placed = new Map(); for (const s of LL.systems) if (Number.isFinite(s.x) && Number.isFinite(s.y)) placed.set(s.a, s);
+    function byHand(name) {
+        const out = new Map();
+        for (const b of B) {
+            if (!b || !placed.has(b.sys) || !Array.isArray(b.res)) continue;
+            let best = 0; for (const r of b.res) if (r.r === name && typeof r.rich === 'number' && r.rich > best) best = r.rich;
+            if (best <= 0) continue;
+            const o = out.get(b.sys) || { sum: 0, best: 0, n: 0 }; o.sum += best; o.n += 1; o.best = Math.max(o.best, best); out.set(b.sys, o);
+        }
+        return out;
+    }
+    const allNames = [...new Set(B.flatMap(b => (b.res || []).filter(r => r.rich > 0 && placed.has(b.sys)).map(r => r.r)))].sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
+    // positive control: the known resource is really in the file, on more than one body in at least one system
+    const KNOWN = 'Iron Ore', hk = byHand(KNOWN), multi = [...hk.values()].filter(o => o.n > 1).length;
+    check(`positive control: "${KNOWN}" is in bodies.json (${hk.size} systems, ${multi} of them with 2+ bodies, so SUM differs from BEST)`, hk.size > 0 && multi > 0);
+    const sameAsHand = (rows, name) => { const h = byHand(name); return rows.length === h.size && rows.every(r => { const o = h.get(r.sys); return o && near(r.sum, o.sum, 1e-6) && near(r.best, o.best, 1e-9) && r.n === o.n; }); };
+    ruleCheck(`"${KNOWN}": panel columns' systems, sums, best body and body counts = the recount (${hk.size} systems)`,
+        f => sameAsHand(f(B, LL.systems, KNOWN), KNOWN), M.resourceSystems,
+        (b, s, n) => M.resourceSystems(b, s, n).map(r => ({ ...r, sum: r.best })));   // mutant: height = the best body (max), not the sum
+    ruleCheck(`ALL ${allNames.length} resources: panel resourceSystems = the recount`,
+        f => allNames.every(n => sameAsHand(f(B, LL.systems, n), n)), M.resourceSystems,
+        (b, s, n) => M.resourceSystems(b.filter((x, i) => i % 97), s, n));             // mutant: a body dropped every 97
+    // the map: statColumns('resource') stands one column per recounted system, v = the sum, in the PANEL's order
+    const sceneCols = (n, bodies) => SM.statColumns('resource', LL, [], { res: n, bodies: bodies || B });
+    ruleCheck(`"${KNOWN}": scene statColumns('resource') = the recount (key, v = sum), colour RES_HEX = the panel's`,
+        f => { const c = f(KNOWN), h = byHand(KNOWN); return c.length === h.size && c.every(x => h.has(x.sys) && near(x.v, h.get(x.sys).sum, 1e-6) && x.hex === M.RES_HEX && x.key === x.sys); },
+        n => sceneCols(n),
+        n => sceneCols(n).map(c => ({ ...c, v: c.best })));
+    ruleCheck(`ALL ${allNames.length} resources: scene columns come in the panel's order with the panel's values (one rule, two files)`,
+        f => allNames.every(n => { const p = M.resourceSystems(B, LL.systems, n), c = f(n); return p.length === c.length && p.every((r, i) => c[i].sys === r.sys && near(c[i].v, r.sum, 1e-9)); }),
+        n => sceneCols(n),
+        n => sceneCols(n).slice().sort((p, q) => q.v - p.v || (p.key < q.key ? -1 : 1)).reverse());   // mutant: another order
+    const top = M.resourceSystems(B, LL.systems, KNOWN)[0], col = sceneCols(KNOWN)[0];
+    check(`callout line names the resource, total, best body, body count and where it sits: "${col && col.line}"`, !!col && col.line === `${KNOWN} · total ${M.fmtRich(top.sum)} · best ${M.fmtRich(top.best)} · ${top.n} ${top.n === 1 ? 'body' : 'bodies'} · ${M.RES_WHERE_TEXT[top.where]}`);
+    // WHERE the deposit sits (owner 2026-11-15: "dotted if the deposit is asteroid only and solid and dotted line is both"):
+    // recounted here from the bodies by hand (a belt = k 'asteroid'), for EVERY resource and system, against the panel
+    // rule and the scene columns; then that the three kinds really occur in this snapshot (a rule that never says
+    // 'belt' would pass a recount that only ever saw planets).
+    const whereByHand = (n) => {
+        const by = new Map();
+        for (const b of B) {
+            if (!b || !b.a || !b.sys || !Array.isArray(b.res)) continue;
+            if (!b.res.some(r => r && r.r === n && Number.isFinite(r.rich) && r.rich > 0)) continue;
+            const m = by.get(b.sys) || by.set(b.sys, { belt: 0, planet: 0 }).get(b.sys);
+            if (b.k === 'asteroid') m.belt++; else m.planet++;
+        }
+        return by;
+    };
+    const kindOf = m => (m.belt && m.planet ? 'both' : m.belt ? 'belt' : 'planet');
+    ruleCheck(`ALL ${allNames.length} resources: each system's ring kind (planet / belt / both) = a hand recount of its bodies, panel and scene alike`,
+        f => allNames.every(n => { const hand = whereByHand(n); return f(n).every(r => hand.has(r.sys) && r.where === kindOf(hand.get(r.sys)) && r.belts === hand.get(r.sys).belt && r.planets === hand.get(r.sys).planet); }),
+        n => M.resourceSystems(B, LL.systems, n).map(r => ({ sys: r.sys, where: r.where, belts: r.belts, planets: r.planets })).concat(sceneCols(n).map(c => ({ sys: c.sys, where: c.where, belts: c.belts, planets: c.planets }))),
+        n => M.resourceSystems(B, LL.systems, n).map(r => ({ sys: r.sys, where: r.where === 'belt' ? 'planet' : r.where, belts: r.belts, planets: r.planets })));   // mutant: a belt-only system drawn solid
+    const kindsSeen = new Set(); for (const n of allNames) for (const r of M.resourceSystems(B, LL.systems, n)) kindsSeen.add(r.where);
+    // In the chain snapshot a belt holds every resource of its system, so 'planet' (solid ring alone) may not occur at all
+    // (2026-11-15: 0 of 21,114 resource-system pairs). The recount must have seen 'belt' AND 'both'; 'planet' is then
+    // proven on a three-system fixture, through both files.
+    check(`the snapshot holds both dotted kinds (${[...kindsSeen].sort().join(', ')}), so the recount above saw each`, ['belt', 'both'].every(k => kindsSeen.has(k)));
+    const FIX_SYS = [{ a: 'SP', x: 0, y: 0, n: 'Planet Only' }, { a: 'SB', x: 1, y: 0, n: 'Belt Only' }, { a: 'SX', x: 2, y: 0, n: 'Both' }];
+    const FIX_B = [{ a: 'p1', k: 'planet', sys: 'SP', res: [{ r: 'Ore', rich: 2 }] }, { a: 'b1', k: 'asteroid', sys: 'SB', res: [{ r: 'Ore', rich: 1 }] },
+        { a: 'p2', k: 'planet', sys: 'SX', res: [{ r: 'Ore', rich: 1 }] }, { a: 'b2', k: 'asteroid', sys: 'SX', res: [{ r: 'Ore', rich: 1 }] }];
+    const fixKinds = X => Object.fromEntries(X.resourceSystems(FIX_B, FIX_SYS, 'Ore').map(r => [r.sys, r.where]));
+    check('fixture: a planet-only system is "planet" (solid), a belt-only one "belt" (dotted), a mixed one "both" - panel and scene',
+        [M, SM].every(X => { const k = fixKinds(X); return k.SP === 'planet' && k.SB === 'belt' && k.SX === 'both'; }));
+    const fixCols = SM.statColumns('resource', { systems: FIX_SYS, fleets: [], asteroids: [] }, [], { res: 'Ore', bodies: FIX_B });
+    check('fixture: the scene column carries the kind and says it in its callout line ("... · planets only")',
+        fixCols.length === 3 && fixCols.find(c => c.sys === 'SP').where === 'planet' && / · planets only$/.test(fixCols.find(c => c.sys === 'SP').line)
+        && / · asteroid belt only$/.test(fixCols.find(c => c.sys === 'SB').line) && / · planets and asteroid belt$/.test(fixCols.find(c => c.sys === 'SX').line));
+    check('the shader codes are distinct and the two files use the same words (RES_WHERE_CODE planet 0 / belt 1 / both 2; RES_WHERE_TEXT)',
+        SM.RES_WHERE_CODE.planet === 0 && SM.RES_WHERE_CODE.belt === 1 && SM.RES_WHERE_CODE.both === 2 && ['planet', 'belt', 'both'].every(k => SM.RES_WHERE_TEXT[k] === M.RES_WHERE_TEXT[k] && !!M.RES_WHERE_TEXT[k]));
+    check('resourceWhere: belts only -> belt, planets only -> planet, one of each -> both (panel and scene)',
+        [M, SM].every(X => X.resourceWhere(2, 0) === 'belt' && X.resourceWhere(0, 3) === 'planet' && X.resourceWhere(1, 1) === 'both'));
+    check('scene accepts the layer: STAT_LAYERS has "resource", directly after "mining"', SM.STAT_LAYERS.indexOf('resource') === SM.STAT_LAYERS.indexOf('mining') + 1);
+    check('panel STAT_TABS has "resource" directly after "mining" (pushStatLayer sends it)', M.STAT_TABS.indexOf('resource') === M.STAT_TABS.indexOf('mining') + 1);
+    check('the two colour tokens agree (panel RES_HEX = scene RES_HEX = --accent-green #10b981)', M.RES_HEX === SM.RES_HEX && M.RES_HEX === '#10b981');
+    // ---- the picker
+    ruleCheck(`picker: every resource (${allNames.length}) once, by name, with its system and body counts`,
+        f => { const ix = f(B, LL.systems); return ix.length === allNames.length && ix.every((x, i) => x.r === allNames[i] && x.systems === byHand(x.r).size && x.bodies === [...byHand(x.r).values()].reduce((s, o) => s + o.n, 0)); },
+        M.resourceIndex, (b, s) => M.resourceIndex(b, s).slice().sort((p, q) => q.systems - p.systems));   // mutant: by count
+    const IX = M.resourceIndex(B, LL.systems);
+    // default pick (review F2): the most-mined live resource NOT on every placed system; none mined -> the first by name
+    // not on every system; every resource everywhere -> the first by name
+    const NSYS = placed.size, everywhere = new Set(allNames.filter(n => byHand(n).size === NSYS)), local = allNames.filter(n => !everywhere.has(n));
+    check(`positive control: some resources are on every one of the ${NSYS} placed systems (${[...everywhere].join(', ')}) and ${local.length} are not`, everywhere.size > 0 && local.length > 0 && everywhere.has(KNOWN));
+    const LOC = local[local.length - 1];   // a local resource that is NOT first by name
+    ruleCheck(`default pick: the most-mined live resource not on all ${NSYS} systems (${KNOWN} is everywhere, so ${LOC} wins); a live name no body holds is skipped; none mined -> first local by name (${local[0]}); every resource everywhere -> first by name`,
+        f => f(IX, [{ r: 'Not A Resource', ups: 999 }, { r: KNOWN, ups: 50 }, { r: LOC, ups: 7 }], NSYS) === LOC && f(IX, [], NSYS) === local[0] && f(IX, [{ r: KNOWN, ups: 9 }], NSYS) === local[0]
+            && f(IX.map(x => ({ ...x, systems: NSYS })), [{ r: LOC, ups: 3 }], NSYS) === allNames[0] && f([], [], NSYS) === null,
+        M.defaultResource,
+        (ix, live) => { const have = new Set(ix.map(x => x.r)); const l = (live || []).filter(x => have.has(x.r) && x.ups > 0).sort((p, q) => q.ups - p.ups); return l.length ? l[0].r : ix.length ? ix[0].r : null; });   // mutant: the round-1 rule (ubiquity ignored)
+    const DM = build('all');
+    const liveTop = (DM.mining.resources || []).filter(r => r.ups > 0 && local.includes(r.r)).sort((p, q) => q.ups - p.ups)[0];
+    const gotDef = M.defaultResource(IX, DM.mining.resources, M.placedCount ? M.placedCount(LL.systems) : undefined);
+    check(`real data: the default is ${liveTop ? `the top live resource not on every system (${liveTop.r})` : `the first local resource by name (${local[0]})`}, never an everywhere one`, gotDef === (liveTop ? liveTop.r : local[0]) && !everywhere.has(gotDef), gotDef);
+    // review F8: one body listing a resource twice counts once in the picker's body count
+    const s2 = LL.systems.filter(s => Number.isFinite(s.x))[2];
+    ruleCheck('picker: a body that lists a resource twice counts as ONE body for it (dedupe)',
+        f => { const r = f([{ a: 'd1', sys: s2.a, res: [{ r: 'Dup Ore', rich: 1 }, { r: 'Dup Ore', rich: 2 }] }, { a: 'd2', sys: s2.a, res: [{ r: 'Dup Ore', rich: 1 }] }], LL.systems); return r.length === 1 && r[0].r === 'Dup Ore' && r[0].bodies === 2 && r[0].systems === 1; },
+        M.resourceIndex,
+        (bodies, systems) => { const by = new Map(); for (const b of bodies) for (const q of b.res) if (q.rich > 0) { const m = by.get(q.r) || { r: q.r, sys: new Set(), bodies: 0 }; m.sys.add(b.sys); m.bodies++; by.set(q.r, m); } return [...by.values()].map(m => ({ r: m.r, systems: m.sys.size, bodies: m.bodies })); });   // mutant: no seen-set
+    // ---- the tab's view
+    const V = M.resourceView(LL, B, KNOWN, DM.mining.resources), hb = [...hk.values()].reduce((s, o) => s + o.n, 0);
+    const live = (DM.mining.resources || []).find(r => r.r === KNOWN);
+    check(`view: ${V.nSystems} systems / ${V.nBodies} bodies = the recount (${hk.size} / ${hb}); bodies listed richest first`, V.found && V.nSystems === hk.size && V.nBodies === hb && V.bodies.every((b, i) => !i || V.bodies[i - 1].rich >= b.rich));
+    check(`view: live u/s = the Mining tab's number for ${KNOWN} (${live ? M.fmt(live.ups) : 'not mined'})`, V.ups === (live && live.ups > 0 ? live.ups : 0) && (V.ups ? V.verdict.includes(M.fmt(V.ups) + ' u/s') : /nobody is mining it/.test(V.verdict)));
+    check('view: the verdict names the richest system (the first map column)', V.verdict.includes(M.esc(top.name)) && V.systems[0].sys === col.sys);
+    // review F7: one unit form - richness is a bare number ("best 6.5"), never "x6.5", in the verdict and the callout
+    check(`units: verdict and callout say "best ${M.fmtRich(top.best)}" and carry no "x<number>"`, V.verdict.includes(`best ${M.fmtRich(top.best)}`) && !/\bx\d/.test(V.verdict) && !/\bx\d/.test(col.line) && col.line.includes(`best ${M.fmtRich(top.best)}`), V.verdict.replace(/<[^>]+>/g, ''));
+    // ---- absent, broken and hostile input
+    const NONE = 'Unobtainium Ore (no such resource)';
+    let nv = null, ncols = null; try { nv = M.resourceView(LL, B, NONE, DM.mining.resources); ncols = sceneCols(NONE); } catch (e) { nv = null; }
+    check('a resource that exists nowhere: zero panel rows, ZERO map columns, found=false and the "not found" verdict', !!nv && !nv.found && nv.systems.length === 0 && nv.bodies.length === 0 && Array.isArray(ncols) && ncols.length === 0 && /was not found on any body/.test(nv.verdict));
+    check('no resource chosen (null / empty): zero columns, no throw', SM.statColumns('resource', LL, [], { res: null, bodies: B }).length === 0 && M.resourceSystems(B, LL.systems, '').length === 0);
+    // the map draws these rows as RINGS (2026-11-13, round 2 sizes): radius 0.55..1.65 map units and brightness grow with the value, sqrt-
+    // scaled between the resource's smallest and largest system; all-equal / non-finite input never yields a non-finite ring
+    {
+        const RR = typeof SM.resourceRing === 'function' ? SM.resourceRing : null;
+        const ring = (v, a, b) => RR ? RR(v, a, b) : { r: NaN, b: NaN };
+        const lo = ring(1, 1, 9), mid = ring(3, 1, 9), hi = ring(9, 1, 9), eq = ring(4, 4, 4), bad = ring(NaN, 1, 9), over = ring(99, 1, 9);
+        check('resource rings: radius and brightness grow LINEARLY with the value, radius 0.55..1.65 map units (x the combat rings zoom factor in the scene), brightness 0.55..1 (a quarter of the range = a quarter of the growth)',
+            !!RR && near(lo.r, 0.55) && near(hi.r, 1.65) && near(mid.r, 0.55 + 1.1 * 0.25) && near(lo.b, 0.55) && near(mid.b, 0.55 + 0.45 * 0.25) && lo.b < mid.b && mid.b < hi.b && near(hi.b, 1),
+            JSON.stringify({ lo, mid, hi }));
+        check('resource rings: equal values or bad input never give a non-finite ring (all equal -> the full ring; NaN / over the max -> clamped)',
+            [eq, bad, over].every(g => Number.isFinite(g.r) && Number.isFinite(g.b) && g.r >= 0.55 && g.r <= 1.65) && near(eq.r, 1.65), JSON.stringify({ eq, bad, over }));
+    }
+    const s0 = LL.systems.find(s => Number.isFinite(s.x)), s1 = LL.systems.filter(s => Number.isFinite(s.x))[1];
+    const WEIRD = [null, { a: 'e1', sys: s0.a, res: [] }, { a: 'e2', sys: s0.a }, { a: 'e3', sys: s0.a, res: null }, { a: 'e4', sys: null, res: [{ r: KNOWN, rich: 9 }] },
+        { a: 'e5', sys: 'NOT-A-SYSTEM', res: [{ r: KNOWN, rich: 9 }] }, { a: 'e6', sys: s0.a, res: [null, { r: KNOWN }, { r: KNOWN, rich: 'x' }, { r: KNOWN, rich: 0 }, { r: KNOWN, rich: NaN }] },
+        { a: 'e7', sys: s1.a, res: [{ r: KNOWN, rich: 1.5 }, { r: KNOWN, rich: 2.5 }] }, { a: 'e8', sys: s1.a, res: [{ r: KNOWN, rich: 1 }] }];
+    ruleCheck('broken bodies: null, empty / missing / null res, no or unknown system, non-numeric or 0 richness -> ignored, no throw; a duplicate entry counts once at its best (2.5 + 1 = 3.5, 2 bodies)',
+        f => { const r = f(WEIRD, LL.systems, KNOWN); return r.length === 1 && r[0].sys === s1.a && near(r[0].sum, 3.5) && r[0].best === 2.5 && r[0].n === 2 && r[0].top === 'e7'; },
+        M.resourceSystems,
+        (b, s, n) => { const out = new Map(); for (const x of b) { if (!x || !x.res) continue; for (const q of x.res) if (q && q.r === n && q.rich > 0) { const o = out.get(x.sys) || { sys: x.sys, sum: 0, best: 0, n: 0 }; o.sum += q.rich; o.n++; o.best = Math.max(o.best, q.rich); out.set(x.sys, o); } } return [...out.values()]; });   // mutant: every entry counted, unknown systems kept
+    let wv = null; try { wv = M.resourceView(LL, WEIRD, KNOWN, []); SM.statColumns('resource', LL, [], { res: KNOWN, bodies: WEIRD }); M.resourceIndex(WEIRD, LL.systems); } catch (e) { wv = 'threw: ' + e.message; }
+    check('broken bodies reach resourceView / resourceIndex / the scene without a throw', !!wv && typeof wv === 'object' && wv.nBodies === 2, typeof wv === 'string' ? wv : '');
+    const EVIL = '<img src=x onerror=alert(1)>', EVSYS = { a: 'EvilSys', n: '<script>alert(2)</script>', x: 1, y: 1 };
+    const evilL = { ...LL, systems: [EVSYS] }, evilB = [{ a: 'EvilBody', n: '<b onclick=x>', sys: 'EvilSys', res: [{ r: EVIL, rich: 3 }] }];
+    // review F5: a body with no address is left out by the panel exactly as by the scene (three bodies, one system)
+    const s3 = LL.systems.filter(s => Number.isFinite(s.x))[3];
+    const NOA = [{ sys: s3.a, n: 'no address', res: [{ r: KNOWN, rich: 5 }] }, { a: 'na1', sys: s3.a, res: [{ r: KNOWN, rich: 1 }] }, { a: 'na2', sys: s3.a, res: [{ r: KNOWN, rich: 2 }] }];
+    ruleCheck('a body with no address is ignored (3 bodies -> total 3, 2 bodies, best 2) and the panel equals the scene column',
+        f => { const p = f(NOA, LL.systems, KNOWN), c = SM.statColumns('resource', LL, [], { res: KNOWN, bodies: NOA }), v = M.resourceView(LL, NOA, KNOWN, []);
+            return p.length === 1 && near(p[0].sum, 3) && p[0].n === 2 && p[0].best === 2 && c.length === 1 && near(c[0].v, p[0].sum) && v.nBodies === 2; },
+        M.resourceSystems,
+        (b, s, n) => M.resourceSystems(b.map((x, i) => x.a ? x : { ...x, a: 'filled' + i }), s, n));   // mutant: the no-address body counted
+    // review F6: no non-finite height. Infinity / NaN richness is ignored; 1e308 is finite but two of them overflow
+    const s4 = LL.systems.filter(s => Number.isFinite(s.x))[4], s5 = LL.systems.filter(s => Number.isFinite(s.x))[5];
+    const BIG = [{ a: 'g1', sys: s4.a, res: [{ r: KNOWN, rich: 1e308 }] }, { a: 'g2', sys: s4.a, res: [{ r: KNOWN, rich: 1e308 }] }, { a: 'g3', sys: s4.a, res: [{ r: KNOWN, rich: Infinity }] },
+        { a: 'g4', sys: s5.a, res: [{ r: KNOWN, rich: 1e308 }] }, { a: 'g5', sys: s5.a, res: [{ r: KNOWN, rich: NaN }] }];
+    ruleCheck('1e308: one body stays 1e308 (rounding cannot overflow it), two overflow to Number.MAX_VALUE not Infinity, Infinity / NaN richness ignored; every scene height finite',
+        f => { const p = f(BIG, LL.systems, KNOWN), c = SM.statColumns('resource', LL, [], { res: KNOWN, bodies: BIG }), a = p.find(r => r.sys === s4.a), b = p.find(r => r.sys === s5.a);
+            return p.length === 2 && a.sum === Number.MAX_VALUE && a.n === 2 && b.sum === 1e308 && b.n === 1 && p.every(r => Number.isFinite(r.sum)) && c.length === 2 && c.every(x => Number.isFinite(x.v) && Number.isFinite(SM.statHeight(x.v, Math.max(...c.map(y => y.v))))); },
+        M.resourceSystems,
+        (b, s, n) => M.resourceSystems(b, s, n).map(r => ({ ...r, sum: Math.round((r.n === 2 ? 2e308 : r.sum) * 1e6) / 1e6 })));   // mutant: the round-1 sum (overflow -> Infinity)
+    ruleCheck('XSS: a hostile resource name and system name are escaped in the verdict (found and not-found)',
+        f => { const a = f(evilL, evilB, EVIL, []), b = f(evilL, [], EVIL, []); return a.found && !/<img|<script/.test(a.verdict) && a.verdict.includes('&lt;img') && a.verdict.includes('&lt;script') && !b.found && !/<img/.test(b.verdict) && b.verdict.includes('&lt;img'); },
+        M.resourceView,
+        (l, b, n, lr) => { const v = M.resourceView(l, b, n, lr); return { ...v, verdict: v.verdict.replace(/&lt;/g, '<').replace(/&gt;/g, '>') }; });
+    check('the scene caps a resource name it is handed (setStatResource slices to 80) and the page drops a ?res= over 80 characters', /name\.slice\(0, 80\)/.test(fs.readFileSync(path.join(ROOT, 'C4Live', 'scene-src', 'main.js'), 'utf8')) && /res\.length <= 80/.test(fs.readFileSync(path.join(PAGE_DIR || path.join(ROOT, 'C4Live'), 'app.js'), 'utf8')));
+}
+
+// ---------------------------------------------------------------------------------------------------------------- [19]
+// Public mode and a chain update (2026-11-20). The page is opened as a public visitor (?chain=1) in headless Chromium
+// with a STUBBED store (in memory, seeded per scenario) and a STUBBED collector (window.C4Collect: epoch / sameEpoch /
+// run, every call logged in window.__log), so no chain is read. Each scenario returns named booleans; every named check
+// is then run again against an app.js with ONE line of the feature removed and must FAIL there (negative control).
+async function chainUpdateChecks() {
+    console.log('\n[19] Chain update: data version, check on open, automatic refresh (headless Chromium, stubbed collector and store)');
+    if (process.env.NO_BROWSER) { console.log('  SKIP NO_BROWSER set'); return; }
+    let chromium;
+    try { chromium = require('module').createRequire(path.join(require('os').homedir(), '.claude/skills/teardown/node_modules/x.js'))('playwright').chromium; }
+    catch (e) { console.log('  SKIP teardown skill playwright not installed'); return; }
+    const http = require('http');
+    const VER = '20261120';
+    const G1 = { genesis: 'GENESIS-A', sage: 100, since: 1700000000 };
+    const STORE_STUB = `window.__puts = [];
+        window.C4Store = { async getAll() { return new Map(Object.entries(window.__seed || {})); },
+            async putAll(m) { window.__puts.push([...m.entries()].map(e => e[0] + '=' + (e[0] === 'data-version.json' ? e[1] : ''))); window.__seed = Object.fromEntries(m); } };`;
+    const COLLECT_STUB = `window.__log = [];
+        window.C4Collect = {
+            sameEpoch(a, b) { return !!a && !!b && a.genesis === b.genesis && (a.sage === b.sage || a.sage == null || b.sage == null); },
+            async epoch() { window.__log.push('epoch'); if ((window.__cfg || {}).epochFail) throw new Error('rpc down'); return window.__cfg.epoch; },
+            async run(saved) {
+                window.__log.push('run:' + saved.size);
+                const c = window.__cfg || {};
+                await new Promise(r => setTimeout(r, c.runDelay || 0));
+                if (c.runFail) throw new Error('read failed');
+                const files = new Map(Object.entries(window.__fresh)); files.delete('data-version.json');
+                const l = JSON.parse(files.get('latest.json')); l.generatedAt = Math.floor(Date.now() / 1000); l.epoch = c.newEpoch || l.epoch;
+                files.set('latest.json', JSON.stringify(l));
+                // bodies: 'marker' = the collector's failure marker after a chain update; 'none' = no bodies.json at all
+                if (c.bodies === 'marker') files.set('bodies.json', JSON.stringify({ generatedAt: l.generatedAt, bodies: null, failed: true }));
+                if (c.bodies === 'none') files.delete('bodies.json');
+                return { files, epochChanged: !!c.epochChanged };
+            } };`;
+    const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json', '.css': 'text/css', '.webp': 'image/webp', '.png': 'image/png', '.jpg': 'image/jpeg' };
+    // P1 scenarios mount a RECORDING scene: every setData logs its third argument (the bodies) as a length, or 'U' for
+    // undefined (= the scene keeps the bodies it has). Any other scene method is a no-op.
+    const SCENE_STUB = `window.__sd = [];
+        window.C4Scene = { mount() { return new Proxy({}, { get(t, k) {
+            if (k === 'setData') return (l, e, b) => { window.__sd.push(b === undefined ? 'U' : Array.isArray(b) ? b.length : 'other'); };
+            if (k === 'then') return undefined;
+            return () => null; } }); } };`;
+    let sceneStub = false;
+    let mut = null;   // transform(text) for app.js, or null
+    const mutErrors = [];
+    const requested = [];
+    const server = http.createServer((q, r) => {
+        const u = decodeURIComponent(q.url.split('?')[0]);
+        requested.push(u);
+        if (u === '/C4Live/c4-store.js') { r.writeHead(200, { 'content-type': 'text/javascript' }); r.end(STORE_STUB); return; }
+        if (u === '/C4Live/c4-collect.js') { r.writeHead(200, { 'content-type': 'text/javascript' }); r.end(COLLECT_STUB); return; }
+        if (u === '/C4Live/c4-scene.js' && sceneStub) { r.writeHead(200, { 'content-type': 'text/javascript' }); r.end(SCENE_STUB); return; }
+        if (u === '/C4Live/c4-scene.js') { r.writeHead(404); r.end(); return; }   // the scene is optional; this block is about the panels
+        const pf = u.match(/^\/C4Live\/([^/]+)$/);
+        const p = PAGE_DIR && pf && PAGE_FILES.includes(pf[1]) ? path.join(PAGE_DIR, pf[1]) : path.join(ROOT, u);
+        if (!p.startsWith(ROOT) && !(PAGE_DIR && p.startsWith(PAGE_DIR))) { r.writeHead(403); r.end(); return; }
+        fs.readFile(p, (e, b) => {
+            if (e) { r.writeHead(404); r.end(); return; }
+            // a missing mutation target is recorded (and the real file served, so that negative control reads "blind" = FAIL)
+            if (mut && u === '/C4Live/app.js') { try { b = Buffer.from(mut(b.toString('utf8'))); } catch (err) { if (!mutErrors.includes(err.message)) { mutErrors.push(err.message); console.log('  MUTATION ERROR ' + err.message.slice(0, 120)); } } }
+            r.writeHead(200, { 'content-type': MIME[path.extname(p)] || 'application/octet-stream', 'cache-control': 'no-store' }); r.end(b);
+        });
+    });
+    await new Promise(ok => server.listen(0, '127.0.0.1', ok));
+    const base = `http://127.0.0.1:${server.address().port}/C4Live/index.html`;
+    const browser = await chromium.launch({ headless: true, args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist', '--enable-unsafe-swiftshader'] });
+    const sleep = ms => new Promise(ok => setTimeout(ok, ms));
+    const files0 = { events: fs.readFileSync(path.join(DIR, 'events.json'), 'utf8'), history: fs.readFileSync(path.join(DIR, 'history.json'), 'utf8'), owners: fs.readFileSync(path.join(DIR, 'owners.json'), 'utf8') };
+    let bodiesTxt = null; try { bodiesTxt = fs.readFileSync(path.join(DIR, 'bodies.json'), 'utf8'); } catch (e) { bodiesTxt = null; }
+    const nBodies = bodiesTxt ? (JSON.parse(bodiesTxt).bodies || []).length : 0;
+    // opt: bodies = also save the real bodies.json; noFleets = an empty galaxy; epoch.changed is passed through as given
+    const seedOf = (ageMin, version, epoch, opt) => {
+        const l = JSON.parse(JSON.stringify(L)); l.generatedAt = Math.floor(Date.now() / 1000) - Math.round(ageMin * 60); if (epoch) l.epoch = epoch; else delete l.epoch;
+        if (opt && opt.noFleets) l.fleets = [];
+        const s = { 'latest.json': JSON.stringify(l), 'events.json': files0.events, 'history.json': files0.history, 'owners.json': files0.owners, 'db.json': '{}' };
+        if (opt && opt.bodies && bodiesTxt) s['bodies.json'] = bodiesTxt;
+        if (version !== null) s['data-version.json'] = JSON.stringify(version);
+        return s;
+    };
+    // opens the page as a public visitor; query '' = public (?chain=1), 'local' = the localhost file mode (no ?chain)
+    async function open(seed, cfg, mode) {
+        const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+        const page = await ctx.newPage();
+        const errors = [];
+        page.on('pageerror', e => errors.push(String(e)));
+        await page.addInitScript(a => { window.__seed = a.seed; window.__fresh = Object.assign({}, a.seed); window.__cfg = a.cfg;
+            // P4: every setInterval the page registers is kept, so a test can fire the 5-minute timers without waiting
+            const si = window.setInterval; window.__iv = []; window.setInterval = function (fn, ms) { window.__iv.push({ fn, ms }); return si.apply(window, arguments); }; }, { seed, cfg });
+        await page.goto(base + (mode === 'local' ? '' : '?chain=1'));
+        return { page, ctx, errors };
+    }
+    const log = page => page.evaluate(() => window.__log || null);
+    const ageText = page => page.evaluate(() => (document.querySelector('#c4Age') || {}).innerText || '');
+    const shown = async (page, ms) => { try { await page.waitForFunction(() => /Saved data from/.test((document.querySelector('#c4Age') || {}).innerText || '') && document.querySelector('#c4Empty').hidden, null, { timeout: ms || 20000 }); return true; } catch (e) { return false; } };
+    const UPDATED = /The game was updated on chain/;
+    // ---- scenarios: each returns { checkName: boolean }
+    const scenarios = {
+        async version() {   // another version and no version at all = discarded: first-visit path, a full read from an empty store
+            const out = {};
+            for (const [tag, v] of [['other', '19990101'], ['none', null]]) {
+                const { page, ctx } = await open(seedOf(10, v, G1), { epoch: G1, newEpoch: G1 });
+                try {
+                    const ok = await shown(page);
+                    const lg = await log(page);
+                    const puts = await page.evaluate(() => window.__puts);
+                    out['saved data with ' + tag + ' version is discarded: the read starts from an empty store (run:0)'] = ok && Array.isArray(lg) && lg.includes('run:0') && !lg.some(x => /^run:[1-9]/.test(x));
+                    out['after the first-visit read the version ' + VER + ' is saved with the files'] = puts.length === 1 && puts[0].includes('data-version.json="' + VER + '"') && puts[0].includes('latest.json=');
+                } finally { await ctx.close(); }
+            }
+            const { page, ctx } = await open(seedOf(10, VER, G1), { epoch: G1 });   // positive control: a matching version is NOT discarded
+            try { await shown(page); await sleep(2500); const lg = await log(page); out['positive control: a saved copy of this version is shown without any read'] = Array.isArray(lg) && !lg.some(x => x.startsWith('run')); }
+            finally { await ctx.close(); }
+            return out;
+        },
+        async fresh() {   // same chain version, a fresh copy: one cheap check, no read
+            const { page, ctx } = await open(seedOf(10, VER, G1), { epoch: Object.assign({}, G1) });
+            try { const ok = await shown(page); await sleep(2500); const lg = await log(page);
+                return { 'same chain version and a fresh copy (10 min): the check ran (positive control) and no read happened': ok && JSON.stringify(lg) === '["epoch"]' }; }
+            finally { await ctx.close(); }
+        },
+        async old() {   // same chain version, older than 60 minutes: exactly one automatic read, through the Refresh path
+            const { page, ctx } = await open(seedOf(90, VER, G1), { epoch: Object.assign({}, G1) });
+            try { await shown(page); await page.waitForFunction(() => (window.__log || []).some(x => x.startsWith('run')), null, { timeout: 15000 }).catch(() => {}); await sleep(2500);
+                const lg = await log(page); const puts = await page.evaluate(() => window.__puts.length);
+                const fresh = await page.evaluate(() => JSON.parse(window.__seed['latest.json']).generatedAt > Date.now() / 1000 - 300);
+                return { 'a copy older than 60 minutes is refreshed once without a click (epoch check, then one read of the saved files)': lg.filter(x => x.startsWith('run')).length === 1 && /^run:[1-9]/.test(lg.find(x => x.startsWith('run')) || '') && puts === 1 && fresh }; }
+            finally { await ctx.close(); }
+        },
+        async changed() {   // another chain version, copy only 10 minutes old: automatic read anyway, line while reading, note after
+            const NEW = { genesis: 'GENESIS-A', sage: 200 };
+            const { page, ctx } = await open(seedOf(10, VER, G1), { epoch: NEW, newEpoch: Object.assign({ since: 1700001000 }, NEW), epochChanged: true, runDelay: 2500 });
+            try {
+                await shown(page);
+                const sawReading = await page.waitForFunction(() => /Reading the new state/.test(document.querySelector('#c4Age').innerText), null, { timeout: 8000 }).then(() => true, () => false);
+                const during = await ageText(page);
+                await page.waitForFunction(() => (window.__log || []).some(x => x.startsWith('run')) && !/Reading the new state/.test(document.querySelector('#c4Age').innerText), null, { timeout: 15000 }).catch(() => {});
+                await sleep(500);
+                const lg = await log(page); const after = await ageText(page);
+                const newEp = await page.evaluate(() => JSON.parse(window.__seed['latest.json']).epoch.sage);
+                const html = await page.evaluate(() => document.querySelector('#c4Age').innerHTML);
+                return {
+                    'a different chain version is read automatically even though the copy is fresh': lg.filter(x => x.startsWith('run')).length === 1 && /^run:[1-9]/.test(lg.find(x => x.startsWith('run')) || ''),
+                    'while it reads, the saved view stays up with the line "The game was updated on chain. Reading the new state..."': sawReading && /Saved data from/.test(during),
+                    'after a read with epochChanged the box says once that history starts again': /history and events start again/.test(after) && !/Reading the new state/.test(after) && (after.match(/The game was updated on chain/g) || []).length === 1,
+                    'the new snapshot replaces the saved one (chain version 200 saved)': newEp === 200,
+                    'no jargon reaches the visitor': !/epoch|genesis|sage/i.test(after + during) && !/epoch/i.test(html)
+                };
+            } finally { await ctx.close(); }
+        },
+        async probeFails() {   // the check itself fails: nothing happens, even for a very old copy
+            const { page, ctx } = await open(seedOf(90, VER, G1), { epochFail: true });
+            try { const ok = await shown(page); await sleep(2500); const lg = await log(page); const txt = await ageText(page);
+                return { 'when the chain version check fails nothing is read and the saved view stays': ok && JSON.stringify(lg) === '["epoch"]' && /Saved data from/.test(txt) && !UPDATED.test(txt) }; }
+            finally { await ctx.close(); }
+        },
+        async readFails() {   // chain changed, the read fails: plain message, saved view kept, Refresh usable afterwards
+            const NEW = { genesis: 'GENESIS-A', sage: 200 };
+            const { page, ctx } = await open(seedOf(10, VER, G1), { epoch: NEW, newEpoch: NEW, epochChanged: true, runFail: true });
+            try {
+                await shown(page);
+                const msg = await page.waitForFunction(() => /could not be read/.test(document.querySelector('#c4Age').innerText), null, { timeout: 15000 }).then(() => true, () => false);
+                const t1 = await ageText(page);
+                const btn1 = await page.evaluate(() => { const b = document.querySelector('[data-c4-refresh]'); return b ? { disabled: b.disabled, text: b.textContent } : null; });
+                const ageBefore = await page.evaluate(() => JSON.parse(window.__seed['latest.json']).generatedAt);
+                // the 60 s retry wait passes (the test removes the stamp instead of waiting), the next read works
+                await page.evaluate(() => { window.__cfg.runFail = false; localStorage.removeItem('c4.read.at'); document.dispatchEvent(new Event('visibilitychange')); });
+                await page.waitForFunction(() => { const b = document.querySelector('[data-c4-refresh]'); return b && !b.disabled; }, null, { timeout: 5000 }).catch(() => {});
+                const btn2 = await page.evaluate(() => { const b = document.querySelector('[data-c4-refresh]'); return b ? { disabled: b.disabled, text: b.textContent } : null; });
+                if (btn2 && !btn2.disabled) await page.click('[data-c4-refresh]');
+                const recovered = await page.waitForFunction(() => !/could not be read/.test(document.querySelector('#c4Age').innerText) && JSON.parse(window.__seed['latest.json']).generatedAt > 0 && (window.__log || []).filter(x => x.startsWith('run')).length >= 2, null, { timeout: 10000 }).then(() => true, () => false);
+                return {
+                    'a failed read after a chain update says so in plain words and keeps the saved view': msg && /Saved data from/.test(t1) && /still your saved data/.test(t1) && ageBefore > 0 && !!btn1,
+                    'after a failed read the Refresh button is usable again and reads': !!btn2 && !btn2.disabled && recovered
+                };
+            } finally { await ctx.close(); }
+        },
+        // ---- fix round 2026-11-20 (P1-P6)
+        async p1Marker() {   // a refresh whose bodies.json is the failure marker: the scene gets [], no "previous run" wording
+            if (!bodiesTxt) return { 'P1 needs Data/c4-live/bodies.json': false };
+            sceneStub = true;
+            const { page, ctx, errors } = await open(seedOf(90, VER, G1, { bodies: true }), { epoch: Object.assign({}, G1), bodies: 'marker', runDelay: 4000 });
+            try {
+                await shown(page);
+                await page.waitForFunction(() => (window.__log || []).some(x => x.startsWith('run')) && JSON.parse(window.__seed['latest.json']).generatedAt > Date.now() / 1000 - 60, null, { timeout: 20000 }).catch(() => {});
+                await sleep(1500);
+                const sd = await page.evaluate(() => window.__sd || []);
+                await page.click('.c4-tab[data-tab="resource"]').catch(() => {}); await sleep(800);
+                const txt = await page.evaluate(() => (document.getElementById('sec-resource') || {}).innerText || '');
+                const heldBefore = sd.some(x => x === nBodies && nBodies > 0);
+                return {
+                    ['P1: a bodies.json failure marker hands the scene an EMPTY list (positive control: it held the ' + nBodies + ' saved bodies before)']: heldBefore && sd[sd.length - 1] === 0 && !errors.length,
+                    'P1: after the marker the Resource panel says the planets could not be read, never "from the previous run"': /could not be read from the chain/.test(txt) && !/previous run/i.test(txt)
+                };
+            } finally { await ctx.close(); sceneStub = false; }
+        },
+        async p1Epoch() {   // a read that starts a new chain version and has no bodies.json: the old planets are dropped
+            if (!bodiesTxt) return { 'P1 needs Data/c4-live/bodies.json': false };
+            sceneStub = true;
+            const NEW = { genesis: 'GENESIS-B', sage: 5 };
+            const { page, ctx, errors } = await open(seedOf(10, VER, G1, { bodies: true }), { epoch: NEW, newEpoch: NEW, epochChanged: true, bodies: 'none', runDelay: 4000 });
+            try {
+                await shown(page);
+                await page.waitForFunction(() => (window.__log || []).some(x => x.startsWith('run')) && !/Reading the new state/.test(document.querySelector('#c4Age').innerText), null, { timeout: 20000 }).catch(() => {});
+                await sleep(1500);
+                const sd = await page.evaluate(() => window.__sd || []);
+                return { 'P1: after a read that started a new chain version the old planets are dropped: the scene gets an EMPTY list (positive control: it held them before)': sd.some(x => x === nBodies && nBodies > 0) && sd[sd.length - 1] === 0 && !errors.length };
+            } finally { await ctx.close(); sceneStub = false; }
+        },
+        async p2() {   // the check says "changed", the read still sees the old version: nothing saved, plain failure line
+            const NEW = { genesis: 'GENESIS-A', sage: 200 };
+            const { page, ctx } = await open(seedOf(10, VER, G1), { epoch: NEW });
+            try {
+                await shown(page);
+                const msg = await page.waitForFunction(() => /could not be read/.test(document.querySelector('#c4Age').innerText), null, { timeout: 15000 }).then(() => true, () => false);
+                await sleep(500);
+                const lg = await log(page); const puts = await page.evaluate(() => window.__puts.length);
+                const gen = await page.evaluate(() => JSON.parse(window.__seed['latest.json']).generatedAt);
+                return { 'P2: when the read after a "changed" check still sees the old version, nothing is saved and the visitor gets the "could not be read" line': msg && puts === 0 && lg.filter(x => x.startsWith('run')).length === 1 && gen < Date.now() / 1000 - 300 };
+            } finally { await ctx.close(); }
+        },
+        async p3() {   // a saved copy whose read started the new version: the line shows after a reload, with no read
+            const { page, ctx } = await open(seedOf(10, VER, Object.assign({ changed: true }, G1)), { epoch: Object.assign({}, G1) });
+            try { const ok = await shown(page); await sleep(2500); const lg = await log(page); const txt = await ageText(page);
+                return { 'P3: the "updated on chain, history starts again" line survives a reload (saved latest.epoch.changed), without a read': ok && /history and events start again/.test(txt) && !(lg || []).some(x => x.startsWith('run')) }; }
+            finally { await ctx.close(); }
+        },
+        async emptyFleets() {   // an empty galaxy written after a chain update: a plain line, the page still opens
+            const { page, ctx, errors } = await open(seedOf(10, VER, G1, { noFleets: true }), { epoch: Object.assign({}, G1) });
+            try { const ok = await shown(page); await sleep(1500); const txt = await ageText(page);
+                return { 'P3: a snapshot with no fleets says "No fleets were found on chain at this read." and opens without errors': ok && /No fleets were found on chain at this read\./.test(txt) && !errors.length }; }
+            finally { await ctx.close(); }
+        },
+        async p4() {   // a tab left open: the 5-minute timer runs the same check (timers fired by the test, no 5-minute wait)
+            const { page, ctx } = await open(seedOf(10, VER, G1), { epoch: Object.assign({}, G1) });
+            try {
+                await shown(page); await sleep(2000);
+                const before = (await log(page) || []).filter(x => x === 'epoch').length;
+                const n5 = await page.evaluate(() => { localStorage.removeItem('c4.probe.at'); localStorage.removeItem('c4.read.at');
+                    const t = window.__iv.filter(x => x.ms === 300000); t.forEach(x => x.fn()); return t.length; });
+                await sleep(1500);
+                const after = (await log(page) || []).filter(x => x === 'epoch').length;
+                console.log(`    p4: chain-version checks ${before} -> ${after}, ${n5} five-minute timers fired`);
+                return { 'P4: firing the page\'s 5-minute timers runs the chain-version check again (a tab left open)': before === 1 && after === 2 && n5 >= 1 };
+            } finally { await ctx.close(); }
+        },
+        async p5() {   // a failed AUTOMATIC read: a reload 60 s later (stamps removed) does not read again on its own for 5 min
+            const NEW = { genesis: 'GENESIS-A', sage: 200 };
+            const { page, ctx } = await open(seedOf(10, VER, G1), { epoch: NEW, newEpoch: NEW, epochChanged: true, runFail: true });
+            try {
+                await shown(page);
+                await page.waitForFunction(() => /could not be read/.test(document.querySelector('#c4Age').innerText), null, { timeout: 15000 }).catch(() => {});
+                const stamped = await page.evaluate(() => +localStorage.getItem('c4.autoread.failed.at') > 0);
+                const reopen = async clearFail => {
+                    await page.evaluate(f => { localStorage.removeItem('c4.read.at'); localStorage.removeItem('c4.probe.at'); if (f) localStorage.removeItem('c4.autoread.failed.at'); }, clearFail);
+                    await page.reload(); await shown(page); await sleep(2500);
+                    return ((await log(page)) || []).filter(x => x.startsWith('run')).length;
+                };
+                const runsHeld = await reopen(false);
+                const runsCtrl = await reopen(true);   // positive control: without the stamp the same reload DOES read
+                console.log(`    p5: stamp kept ${stamped}, reads on reload ${runsHeld}, reads on reload without the stamp ${runsCtrl}`);
+                return {
+                    'P5: after a failed automatic read the automatic path waits 5 minutes, across a reload': stamped && runsHeld === 0 && runsCtrl === 1,
+                    'P5 positive control: the same reload without the stamp reads again': runsCtrl === 1
+                };
+            } finally { await ctx.close(); }
+        },
+        async guard() {   // another tab saved a copy 2 minutes ago that is STILL the old version: this tab must read anyway
+            const NEW = { genesis: 'GENESIS-A', sage: 200 };
+            const { page, ctx } = await open(seedOf(2, VER, G1), { epoch: NEW, newEpoch: NEW, epochChanged: true });
+            try {
+                await shown(page);
+                await page.waitForFunction(() => (window.__log || []).some(x => x.startsWith('run')), null, { timeout: 15000 }).catch(() => {});
+                await sleep(1000);
+                const lg = await log(page); const sage = await page.evaluate(() => JSON.parse(window.__seed['latest.json']).epoch.sage);
+                return { 'stale-version guard: a copy only 2 minutes old that is still the old version does not count as "just read": the read runs and the new version is saved': lg.filter(x => x.startsWith('run')).length === 1 && sage === 200 };
+            } finally { await ctx.close(); }
+        },
+        // ---- fix round 2 2026-11-20 (F1-F3)
+        async f1() {   // a body drawer open on the old game's planet when a chain-update read lands: it must not stay up
+            if (!bodiesTxt) return { 'F1 needs Data/c4-live/bodies.json': false };
+            const NEW = { genesis: 'GENESIS-B', sage: 5 };
+            const bj = JSON.parse(bodiesTxt), addr = bj.bodies.find(b => b.k === 'planet').a, name = bj.bodies.find(b => b.a === addr).n;
+            const drawer = page => page.evaluate(() => (document.getElementById('c4Drawer') || {}).innerText || '');
+            const out = {};
+            // 'marker': the new game's planets could not be read; 'renamed': the new bodies.json names that planet anew
+            for (const tag of ['marker', 'renamed']) {
+                const { page, ctx, errors } = await open(seedOf(10, VER, G1, { bodies: true }), { epoch: NEW, newEpoch: NEW, epochChanged: true, bodies: tag === 'marker' ? 'marker' : undefined, runDelay: 6000 });
+                try {
+                    await shown(page);
+                    if (tag === 'renamed') await page.evaluate(a => { const j = JSON.parse(window.__fresh['bodies.json']); j.bodies.find(b => b.a === a).n = 'F1-NEW-PLANET'; window.__fresh['bodies.json'] = JSON.stringify(j); }, addr);
+                    await page.evaluate(a => { const s = document.createElement('span'); s.dataset.body = a; s.id = 'f1Body'; s.textContent = 'x'; document.body.append(s); s.click(); }, addr);
+                    await sleep(1000);
+                    const before = await drawer(page);
+                    await page.waitForFunction(() => (window.__log || []).some(x => x.startsWith('run')) && !/Reading the new state/.test(document.querySelector('#c4Age').innerText), null, { timeout: 30000 }).catch(() => {});
+                    await sleep(2000);
+                    const after = await drawer(page);
+                    console.log(`    f1 ${tag}: before "${before.slice(0, 60).replace(/\n/g, ' | ')}" after "${after.slice(0, 90).replace(/\n/g, ' | ')}"`);
+                    const was = before.includes(name);   // positive control: the drawer did show the old planet
+                    if (tag === 'marker') out['F1: an open planet drawer no longer shows the old game\'s planet after a chain update whose planets could not be read: it says so (positive control: it showed ' + name + ' before)'] = was && !after.includes(name) && after.includes('could not be read from the chain after the game update') && !errors.length;
+                    else out['F1: an open planet drawer shows the NEW planet after a chain update replaced the bodies (positive control: it showed the old name before)'] = was && after.includes('F1-NEW-PLANET') && !after.includes(name) && !errors.length;
+                } finally { await ctx.close(); }
+            }
+            return out;
+        },
+        async f2() {   // tab A on the old version picks up tab B's newer saved copy (no epochChanged, no epoch.changed)
+            if (!bodiesTxt) return { 'F2 needs Data/c4-live/bodies.json': false };
+            sceneStub = true;
+            const NEW = { genesis: 'GENESIS-B', sage: 5 };
+            const { page, ctx, errors } = await open(seedOf(10, VER, G1, { bodies: true }), { epoch: Object.assign({}, G1) });
+            try {
+                await shown(page); await sleep(2500);
+                const first = await ageText(page);
+                // tab B read the new version 2 minutes ago and saved it (no bodies.json, epoch.changed absent); tab A's check
+                // now sees the new version and takes B's copy instead of reading
+                const copyB = seedOf(2, VER, NEW);
+                const n5 = await page.evaluate(c => { window.__seed = c; window.__cfg.epoch = { genesis: 'GENESIS-B', sage: 5 }; localStorage.removeItem('c4.probe.at'); localStorage.removeItem('c4.read.at');
+                    const t = window.__iv.filter(x => x.ms === 300000); t.forEach(x => x.fn()); return t.length; }, copyB);
+                await page.waitForFunction(() => (window.__log || []).filter(x => x === 'epoch').length >= 2 && !/Reading the new state/.test(document.querySelector('#c4Age').innerText), null, { timeout: 15000 }).catch(() => {});
+                await sleep(1500);
+                const lg = await log(page) || []; const txt = await ageText(page); const sd = await page.evaluate(() => window.__sd || []);
+                console.log(`    f2: ${n5} timers, log ${JSON.stringify(lg)}, scene bodies ${JSON.stringify(sd)}`);
+                const took = lg.filter(x => x === 'epoch').length === 2 && !lg.some(x => x.startsWith('run'));   // B's copy was used, no read
+                return {
+                    'F2: a tab that takes another tab\'s copy of the NEW chain version shows "history and events start again" (positive control: not shown before)': !UPDATED.test(first) && took && /history and events start again/.test(txt) && !errors.length,
+                    'F2: that tab also drops the old game\'s planets: the scene gets an EMPTY list (positive control: it held them before)': took && sd.some(x => x === nBodies && nBodies > 0) && sd[sd.length - 1] === 0
+                };
+            } finally { await ctx.close(); sceneStub = false; }
+        },
+        async epochFlag() {   // an old copy with NO chain version (so F2's compare cannot fire) whose read says epochChanged
+            const NEW = { genesis: 'GENESIS-A', sage: 200 };
+            const { page, ctx } = await open(seedOf(90, VER, null), { epoch: NEW, newEpoch: NEW, epochChanged: true });
+            try {
+                await shown(page);
+                await page.waitForFunction(() => (window.__log || []).some(x => x.startsWith('run')) && !/Reading the new state/.test(document.querySelector('#c4Age').innerText), null, { timeout: 15000 }).catch(() => {});
+                await sleep(1000);
+                const lg = await log(page) || []; const txt = await ageText(page);
+                return { 'the note "history and events start again" follows only the read\'s epochChanged when the old copy had no chain version (one read, no check)': lg.filter(x => x.startsWith('run')).length === 1 && !lg.includes('epoch') && /history and events start again/.test(txt) };
+            } finally { await ctx.close(); }
+        },
+        async f3() {   // an update found 2 minutes after a good read, the automatic read fails: Refresh obeys only the 60 s rule
+            const NEW = { genesis: 'GENESIS-A', sage: 200 };
+            const { page, ctx } = await open(seedOf(2, VER, G1), { epoch: NEW, newEpoch: NEW, epochChanged: true, runFail: true });
+            const btn = () => page.evaluate(() => { const b = document.querySelector('[data-c4-refresh]'); return b ? { disabled: b.disabled, text: b.textContent } : null; });
+            try {
+                await shown(page);
+                const msg = await page.waitForFunction(() => /could not be read/.test(document.querySelector('#c4Age').innerText), null, { timeout: 15000 }).then(() => true, () => false);
+                const b1 = await btn();   // the 60 s retry rule still holds right after the failed read
+                // 61 s pass (the stamp is moved back, no sleep); the automatic path stays held by its own 5-minute stamp
+                await page.evaluate(() => { window.__cfg.runFail = false; localStorage.setItem('c4.read.at', String(Date.now() / 1000 - 61)); document.dispatchEvent(new Event('visibilitychange')); });
+                await sleep(800);
+                const b2 = await btn();
+                const runs0 = ((await log(page)) || []).filter(x => x.startsWith('run')).length;
+                if (b2 && !b2.disabled) await page.click('[data-c4-refresh]');
+                const read = await page.waitForFunction(n => (window.__log || []).filter(x => x.startsWith('run')).length > n && !/could not be read|Reading the new state/.test(document.querySelector('#c4Age').innerText), runs0, { timeout: 10000 }).then(() => true, () => false);
+                const txt = await ageText(page); const sage = await page.evaluate(() => JSON.parse(window.__seed['latest.json']).epoch.sage);
+                console.log(`    f3: msg ${msg}, button after failure ${JSON.stringify(b1)}, after 61 s ${JSON.stringify(b2)}, runs before click ${runs0}, read ${read}, saved sage ${sage}`);
+                return {
+                    'F3: after a failed update read the Refresh button is held only by the 60 s retry rule (disabled at once, enabled after 61 s although the copy is 2 minutes old)': msg && !!b1 && b1.disabled && !!b2 && !b2.disabled,
+                    'F3: that click reads as a chain-update read: the new version is saved and the update line shows': !!b2 && !b2.disabled && read && sage === 200 && /history and events start again/.test(txt)
+                };
+            } finally { await ctx.close(); }
+        },
+        async local() {   // localhost file mode: unchanged, no chain code at all
+            const before = requested.length;
+            const { page, ctx } = await open({}, { epoch: G1 }, 'local');
+            try {
+                await page.waitForFunction(() => document.querySelector('#c4Empty').hidden && document.querySelectorAll('.c4-fa').length > 0, null, { timeout: 30000 }).catch(() => {});
+                await sleep(2500);
+                const lg = await log(page); const txt = await ageText(page);
+                const asked = requested.slice(before).filter(u => /c4-collect\.js/.test(u));
+                return { 'localhost file mode: no collector is loaded, no chain check, no saved-copy box': lg === null && !asked.length && /snapshot/i.test(txt) && !/Saved data from/.test(txt) }; }
+            finally { await ctx.close(); }
+        }
+    };
+    // negative controls: [check name fragment -> scenario, the ONE line removed (from -> to)]
+    const NEG = [
+        ['version', 'saved data with other version is discarded', 'return v === DATA_VERSION ? all : new Map();', 'return all;'],
+        ['fresh', 'same chain version and a fresh copy', "else if (S.latest.generatedAt <= now() && now() - S.latest.generatedAt > AUTO_REFRESH_SEC) await refreshChain(false, true);", 'else await refreshChain(false, true);'],
+        ['old', 'older than 60 minutes', "else if (S.latest.generatedAt <= now() && now() - S.latest.generatedAt > AUTO_REFRESH_SEC) await refreshChain(false, true);", ';'],
+        ['changed', 'different chain version is read automatically', 'if (changed) await refreshChain(true, true);', 'if (false) await refreshChain(true, true);'],
+        // F2's version compare also sets the note in 'changed', so this line gets a scenario where only it can fire
+        ['epochFlag', 'only the read\'s epochChanged', 'if (S.lastRead && S.lastRead.epochChanged) S.updateNote = true;', ';'],
+        ['changed', 'while it reads', "S.updateReading = !!chainUpdated;", 'S.updateReading = false;'],
+        ['probeFails', 'check fails nothing is read', "console.warn('C4 Live: could not check the chain version', e); return;", "console.warn('C4 Live: could not check the chain version', e); changed = true;"],
+        ['readFails', 'failed read after a chain update', 'S.updateFailed = !!chainUpdated;', 'S.updateFailed = false;'],
+        ['local', 'localhost file mode', 'if (LOCAL || !S.latest || S.refreshing || document.hidden) return;', 'if (!S.latest || S.refreshing || document.hidden) return;'],
+        // fix round 2026-11-20
+        ['p1Marker', 'failure marker hands the scene an EMPTY list', 'if (j && j.failed === true && j.bodies == null) {', 'if (false) {'],
+        ['p1Marker', 'never "from the previous run"', 'if (j && j.failed === true && j.bodies == null) {', 'if (false) {'],
+        ['p1Epoch', 'old planets are dropped', '{ S.bodies = []; S.bodyIdx = null; S.bodiesStale = false; S.bodiesP = null; }', '{ }'],
+        ['p2', 'still sees the old version, nothing is saved', "if (staleEpoch && !res.epochChanged && sameEpochAs(epochOf(res.files), staleEpoch)) throw new Error('the chain still reads as the version before the update');", ';'],
+        ['p3', 'survives a reload', 'S.updateNote || (S.latest.epoch && S.latest.epoch.changed === true) ?', 'S.updateNote ?'],
+        ['emptyFleets', 'No fleets were found', ".concat(Array.isArray(S.latest.fleets) && !S.latest.fleets.length ? ['No fleets were found on chain at this read.'] : [])", ''],
+        ['p4', '5-minute timers runs the chain-version check', 'setInterval(autoUpdate, RELOAD_MS);', ';'],
+        ['p5', 'automatic path waits 5 minutes', 'if (autoFail && autoFail <= t && t - autoFail < REFRESH_COOLDOWN_SEC) return;', ';'],
+        ['p5', 'automatic path waits 5 minutes', "if (auto === true) { try { localStorage.setItem(AUTO_FAIL_KEY, String(now())); } catch (e2) { /* private mode */ } }", ';'],
+        ['guard', 'stale-version guard', ' && !(staleEpoch && sameEpochAs(epochOf(base), staleEpoch))', ''],
+        // fix round 2 2026-11-20
+        ['f1', 'could not be read: it says so', "if (!initial && S.drawer && S.drawer.kind === 'body') reopenDrawer();", ';'],
+        ['f1', 'shows the NEW planet', "if (!initial && S.drawer && S.drawer.kind === 'body') reopenDrawer();", ';'],
+        ['f2', 'history and events start again', 'if (epochMoved) S.updateNote = true;', ';'],
+        ['f2', 'drops the old game', 'if (!initial && (epochMoved || ', 'if (!initial && ('],
+        ['f3', 'held only by the 60 s retry rule', 'const wait = buttonWait();', 'const wait = refreshWait();'],
+        ['f3', 'reads as a chain-update read', 'refreshChain(!!S.updateFailed); return; }', 'refreshChain(); return; }']
+    ];
+    try {
+        const results = {};
+        for (const k of Object.keys(scenarios)) {
+            mut = null;
+            let r; try { r = await scenarios[k](); } catch (e) { r = { ['scenario ' + k + ' ran without throwing']: false }; console.log('  ' + String(e && e.stack || e).split('\n')[0]); }
+            results[k] = r;
+            for (const [n, ok] of Object.entries(r)) check(n, ok);
+        }
+        for (const [k, frag, from, to] of NEG) {
+            mut = t => { if (!t.includes(from)) throw new Error('mutation target missing: ' + from); return t.split(from).join(to); };
+            const target = Object.keys(results[k]).find(n => n.includes(frag));
+            let r; try { r = await scenarios[k](); } catch (e) { r = {}; }
+            check('negative control (' + k + '): with this line removed the check FAILS: ' + from.slice(0, 70), !!target && results[k][target] === true && r[target] === false, target ? (r[target] ? 'the check PASSED on the broken page, it is blind' : results[k][target] ? 'failed as it must' : 'the check also fails on the real page') : 'no check matches "' + frag + '"');
+        }
+    } finally { mut = null; await browser.close(); server.close(); }
 }

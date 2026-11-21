@@ -29,9 +29,14 @@
 //     'pick' {type:'system', id, source:'callout'} since #38); setInsets({left, right, top, bottom, avoid?}) -> effective
 //     insets + avoid. Insets = CSS px covered by docked UI (they move the framing); avoid = [{left, top, right, bottom}]
 //     canvas-relative boxes of floating HUD (no framing change; callouts never overlap them; covered() true inside, #38)
+//   2026-11-13 Resource tab: setStatResource(name) -> true picks the resource the 'resource' stat layer draws: one flat
+//     RING on the plane per system holding it (no column), radius + brightness from the sum of its bodies' richness
+//     (M.resourceSystems -> M.resourceRing); colour M.RES_HEX. Needs the bodies (setData's 3rd argument): until they
+//     arrive the layer draws no rings. A resource change re-grows the rings exactly like a layer change;
+//     getStats().statLayer.res names the current one, .rings counts them (.columns is 0 on this layer).
 //   extras: scene.screenOf(x, y, h = 0) -> {clientX, clientY, visible, covered}, scene.getStats(), scene.tune({...}), scene.ok
-//   test probes (#38, not panel contract): pickAt(clientX, clientY), statColumnScreen(i), labelLayout()
-//   Galaxy-level markers (stat columns + callouts, DAC halos, combat heat rings, pulses, tracers) fade out by CAMERA
+//   test probes (#38, not panel contract): pickAt(clientX, clientY), statColumnScreen(i), statRingScreen(i), labelLayout()
+//   Galaxy-level markers (stat columns + resource rings + callouts, DAC halos, combat heat rings, pulses, tracers) fade out by CAMERA
 //   DISTANCE (MARK_NEAR..MARK_FAR, getStats().galaxyFade) - never by a mode. Labels (system names, then bodies and
 //   starbases by their on-screen size) are de-collided by priority, keep out of insets + avoid rects, fade on hide.
 //   Picking works at every scale by what is under the cursor: fleet (a drawn hull), body, starbase, star / system glyph.
@@ -334,7 +339,7 @@ void main() {
   gl_Position = clipOf(v + vec3(position.xy * s * 2.0, 0.0));
 }`;
 const SYS_FS = /* glsl */`
-uniform float uAnim; uniform float uDim; uniform float uSysCover;
+uniform float uAnim; uniform float uDim; uniform float uSysCover; uniform float uResDim;
 varying vec2 vP; varying vec3 vCol; varying float vLvl; varying float vVis; varying float vSeed; varying float vCo;
 void main() {
   // task #55 (owner 2026-11-07: "I feel we dont need them"): NO starbase rings. The level reads only as a slight size +
@@ -347,7 +352,8 @@ void main() {
   // the house-coloured glow (0.42, task #58: USTUR drifted to 73 % at 0.3)
   float glow = exp(-r2 * 22.0) * 0.42 * (1.0 + 0.06 * lv) + exp(-r * 7.0) * 0.03;
   vec3 c = mix(vec3(1.0), vCol, smoothstep(0.0, 0.035, r)) * core + vCol * glow;
-  float k = min(vVis, 1.0) * uDim * smoothstep(1.0, 0.86, r);
+  // the Resource layer (round 2): a system that does not hold the chosen resource (vCo 0) steps back to uResDim
+  float k = min(vVis, 1.0) * uDim * smoothstep(1.0, 0.86, r) * mix(1.0, uResDim, 1.0 - vCo);
   c *= twinkle * k;
   // premultiplied: the halo partly covers the blue-violet nebula under it (bloom hue check, task #18)
   gl_FragColor = vec4(c, clamp(exp(-r2 * 18.0) * uSysCover, 0.0, 1.0) * k);
@@ -422,6 +428,67 @@ void main() {
   gl_FragColor = vec4(vCol * d * min(vVis, 1.0), 1.0);
 }`;
 // (task #38, owner 2026-11-07: no footprint ring or ticks under a column - "to reduce clutter"; STATBASE removed)
+
+// RESOURCE rings (2026-11-13, owner: "something like the rings we have from combat ... and no bars"): the 'resource' stat
+// layer draws one flat ring on the plane per system holding the chosen resource, instead of a column. iS = (x, y, radius,
+// brightness) from M.resourceRing; radius in map units x resRingK (= the combat rings' clamp(uZoom, 0.6, 1.3), round 2:
+// at the home view the rings must read at a glance, 5-17 px) x uGrow for the ~400 ms grow-in. A thin bright stroke (never
+// under ~1.4 px) with a soft glow just inside it, so overlapping rings stay separate outlines and the system dot sits
+// clear inside its ring. Static (no pulse: that is combat's language). Galaxy markers: faded by camera distance (uFade).
+// Round 3 (lead: dense clusters burnt out to white blobs, additive green on green): MAX blend ('max' in shaderMat), so
+// overlaps never exceed the brightest ring there, and the stroke thickens with richness (vT) so a rich ring reads by weight.
+const RES_SYS_DIM = 0.3; // a system WITHOUT the chosen resource: glyph strength while the rings stand
+const RES_STROKE = 0.06, RES_GLOW = 0.15, RES_GAIN = 1.5;
+// WHERE the deposit sits (owner 2026-11-15: "dotted if the deposit is asteroid only and solid and dotted line is both"):
+// iK = M.RES_WHERE_CODE - 0 planets only: the solid ring; 1 asteroid belt only: the SAME ring drawn DOTTED; 2 both: the
+// solid ring with a dotted ring RES_OUTER x its radius around it (never closer than RES_OUTER_PX px). Dots are cut by
+// angle: one dot + gap every ~RES_DOT_PX screen px of circumference (never fewer than RES_DOT_MIN round a ring), so a dot
+// is the same size on a small ring and a large one. The dotted-only ring gets a brightness lift (RES_DOT_GAIN): half its
+// stroke is gap, and on a brightness scale it read weaker than a solid ring of the same richness.
+const RES_OUTER = 1.24, RES_OUTER_PX = 4.5, RES_DOT_PX = 7.0, RES_DOT_MIN = 10, RES_DOT_GAIN = 1.25;
+const RESRING_VS = /* glsl */`
+uniform float uGrow; uniform float uViewH; uniform float uZoom;
+attribute vec4 iS; attribute float iK;
+varying vec2 vQ; varying float vR; varying float vB; varying float vT; varying float vK;
+void main() {
+  if (iS.z <= 0.0 || uGrow <= 0.0) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }
+  vT = clamp((iS.w - ${M.RES_RING_B.toFixed(3)}) / ${(1 - M.RES_RING_B).toFixed(3)}, 0.0, 1.0); // richness t back from the brightness
+  float R = iS.z * clamp(uZoom, 0.6, 1.3) * uGrow;
+  vec4 vc = viewMatrix * vec4(iS.x, 0.0, -iS.y, 1.0);
+  float ppu = projectionMatrix[1][1] * 0.5 * uViewH / max(-vc.z, 1e-6);
+  // room for the stroke's px floor + its edge; a 'both' ring also needs its outer dotted ring (and that ring's px floor)
+  float outer = iK > 1.5 ? ${RES_OUTER.toFixed(2)} : 1.0, pad = (iK > 1.5 ? ${(RES_OUTER_PX + 4).toFixed(1)} : 4.0) / max(ppu, 1e-6);
+  float hs = R * outer * (1.0 + ${RES_STROKE.toFixed(2)}) + pad;
+  vQ = position.xy * 2.0 * hs; vR = R; vB = iS.w * min(1.0, uGrow * 1.5); vK = iK;
+  gl_Position = projectionMatrix * viewMatrix * vec4(iS.x + vQ.x, 0.001, -(iS.y + vQ.y), 1.0);
+}`;
+const RESRING_FS = /* glsl */`
+uniform vec3 uCol;
+varying vec2 vQ; varying float vR; varying float vB; varying float vT; varying float vK;
+// 1 on a dot, 0 in a gap, for the ring of radius r (map units) at this fragment: n dots round the ring, soft edges of 1 px
+float dots(float r, float px) {
+  float n = max(${RES_DOT_MIN.toFixed(1)}, floor(6.2831853 * r / (px * ${RES_DOT_PX.toFixed(1)})));
+  float f = fract(atan(vQ.y, vQ.x) / 6.2831853 * n + 0.25);
+  float w = clamp(n * px / (6.2831853 * max(r, 1e-6)), 0.0, 0.2);   // 1 px as a fraction of one dot + gap
+  return smoothstep(0.0, w, f) * (1.0 - smoothstep(0.5, 0.5 + w, f));
+}
+void main() {
+  float d = length(vQ), px = max(fwidth(d), 1e-6);   // map units per screen px here (tilt-aware)
+  // stroke: ~1.4 px on the poorest ring up to ~3.6 px on the richest, so a rich ring reads at the home view by weight too
+  float hw = max(vR * ${(RES_STROKE / 2).toFixed(3)}, px * (0.7 + 1.1 * vT)), e = abs(d - vR);
+  float line = 1.0 - smoothstep(hw, hw + px, e);
+  // soft glow inside the stroke, strongest at it and gone by ~45 % of the radius (the system dot stays clear)
+  float q = clamp(d / max(vR, 1e-6), 0.0, 1.0);
+  float glow = smoothstep(0.45, 1.0, q) * q * q * (1.0 - smoothstep(vR - px * 0.5, vR + px * 0.5, d)) * ${RES_GLOW.toFixed(2)};
+  float beltOnly = step(0.5, vK) * (1.0 - step(1.5, vK)), both = step(1.5, vK);
+  // asteroid belt only: the ring itself is dotted
+  line *= mix(1.0, dots(vR, px) * ${RES_DOT_GAIN.toFixed(2)}, beltOnly);
+  // planets AND a belt: a second, dotted ring just outside the solid one
+  float r2 = max(vR * ${RES_OUTER.toFixed(2)}, vR + px * ${RES_OUTER_PX.toFixed(1)});
+  float hw2 = max(hw * 0.8, px * 0.8);
+  float line2 = both * (1.0 - smoothstep(hw2, hw2 + px, abs(d - r2))) * dots(r2, px);
+  gl_FragColor = vec4(uCol * vB * ${RES_GAIN.toFixed(2)} * (max(line, line2) * 0.85 + glow), 1.0);
+}`;
 
 // DAC influence halos (task #53, setStatLayer('dacs') + setDacs): one flat soft glow per (system, DAC) on the plane just
 // under the system glyphs, centred on the system itself. Radius DAC_R0 + DAC_R1 x sqrt(weight / max weight) world units,
@@ -741,6 +808,9 @@ function shaderMat(vs, fs, uniforms, fade, mode = 'add') {
     fragmentShader: fade ? fs.replace('void main()', 'void main0()') + `\nuniform float uFade;\nvoid main() { main0(); gl_FragColor *= uFade; }` : fs,
   });
   if (mode === 'premult') Object.assign(m, {blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor, blendEquation: THREE.AddEquation});
+  // 'max' = per-channel MAX(src, dst): overlapping marks never sum past the brightest one, so a dense cluster of green
+  // rings stays green outlines instead of saturating to white (resource rings, round 3)
+  if (mode === 'max') Object.assign(m, {blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneFactor, blendEquation: THREE.MaxEquation});
   return m;
 }
 const additive = (vs, fs, uniforms, fade) => shaderMat(vs, fs, uniforms, fade, 'add');
@@ -848,7 +918,7 @@ function stub(container, reason) {
   container.appendChild(msg);
   const noop = () => {};
   return {ok: false, reason, setData: () => false, setFilter: noop, focusOwner: () => 0, focusPoint: noop, pulseEvent: noop,
-    focusSystem: () => false, bodyScreen: () => null, setStatLayer: () => false, setInsets: () => ({left: 0, right: 0, top: 0, bottom: 0}),
+    focusSystem: () => false, bodyScreen: () => null, setStatLayer: () => false, setStatResource: () => false, setInsets: () => ({left: 0, right: 0, top: 0, bottom: 0}),
     fleetScreen: () => null, fleetPixelSize: () => null, fleetCell: () => null,
     on: () => noop, setLayer: () => false, screenOf: () => null, getStats: () => ({ok: false, reason}), dispose: () => msg.remove()};
 }
@@ -972,8 +1042,9 @@ function mount(container, opts = {}) {
   const routes = mesh(fleetGeo, additive(ROUTE_VS, ROUTE_FS, fU, null), 2);
   const hots = mesh(hotGeo, additive(HOT_VS, HOT_FS, {uZoom: U.uZoom, uAnim: U.uAnim}, U.uGal), 2);
   const trails = mesh(fleetGeo, additive(TRAIL_VS, TRAIL_FS, fU, null), 3);
+  const sysResDim = {value: 1}; // RES_SYS_DIM while the resource rings stand, else 1 (no change)
   const sysCover = {value: 2.5}; // measured: MUD glyph hue -17 -> -9 deg, 82% within 20 (1.6); task #58 round (no rings since #55): glow 0.3 -> 0.42 + cover 1.6 -> 2.5 = USTUR 73 -> 83 %, MUD 93 -> 99 % within 20
-  const systemsMesh = mesh(sysGeo, shaderMat(SYS_VS, SYS_FS, {uSysZoom: U.uSysZoom, uGlyphK: U.uGlyphK, uViewH: U.uViewH, uAnim: U.uAnim, uDim: U.uDim, uSysCover: sysCover}, null, 'premult'), 4);
+  const systemsMesh = mesh(sysGeo, shaderMat(SYS_VS, SYS_FS, {uSysZoom: U.uSysZoom, uGlyphK: U.uGlyphK, uViewH: U.uViewH, uAnim: U.uAnim, uDim: U.uDim, uSysCover: sysCover, uResDim: sysResDim}, null, 'premult'), 4);
   const beams = mesh(fleetGeo, additive(BEAM_VS, BEAM_FS, fU, null), 4.8);
   const fleetsMesh = mesh(fleetGeo, shaderMat(FLEET_VS, FLEET_FS, fU, null, 'premult'), 5);
   const fleetDots = mesh(fleetGeo, shaderMat(DOT_VS, DOT_FS, fU, null, 'premult'), 4.6);
@@ -986,6 +1057,12 @@ function mount(container, opts = {}) {
   const statCols = mesh(statGeo, additive(STATCOL_VS, STATCOL_FS, statU, U.uGal), 7);
   const statDisc = mesh(statGeo, additive(STATDISC_VS, STATDISC_FS, {uStatW: statU.uStatW, uGrow: statU.uGrow, uViewH: U.uViewH}, U.uGal), 7);
   statCols.visible = statDisc.visible = false;
+  // resource rings (2026-11-13): the 'resource' layer's marks, drawn instead of columns; OVER the system glyphs (a
+  // poor system's small ring sits inside the glyph's glow and vanished under it at order 1.5), under the fleets
+  const resGeo = quadGeometry();
+  const resRings = mesh(resGeo, shaderMat(RESRING_VS, RESRING_FS, {uGrow: statU.uGrow, uViewH: U.uViewH, uZoom: U.uZoom, uCol: {value: new THREE.Vector3(...M.hexToLinear(M.RES_HEX))}}, U.uGal, 'max'), 4.2);
+  resRings.visible = false;
+  scene.add(resRings);
   const dacGeo = quadGeometry();
   const dacU = {uHaloK: {value: 1}};
   const dacHalos = mesh(dacGeo, additive(DACHALO_VS, DACHALO_FS, dacU, U.uGal), 1); // over the territory, under routes / systems
@@ -1027,7 +1104,7 @@ function mount(container, opts = {}) {
   // ------------------------------------------------------------ state
   let D = null;            // {latest, tBase, fleets[], paths[], seeds[], anchors[], systems[], asteroids[], byOwner}
   // in-map stat layer (setStatLayer): name in M.STAT_LAYERS or null; cols = M.statColumns rows; callouts = top rows' DOM
-  const statState = {name: null, cols: [], callouts: [], dirty: false, vmax: 0, growAt: 0};
+  const statState = {name: null, cols: [], callouts: [], dirty: false, vmax: 0, growAt: 0, res: null}; // res: setStatResource
   // task #57 (owner 2026-11-07 17:35 EST "the combat rings should also just show when combat button is selected"): the
   // galaxy heat / pulse rings at systems draw only while setStatLayer('combat') leads; mining, fleets, owners, dacs, null
   // hide them
@@ -1627,7 +1704,7 @@ function mount(container, opts = {}) {
       const L = D ? M.dacLayer(D.latest, dacState.dacs, dacState.focus) : {cols: [], halos: []};
       cols = L.cols; writeDacHalos(L.halos);
     } else {
-      cols = name && D ? M.statColumns(name, D.latest, D.events, {owner: filter.owner, faction: filter.faction}) : [];
+      cols = name && D ? M.statColumns(name, D.latest, D.events, {owner: filter.owner, faction: filter.faction, res: statState.res, bodies: bodiesAll}) : [];
       if (dacHalos.visible || dacState.halos.length) writeDacHalos([]);
     }
     statState.cols = cols;
@@ -1641,7 +1718,20 @@ function mount(container, opts = {}) {
       c.h = h;
     });
     for (const k in A) A[k].needsUpdate = true;
-    statCols.visible = statDisc.visible = cols.length > 0;
+    // the resource layer draws rings, not columns (2026-11-13): the column instances stay written (statColumnScreen,
+    // callout ranking) but their meshes are off; c.rr / c.rb = the ring's radius (map units) and brightness
+    const asRings = name === 'resource';
+    const vmin = cols.reduce((v, c) => Math.min(v, c.v), Infinity);
+    const R = instanceAttrs(resGeo, [['iS', 4], ['iK', 1]], asRings ? cols.length : 0);
+    if (asRings) cols.forEach((c, i) => {
+      const g = M.resourceRing(c.v, vmin, statState.vmax); c.rr = g.r; c.rb = g.b; R.iS.array.set([c.x, c.y, g.r, g.b], i * 4);
+      R.iK.array[i] = M.RES_WHERE_CODE[c.where] || 0; // dotted = asteroid belt only, solid + dotted = planets and a belt (2026-11-15)
+    });
+    R.iS.needsUpdate = R.iK.needsUpdate = true;
+    resRings.visible = asRings && cols.length > 0;
+    statState.rings = resRings.visible ? cols.length : 0;
+    sysResDim.value = statState.rings ? RES_SYS_DIM : 1; // systems without the resource step back (iM.z = colSys, writeMineVis)
+    statCols.visible = statDisc.visible = !asRings && cols.length > 0;
     // the stats lead: territory steps back while columns stand (further for DACs: their colours ARE the territory there)
     terrU.uTerrStat.value = cols.length ? (name === 'dacs' ? DAC_TERR_DIM : TERR_STAT_DIM) : 1;
     statState.colSys = new Set(cols.map((c) => c.sys).filter(Boolean));
@@ -1702,6 +1792,25 @@ function mount(container, opts = {}) {
     if (document.fonts && document.fonts.status !== 'loaded') document.fonts.ready.then(() => { for (const o of statState.callouts) o.w = 0; dacState.mw = 0; lastCam[0] = NaN; });
     lastCam[0] = NaN;
   }
+  // a resource ring's on-screen centre, its upper edge (the topmost of 16 rim points) and its screen radius (canvas px;
+  // v3.z of the centre left for the caller's behind-the-camera test). The SAME radius as RESRING_VS (rr x k x uGrow).
+  const resRingK = () => Math.min(1.3, Math.max(0.6, U.uZoom.value)); // = RESRING_VS clamp(uZoom, 0.6, 1.3)
+  const ringScreen = (c) => {
+    const R = c.rr * resRingK() * statU.uGrow.value;
+    v3.set(c.x, 0, -c.y).project(camera);
+    const cx = (v3.x + 1) / 2 * W, cy = (1 - v3.y) / 2 * H, cz = v3.z;
+    let tx = cx, ty = cy, rad = 0;
+    for (let k = 0; k < 16; k++) {
+      const a = k * Math.PI / 8;
+      v3.set(c.x + R * Math.cos(a), 0, -(c.y + R * Math.sin(a))).project(camera);
+      const x = (v3.x + 1) / 2 * W, y = (1 - v3.y) / 2 * H;
+      rad = Math.max(rad, Math.hypot(x - cx, y - cy));
+      if (y < ty) { tx = x; ty = y; }
+    }
+    v3.z = cz;
+    return {cx, cy, tx, ty, rad};
+  };
+  const ringTop = (c) => { const s = ringScreen(c); return [s.tx, s.ty]; };
   const placed = [];
   const CALLOUT_RINGS = [60, 90, 125, 165, 210, 260, 320, 390], CALLOUT_OFF = 120;
   const CALLOUT_DIRS = [-40, -140, 40, 140, -90, 90, 0, 180, -65, -115, 65, 115, -15, -165, 15, 165].map((d) => d * Math.PI / 180);
@@ -1736,8 +1845,9 @@ function mount(container, opts = {}) {
       return m;
     };
     for (const o of statState.callouts) {
-      v3.set(o.c.x, STAT_BASE_Y + statTopH(o.c), -o.c.y).project(camera);
-      const px0 = (v3.x + 1) / 2 * W, py0 = (1 - v3.y) / 2 * H;
+      let px0, py0;
+      if (o.c.rr) [px0, py0] = ringTop(o.c); // resource ring: anchored at its upper edge on screen
+      else { v3.set(o.c.x, STAT_BASE_Y + statTopH(o.c), -o.c.y).project(camera); px0 = (v3.x + 1) / 2 * W; py0 = (1 - v3.y) / 2 * H; }
       // a column top just past the canvas edge (<= CALLOUT_OFF px, e.g. Evernat at 1280x720 home) is anchored at the edge
       const onCanvas = v3.z < 1 && px0 >= -CALLOUT_OFF && px0 <= W + CALLOUT_OFF && py0 >= -CALLOUT_OFF && py0 <= H + CALLOUT_OFF;
       o.vis = false; o.under = false;
@@ -2172,6 +2282,15 @@ function mount(container, opts = {}) {
       if (!n) buildStats();
       return true;
     },
+    // Resource tab (2026-11-13): which resource the 'resource' layer draws. A change while that layer leads re-grows the
+    // rings (the same ~400 ms grow as a layer change); a re-send of the same name changes nothing.
+    setStatResource(name) {
+      const r = typeof name === 'string' && name ? name.slice(0, 80) : null;
+      if (r === statState.res) return true;
+      statState.res = r;
+      if (statState.name === 'resource') { statState.growAt = reduced ? 0 : performance.now(); statState.dirty = true; }
+      return true;
+    },
     // DACs (task #53): {dacs: [{tag, color '#rrggbb', members: [profile]}], example, focus: tag|null}. Sanitised here: a
     // bad colour becomes grey, a non-string member is dropped, a focus not in the list is null. Drawn by the 'dacs' layer.
     setDacs(o = {}) {
@@ -2260,6 +2379,15 @@ function mount(container, opts = {}) {
       return b && t ? {key: c.key, sys: c.sys, x: c.x, y: c.y, base: {clientX: b[0] + rect.left, clientY: b[1] + rect.top}, top: {clientX: t[0] + rect.left, clientY: t[1] + rect.top},
         widthWorld: (0.75 + 0.5 * Math.sqrt(statState.vmax ? c.v / statState.vmax : 0)) * statU.uStatW.value} : null;
     },
+    // statRingScreen(i) (2026-11-13): row i of the resource layer's rings - centre, upper edge and radius on screen (client
+    // px, the radius the shader draws now), world radius and brightness; null off the resource layer
+    statRingScreen(i) {
+      const c = statState.cols[i]; if (!c || !c.rr || !resRings.visible) return null;
+      camera.updateMatrixWorld();
+      const s = ringScreen(c);
+      return {key: c.key, sys: c.sys, x: c.x, y: c.y, v: c.v, r: c.rr, b: c.rb, centre: {clientX: s.cx + rect.left, clientY: s.cy + rect.top},
+        top: {clientX: s.tx + rect.left, clientY: s.ty + rect.top}, radiusPx: s.rad};
+    },
     // labelLayout() (task #50): the de-collision state of every on-screen label - galaxy and system view. def = the
     // label's default box, box = where it stands now ([x0, y0, x1, y1] client px); vis false = faded out (hide says why)
     labelLayout() {
@@ -2330,7 +2458,11 @@ function mount(container, opts = {}) {
           return {pulses: p, tracers: t};
         })(), running, layers: {...layers}, filter: {...filter}, flying: fly.on, autoRotating: controls.autoRotate,
         cpuMs: Math.round(stats.cpuMs * 100) / 100, // mean JS time inside one frame callback (incl. render submit), last second
-        statLayer: {name: statState.name, columns: statState.cols.length, callouts: statState.callouts.map((o) => ({sys: o.c.sys, name: o.c.name, line: o.c.line, v: o.c.v,
+        statLayer: {name: statState.name, res: statState.res, growing: !!statState.growAt,
+          // the resource layer draws rings (columns 0); every other layer columns (rings 0). Counts of what is drawn.
+          columns: statCols.visible ? statState.cols.length : 0, rings: statState.rings || 0,
+          combatRings: {n: hotGeo.instanceCount || 0, drawn: hots.visible}, // the combat heat rings (task #57: drawn only on Combat)
+          callouts: statState.callouts.map((o) => ({sys: o.c.sys, name: o.c.name, line: o.c.line, v: o.c.v,
           shown: o.el.style.display !== 'none' && statLayer.style.display !== 'none', rank: o.rank + 1, under: !!o.under, // under: anchor below HUD / dock (#44)
           marker: o.vis ? [+(o.mx + rect.left).toFixed(1), +(o.my + rect.top).toFixed(1)] : null}))},
         // task #53: the DAC layer's state - per column its system, tag (dominant or focused) and colour; halo rows; watermark

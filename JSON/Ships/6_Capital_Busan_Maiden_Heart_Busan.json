@@ -35,8 +35,8 @@
     "shield_points": 6030,
     "shield_recharge_rate": 35.2,
     "shield_break_delay": 61,
-    "damage": 2681.3,
-    "max_ap": 2681.3,
+    "damage": 2681,
+    "max_ap": 4048,
     "ap_recharge_time": 6.06,
     "repair_cost": 187400,
     "repair_rate": 1251,
@@ -47,7 +47,7 @@
     "ship_size_value": 3175000,
     "lp_value\r": 80100,
     "xp_value": 800,
-    "damage_kinetic": 0,
+    "damage_kinetic": 2681,
     "damage_energy": 0,
     "damage_emp": 0,
     "damage_superchill": 0,
@@ -83,15 +83,24 @@
       "name": "Default",
       "components": {
         "Ship Component": {
-          "Mining Rig": []
+          "Mining Rig": [],
+          "Drone Port": []
         },
         "Ship Module": {},
         "Ship Weapons": {},
         "Countermeasures": {},
         "Missiles": {},
-        "Bombs": {}
+        "Bombs": {},
+        "Drones": {}
       },
-      "locked": true
+      "locked": true,
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
+      }
     },
     {
       "name": "Tier One",
@@ -133,9 +142,7 @@
             115081,
             115081
           ],
-          "Drone Port": [
-            115203
-          ],
+          "Drone Port": [],
           "Mining Rig": []
         },
         "Ship Module": {
@@ -212,17 +219,18 @@
         },
         "Bombs": {},
         "Drones": {
-          "Combat Energy": [
-            116684,
-            116684,
-            116684
-          ],
-          "Combat Heat": [
-            116789
-          ]
+          "Combat Energy": [],
+          "Combat Heat": []
         }
       },
-      "locked": true
+      "locked": true,
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
+      }
     },
     {
       "name": "Tier Two",
@@ -264,9 +272,7 @@
             115082,
             115082
           ],
-          "Drone Port": [
-            115204
-          ],
+          "Drone Port": [],
           "Mining Rig": []
         },
         "Ship Module": {
@@ -343,17 +349,18 @@
         },
         "Bombs": {},
         "Drones": {
-          "Combat Energy": [
-            116684,
-            116684,
-            116684
-          ],
-          "Combat Heat": [
-            116789
-          ]
+          "Combat Energy": [],
+          "Combat Heat": []
         }
       },
-      "locked": true
+      "locked": true,
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
+      }
     },
     {
       "name": "Tier Three",
@@ -477,14 +484,60 @@
           "Combat Energy": [
             116684,
             116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
             116684
           ],
           "Combat Heat": [
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
             116789
           ]
         }
       },
-      "locked": true
+      "locked": true,
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": [
+          {
+            "key": "Ship Component/Drone Port/0",
+            "componentId": 115205,
+            "class": "CAP",
+            "tier": "T3",
+            "capacity": 24,
+            "occupied": 24,
+            "drones": [
+              {
+                "componentId": 116684,
+                "quantity": 18
+              },
+              {
+                "componentId": 116789,
+                "quantity": 6
+              }
+            ]
+          }
+        ]
+      }
     },
     {
       "name": "Tier Four",
@@ -608,14 +661,60 @@
           "Combat Energy": [
             116684,
             116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
             116684
           ],
           "Combat Heat": [
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
             116789
           ]
         }
       },
-      "locked": true
+      "locked": true,
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": [
+          {
+            "key": "Ship Component/Drone Port/0",
+            "componentId": 115206,
+            "class": "CAP",
+            "tier": "T4",
+            "capacity": 24,
+            "occupied": 24,
+            "drones": [
+              {
+                "componentId": 116684,
+                "quantity": 18
+              },
+              {
+                "componentId": 116789,
+                "quantity": 6
+              }
+            ]
+          }
+        ]
+      }
     },
     {
       "name": "Tier Five",
@@ -739,14 +838,60 @@
           "Combat Energy": [
             116684,
             116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
             116684
           ],
           "Combat Heat": [
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
             116789
           ]
         }
       },
-      "locked": true
+      "locked": true,
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": [
+          {
+            "key": "Ship Component/Drone Port/0",
+            "componentId": 115207,
+            "class": "CAP",
+            "tier": "T5",
+            "capacity": 24,
+            "occupied": 24,
+            "drones": [
+              {
+                "componentId": 116684,
+                "quantity": 18
+              },
+              {
+                "componentId": 116789,
+                "quantity": 6
+              }
+            ]
+          }
+        ]
+      }
     },
     {
       "name": "Scanning Min",
@@ -791,12 +936,17 @@
         "Bombs": {},
         "Drones": {
           "Combat Energy": [],
-          "Combat Heat": [
-            116789
-          ]
+          "Combat Heat": []
         }
       },
-      "locked": true
+      "locked": true,
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
+      }
     },
     {
       "name": "Scanning Mid",
@@ -818,7 +968,9 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Drone Port": [],
+          "Drone Port": [
+            115205
+          ],
           "Mining Rig": []
         },
         "Ship Module": {
@@ -844,16 +996,63 @@
         },
         "Bombs": {},
         "Drones": {
-          "Combat Energy": [],
-          "Combat Heat": [
-            116789
-          ],
           "Scan": [
+            116522,
+            116522,
+            116522,
+            116522,
+            116522,
+            116522,
+            116522,
+            116522,
+            116522,
+            116522,
+            116522,
             116522
+          ],
+          "Combat Heat": [
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789
           ]
         }
       },
-      "locked": true
+      "locked": true,
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": [
+          {
+            "key": "Ship Component/Drone Port/0",
+            "componentId": 115205,
+            "class": "CAP",
+            "tier": "T3",
+            "capacity": 24,
+            "occupied": 24,
+            "drones": [
+              {
+                "componentId": 116522,
+                "quantity": 12
+              },
+              {
+                "componentId": 116789,
+                "quantity": 12
+              }
+            ]
+          }
+        ]
+      }
     },
     {
       "name": "Scanning Max",
@@ -913,16 +1112,63 @@
         },
         "Bombs": {},
         "Drones": {
-          "Combat Energy": [],
-          "Combat Heat": [
-            116789
-          ],
           "Scan": [
+            116556,
+            116556,
+            116556,
+            116556,
+            116556,
+            116556,
+            116556,
+            116556,
+            116556,
+            116556,
+            116556,
             116556
+          ],
+          "Combat Heat": [
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789
           ]
         }
       },
-      "locked": true
+      "locked": true,
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": [
+          {
+            "key": "Ship Component/Drone Port/0",
+            "componentId": 115207,
+            "class": "CAP",
+            "tier": "T5",
+            "capacity": 24,
+            "occupied": 24,
+            "drones": [
+              {
+                "componentId": 116556,
+                "quantity": 12
+              },
+              {
+                "componentId": 116789,
+                "quantity": 12
+              }
+            ]
+          }
+        ]
+      }
     },
     {
       "name": "Salvage Min",
@@ -967,12 +1213,17 @@
         "Bombs": {},
         "Drones": {
           "Combat Energy": [],
-          "Combat Heat": [
-            116789
-          ]
+          "Combat Heat": []
         }
       },
-      "locked": true
+      "locked": true,
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
+      }
     },
     {
       "name": "Salvage Mid",
@@ -994,7 +1245,9 @@
           ],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Drone Port": [],
+          "Drone Port": [
+            115205
+          ],
           "Mining Rig": []
         },
         "Ship Module": {
@@ -1029,18 +1282,65 @@
         },
         "Bombs": {},
         "Drones": {
-          "Combat Energy": [],
-          "Combat Heat": [
-            116789
-          ],
           "Salvage": [
+            116578,
+            116578,
+            116578,
+            116578,
+            116578,
+            116578,
+            116578,
+            116578,
+            116578,
+            116578,
+            116578,
             116578
+          ],
+          "Combat Heat": [
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789
           ]
         }
       },
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": [
+          {
+            "key": "Ship Component/Drone Port/0",
+            "componentId": 115205,
+            "class": "CAP",
+            "tier": "T3",
+            "capacity": 24,
+            "occupied": 24,
+            "drones": [
+              {
+                "componentId": 116578,
+                "quantity": 12
+              },
+              {
+                "componentId": 116789,
+                "quantity": 12
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -1110,18 +1410,65 @@
         },
         "Bombs": {},
         "Drones": {
-          "Combat Energy": [],
-          "Combat Heat": [
-            116789
-          ],
           "Salvage": [
+            116579,
+            116579,
+            116579,
+            116579,
+            116579,
+            116579,
+            116579,
+            116579,
+            116579,
+            116579,
+            116579,
             116579
+          ],
+          "Combat Heat": [
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789
           ]
         }
       },
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": [
+          {
+            "key": "Ship Component/Drone Port/0",
+            "componentId": 115207,
+            "class": "CAP",
+            "tier": "T5",
+            "capacity": 24,
+            "occupied": 24,
+            "drones": [
+              {
+                "componentId": 116579,
+                "quantity": 12
+              },
+              {
+                "componentId": 116789,
+                "quantity": 12
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -1180,14 +1527,19 @@
         "Bombs": {},
         "Drones": {
           "Combat Energy": [],
-          "Combat Heat": [
-            116789
-          ]
+          "Combat Heat": []
         }
       },
       "locked": true,
       "_convertMetadata": {
         "Countermeasures": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -1208,7 +1560,9 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Drone Port": [],
+          "Drone Port": [
+            115205
+          ],
           "Mining Rig": []
         },
         "Ship Module": {
@@ -1249,18 +1603,65 @@
         },
         "Bombs": {},
         "Drones": {
-          "Combat Energy": [],
-          "Combat Heat": [
-            116789
-          ],
           "Repair": [
+            116601,
+            116601,
+            116601,
+            116601,
+            116601,
+            116601,
+            116601,
+            116601,
+            116601,
+            116601,
+            116601,
             116601
+          ],
+          "Combat Heat": [
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789
           ]
         }
       },
       "locked": true,
       "_convertMetadata": {
         "Countermeasures": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": [
+          {
+            "key": "Ship Component/Drone Port/0",
+            "componentId": 115205,
+            "class": "CAP",
+            "tier": "T3",
+            "capacity": 24,
+            "occupied": 24,
+            "drones": [
+              {
+                "componentId": 116601,
+                "quantity": 12
+              },
+              {
+                "componentId": 116789,
+                "quantity": 12
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -1334,18 +1735,65 @@
         },
         "Bombs": {},
         "Drones": {
-          "Combat Energy": [],
-          "Combat Heat": [
-            116789
-          ],
           "Repair": [
+            116601,
+            116601,
+            116601,
+            116601,
+            116601,
+            116601,
+            116601,
+            116601,
+            116601,
+            116601,
+            116601,
             116601
+          ],
+          "Combat Heat": [
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789
           ]
         }
       },
       "locked": true,
       "_convertMetadata": {
         "Countermeasures": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": [
+          {
+            "key": "Ship Component/Drone Port/0",
+            "componentId": 115207,
+            "class": "CAP",
+            "tier": "T5",
+            "capacity": 24,
+            "occupied": 24,
+            "drones": [
+              {
+                "componentId": 116601,
+                "quantity": 12
+              },
+              {
+                "componentId": 116789,
+                "quantity": 12
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -1389,12 +1837,17 @@
         "Bombs": {},
         "Drones": {
           "Combat Energy": [],
-          "Combat Heat": [
-            116789
-          ]
+          "Combat Heat": []
         }
       },
-      "locked": true
+      "locked": true,
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
+      }
     },
     {
       "name": "Rescue Mid",
@@ -1414,7 +1867,9 @@
           "Tractor Beam": [],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Drone Port": [],
+          "Drone Port": [
+            115205
+          ],
           "Mining Rig": []
         },
         "Ship Module": {
@@ -1450,11 +1905,32 @@
         },
         "Bombs": {},
         "Drones": {
-          "Combat Energy": [],
           "Combat Heat": [
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
             116789
           ],
           "Rescue": [
+            116802,
+            116802,
+            116802,
+            116802,
+            116802,
+            116802,
+            116802,
+            116802,
+            116802,
+            116802,
+            116802,
             116802
           ]
         }
@@ -1462,6 +1938,32 @@
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": [
+          {
+            "key": "Ship Component/Drone Port/0",
+            "componentId": 115205,
+            "class": "CAP",
+            "tier": "T3",
+            "capacity": 24,
+            "occupied": 24,
+            "drones": [
+              {
+                "componentId": 116789,
+                "quantity": 12
+              },
+              {
+                "componentId": 116802,
+                "quantity": 12
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -1530,11 +2032,32 @@
         },
         "Bombs": {},
         "Drones": {
-          "Combat Energy": [],
           "Combat Heat": [
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
             116789
           ],
           "Rescue": [
+            116802,
+            116802,
+            116802,
+            116802,
+            116802,
+            116802,
+            116802,
+            116802,
+            116802,
+            116802,
+            116802,
             116802
           ]
         }
@@ -1542,6 +2065,32 @@
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": [
+          {
+            "key": "Ship Component/Drone Port/0",
+            "componentId": 115207,
+            "class": "CAP",
+            "tier": "T5",
+            "capacity": 24,
+            "occupied": 24,
+            "drones": [
+              {
+                "componentId": 116789,
+                "quantity": 12
+              },
+              {
+                "componentId": 116802,
+                "quantity": 12
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -1606,14 +2155,19 @@
         "Bombs": {},
         "Drones": {
           "Combat Energy": [],
-          "Combat Heat": [
-            116789
-          ]
+          "Combat Heat": []
         }
       },
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -1642,7 +2196,9 @@
           ],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Drone Port": [],
+          "Drone Port": [
+            115205
+          ],
           "Mining Rig": []
         },
         "Ship Module": {
@@ -1677,18 +2233,65 @@
         },
         "Bombs": {},
         "Drones": {
-          "Combat Energy": [],
-          "Combat Heat": [
-            116789
-          ],
           "Freight": [
+            116643,
+            116643,
+            116643,
+            116643,
+            116643,
+            116643,
+            116643,
+            116643,
+            116643,
+            116643,
+            116643,
             116643
+          ],
+          "Combat Heat": [
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789
           ]
         }
       },
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": [
+          {
+            "key": "Ship Component/Drone Port/0",
+            "componentId": 115205,
+            "class": "CAP",
+            "tier": "T3",
+            "capacity": 24,
+            "occupied": 24,
+            "drones": [
+              {
+                "componentId": 116643,
+                "quantity": 12
+              },
+              {
+                "componentId": 116789,
+                "quantity": 12
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -1758,18 +2361,65 @@
         },
         "Bombs": {},
         "Drones": {
-          "Combat Energy": [],
-          "Combat Heat": [
-            116789
-          ],
           "Freight": [
+            116643,
+            116643,
+            116643,
+            116643,
+            116643,
+            116643,
+            116643,
+            116643,
+            116643,
+            116643,
+            116643,
             116643
+          ],
+          "Combat Heat": [
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789
           ]
         }
       },
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": [
+          {
+            "key": "Ship Component/Drone Port/0",
+            "componentId": 115207,
+            "class": "CAP",
+            "tier": "T5",
+            "capacity": 24,
+            "occupied": 24,
+            "drones": [
+              {
+                "componentId": 116643,
+                "quantity": 12
+              },
+              {
+                "componentId": 116789,
+                "quantity": 12
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -1830,14 +2480,19 @@
         "Bombs": {},
         "Drones": {
           "Combat Energy": [],
-          "Combat Heat": [
-            116789
-          ]
+          "Combat Heat": []
         }
       },
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -1903,18 +2558,65 @@
         },
         "Bombs": {},
         "Drones": {
-          "Combat Energy": [],
-          "Combat Heat": [
-            116789
-          ],
           "Freight": [
+            116643,
+            116643,
+            116643,
+            116643,
+            116643,
+            116643,
+            116643,
+            116643,
+            116643,
+            116643,
+            116643,
             116643
+          ],
+          "Combat Heat": [
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789
           ]
         }
       },
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": [
+          {
+            "key": "Ship Component/Drone Port/0",
+            "componentId": 115205,
+            "class": "CAP",
+            "tier": "T3",
+            "capacity": 24,
+            "occupied": 24,
+            "drones": [
+              {
+                "componentId": 116643,
+                "quantity": 12
+              },
+              {
+                "componentId": 116789,
+                "quantity": 12
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -1980,18 +2682,65 @@
         },
         "Bombs": {},
         "Drones": {
-          "Combat Energy": [],
-          "Combat Heat": [
-            116789
-          ],
           "Freight": [
+            116643,
+            116643,
+            116643,
+            116643,
+            116643,
+            116643,
+            116643,
+            116643,
+            116643,
+            116643,
+            116643,
             116643
+          ],
+          "Combat Heat": [
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789
           ]
         }
       },
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": [
+          {
+            "key": "Ship Component/Drone Port/0",
+            "componentId": 115207,
+            "class": "CAP",
+            "tier": "T5",
+            "capacity": 24,
+            "occupied": 24,
+            "drones": [
+              {
+                "componentId": 116643,
+                "quantity": 12
+              },
+              {
+                "componentId": 116789,
+                "quantity": 12
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -2011,7 +2760,9 @@
           "Hull Reinforcement": [],
           "Missile Bay": [],
           "Drone Port": [],
-          "Mining Rig": []
+          "Mining Rig": [
+            114983
+          ]
         },
         "Ship Module": {
           "Ammo Module": [
@@ -2054,14 +2805,19 @@
         "Bombs": {},
         "Drones": {
           "Combat Energy": [],
-          "Combat Heat": [
-            116789
-          ]
+          "Combat Heat": []
         }
       },
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -2084,8 +2840,12 @@
           ],
           "Hull Reinforcement": [],
           "Missile Bay": [],
-          "Drone Port": [],
-          "Mining Rig": []
+          "Drone Port": [
+            115205
+          ],
+          "Mining Rig": [
+            114985
+          ]
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -2119,18 +2879,65 @@
         },
         "Bombs": {},
         "Drones": {
-          "Combat Energy": [],
-          "Combat Heat": [
-            116789
-          ],
           "Mining": [
+            116615,
+            116615,
+            116615,
+            116615,
+            116615,
+            116615,
+            116615,
+            116615,
+            116615,
+            116615,
+            116615,
             116615
+          ],
+          "Combat Heat": [
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789
           ]
         }
       },
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": [
+          {
+            "key": "Ship Component/Drone Port/0",
+            "componentId": 115205,
+            "class": "CAP",
+            "tier": "T3",
+            "capacity": 24,
+            "occupied": 24,
+            "drones": [
+              {
+                "componentId": 116615,
+                "quantity": 12
+              },
+              {
+                "componentId": 116789,
+                "quantity": 12
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -2166,7 +2973,9 @@
           "Drone Port": [
             115207
           ],
-          "Mining Rig": []
+          "Mining Rig": [
+            114987
+          ]
         },
         "Ship Module": {
           "Ammo Module": [],
@@ -2183,10 +2992,7 @@
           ]
         },
         "Ship Weapons": {
-          "Heat": [
-            79163,
-            79163
-          ],
+          "Heat": [],
           "Energy": [
             "",
             "",
@@ -2209,28 +3015,7 @@
             "",
             ""
           ],
-          "Shockwave": [
-            78814,
-            78814,
-            78811,
-            78811,
-            78805,
-            78805,
-            78805,
-            78805,
-            78805,
-            78805,
-            78805,
-            78805,
-            78805,
-            78805,
-            78805,
-            78805,
-            78805,
-            78805,
-            78805,
-            78805
-          ]
+          "Shockwave": []
         },
         "Countermeasures": {
           "Energy Capacitor": [],
@@ -2246,12 +3031,33 @@
         },
         "Bombs": {},
         "Drones": {
-          "Combat Energy": [],
-          "Combat Heat": [
-            116789
-          ],
           "Mining": [
+            116615,
+            116615,
+            116615,
+            116615,
+            116615,
+            116615,
+            116615,
+            116615,
+            116615,
+            116615,
+            116615,
             116615
+          ],
+          "Combat Heat": [
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789
           ]
         }
       },
@@ -2259,6 +3065,32 @@
       "_convertMetadata": {
         "Ship Module": {},
         "Ship Weapons": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": [
+          {
+            "key": "Ship Component/Drone Port/0",
+            "componentId": 115207,
+            "class": "CAP",
+            "tier": "T5",
+            "capacity": 24,
+            "occupied": 24,
+            "drones": [
+              {
+                "componentId": 116615,
+                "quantity": 12
+              },
+              {
+                "componentId": 116789,
+                "quantity": 12
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -2365,15 +3197,20 @@
         "Bombs": {},
         "Drones": {
           "Combat Energy": [],
-          "Combat Heat": [
-            116789
-          ]
+          "Combat Heat": []
         }
       },
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {},
         "Ship Weapons": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -2402,7 +3239,9 @@
             115083,
             115083
           ],
-          "Drone Port": [],
+          "Drone Port": [
+            115205
+          ],
           "Mining Rig": []
         },
         "Ship Module": {
@@ -2514,12 +3353,33 @@
         },
         "Bombs": {},
         "Drones": {
-          "Combat Energy": [],
-          "Combat Heat": [
-            116789
-          ],
           "Combat Kinetic": [
+            116654,
+            116654,
+            116654,
+            116654,
+            116654,
+            116654,
+            116654,
+            116654,
+            116654,
+            116654,
+            116654,
             116654
+          ],
+          "Combat Heat": [
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789
           ]
         }
       },
@@ -2529,6 +3389,32 @@
         "Ship Weapons": {},
         "Missiles": {},
         "Countermeasures": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": [
+          {
+            "key": "Ship Component/Drone Port/0",
+            "componentId": 115205,
+            "class": "CAP",
+            "tier": "T3",
+            "capacity": 24,
+            "occupied": 24,
+            "drones": [
+              {
+                "componentId": 116654,
+                "quantity": 12
+              },
+              {
+                "componentId": 116789,
+                "quantity": 12
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -2675,12 +3561,33 @@
         },
         "Bombs": {},
         "Drones": {
-          "Combat Energy": [],
-          "Combat Heat": [
-            116789
-          ],
           "Combat Kinetic": [
+            116654,
+            116654,
+            116654,
+            116654,
+            116654,
+            116654,
+            116654,
+            116654,
+            116654,
+            116654,
+            116654,
             116654
+          ],
+          "Combat Heat": [
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789
           ]
         }
       },
@@ -2690,6 +3597,32 @@
         "Ship Weapons": {},
         "Missiles": {},
         "Countermeasures": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": [
+          {
+            "key": "Ship Component/Drone Port/0",
+            "componentId": 115207,
+            "class": "CAP",
+            "tier": "T5",
+            "capacity": 24,
+            "occupied": 24,
+            "drones": [
+              {
+                "componentId": 116654,
+                "quantity": 12
+              },
+              {
+                "componentId": 116789,
+                "quantity": 12
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -2774,15 +3707,20 @@
         "Bombs": {},
         "Drones": {
           "Combat Energy": [],
-          "Combat Heat": [
-            116789
-          ]
+          "Combat Heat": []
         }
       },
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {},
         "Ship Weapons": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -2811,7 +3749,9 @@
             115083,
             115083
           ],
-          "Drone Port": [],
+          "Drone Port": [
+            115205
+          ],
           "Mining Rig": []
         },
         "Ship Module": {
@@ -2896,9 +3836,29 @@
           "Combat Energy": [
             116684,
             116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
             116684
           ],
           "Combat Heat": [
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
             116789
           ]
         }
@@ -2909,6 +3869,32 @@
         "Ship Weapons": {},
         "Missiles": {},
         "Countermeasures": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": [
+          {
+            "key": "Ship Component/Drone Port/0",
+            "componentId": 115205,
+            "class": "CAP",
+            "tier": "T3",
+            "capacity": 24,
+            "occupied": 24,
+            "drones": [
+              {
+                "componentId": 116684,
+                "quantity": 18
+              },
+              {
+                "componentId": 116789,
+                "quantity": 6
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -3034,9 +4020,29 @@
           "Combat Energy": [
             116684,
             116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
+            116684,
             116684
           ],
           "Combat Heat": [
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
             116789
           ]
         }
@@ -3047,6 +4053,32 @@
         "Ship Weapons": {},
         "Missiles": {},
         "Countermeasures": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": [
+          {
+            "key": "Ship Component/Drone Port/0",
+            "componentId": 115207,
+            "class": "CAP",
+            "tier": "T5",
+            "capacity": 24,
+            "occupied": 24,
+            "drones": [
+              {
+                "componentId": 116684,
+                "quantity": 18
+              },
+              {
+                "componentId": 116789,
+                "quantity": 6
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -3153,15 +4185,20 @@
         "Bombs": {},
         "Drones": {
           "Combat Energy": [],
-          "Combat Heat": [
-            116789
-          ]
+          "Combat Heat": []
         }
       },
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {},
         "Ship Weapons": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -3190,7 +4227,9 @@
             115083,
             115083
           ],
-          "Drone Port": [],
+          "Drone Port": [
+            115205
+          ],
           "Mining Rig": []
         },
         "Ship Module": {
@@ -3310,12 +4349,33 @@
         },
         "Bombs": {},
         "Drones": {
-          "Combat Energy": [],
-          "Combat Heat": [
-            116789
-          ],
           "Combat EMP": [
+            116706,
+            116706,
+            116706,
+            116706,
+            116706,
+            116706,
+            116706,
+            116706,
+            116706,
+            116706,
+            116706,
             116706
+          ],
+          "Combat Heat": [
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789
           ]
         }
       },
@@ -3325,6 +4385,32 @@
         "Ship Weapons": {},
         "Missiles": {},
         "Countermeasures": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": [
+          {
+            "key": "Ship Component/Drone Port/0",
+            "componentId": 115205,
+            "class": "CAP",
+            "tier": "T3",
+            "capacity": 24,
+            "occupied": 24,
+            "drones": [
+              {
+                "componentId": 116706,
+                "quantity": 12
+              },
+              {
+                "componentId": 116789,
+                "quantity": 12
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -3485,12 +4571,33 @@
         },
         "Bombs": {},
         "Drones": {
-          "Combat Energy": [],
-          "Combat Heat": [
-            116789
-          ],
           "Combat EMP": [
+            116706,
+            116706,
+            116706,
+            116706,
+            116706,
+            116706,
+            116706,
+            116706,
+            116706,
+            116706,
+            116706,
             116706
+          ],
+          "Combat Heat": [
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789
           ]
         }
       },
@@ -3500,6 +4607,32 @@
         "Ship Weapons": {},
         "Missiles": {},
         "Countermeasures": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": [
+          {
+            "key": "Ship Component/Drone Port/0",
+            "componentId": 115207,
+            "class": "CAP",
+            "tier": "T5",
+            "capacity": 24,
+            "occupied": 24,
+            "drones": [
+              {
+                "componentId": 116706,
+                "quantity": 12
+              },
+              {
+                "componentId": 116789,
+                "quantity": 12
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -3606,15 +4739,20 @@
         "Bombs": {},
         "Drones": {
           "Combat Energy": [],
-          "Combat Heat": [
-            116789
-          ]
+          "Combat Heat": []
         }
       },
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {},
         "Ship Weapons": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -3643,7 +4781,9 @@
             115083,
             115083
           ],
-          "Drone Port": [],
+          "Drone Port": [
+            115205
+          ],
           "Mining Rig": []
         },
         "Ship Module": {
@@ -3763,12 +4903,33 @@
         },
         "Bombs": {},
         "Drones": {
-          "Combat Energy": [],
-          "Combat Heat": [
-            116789
-          ],
           "Combat Superchill": [
+            116730,
+            116730,
+            116730,
+            116730,
+            116730,
+            116730,
+            116730,
+            116730,
+            116730,
+            116730,
+            116730,
             116730
+          ],
+          "Combat Heat": [
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789
           ]
         }
       },
@@ -3778,6 +4939,32 @@
         "Ship Weapons": {},
         "Missiles": {},
         "Countermeasures": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": [
+          {
+            "key": "Ship Component/Drone Port/0",
+            "componentId": 115205,
+            "class": "CAP",
+            "tier": "T3",
+            "capacity": 24,
+            "occupied": 24,
+            "drones": [
+              {
+                "componentId": 116730,
+                "quantity": 12
+              },
+              {
+                "componentId": 116789,
+                "quantity": 12
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -3938,12 +5125,33 @@
         },
         "Bombs": {},
         "Drones": {
-          "Combat Energy": [],
-          "Combat Heat": [
-            116789
-          ],
           "Combat Superchill": [
+            116730,
+            116730,
+            116730,
+            116730,
+            116730,
+            116730,
+            116730,
+            116730,
+            116730,
+            116730,
+            116730,
             116730
+          ],
+          "Combat Heat": [
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789
           ]
         }
       },
@@ -3953,6 +5161,32 @@
         "Ship Weapons": {},
         "Missiles": {},
         "Countermeasures": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": [
+          {
+            "key": "Ship Component/Drone Port/0",
+            "componentId": 115207,
+            "class": "CAP",
+            "tier": "T5",
+            "capacity": 24,
+            "occupied": 24,
+            "drones": [
+              {
+                "componentId": 116730,
+                "quantity": 12
+              },
+              {
+                "componentId": 116789,
+                "quantity": 12
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -4059,15 +5293,20 @@
         "Bombs": {},
         "Drones": {
           "Combat Energy": [],
-          "Combat Heat": [
-            116789
-          ]
+          "Combat Heat": []
         }
       },
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {},
         "Ship Weapons": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -4096,7 +5335,9 @@
             115083,
             115083
           ],
-          "Drone Port": [],
+          "Drone Port": [
+            115205
+          ],
           "Mining Rig": []
         },
         "Ship Module": {
@@ -4216,12 +5457,33 @@
         },
         "Bombs": {},
         "Drones": {
-          "Combat Energy": [],
-          "Combat Heat": [
-            116789
-          ],
           "Combat Shockwave": [
+            116745,
+            116745,
+            116745,
+            116745,
+            116745,
+            116745,
+            116745,
+            116745,
+            116745,
+            116745,
+            116745,
             116745
+          ],
+          "Combat Heat": [
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789
           ]
         }
       },
@@ -4231,6 +5493,32 @@
         "Ship Weapons": {},
         "Missiles": {},
         "Countermeasures": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": [
+          {
+            "key": "Ship Component/Drone Port/0",
+            "componentId": 115205,
+            "class": "CAP",
+            "tier": "T3",
+            "capacity": 24,
+            "occupied": 24,
+            "drones": [
+              {
+                "componentId": 116745,
+                "quantity": 12
+              },
+              {
+                "componentId": 116789,
+                "quantity": 12
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -4391,12 +5679,33 @@
         },
         "Bombs": {},
         "Drones": {
-          "Combat Energy": [],
-          "Combat Heat": [
-            116789
-          ],
           "Combat Shockwave": [
+            116745,
+            116745,
+            116745,
+            116745,
+            116745,
+            116745,
+            116745,
+            116745,
+            116745,
+            116745,
+            116745,
             116745
+          ],
+          "Combat Heat": [
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789
           ]
         }
       },
@@ -4406,6 +5715,32 @@
         "Ship Weapons": {},
         "Missiles": {},
         "Countermeasures": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": [
+          {
+            "key": "Ship Component/Drone Port/0",
+            "componentId": 115207,
+            "class": "CAP",
+            "tier": "T5",
+            "capacity": 24,
+            "occupied": 24,
+            "drones": [
+              {
+                "componentId": 116745,
+                "quantity": 12
+              },
+              {
+                "componentId": 116789,
+                "quantity": 12
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -4512,15 +5847,20 @@
         "Bombs": {},
         "Drones": {
           "Combat Energy": [],
-          "Combat Heat": [
-            116789
-          ]
+          "Combat Heat": []
         }
       },
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {},
         "Ship Weapons": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -4549,7 +5889,9 @@
             115083,
             115083
           ],
-          "Drone Port": [],
+          "Drone Port": [
+            115205
+          ],
           "Mining Rig": []
         },
         "Ship Module": {
@@ -4668,12 +6010,33 @@
         },
         "Bombs": {},
         "Drones": {
-          "Combat Energy": [],
-          "Combat Heat": [
-            116789
-          ],
           "Combat Gray Goo": [
+            116768,
+            116768,
+            116768,
+            116768,
+            116768,
+            116768,
+            116768,
+            116768,
+            116768,
+            116768,
+            116768,
             116768
+          ],
+          "Combat Heat": [
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789
           ]
         }
       },
@@ -4683,6 +6046,32 @@
         "Ship Weapons": {},
         "Missiles": {},
         "Countermeasures": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": [
+          {
+            "key": "Ship Component/Drone Port/0",
+            "componentId": 115205,
+            "class": "CAP",
+            "tier": "T3",
+            "capacity": 24,
+            "occupied": 24,
+            "drones": [
+              {
+                "componentId": 116768,
+                "quantity": 12
+              },
+              {
+                "componentId": 116789,
+                "quantity": 12
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -4842,12 +6231,33 @@
         },
         "Bombs": {},
         "Drones": {
-          "Combat Energy": [],
-          "Combat Heat": [
-            116789
-          ],
           "Combat Gray Goo": [
+            116768,
+            116768,
+            116768,
+            116768,
+            116768,
+            116768,
+            116768,
+            116768,
+            116768,
+            116768,
+            116768,
             116768
+          ],
+          "Combat Heat": [
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789
           ]
         }
       },
@@ -4857,6 +6267,32 @@
         "Ship Weapons": {},
         "Missiles": {},
         "Countermeasures": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": [
+          {
+            "key": "Ship Component/Drone Port/0",
+            "componentId": 115207,
+            "class": "CAP",
+            "tier": "T5",
+            "capacity": 24,
+            "occupied": 24,
+            "drones": [
+              {
+                "componentId": 116768,
+                "quantity": 12
+              },
+              {
+                "componentId": 116789,
+                "quantity": 12
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -4959,15 +6395,20 @@
         "Bombs": {},
         "Drones": {
           "Combat Energy": [],
-          "Combat Heat": [
-            116789
-          ]
+          "Combat Heat": []
         }
       },
       "locked": true,
       "_convertMetadata": {
         "Ship Module": {},
         "Ship Weapons": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": []
       }
     },
     {
@@ -4996,7 +6437,9 @@
             115083,
             115083
           ],
-          "Drone Port": [],
+          "Drone Port": [
+            115205
+          ],
           "Mining Rig": []
         },
         "Ship Module": {
@@ -5107,8 +6550,30 @@
         },
         "Bombs": {},
         "Drones": {
-          "Combat Energy": [],
           "Combat Heat": [
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
             116789
           ]
         }
@@ -5119,6 +6584,28 @@
         "Ship Weapons": {},
         "Missiles": {},
         "Countermeasures": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": [
+          {
+            "key": "Ship Component/Drone Port/0",
+            "componentId": 115205,
+            "class": "CAP",
+            "tier": "T3",
+            "capacity": 24,
+            "occupied": 24,
+            "drones": [
+              {
+                "componentId": 116789,
+                "quantity": 24
+              }
+            ]
+          }
+        ]
       }
     },
     {
@@ -5270,8 +6757,30 @@
         },
         "Bombs": {},
         "Drones": {
-          "Combat Energy": [],
           "Combat Heat": [
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
+            116789,
             116789
           ]
         }
@@ -5282,6 +6791,28 @@
         "Ship Weapons": {},
         "Missiles": {},
         "Countermeasures": {}
+      },
+      "droneQuantityVersion": 1,
+      "droneLoadout": {
+        "version": 1,
+        "quantitySemantics": "physical-units",
+        "slotsPerDrone": 1,
+        "ports": [
+          {
+            "key": "Ship Component/Drone Port/0",
+            "componentId": 115207,
+            "class": "CAP",
+            "tier": "T5",
+            "capacity": 24,
+            "occupied": 24,
+            "drones": [
+              {
+                "componentId": 116789,
+                "quantity": 24
+              }
+            ]
+          }
+        ]
       }
     }
   ],

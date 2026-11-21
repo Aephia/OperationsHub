@@ -12,7 +12,7 @@
     <link rel="icon" type="image/jpeg" href="../Images/channels4_profile.jpg">
     <link rel="stylesheet" href="../ResourcesExplorer/styles.css?v=20261001">
     <link rel="stylesheet" href="../ResourcesExplorer/resource-visual.css?v=20261023">
-    <link rel="stylesheet" href="c4.css?v=20261110a">
+    <link rel="stylesheet" href="c4.css?v=20261120a">
 </head>
 <body class="c4-app">
     <!-- v2 (2026-11-07): the map IS the page. Everything else floats on it: brand + KPI bar top, map controls left,
@@ -38,6 +38,8 @@
             <div class="c4-dock-head">
                 <nav class="c4-tabs" id="c4Tabs" role="tablist">
                     <button class="c4-tab active" data-tab="mining" role="tab" title="Mining"><i class="ti ti-mining" aria-hidden="true"></i><span>Mining</span></button>
+                    <!-- Resource (2026-11-13): pick a resource, the map shows each system's richness for it -->
+                    <button class="c4-tab" data-tab="resource" role="tab" title="Resource richness"><i class="ti ti-resource" aria-hidden="true"></i><span>Resource</span></button>
                     <button class="c4-tab" data-tab="combat" role="tab" title="Combat"><i class="ti ti-combat" aria-hidden="true"></i><span>Combat</span></button>
                     <button class="c4-tab" data-tab="fleets" role="tab" title="Fleets"><i class="ti ti-fleets" aria-hidden="true"></i><span>Fleets</span></button>
                     <button class="c4-tab" data-tab="owners" role="tab" title="Owners"><i class="ti ti-owners" aria-hidden="true"></i><span>Owners</span></button>
@@ -50,6 +52,7 @@
             <label class="c4-find"><span>Find owner</span><input id="c4Find" type="search" placeholder="owner name, profile address or fleet name" autocomplete="off" spellcheck="false"></label>
             <div class="c4-dock-body" id="c4Main">
                 <section class="c4-sec active" id="sec-mining"></section>
+                <section class="c4-sec" id="sec-resource"></section>
                 <section class="c4-sec" id="sec-combat"></section>
                 <section class="c4-sec" id="sec-fleets"></section>
                 <section class="c4-sec" id="sec-owners"></section>
@@ -65,9 +68,9 @@
     <aside class="c4-drawer" id="c4Drawer" aria-hidden="true" tabindex="-1"></aside>
     <div class="c4-ctip" id="c4ChartTip" hidden></div>
 
-    <script src="c4-ui-model.js?v=20261108f"></script>
+    <script src="c4-ui-model.js?v=20261120b"></script>
     <script src="c4-store.js?v=20261108e"></script>
-    <script src="app.js?v=20261108f"></script>
+    <script src="app.js?v=20261120c"></script>
     <!-- quiet interface sounds (2026-11-10); which elements sound is declared here, the on/off button goes in the top bar -->
     <script src="../SFX/ui-sfx.js?v=20261110d" data-tap=".c4-chip, [data-layer], [data-filter], [data-state], [data-more], th[data-sort], [data-dac-scope], [data-dac-metric], [data-dac-focus], [data-dac-colour], [data-dac-example], [data-copy], [data-clear], [data-close], [data-age-detail], [data-c4-refresh], [data-c4-retry], [data-owner], [data-sys], [data-body], [data-ast], [data-focus-owner], [data-enter-system], [data-galaxy], [data-fx], .c4-feed li, .c4-dock-toggle" data-tab=".c4-tab" data-open-class="#c4Drawer:open, #c4SysPanel:open" data-mute-mount="#c4Topbar"></script>
 </body>

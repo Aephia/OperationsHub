@@ -91,7 +91,59 @@ export function miningBySystem(latest) {
 // ---------------------------------------------------------------- in-map stat layers (task #32, setStatLayer)
 // Every number comes from latest.json / events.json, the same fields the panels read. One entry per column:
 // {key, x, y, v (the value the height encodes), fa (colour key or 'hot'), sys (address to pick, or null), name, line}
-export const STAT_LAYERS = ['mining', 'combat', 'fleets', 'owners', 'dacs']; // 'dacs' (task #53): built from setDacs, not statColumns
+export const STAT_LAYERS = ['mining', 'resource', 'combat', 'fleets', 'owners', 'dacs']; // 'dacs' (task #53): built from setDacs, not statColumns
+// Resource layer (2026-11-13, owner: "select the resource then it will show a bar depending on the richness"; drawn as
+// rings since the same evening, see resourceRing): one row per system holding the chosen resource. Value = the SUM of
+// `rich` over the system's bodies that list it (three rich bodies make a bigger ring than one); the callout carries the best single body and the body count. A body "holds" a
+// resource when its res[] lists that name with a finite richness > 0 (a duplicate entry on one body counts once, at its
+// best). Bodies with no address or no system, or in a system the snapshot does not place, are left out. A sum that
+// overflows is held at Number.MAX_VALUE (no non-finite height ever reaches the columns). The SAME rule is ported to
+// c4-ui-model.js resourceSystems (the panel); Test/c4-live-check.js [18] recounts both from bodies.json by hand.
+export const RES_HEX = '#10b981'; // = --accent-green (ResourcesExplorer/styles.css), the Resource tab's accent
+// The map draws the resource layer as RINGS on the plane (owner 2026-11-13: "something like the rings we have from
+// combat ... and no bars"), one per system above. resourceRing maps a system's sum to its ring: t = where the sum sits
+// between the resource's smallest and largest system sum, LINEAR (all equal -> t 1); radius RES_RING_R[0]..[1] map units
+// and brightness RES_RING_B..1, both by t. Linear, not sqrt: the sums bunch in the middle (Arco: p10..p90 = 13..50 % of
+// the range) and sqrt drew them all within ~1 px of the richest at the home zoom - the rich system did not stand out.
+// Round 2 (lead 2026-11-13 21:05, "the rings do not read" at the home view): sized like the combat heat rings - the
+// scene multiplies this radius by the same clamp(uZoom, 0.6, 1.3) the combat rings use, so at the home view a ring is
+// ~5 px (poorest) to ~17 px (richest) round, always AROUND the system dot; neighbours (median 1.12 units apart) overlap,
+// which the thin stroke keeps legible. Brightness floor 0.55 so the poorest ring still shows over the territory tint.
+export const RES_RING_R = [0.55, 1.65], RES_RING_B = 0.55;
+export function resourceRing(v, vmin, vmax) {
+  const t = num(v) && num(vmin) && num(vmax) && vmax > vmin ? Math.min(1, Math.max(0, (v - vmin) / (vmax - vmin))) : 1;
+  return {t, r: RES_RING_R[0] + (RES_RING_R[1] - RES_RING_R[0]) * t, b: RES_RING_B + (1 - RES_RING_B) * t};
+}
+// WHERE in the system the resource sits (owner 2026-11-15: "the green circles should be dotted if the deposit is asteroid
+// only and solid and dotted line is both"): 'belt' = only on asteroid belts (a ship can mine it, no claim stake can sit
+// there) -> a DOTTED ring; 'planet' = only on planets -> a SOLID ring; 'both' -> a solid ring with a dotted ring around
+// it. RES_WHERE_CODE is the number the ring shader reads (iK). A body is a belt when its k is 'asteroid'.
+export const RES_WHERE_CODE = {planet: 0, belt: 1, both: 2};
+export const RES_WHERE_TEXT = {planet: 'planets only', belt: 'asteroid belt only', both: 'planets and asteroid belt'};
+export const resourceWhere = (belts, planets) => (belts > 0 && planets > 0 ? 'both' : belts > 0 ? 'belt' : 'planet');
+export const fmtRich = (v) => { const r = Math.round(v * 100) / 100; return String(num(r) ? r : v); };
+const finiteSum = (s) => { const r = Math.round(s * 1e6) / 1e6; return num(r) ? r : num(s) ? s : Number.MAX_VALUE; };
+export function resourceSystems(bodies, systems, name) {
+  const sysBy = new Map((systems || []).filter((s) => s && num(s.x) && num(s.y)).map((s) => [s.a, s]));
+  const by = new Map();
+  if (typeof name !== 'string' || !name) return [];
+  for (const b of bodies || []) {
+    if (!b || !b.a || !b.sys || !Array.isArray(b.res) || !sysBy.has(b.sys)) continue;
+    let best = 0;
+    for (const r of b.res) if (r && r.r === name && num(r.rich) && r.rich > best) best = r.rich;
+    if (!(best > 0)) continue;
+    let m = by.get(b.sys);
+    if (!m) { const s = sysBy.get(b.sys); m = {sys: b.sys, x: s.x, y: s.y, name: s.n || 'System', sum: 0, best: 0, n: 0, top: null, belts: 0, planets: 0}; by.set(b.sys, m); }
+    m.sum += best; m.n++;
+    if (b.k === 'asteroid') m.belts++; else m.planets++; // the same test the system view uses for a belt (bodySlug)
+    if (best > m.best) { m.best = best; m.top = b.a; }
+  }
+  for (const m of by.values()) {
+    m.sum = finiteSum(m.sum); // 1.6 + 1.6 + 1.6 reads 4.8, not 4.800000000000001
+    m.where = resourceWhere(m.belts, m.planets);
+  }
+  return [...by.values()].sort((p, q) => q.sum - p.sum || q.best - p.best || (p.sys < q.sys ? -1 : p.sys > q.sys ? 1 : 0));
+}
 const SEP = ' · '; // middle dot between the facts of a callout line (HTML collapses double spaces)
 const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 export function fmtNum(v) {
@@ -116,6 +168,14 @@ export function statColumns(kind, latest, events, opt = {}) {
     for (const [a, m] of miningBySystem(latest)) {
       const s = sysBy.get(a); if (!s || !(m.ups > 0)) continue;
       cols.push({key: a, x: s.x, y: s.y, v: m.ups, fa: m.fa, sys: a, name: s.n || 'System', line: `${fmtNum(m.ups)} u/s${SEP}${plural(m.miners, 'miner')}`, miners: m.miners});
+    }
+  } else if (kind === 'resource') {
+    // opt.res = the chosen resource name, opt.bodies = bodies.json `bodies` (the scene's bodiesAll); one accent colour
+    for (const m of resourceSystems(opt.bodies, latest.systems, opt.res)) {
+      if (!num(m.sum) || !(m.sum > 0)) continue; // never a non-finite height (review F6)
+      cols.push({key: m.sys, x: m.x, y: m.y, v: m.sum, fa: 'res', hex: RES_HEX, sys: m.sys, name: m.name,
+        line: `${opt.res}${SEP}total ${fmtRich(m.sum)}${SEP}best ${fmtRich(m.best)}${SEP}${m.n} ${m.n === 1 ? 'body' : 'bodies'}${SEP}${RES_WHERE_TEXT[m.where]}`,
+        best: m.best, bodies: m.n, where: m.where, belts: m.belts, planets: m.planets});
     }
   } else if (kind === 'combat') {
     // ONE rule with the panels (combatSpots below): every event to its nearest system within 1.2, else a deep-space cell;
@@ -159,7 +219,8 @@ export function statColumns(kind, latest, events, opt = {}) {
     }
   }
   // combat keeps combatSpots' pinned order (n desc, last desc, key asc - task #44); the others: v desc, then key
-  return kind === 'combat' ? cols : cols.sort((p, q) => q.v - p.v || (p.key < q.key ? -1 : 1));
+  // resource keeps resourceSystems' order (sum desc, best desc, address asc) so the map's callouts rank like the panel
+  return kind === 'combat' || kind === 'resource' ? cols : cols.sort((p, q) => q.v - p.v || (p.key < q.key ? -1 : 1));
 }
 // Column height (world units at zoom scale 1) for value v against the layer's max: log scale, a floor so a 1 still shows.
 export const STAT_H = 12;

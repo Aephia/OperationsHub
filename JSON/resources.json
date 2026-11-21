@@ -187,7 +187,7 @@
       "name": "Frostcore Bryophyte",
       "category": "raw",
       "tier": 3,
-      "description": "Frostcore Bryophyte - Tier 3 raw",
+      "description": "Frostcore Bryophyte - Tier 3 faction resource",
       "stackSize": 100,
       "baseValue": 30,
       "planet_types": [
@@ -201,7 +201,7 @@
       "name": "Mind Shade Fungus",
       "category": "raw",
       "tier": 3,
-      "description": "Mind Shade Fungus - Tier 3 raw",
+      "description": "Mind Shade Fungus - Tier 3 faction resource",
       "stackSize": 100,
       "baseValue": 30,
       "planet_types": [
@@ -215,7 +215,7 @@
       "name": "Aegis Barrier Cactus",
       "category": "raw",
       "tier": 3,
-      "description": "Aegis Barrier Cactus - Tier 3 raw",
+      "description": "Aegis Barrier Cactus - Tier 3 faction resource",
       "stackSize": 100,
       "baseValue": 30,
       "planet_types": [
@@ -497,16 +497,16 @@
       "id": "arco",
       "name": "Arco",
       "category": "raw",
-      "tier": 1,
-      "description": "Arco - Tier 1 raw",
+      "tier": 2,
+      "description": "Arco - Tier 2 faction crystal; matched T2-T5 placement profiles",
       "stackSize": 100,
-      "baseValue": 10,
+      "baseValue": 20,
       "planet_types": [
         "terrestrial",
         "barren",
         "gas-giant"
       ],
-      "faction": null,
+      "faction": "USTUR",
       "c4_status": "v1"
     },
     {
@@ -649,7 +649,7 @@
       "name": "Diamond",
       "category": "raw",
       "tier": 2,
-      "description": "Diamond - Tier 2 raw",
+      "description": "Diamond - Tier 2 faction crystal; matched T2-T5 placement profiles",
       "stackSize": 100,
       "baseValue": 20,
       "planet_types": [
@@ -664,10 +664,10 @@
       "id": "dodiline-crystals",
       "name": "Dodiline Crystals",
       "category": "raw",
-      "tier": 4,
-      "description": "Dodiline Crystals - Tier 4 raw",
+      "tier": 5,
+      "description": "Dodiline Crystals - Tier 5 faction resource",
       "stackSize": 100,
-      "baseValue": 40,
+      "baseValue": 50,
       "planet_types": [
         "volcanic"
       ],
@@ -766,7 +766,7 @@
       "name": "Germanium Ore",
       "category": "raw",
       "tier": 4,
-      "description": "Germanium Ore - Tier 4 raw",
+      "description": "Germanium Ore - Tier 4 faction resource",
       "stackSize": 100,
       "baseValue": 40,
       "planet_types": [
@@ -780,10 +780,10 @@
       "id": "gold-ore",
       "name": "Gold Ore",
       "category": "raw",
-      "tier": 2,
-      "description": "Gold Ore - Tier 2 raw",
+      "tier": 4,
+      "description": "Gold Ore - Tier 4 faction resource",
       "stackSize": 100,
-      "baseValue": 20,
+      "baseValue": 40,
       "planet_types": [
         "terrestrial"
       ],
@@ -809,10 +809,10 @@
       "id": "hicenium-crystals",
       "name": "Hicenium Crystals",
       "category": "raw",
-      "tier": 2,
-      "description": "Hicenium Crystals - Tier 2 raw",
+      "tier": 5,
+      "description": "Hicenium Crystals - Tier 5 faction resource",
       "stackSize": 100,
-      "baseValue": 20,
+      "baseValue": 50,
       "planet_types": [
         "ice-giant"
       ],
@@ -882,10 +882,10 @@
       "id": "jasphorus-crystals",
       "name": "Jasphorus Crystals",
       "category": "raw",
-      "tier": 2,
-      "description": "Jasphorus Crystals - Tier 2 raw",
+      "tier": 5,
+      "description": "Jasphorus Crystals - Tier 5 faction resource",
       "stackSize": 100,
-      "baseValue": 20,
+      "baseValue": 50,
       "planet_types": [
         "barren"
       ],
@@ -1001,10 +1001,10 @@
       "id": "nanosil",
       "name": "Nanosil",
       "category": "raw",
-      "tier": 3,
-      "description": "Nanosil - Tier 3 raw",
+      "tier": 2,
+      "description": "Nanosil - Tier 2 faction resource",
       "stackSize": 100,
-      "baseValue": 30,
+      "baseValue": 20,
       "planet_types": [
         "dark"
       ],
@@ -1220,10 +1220,10 @@
       "id": "raw-chisenic",
       "name": "Raw Chisenic",
       "category": "raw",
-      "tier": 2,
-      "description": "Raw Chisenic - Tier 2 raw",
+      "tier": 3,
+      "description": "Raw Chisenic - Tier 3 faction resource",
       "stackSize": 100,
-      "baseValue": 20,
+      "baseValue": 30,
       "planet_types": [
         "dark"
       ],
@@ -1235,7 +1235,7 @@
       "name": "Resonium Ore",
       "category": "raw",
       "tier": 2,
-      "description": "Resonium Ore - Tier 2 raw",
+      "description": "Resonium Ore - Tier 2 faction resource",
       "stackSize": 100,
       "baseValue": 20,
       "planet_types": [
@@ -1279,7 +1279,7 @@
       "name": "Rochinol",
       "category": "raw",
       "tier": 2,
-      "description": "Rochinol - Tier 2 raw",
+      "description": "Rochinol - Tier 2 faction crystal; matched T2-T5 placement profiles",
       "stackSize": 100,
       "baseValue": 20,
       "planet_types": [
@@ -1287,7 +1287,7 @@
         "ice-giant",
         "gas-giant"
       ],
-      "faction": null,
+      "faction": "ONI",
       "c4_status": "v1"
     },
     {
@@ -1430,10 +1430,10 @@
       "id": "tenon-gas",
       "name": "Tenon Gas",
       "category": "raw",
-      "tier": 2,
-      "description": "Tenon Gas - Tier 2 raw",
+      "tier": 4,
+      "description": "Tenon Gas - Tier 4 faction resource",
       "stackSize": 100,
-      "baseValue": 20,
+      "baseValue": 40,
       "planet_types": [
         "gas-giant"
       ],
@@ -1476,7 +1476,7 @@
       "name": "Thermoplastic Resin",
       "category": "raw",
       "tier": 2,
-      "description": "Thermoplastic Resin - Tier 2 raw",
+      "description": "Thermoplastic Resin - Tier 2 faction resource",
       "stackSize": 100,
       "baseValue": 20,
       "planet_types": [
@@ -1566,13 +1566,13 @@
       "name": "Vanadium Ore",
       "category": "raw",
       "tier": 3,
-      "description": "Vanadium Ore - Tier 3 raw",
+      "description": "Vanadium Ore - Tier 3 faction resource",
       "stackSize": 100,
       "baseValue": 30,
       "planet_types": [
         "barren"
       ],
-      "faction": null,
+      "faction": "MUD",
       "c4_status": "v1"
     },
     {
@@ -1580,7 +1580,7 @@
       "name": "Viscovite Crystals",
       "category": "raw",
       "tier": 3,
-      "description": "Viscovite Crystals - Tier 3 raw",
+      "description": "Viscovite Crystals - Tier 3 faction resource",
       "stackSize": 100,
       "baseValue": 30,
       "planet_types": [

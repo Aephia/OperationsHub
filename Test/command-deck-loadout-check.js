@@ -21,7 +21,9 @@ const D = {
     buildings: load('Data/buildings-data.js'), ships: load('Data/ships-data.js'), recipes: load('Data/recipes-data.js'),
     resources: load('Data/resources-data.js'), planets: load('Data/planet-data.js'), research: load('Data/research-data.js')
 };
-load('ResourcesExplorer/resource-model.js'); load('RecipeExplorer/recipe-model.js'); load('HubExplorer/hub-model.js'); load('CommandDeck/deck-model.js');
+// --old-model=<dir>: load deck-model.js from <dir> (the pre-cultivation copy: the cultivation checks must FAIL)
+const oldModel = process.argv.find(a => a.startsWith('--old-model='));
+load('ResourcesExplorer/resource-model.js'); load('RecipeExplorer/recipe-model.js'); load('HubExplorer/hub-model.js'); require(oldModel ? path.join(oldModel.slice(12), 'deck-model.js') : path.join(ROOT, 'CommandDeck/deck-model.js'));
 require(path.join(SRC, 'deck-loadout.js'));
 const { ResearchModel, StakeEngine, Empire, Loadout } = window.CommandDeck;
 const rm = new window.ResourceModel(D.resources.resources, D.recipes.recipes, D.planets, D.buildings.buildings);
@@ -51,13 +53,37 @@ function check(label, got, want) {
 }
 const near = (a, b, t) => a != null && Math.abs(a - b) <= t;
 const safe = f => { try { return f(); } catch (e) { return 'THROWS ' + e.message; } };
+// PENDING (2026-11-19): a known open question the data cannot settle yet. Printed as `PENDING <label>: <value>` and
+// counted on its own; it never touches pass or fail, so it never sets exit 1 and cannot hide a FAIL. (The scanning
+// pending item lives in command-deck-check.js; this suite declares none today but reports the count.)
+let pend = 0;
+function pending(label, got) {
+    // a throw inside a pending item is a FAIL (2026-11-19 review S4): only a returned value is PENDING
+    if (typeof got === 'function') { try { got = got(); } catch (e) { fail++; console.log(`FAIL  ${label}: THREW ${e.message}`); return; } }
+    pend++; console.log(`PENDING  ${label}: ${typeof got === 'string' ? got : JSON.stringify(got)}`); }
+// 2026-11-19 RULE-FREE: the export lists 12 physical drone units per drone port and the per-unit stacking rule is
+// unconfirmed, so drone-dependent figures (Mining Max 27.54/s was the one-unit-per-port reading) are checked against a
+// fresh ShipConfigCalculator run made here on the flat combat row and the raw configuration - not through the deck.
+// WHAT THIS GROUP DOES NOT PIN (2026-11-19 review S3): "= a fresh calculator run" uses the same ShipConfigCalculator as the
+// deck, so it cannot catch a wrong every-unit stacking. Values with every listed drone unit applied are UNPINNED until
+// the game's per-unit drone rule is confirmed; only the one-unit-per-port rung is pinned (see command-deck-check.js).
+const RF = ' [rule-free: every-unit drone values unpinned until the rule is confirmed]';
+const freshStat = (hull, cfgName, k) => {
+    const F = load('Data/ship-formulas-data.js'), c = new CalcClass({ multiplierStackingMode: 'linear' }), spm = {}; LO.statKeys.forEach(x => { spm[x] = [x]; });
+    c.setData({ componentsById: LO.componentsById, componentAttributes: F.componentAttributes, classScalingFormulas: F.classScalingFormulas, tierScalingFormulas: F.tierScalingFormulas, statPathMap: spm, statKeys: LO.statKeys });
+    const row = combat.allShips.find(s => s['Ship Name'] === hull), cfg = D.ships.ships.find(s => s.name === hull).configurations.find(x => x.name === cfgName);
+    return c.calculateModifiedStats(row, cfg).values[k];
+};
+const TAP_MM = freshStat('Armstrong IMP Tap', 'Mining Max', 'asteroid_mining_rate');
 
 // ---- B2: unpriced fits
 console.log('-- B2 unpriced fits');
 const KDM = LO.cost(LO.stats('Pearce X4', 'Kinetic Damage Max'));
 check('Pearce X4 Kinetic Damage Max: 0 unpriced components', KDM.unpriced.length, 0);
 check('  its weapon is the exact recipe from the component data: 4 x Kinetic Rapidfire XXS T5, nothing assumed', KDM.recipes.filter(r => /^Kinetic /.test(r.name)).map(r => [r.name, r.qty, r.assumed]), [['Kinetic Rapidfire XXS T5', 4, '']]);
-check('  raw units of the whole fit', KDM.rawUnits, v => Math.abs(v - 10335) < 1);
+// 2026-11-19 re-pin (was 10,335): re-derived from JSON/recipes.json with no hub code by
+// Tools/command-deck-derive/derive2.js (KDM_RAW_UNITS = 32,339, 24 raw kinds; see the README there)
+check('  raw units of the whole fit [derive2 KDM_RAW_UNITS]', KDM.rawUnits, v => Math.abs(v - 32339) < 1);
 const TYPE = { 'Ship Weapons': 'SHIP_WEAPONS', Missiles: 'MISSILES', Countermeasures: 'COUNTERMEASURES', 'Ship Component': 'SHIP_COMPONENTS', 'Ship Module': 'SHIP_MODULES', Drones: 'DRONE' };
 let unpricedConfigs = 0, totalConfigs = 0, mismatch = 0, assumedFits = 0; const left = new Set();
 LO.ships.forEach(s => LO.configsOf(s.name).forEach(c => { totalConfigs++; const k = LO.cost(LO.stats(s.name, c)); k.recipes.forEach(r => { if (rm.recipeByName.get(r.name).outputType !== TYPE[r.fit.category]) mismatch++; if (/variant assumed/.test(r.assumed)) assumedFits++; }); if (k.unpriced.length) { unpricedConfigs++; k.unpriced.forEach(u => left.add(`${u.name} ${u.cls} ${u.tier}`)); } }));
@@ -107,11 +133,12 @@ check('  a saved hull with no mining rate falls back to the Tap', safe(() => ct.
 // owner rule 2026-10-26: the hull takes a configuration, the stake an extractor count
 const ctL = new CalcTab(root(), { se, empire, rm, loadout: LO });
 check('hull config: Default equals the base row (Tap 19.192 / s, hold 32,270)', safe(() => { const f = ctL.fitted('Armstrong IMP Tap', 'Default'); return [f.rate, f.cargo, f.cfg]; }), [19.192, 32270, 'Default']);
-check('  Mining Max fits the Tap to 27.54 / s (Loadouts engine; the research skill records 27.54)', safe(() => ctL.fitted('Armstrong IMP Tap', 'Mining Max').rate), v => near(v, 27.54, 0.01));
+// 2026-11-19: was "fits the Tap to 27.54 / s" (one drone unit per port)
+check('  Mining Max fits the Tap to a fresh calculator run\'s rate, above the bare 19.192 / s' + RF, safe(() => ctL.fitted('Armstrong IMP Tap', 'Mining Max').rate), v => near(v, TAP_MM, 1e-9 * TAP_MM) && v > 19.192);
 check('  an unknown config name falls back to Default', safe(() => ctL.fitted('Armstrong IMP Tap', 'No Such Fit').cfg), 'Default');
 check('  the Tap offers its 48 configurations', safe(() => ctL.fitted('Armstrong IMP Tap', 'Default').cfgs.length), 48);
 STORE.s.calc.cfg = 'Mining Max';
-check('  compute() uses the saved config: the verdict hull mines 27.54 / s', safe(() => ctL.compute().ref.rate), v => near(v, 27.54, 0.01));
+check('  compute() uses the saved config: the verdict hull mines at the fresh Mining Max rate, not the bare 19.192' + RF, safe(() => ctL.compute().ref.rate), v => near(v, TAP_MM, 1e-9 * TAP_MM) && v > 19.192);
 STORE.s.calc.cfg = 'Default';
 const s3 = se.stakeWith(5, 'copper-ore', 3), s7 = se.fullStake(5, 'copper-ore');
 check('stake extractors: a T5 with 3 of 7 extractors makes 3 x 4.86 = 14.58 a tick, same storage, less crew', s3 && [s3.k, s3.max, Math.round(s3.perTick * 100) / 100, s3.storage === s7.storage, s3.crew < s7.crew], [3, 7, 14.58, true, true]);
@@ -123,10 +150,94 @@ check('  compute() uses the saved count for the chosen tier', safe(() => { const
 STORE.s.calc.ext = {};
 STORE.s.calc.ref = 'Armstrong IMP Tap';
 const pt = safe(() => ct.planetTypes('copper-ore', 1));
-check('measure tick: Terrestrial hub adds a 0.002 a tick passive on Copper Ore, Barren adds none', safe(() => [pt.get('Terrestrial'), pt.get('Barren')]), [0.002, 0]);
+// 2026-11-19 re-pin: no Barren body holds Copper Ore on this export, so the panel lists only the two types that do, each
+// with its T1 central hub's passive [derive2 COPPER_STAKE_TYPES, HUB_PASSIVE]
+check('measure tick: Copper Ore stands on Terrestrial and Oceanic only; each T1 hub adds a 0.002 a tick passive', safe(() => [Array.from(pt.keys()).sort(), pt.get('Terrestrial'), pt.get('Oceanic')]), [['Oceanic', 'Terrestrial'], 0.002, 0.002]);
+// the "adds none" half moved to a raw whose hub passive is 0 on a type that holds it: a planet type with a deposit of
+// the raw but no hub rate for it reads 0, never a gap
+check('  a type whose hub has no rate for the raw reads 0 (not missing)', safe(() => { const raw = ct.raws.find(r => { const m = ct.planetTypes(r.id, 1); return Array.from(m.values()).some(v => v === 0); }); return raw ? Array.from(ct.planetTypes(raw.id, 1).values()).filter(v => v === 0).length > 0 : 'no such raw'; }), true);
 const allFuel = []; ct.raws.forEach(r => [1, 2, 3, 4, 5].forEach(t => { const f = se.fullStake(t, r.id); if (f && ct.stakeFuel(f, r.id).fuel == null) allFuel.push(r.id + ' T' + t); }));
 check('stake fuel is found for every raw at every tier (strontium-crystals, titanium-ore included)', allFuel, []);
 check('  strontium-crystals T5 stake burns fuel', safe(() => ct.stakeFuel(se.fullStake(5, 'strontium-crystals'), 'strontium-crystals').fuel), v => v > 0);
+// ---- cultivation stakes (2026-11-11, export 2026-11-12): the extractors of the organic raws carry
+// `cultivation-stake-only`, so they stand on a cultivation stake (cultivation hub in place of the central hub).
+// Expected values are derived here from the raw building rows by exhaustive search, not through the Stake Engine.
+// The cultivation hub, farm hub and organic extractors carry the same stats as the central hub, extraction hub and
+// a standard extractor, so the NUMBERS cannot tell the two branches apart: the hub-id, kind and refusal checks do.
+console.log('-- cultivation stakes');
+const BY = new Map(D.buildings.buildings.map(b => [b.id, b]));
+const isExt = b => (b.addedTags || []).includes('extractor'), cultOnly = b => (b.requiredTags || []).includes('cultivation-stake-only');
+const CULT_RAWS = Array.from(new Set(D.buildings.buildings.filter(b => isExt(b) && cultOnly(b)).flatMap(b => Object.keys(b.resourceExtractionRate || {})))).sort();
+const STD_RAWS = Array.from(new Set(D.buildings.buildings.filter(b => isExt(b) && !cultOnly(b)).flatMap(b => Object.keys(b.resourceExtractionRate || {})))).sort();
+const handStake = (raw, tier, cult) => {
+    const g = k => BY.get(`terrestrial-${k}-t${tier}`), ext = BY.get(`${raw}-extractor-t${tier}`);
+    const central = g(cult ? 'cultivation-hub' : 'central-hub'), hubs = [g('storage-hub'), g(cult ? 'farm-hub' : 'extraction-hub')], cq = g('crew-quarters'), pp = g('power-plant');
+    const S = D.buildings.claimStakeDefinitions.find(d => d.id === `${cult ? 'cultivation' : 'claim'}-stake-tier-${tier}`).slots;
+    let best = null;
+    for (let n = 1; n < 60; n++) {
+        let fit = null;
+        for (let a = 0; a <= 60; a++) for (let p = 0; p <= 6; p++) {
+            const all = [[central, 1], [hubs[0], 1], [hubs[1], 1], [cq, a], [pp, p], [ext, n]], sum = f => all.reduce((x, [b, k]) => x + (b[f] || 0) * k, 0);
+            if (sum('crewSlots') < sum('neededCrew') || sum('power') < 0 || sum('slots') > S) continue;
+            const fuel = all.reduce((x, [b, k]) => x + Math.max(0, -((b.resourceRate || {}).fuel || 0)) * k, 0);
+            if (!fit || sum('slots') < fit.used) fit = { n, used: sum('slots'), crew: sum('neededCrew'), fuel };
+        }
+        if (!fit) break; best = fit;
+    }
+    return best;
+};
+check('the export locks 15 raws to cultivation stakes, and none of them also has a standard extractor', [CULT_RAWS.length, CULT_RAWS.filter(r => STD_RAWS.includes(r)).length], [15, 0]);
+check('  every one of them gets a cultivation stake at every tier; copper-ore stays a standard stake', safe(() => [CULT_RAWS.filter(r => [1, 2, 3, 4, 5].every(t => (se.fullStake(t, r) || {}).kind === 'cultivation')).length, se.fullStake(5, 'copper-ore').kind]), [15, 'standard']);
+const tk = [1, 2, 3, 4, 5].map(t => se.fullStake(t, 'tidal-kelp')), tkHand = [1, 2, 3, 4, 5].map(t => handStake('tidal-kelp', t, true));
+check('  tidal-kelp full stake, extractors per tier = the by-hand search over the raw building rows', tk.map(f => f && f.max), tkHand.map(h => h.n));
+check('  ... and its slots used and crew', tk.map(f => f && [f.used, f.crew]), tkHand.map(h => [h.used, h.crew]));
+check('  ... and its fuel per tick (power plants + cultivation hub)', safe(() => tk.map(f => Math.round(ct.stakeFuel(f, 'tidal-kelp').fuel * 1e6) / 1e6)), tkHand.map(h => Math.round(h.fuel * 1e6) / 1e6));
+check('  the by-hand search agrees with the engine on a standard stake too (positive control: copper-ore)', [1, 2, 3, 4, 5].map(t => se.fullStake(t, 'copper-ore').max), [1, 2, 3, 4, 5].map(t => handStake('copper-ore', t, false).n));
+check('  no raw reads as a stake of thousands of extractors (an empty layout never counts as "fits")', ct.raws.filter(r => [1, 2, 3, 4, 5].some(t => { const f = se.fullStake(t, r.id); return f && f.max > 100; })).map(r => r.id), []);
+// a planet holding a raw of each kind, chosen from the DATA (deposits + building tags), not through the engine's kind
+const slugOf = n => String(n).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+const T1EXT = new Map(D.buildings.buildings.filter(b => isExt(b) && b.tier === 1).flatMap(b => Object.keys(b.resourceExtractionRate).map(r => [r, b])));
+const facOk = (b, p) => { const f = (b.requiredTags || []).find(t => ['oni', 'mud', 'ustur'].includes(t)); return !f || f === p.faction; };
+const rawsOn = (p, cult) => Array.from(p.deposits.keys()).filter(r => T1EXT.has(r) && cultOnly(T1EXT.get(r)) === cult && facOk(T1EXT.get(r), p)).sort();
+const mixP = se.planets.filter(p => p.stakeable && rawsOn(p, true).length && rawsOn(p, false).length).sort((a, b) => a.key.localeCompare(b.key))[0];
+const mixC = rawsOn(mixP, true)[0], mixS = rawsOn(mixP, false)[0];
+check('  a planet with a raw of each kind exists (precondition of the checks below)', [!!mixP, slugOf(mixC) === mixC, CULT_RAWS.includes(mixC), STD_RAWS.includes(mixS)], [true, true, true, true]);
+check('  one stake, one kind: a cultivation and a standard extractor together are refused with a reason, each alone stands', safe(() => { const m = se.layout(mixP, 1, { [mixC]: 1, [mixS]: 1 }, []); return [m.ok, m.mixed, /separate stakes/.test(m.reason || ''), se.layout(mixP, 1, { [mixC]: 1 }, []).ok, se.layout(mixP, 1, { [mixS]: 1 }, []).ok]; }), [false, true, true, true, true]);
+check('  the cultivation stake stands on the cultivation hub and adds the farm hub; the standard one on the central hub', safe(() => [se.layout(mixP, 1, { [mixC]: 1 }, []).items[0].b.id, se.layout(mixP, 1, { [mixC]: 1 }, []).hubs.includes('farm-hub'), se.layout(mixP, 1, { [mixS]: 1 }, []).items[0].b.id]), [`${mixP.slug}-cultivation-hub-t1`, true, `${mixP.slug}-central-hub-t1`]);
+check('  auto-fill keeps to the kind of the first raw asked for AND fills the stake (counts = the by-hand maximum)', safe(() => [se.autoAlloc(mixP, 1, [mixC, mixS], []), se.autoAlloc(mixP, 1, [mixS, mixC], [])]), [{ [mixC]: handStake(mixC, 1, true).n }, { [mixS]: handStake(mixS, 1, false).n }]);
+// a processor is a standard-stake building: with one on the stake, auto-fill never adds a cultivation extractor
+const procP = se.planets.filter(p => p.stakeable && rawsOn(p, true).length && rawsOn(p, false).length && se.processable(p, 1).length).sort((a, b) => a.key.localeCompare(b.key))[0];
+const procId = procP && se.processable(procP, 1)[0].id, pC = procP && rawsOn(procP, true)[0], pS = procP && rawsOn(procP, false)[0];
+check('  with a processor on the stake, auto-fill asked for [cultivation raw, standard raw] places only the standard one', safe(() => { const a = se.autoAlloc(procP, 1, [pC, pS], [procId]); return [Object.keys(a), a[pS] > 0, se.layout(procP, 1, a, [procId]).ok]; }), [[pS], true, true]);
+// the hub's passive: a planet whose cultivation hub lists a raw the planet does NOT hold (else the check is vacuous)
+const passCase = (() => { for (const t of [5, 4, 3, 2, 1]) for (const p of se.planets) { if (!p.stakeable) continue; const hub = BY.get(`${p.slug}-cultivation-hub-t${t}`); const lists = Object.keys((hub && hub.resourceExtractionRate) || {}); const has = lists.filter(r => p.deposits.has(r)), lacks = lists.filter(r => !p.deposits.has(r)); const own = has.find(r => BY.get(`${r}-extractor-t${t}`) && facOk(BY.get(`${r}-extractor-t${t}`), p)); if (own && lacks.length) return { p, t, own, has, lacks }; } return null; })();
+check('  the cultivation hub\'s passive trickle counts a raw the planet holds and leaves out one it lacks (owner rule 2026-10-03)', safe(() => { const pr = se.production(passCase.p, passCase.t, { [passCase.own]: 1 }, [], { richness: false }); return [passCase.lacks.length > 0, passCase.has.every(r => pr.passive.has(r)), passCase.lacks.some(r => pr.passive.has(r))]; }), [true, true, false]);
+// saved stakes: the September build could save both kinds on one stake, and the map has thinned since
+const goneRaw = STD_RAWS.find(r => !mixP.deposits.has(r));
+check('  a saved stake that mixes kinds is cleaned to its larger kind, a tie keeps standard, a raw the planet lost is dropped', safe(() => { const a = se.cleanStake(mixP, 1, { [mixC]: 2, [mixS]: 1, [goneRaw]: 3 }, []), b = se.cleanStake(mixP, 1, { [mixC]: 1, [mixS]: 1 }, []); return [a.kind, a.alloc, a.offKind, a.gone, b.kind, b.alloc, b.offKind]; }), ['cultivation', { [mixC]: 2 }, [mixS], [goneRaw], 'standard', { [mixS]: 1 }, [mixC]]);
+check('  ... the cleaned stake lays out ok; an unmixed stake comes back untouched; an empty one has no kind', safe(() => { const a = se.cleanStake(mixP, 1, { [mixC]: 2, [mixS]: 1 }, []), u = se.cleanStake(mixP, 1, { [mixS]: 3 }, []); return [se.layout(mixP, 1, a.alloc, a.procs).ok, u.alloc, u.gone.length + u.offKind.length + u.goneProcs.length, se.stakeKind(mixP, 1, {}, [])]; }), [true, { [mixS]: 3 }, 0, null]);
+check('  ... and a processor on a stake cleaned to cultivation is dropped with it', safe(() => { const c = se.cleanStake(procP, 1, { [pC]: 3 }, [procId]); return [c.kind, c.procs, c.goneProcs]; }), ['cultivation', [], [procId]]);
+// the Empire tab's Auto-fill (deck-empire.js refill), driven on the prototype with the stake engine and a bill
+fresh('deck-empire.js');
+const refill = (stake, rows) => { window.DeckEmpireTab.prototype.refill.call({ se, cov: { rows } }, stake); return stake.alloc; };
+const nameOf = (p, raw) => p.deposits.get(raw).name;
+check('  Auto-fill on a standard stake with a processor, when the bill lacks only a cultivation raw, still fills it with standard raws', safe(() => { const a = refill({ key: procP.key, tier: 1, alloc: {}, procs: [procId] }, [{ name: nameOf(procP, pC), perHour: 0 }, { name: nameOf(procP, pS), perHour: 5 }]); return [Object.keys(a).length > 0, Object.keys(a).some(r => CULT_RAWS.includes(r)), se.layout(procP, 1, a, [procId]).ok]; }), [true, false, true]);
+check('  Auto-fill never turns a standard stake into a cultivation one (the bill lacks the cultivation raw first)', safe(() => { const a = refill({ key: mixP.key, tier: 1, alloc: { [mixS]: 3 }, procs: [] }, [{ name: nameOf(mixP, mixC), perHour: 0 }]); return [Object.keys(a).some(r => CULT_RAWS.includes(r)), Object.keys(a).length > 0]; }), [false, true]);
+check('  ... an empty stake takes the kind of the raw the bill lacks', safe(() => refill({ key: mixP.key, tier: 1, alloc: {}, procs: [] }, [{ name: nameOf(mixP, mixC), perHour: 0 }])), { [mixC]: handStake(mixC, 1, true).n });
+check('  the cultivation stake\'s research gate is read from its own entry in the gate map', safe(() => [research.stakeGate(3, 'cultivation'), research.stakeGate(3)]), [D.research.gates.claimStakes['cultivation-stake-tier-3'], D.research.gates.claimStakes['claim-stake-tier-3']]);
+check('  a saved processor id that cannot run here is dropped and named (unknown id, and a kit of another tier)', safe(() => { const c = se.cleanStake(procP, 1, { [pS]: 2 }, [procId, 'no-such-processor-t1', procId.replace(/-t1$/, '-t3')]); return [c.procs, c.goneProcs.length, c.alloc]; }), [[procId], 2, { [pS]: 2 }]);
+// the Empire tab itself, headless: a stake saved by the September build is cleaned at load and the card says so
+const empTab = saved => { SAVED = { 'commandDeck.empire.v1': saved }; const t = new window.DeckEmpireTab(root(), { se, empire, rc, rm }); t.cov = { rows: [] }; t.intermediates = new Set(); return t; };
+const cardOf = (t, s) => String(safe(() => t.stakeCard(s)));
+const plusOff = (html, raw) => { const m = html.match(new RegExp('data-alloc="[^"|]*\\|' + raw + '\\|1"([^>]*)>')); return m ? /disabled/.test(m[1]) : null; };
+const tabMixed = safe(() => empTab({ stakes: [{ id: 's_a', key: mixP.key, tier: 1, alloc: { [mixC]: 1, [mixS]: 2, [goneRaw]: 2 }, procs: [] }], fleets: [] }));
+check('  Empire load: a saved stake with both kinds and a raw the planet lost comes up clean, with a note', safe(() => { const s = tabMixed.stakes[0]; return [s.alloc, /Removed/.test(s.note || ''), se.layout(mixP, 1, s.alloc, s.procs).ok]; }), [{ [mixS]: 2 }, true, true]);
+check('  ... the card shows the note, naming what went, and the + of the other kind is off while a same-kind + is on', safe(() => { const h = cardOf(tabMixed, tabMixed.stakes[0]); return [h.includes(tabMixed.stakes[0].note.replace(/&/g, '&amp;')), h.includes(nameOf(mixP, mixC)), plusOff(h, mixC), plusOff(h, mixS)]; }), [true, true, true, false]);
+check('  ... the note is this session\'s notice: it is not among the fields save() writes', safe(() => { let wrote = null; const w = STORE.write; STORE.write = (k, v) => { wrote = v; }; try { tabMixed.save(); } finally { STORE.write = w; } return [Object.keys(wrote.stakes[0]).sort(), 'note' in wrote.stakes[0]]; }), [['alloc', 'id', 'key', 'procs', 'tier'], false]);
+const tabCult = safe(() => empTab({ stakes: [{ id: 's_c', key: mixP.key, tier: 1, alloc: { [mixC]: 2 }, procs: [] }], fleets: [] }));
+check('  a cultivation stake\'s card says so, carries no note, and turns the standard raws\' + off; a standard card does not say cultivation', safe(() => { const h = cardOf(tabCult, tabCult.stakes[0]), h2 = cardOf(tabMixed, tabMixed.stakes[0]); const head = x => (x.match(/<div class="cd-stake-head">[\s\S]*?<\/div>/) || [''])[0]; return [/ · cultivation stake · /.test(head(h)), tabCult.stakes[0].note === undefined, plusOff(h, mixS), plusOff(h, mixC), / · cultivation stake · /.test(head(h2))]; }), [true, true, true, false, false]);
+check('  a mixed layout that reached the card anyway says why it is refused', safe(() => { const s = { id: 's_m', key: mixP.key, tier: 1, alloc: { [mixC]: 1, [mixS]: 1 }, procs: [] }; return /need separate stakes/.test(cardOf(tabCult, s)); }), true);
+SAVED = {};
 check('stake note says the stake burns (power plant + central hub), not just the power plants', [/power plant \+ central hub/.test(html), /power plants burn/.test(html)], [true, false]);
 check('measure note does not claim only terrestrial or oceanic hubs give a trickle', /terrestrial or oceanic/.test(html), false);
 STORE.s.tick = 8; const h8 = safe(() => { ct.render(); return ct.root.innerHTML; }); STORE.s.tick = 60; STORE.shipPrice = () => 0;
@@ -183,8 +294,16 @@ check('  an empty fleet shows no verdict, a fleet of one does (positive twin)', 
 console.log('-- Loadouts verdicts: ties and duplicates');
 const head = h => (String(h).match(/<h2>([\s\S]*?)<\/h2>/) || [])[1] || 'NO VERDICT: ' + String(h).slice(0, 60);
 const dup = mk({ d: 10, mode: 'warp', loadouts: [{ ship: 'Armstrong IMP Tap', cfg: 'Cargo Boost Max' }, { ship: 'Armstrong IMP Tap', cfg: 'Cargo Boost Max' }, { ship: 'Armstrong IMP Tap', cfg: 'Fast Freight Max' }] }); dup.cards(dup.rows());
-const dh = head(safe(() => dup.haul(dup.rows()))), dm = head(safe(() => dup.mine(dup.rows()))), dc = head(safe(() => dup.cost(dup.rows())));
-check('A = B at the top: haul, mine and cost say they tie (never "1× B" or "0 % less")', [/A · [^<]*<\/b> and <b[^>]*>B · [^<]*<\/b> tie for the most cargo/.test(dh), /tie for the most ore/.test(dm), /tie for the cheapest fit/.test(dc), /1× B|0 % less/.test(dh + dm + dc)], [true, true, true, false]);
+// 2026-11-19: which of Cargo Boost Max / Fast Freight Max leads moves with the drone rule (Fast Freight now hauls and
+// mines more at 10 AU), so the twin pair is the LEADER per metric, picked by Loadout.trip / mine / cost directly (not by
+// the tab under test): [X, X, other] where X leads that metric; the tab must call A and B a tie.
+const T2 = ['Cargo Boost Max', 'Fast Freight Max'], stT = c => LO.stats('Armstrong IMP Tap', c);
+const lead2 = (f, better) => { const v = T2.map(c => f(stT(c))); return better(v[0], v[1]) ? 0 : 1; };
+const twin = i => mk({ d: 10, mode: 'warp', loadouts: [T2[i], T2[i], T2[1 - i]].map(cfg => ({ ship: 'Armstrong IMP Tap', cfg })) });
+const tH = twin(lead2(s => Loadout.trip(s.mod, 10, 'warp').perHour, (a, b) => a >= b)), tM = twin(lead2(s => Loadout.mine(s.mod, 10, 'warp', 1).perHour, (a, b) => a >= b)), tC = twin(lead2(s => LO.cost(s).rawUnits, (a, b) => a <= b));
+[tH, tM, tC].forEach(t => t.cards(t.rows()));
+const dh = head(safe(() => tH.haul(tH.rows()))), dm = head(safe(() => tM.mine(tM.rows()))), dc = head(safe(() => tC.cost(tC.rows())));
+check('A = B at the top: haul, mine and cost say they tie (never "1× B" or "0 % less")' + RF,[/A · [^<]*<\/b> and <b[^>]*>B · [^<]*<\/b> tie for the most cargo/.test(dh), /tie for the most ore/.test(dm), /tie for the cheapest fit/.test(dc), /1× B|0 % less/.test(dh + dm + dc)], [true, true, true, false]);
 // lead changes counted independently: argmax over 4,000 log-spaced lengths, a tie keeps the leader
 const leadCount = (rows, f) => { let cur = null, n = 0; for (let i = 0; i <= 4000; i++) { const x = 0.5 * Math.pow(120, i / 4000), v = rows.map(r => f(r.st.mod, x)), m = Math.max(...v), L = rows.filter((r, j) => Math.abs(v[j] - m) <= 1e-9 * Math.max(1, m)); if (cur && L.includes(cur)) continue; if (cur) n++; cur = L[0]; } return n; };
 const dupLead = leadCount(dup.rows(), (st, x) => Loadout.trip(st, x, 'warp').perHour);
@@ -201,5 +320,5 @@ const balHaul = bal('warp', 'haul'), balMineSub = bal('subwarp', 'mine');
 check('ballad vs Tap, warp haul: no flips fold, the verdict says the lead holds; subwarp mine (1 real flip) keeps its fold', [/data-fold="flips"/.test(balHaul), /lead on cargo an hour holds at every length/.test(balHaul), /data-fold="flips"/.test(balMineSub), /changes hands <b>1<\/b> time/.test(balMineSub)], [false, true, true, true]);
 check('fight: three identical loadouts give "No clear winner", never a winner over its own twin', [/No clear winner/.test(head(safe(() => tri.fight(tri.rows())))), /wins most often/.test(head(safe(() => tri.fight(tri.rows()))))], [true, false]);
 
-console.log(`\n${pass} PASS, ${fail} FAIL${oldArg ? ' (run against ' + SRC + ': failures are expected)' : ''}`);
+console.log(`\n${pass} PASS, ${fail} FAIL, ${pend} PENDING${oldArg ? ' (run against ' + SRC + ': failures are expected)' : ''}`);
 process.exit(fail ? 1 : 0);

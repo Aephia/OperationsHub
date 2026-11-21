@@ -78,7 +78,8 @@
             if (parts.length || !q.suspectDiscovery) out.push(`Partial read: ${parts.length ? parts.join(', ') : 'some reads failed'}, so rates are low and no history point was added.`);
         }
         if (q.suspectDiscovery) out.push('Many fleets disappeared since the previous read, so this read is kept out of the trends and they are not counted as gone yet.');
-        if (q.bodiesFailed) out.push('The planets and asteroids read failed on this run; bodies.json is from an earlier run.');
+        // true in both cases: within one chain version the earlier bodies.json is kept; after a game update none is
+        if (q.bodiesFailed) out.push('The planets and asteroids read failed on this run, so the planets shown are from an earlier read, or none are shown after a game update.');
         if (q.stakeDefsFailed) out.push('The claim-stake definitions read failed on this run, so stake tiers are unknown.');
         return out;
     }
@@ -740,7 +741,93 @@
     }
     const sameRects = (a, b) => (a || []).length === (b || []).length && (a || []).every((r, i) => ['left', 'right', 'top', 'bottom'].every(k => r[k] === b[i][k]));
     const sameInsets = (a, b) => !!a && !!b && ['left', 'right', 'top', 'bottom'].every(k => a[k] === b[k]) && sameRects(a.avoid, b.avoid);
-    const STAT_TABS = ['mining', 'combat', 'fleets', 'owners'];
+    const STAT_TABS = ['mining', 'resource', 'combat', 'fleets', 'owners'];
+
+    // ------------------------------------------------------------------ Resource tab (2026-11-13)
+    // Owner: "another option next to mining called resource, where I can select the resource then it will show a bar
+    // depending on the richness on the map". PORTED EXACTLY from the scene (C4Live/scene-src/model.js resourceSystems),
+    // because the panel must rank what the map draws: a body HOLDS a resource when its res[] lists that name with a
+    // finite richness > 0 (a duplicate entry on one body counts once, at its best); a system's value = the SUM of its
+    // holding bodies' richness, with the best single body and the body count beside it. Bodies without an address
+    // (the scene drops those in setData) or a system, or in a system the snapshot does not place (no finite x, y), are
+    // left out. A sum that overflows is held at Number.MAX_VALUE, so no height is ever non-finite. Order: sum desc, best
+    // desc, address asc. Test/c4-live-check.js [18] recounts both implementations from bodies.json by hand.
+    const RES_HEX = '#10b981';      // = --accent-green (ResourcesExplorer/styles.css), the tab's accent and its columns
+    const fmtRich = v => { const r = Math.round(v * 100) / 100; return String(isNum(r) ? r : v); };
+    const placedSystems = systems => new Map((systems || []).filter(s => s && isNum(s.x) && isNum(s.y)).map(s => [s.a, s]));
+    const resBody = (b, sysBy) => !!b && !!b.a && !!b.sys && Array.isArray(b.res) && sysBy.has(b.sys);
+    const bodyRich = (b, name) => { let best = 0; for (const r of b.res) if (r && r.r === name && isNum(r.rich) && r.rich > best) best = r.rich; return best; };
+    const finiteSum = s => { const r = Math.round(s * 1e6) / 1e6; return isNum(r) ? r : isNum(s) ? s : Number.MAX_VALUE; };
+    // WHERE in the system the resource sits (owner 2026-11-15: "the green circles should be dotted if the deposit is
+    // asteroid only and solid and dotted line is both"); the same rule and words as the scene's model.js resourceWhere.
+    // 'belt' = only on asteroid belts (dotted ring), 'planet' = only on planets (solid), 'both' = solid + dotted.
+    const RES_WHERE_TEXT = { planet: 'planets only', belt: 'asteroid belt only', both: 'planets and asteroid belt' };
+    const resourceWhere = (belts, planets) => (belts > 0 && planets > 0 ? 'both' : belts > 0 ? 'belt' : 'planet');
+    function resourceSystems(bodies, systems, name) {
+        const sysBy = placedSystems(systems), by = new Map();
+        if (typeof name !== 'string' || !name) return [];
+        for (const b of bodies || []) {
+            if (!resBody(b, sysBy)) continue;
+            const best = bodyRich(b, name);
+            if (!(best > 0)) continue;
+            let m = by.get(b.sys);
+            if (!m) { const s = sysBy.get(b.sys); m = { sys: b.sys, x: s.x, y: s.y, name: s.n || 'System', sum: 0, best: 0, n: 0, top: null, belts: 0, planets: 0 }; by.set(b.sys, m); }
+            m.sum += best; m.n++;
+            if (b.k === 'asteroid') m.belts++; else m.planets++;
+            if (best > m.best) { m.best = best; m.top = b.a; }
+        }
+        for (const m of by.values()) { m.sum = finiteSum(m.sum); m.where = resourceWhere(m.belts, m.planets); }
+        return [...by.values()].sort((p, q) => q.sum - p.sum || q.best - p.best || (p.sys < q.sys ? -1 : p.sys > q.sys ? 1 : 0));
+    }
+    // the picker: every resource any placed body holds, by name, with how many systems and bodies hold it
+    function resourceIndex(bodies, systems) {
+        const sysBy = placedSystems(systems), by = new Map();
+        for (const b of bodies || []) {
+            if (!resBody(b, sysBy)) continue;
+            const seen = new Set();
+            for (const r of b.res) {
+                if (!r || typeof r.r !== 'string' || !r.r || seen.has(r.r) || !(isNum(r.rich) && r.rich > 0)) continue;
+                seen.add(r.r);
+                let m = by.get(r.r); if (!m) by.set(r.r, m = { r: r.r, sys: new Set(), bodies: 0 });
+                m.sys.add(b.sys); m.bodies++;
+            }
+        }
+        return [...by.values()].map(m => ({ r: m.r, systems: m.sys.size, bodies: m.bodies })).sort((p, q) => (p.r < q.r ? -1 : p.r > q.r ? 1 : 0));
+    }
+    // default pick (review F2, 2026-11-13: Hydrogen on 945 of 945 systems opened as a uniform forest): the most-mined
+    // live resource that is NOT on every placed system; if none is mined, the first by name not on every system; only
+    // when every resource is everywhere, the first by name. total = the number of placed systems (resourceIndex's base).
+    function defaultResource(index, liveRes, total) {
+        index = index || [];
+        const local = new Set(index.filter(x => !(total > 0) || x.systems < total).map(x => x.r));
+        const live = (liveRes || []).filter(x => x && local.has(x.r) && x.ups > 0).sort((p, q) => q.ups - p.ups || (p.r < q.r ? -1 : 1));
+        if (live.length) return live[0].r;
+        const first = index.find(x => local.has(x.r));
+        return first ? first.r : (index.length ? index[0].r : null);
+    }
+    const placedCount = systems => placedSystems(systems).size;
+    // everything the tab shows for one resource. liveRes = the Mining tab's resources [{r, ups}] (same numbers).
+    // verdict is HTML with every data string escaped; found=false -> verdict is the "not found" note.
+    function resourceView(latest, bodies, name, liveRes) {
+        const systems = (latest && latest.systems) || [];
+        const rows = resourceSystems(bodies, systems, name);
+        const sysBy = placedSystems(systems);
+        const bodyRows = [];
+        for (const b of bodies || []) {
+            if (!resBody(b, sysBy)) continue;
+            const rich = bodyRich(b, name);
+            if (rich > 0) bodyRows.push({ a: b.a, name: b.n || shortAddr(b.a), kind: bodyKind(b), sys: b.sys, sysName: sysBy.get(b.sys).n || 'System', rich });
+        }
+        bodyRows.sort((p, q) => q.rich - p.rich || (p.name < q.name ? -1 : p.name > q.name ? 1 : 0) || (p.a < q.a ? -1 : 1));
+        const live = (liveRes || []).find(x => x && x.r === name);
+        const ups = live && live.ups > 0 ? live.ups : 0;
+        const nBodies = bodyRows.length, top = rows[0];
+        const verdict = !rows.length
+            ? `<b>${esc(name || 'No resource')}</b> was not found on any body in this snapshot.`
+            : `<b>${esc(name)}</b> is on <b>${nBodies}</b> bod${nBodies === 1 ? 'y' : 'ies'} in <b>${rows.length}</b> system${rows.length === 1 ? '' : 's'}; richest is <b>${esc(top.name)}</b> (total <b>${fmtRich(top.sum)}</b>, best ${fmtRich(top.best)}, ${top.n} bod${top.n === 1 ? 'y' : 'ies'})`
+                + (ups ? `, and it is being mined now at <b>${fmt(ups)} u/s</b>.` : '; nobody is mining it right now.');
+        return { name, found: rows.length > 0, systems: rows, bodies: bodyRows, nSystems: rows.length, nBodies, ups, verdict };
+    }
 
     // ------------------------------------------------------------------ DACs (2026-11-07): a HAND-KEPT list
     // DACs (guilds) exist only on Solana mainnet today (player-profile Role / ProfileRoleMembership), with no DAC names on
@@ -960,7 +1047,7 @@
 
     const api = {
         DAC_FACTIONS, parseDacs, resolveDacs, dacInfluence, dacSummary, exampleDacs, EXAMPLE_SHARE, dacConquest, CONQUEST_METRICS, CONQUEST_LABEL, deepSpaceName,
-        coverInsets, sameInsets, STAT_TABS, combatHotSpots, hotOrder, isHotKind,
+        coverInsets, sameInsets, STAT_TABS, RES_HEX, fmtRich, RES_WHERE_TEXT, resourceWhere, resourceSystems, resourceIndex, defaultResource, placedCount, resourceView, combatHotSpots, hotOrder, isHotKind,
         GROUPS, GROUP_LABEL, STATES, STATE_LABEL, SIZES, CAREERS, CAREER_LABEL,
         esc, shortAddr, fmt, pct, ago, groupOf, eventGroup, fleetUps, dataAge, projectMined, liveMined, qualityNotes, concentration, concLabel,
         aggregateOwners, careerMax, nearestSystem, destroyedFleets, probableKills, engagements, vsPairs, sideLabel, buildCombat, buildMining, minedSeries, buildFleets,

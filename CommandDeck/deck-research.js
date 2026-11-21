@@ -61,17 +61,19 @@
             }
             if (kind === 'building') {
                 const b = se.by.get(id); if (!b) return null;
-                const own = m.buildingGate(b.id), tags = new Set(own.concat(m.stakeGate(b.tier)));
+                const own = m.buildingGate(b.id), tags = new Set(own.concat(m.stakeGate(b.tier, se.kindOf(b))));
                 // an extractor or processor runs only beside the hubs (and crew quarters, power plants) a stake lays out
                 // for it: their gates too, the way the Empire tab counts a placed stake
-                const raw = b.resourceExtractionRate ? Object.keys(b.resourceExtractionRate)[0] : null, proc = (b.addedTags || []).includes('processor');
+                // a farm is not laid out (the Stake Engine places the raw's extractor, never the farm): it takes the hubs its tags name
+                const farm = (b.addedTags || []).includes('farm');
+                const raw = b.resourceExtractionRate && !farm ? Object.keys(b.resourceExtractionRate)[0] : null, proc = (b.addedTags || []).includes('processor');
                 const site = (raw || proc) && se.planets.find(p => p.stakeable && se.usable(b, p, b.tier) && (!raw || p.deposits.has(raw)));
                 const L = site ? se.layout(site, b.tier, raw ? { [raw]: 1 } : {}, proc ? [b.id] : []) : null;
                 if (L) L.items.forEach(it => { if (it.role !== 'extractor' && it.role !== 'processor') m.buildingGate(it.b.id).forEach(t => tags.add(t)); });
                 // no planet feeds it (a second-stage processor, a cultivation farm): the hubs its tags name instead
-                const hubs = !L && (raw || proc) ? se.hubsFor(b) : [];
+                const hubs = !L && (raw || proc || farm) ? se.hubsFor(b) : [];
                 hubs.forEach(h => m.buildingGate(h.id).forEach(t => tags.add(t)));
-                return { kind, id: b.id, label: `${b.name} T${b.tier}`, sub: `place it on a tier ${b.tier} claim stake`, tags: Array.from(tags), own, ungated: !own.length, site: L ? 'layout' : hubs.length ? 'tags' : '' };
+                return { kind, id: b.id, label: `${b.name} T${b.tier}`, sub: `place it on a tier ${b.tier} ${se.kindOf(b) === 'cultivation' ? 'cultivation' : 'claim'} stake`, tags: Array.from(tags), own, ungated: !own.length, site: L ? 'layout' : hubs.length ? 'tags' : '' };
             }
             if (kind === 'stake') { const t = +id; if (!(t >= 1 && t <= 5)) return null; return { kind, id: t, label: `Claim Stake Tier ${t}`, sub: 'own a stake of this tier', tags: m.stakeGate(t) }; }
             if (kind === 'hab') { const tags = m.habGate(id); if (!tags.length) return null; return { kind, id, label: 'Crafting Hab Tier ' + String(id).replace(/\D/g, ''), sub: 'own a hab of this tier', tags }; }
@@ -335,8 +337,13 @@
                 } else if (lv.length) items.push(`Levels needed: ${this.and(lv.map(([k, v]) => `${track(k)} ${v}`))}${lv.every(([k, v]) => v === 1 || k === 'CouncilRank') ? '; none of them is a grind (a first level is 1 XP, a Council Rank level 1 XP)' : ' (no XP threshold in the export)'}.`);
                 const open = bill.rows.filter(r => !r.owned && m.available(r.node, this.tags)).map(r => r.node);
                 const blank = bill.rows.filter(r => !r.owned && !r.node.hasData).map(r => r.node);
+                // 2026-11-19: a path node whose prerequisite tag no drawn node carries - say which, not "no numbers". Owner rule:
+                // claim only what the page knows (the prerequisite is not in the current data); never that nothing grants it
+                // (a second gate system in the data is not modelled), never "cannot", no tag numbers, no exports or releases
+                const stuck = bill.rows.filter(r => !r.owned && r.node.hasData && r.node.reqTags.some(t => !m.nodeOfTag.has(t))).map(r => r.node);
                 items.push(open.length ? `Research now: ${this.and(open.map(n => this.link(n)), 4)} <span class="cd-dim">(${num(open.length)} of ${num(bill.todo)} open; levels not checked)</span>.`
-                    : `Nothing on the path is open yet: ${blank.length ? `${this.and(blank.map(n => this.link(n)), 3)} ${blank.length === 1 ? 'has' : 'have'} no numbers in the export` : 'a prerequisite has no numbers in the export'}.`);
+                    : `Nothing on the path is open yet: ${blank.length ? `${this.and(blank.map(n => this.link(n)), 3)} ${blank.length === 1 ? 'has' : 'have'} no numbers in the export` : stuck.length ? `${this.and(stuck.map(n => this.link(n)), 3)} ${stuck.length === 1 ? 'has a prerequisite that is' : 'have prerequisites that are'} not in the current data` : 'a prerequisite has no numbers in the export'}.`);
+                if (stuck.length && (open.length || blank.length)) items.push(`Part of this path has a prerequisite that is not in the current data: ${this.and(stuck.map(n => this.link(n)), 3)}.`);
                 if (gathering) {
                     const cb = m.bill(m.closure(g.craft), this.owned), add = bill.todo - cb.todo, what = g.raw ? 'the raw' : 'the raws';
                     items.push(add ? `Gathering ${what} adds <b>${plural(add, 'node')}</b> (${num(bill.atlas - cb.atlas)} ATLAS)${g.raw ? '' : `; crafting alone is ${plural(cb.todo, 'node')}`}.` : `Gathering ${what} adds no research.`);
@@ -372,6 +379,11 @@
         nodeHTML(n) {
             const m = this.m, owned = this.owned.has(n.id), avail = m.available(n, this.tags), u = m.unlocks(n);
             const missing = n.reqTags.filter(t => !this.tags.has(t)).map(t => m.nodeOfTag.get(t)).filter(Boolean);
+            // a prerequisite tag no drawn node carries (27 nodes on the 2026-11-19 data, e.g. Mining Gear - T1): there is no
+            // node to point at, so the card says the prerequisite is not in the current data instead of "research a
+            // prerequisite first". Owner rule: no tag numbers, never "no node grants" or "cannot", no exports or releases
+            const orphan = n.reqTags.filter(t => !this.tags.has(t) && !m.nodeOfTag.has(t));
+            const orphanText = orphan.length ? `${orphan.length === 1 ? 'its other prerequisite is' : 'its other prerequisites are'} not in the current data` : '';
             const b = m.benefit(n), gatesAny = u.recipes || u.buildings || u.stakes.length || u.habs.length;
             const grants = b.grants.map(g => `<li>${esc(g.text)}${g.list && g.list.length ? `<small>${esc(g.list.join(', '))}</small>` : ''}</li>`).join('');
             const benefit = `<div class="rx-benefit">${b.text ? `<p>${esc(b.text)}</p>` : ''}${grants ? `<ul class="cd-grants">${grants}</ul>` : ''}${!b.text && !grants && !gatesAny ? `<p class="rx-note">The export gives this node no description and no effect of its own${n.tags.length ? '; it is a step on the way to what it leads to' : ''}.</p>` : ''}</div>`;
@@ -384,7 +396,9 @@
             const state = !n.hasData ? '<p class="rx-note">The export names this node but gives it no cost, requirement or effect yet.</p>'
                 : owned ? '<p class="cd-state ok"><b>Researched.</b></p>'
                 : avail ? `<p class="cd-state go"><b>Open now:</b> it ${costText}.</p>`
-                : `<p class="cd-state no"><b>Locked:</b> research ${missing.length ? this.and(missing.map(x => this.link(x))) : 'a prerequisite'} first. Then it ${costText}.</p>`;
+                : missing.length ? `<p class="cd-state no"><b>Locked:</b> research ${this.and(missing.map(x => this.link(x)))} first${orphanText ? `; ${orphanText}` : ''}. Then it ${costText}.</p>`
+                : orphan.length ? `<p class="cd-state no"><b>Locked:</b> ${orphan.length === 1 ? 'its prerequisite is' : 'its prerequisites are'} not in the current data. It ${costText}.</p>`
+                : `<p class="cd-state no"><b>Locked:</b> research a prerequisite first. Then it ${costText}.</p>`;
             const gateWords = [u.recipes ? plural(u.recipes, 'recipe') : '', u.buildings ? plural(u.buildings, 'stake building') : '', u.stakes.length ? 'owning ' + u.stakes.map(s => esc(s.replace(/-/g, ' '))).join(', ') : '', u.habs.length ? 'owning ' + u.habs.map(s => esc(s.replace('hab-t', 'crafting hab tier '))).join(', ') : ''].filter(Boolean);
             const gates = gatesAny ? `<p class="cd-rs-gates">It is a gate of ${gateWords.join('; and of ')}.</p>` : (n.hasData && n.tags.length && (b.text || grants) ? '<p class="rx-note">No recipe or stake building names this node as a gate.</p>' : '');
             const maxT = Math.max(1, ...u.byType.map(x => x[1]));

@@ -216,14 +216,14 @@
             </article>`;
             const stake = `<article class="cd-duel-card stake${win === 'stake' ? ' win' : ''}">
                 <div class="cd-duel-art"><img src="${STAKE_ART}" alt="" loading="lazy"><i class="t t${t.tier}">T${t.tier}</i></div>
-                <div class="cd-duel-head"><small>Claim stake${t.k === t.max ? ', full' : ''}</small><b>T${t.tier} · ${t.k} of ${t.max} extractors</b></div>
+                <div class="cd-duel-head"><small>${t.kind === 'cultivation' ? 'Cultivation stake' : 'Claim stake'}${t.k === t.max ? ', full' : ''}</small><b>T${t.tier} · ${t.k} of ${t.max} extractors</b></div>
                 <dl>
                     ${row('Mines', `<b>${num(stakeH)}</b> / h`, 'big')}
                     ${row('Extractors', `<span class="cd-extstep"><button type="button" data-ext-step="-1" ${t.k > 1 ? '' : 'disabled'} aria-label="One fewer extractor">−</button><b>${t.k}</b><button type="button" data-ext-step="1" ${t.k < t.max ? '' : 'disabled'} aria-label="One more extractor">+</button></span><small>of ${t.max} that fit</small>`)}
                     ${row('Per dollar', sp ? `${num(stakeH / sp)} / h per $` : '–')}
                     ${row('Ask', `<input type="number" class="sb-input" min="0" step="any" value="${sp || ''}" placeholder="USD" data-price-stake="${t.tier}">`)}
                     ${row('Storage', `${num(t.storage)} · full in ${dur(full)}`)}
-                    ${row('Upkeep', t.fuel == null ? '–' : `${num(t.fuel * 3600 / tick)} fuel / h (${num(t.fuel)} a tick, power plant + central hub)`)}
+                    ${row('Upkeep', t.fuel == null ? '–' : `${num(t.fuel * 3600 / tick)} fuel / h (${num(t.fuel)} a tick, power plant + ${t.kind === 'cultivation' ? 'cultivation' : 'central'} hub)`)}
                     ${row('Crew', `${num(t.crew)} · ${num(t.used)} of ${num(t.S)} slots`)}
                 </dl>
             </article>`;
@@ -267,7 +267,7 @@
                         <label><span>${esc(raw.name)} gained in one hour</span><input type="number" class="sb-input" min="0" step="any" value="${esc(this.measure.units)}" placeholder="units" data-measure="units"></label>
                     </div>
                     <div id="cdMeasureOut"></div>
-                    <p class="rx-note">Uses the raw chosen below. The planet type matters because the central hub of some planet types adds a small passive trickle of this raw on top of the extractor${passTypes.length ? ` (${passTypes.join(', ')})` : ' (none for this raw)'}. It assumes richness multiplies the rate; if the answer changes with a second deposit of different richness, that assumption is wrong and worth knowing.</p>
+                    <p class="rx-note">Uses the raw chosen below. The planet type matters because the stake's own hub adds, on some planet types, a small passive trickle of this raw on top of the extractor${passTypes.length ? ` (${passTypes.join(', ')})` : ' (none for this raw)'}. It assumes richness multiplies the rate; if the answer changes with a second deposit of different richness, that assumption is wrong and worth knowing.</p>
                 </details>
                 <section class="cd-inputs">
                     <label><span>Raw mined</span><select class="sb-input" data-raw>${this.raws.map(r => `<option value="${esc(r.id)}"${r.id === raw.id ? ' selected' : ''}>${esc(r.name)} (T${r.tier})</option>`).join('')}</select></label>
@@ -292,7 +292,7 @@
                     <div class="an-tablewrap"><table class="an-table"><thead><tr><th>Stake</th><th>extractors</th><th>per tick</th><th>fuel per tick</th><th>fuel per unit</th><th>storage</th><th>ticks to fill</th><th>full in, at your tick</th><th>crew</th></tr></thead><tbody>
                         ${tiers.map(x => `<tr${x.tier === t.tier ? ' class="on"' : ''}><th><span class="t t${x.tier}">T${x.tier}</span> ${num(x.used)} of ${num(x.S)} slots</th><td>${x.k}</td><td>${num(x.perTick)}</td><td>${x.fuel == null ? '–' : num(x.fuel)}</td><td>${x.fuelPerUnit == null ? '–' : num(x.fuelPerUnit, 2)}</td><td>${num(x.storage)}</td><td>${num(x.storage / x.perTick, 0)}</td><td>${dur(x.storage / x.perTick * tick)}</td><td>${num(x.crew)}</td></tr>`).join('')}
                     </tbody></table></div>
-                    <p class="rx-note">The export has no prices: the asks start as quoted on ${PRICE_DATE} (Tap, IMP, T3 to T5) and what you type stays in this browser. Hull and stake are compared on the same deposit; richness cancels if it scales both alike (not in the data). Hardness slows the hull, so the break-even ticks are a lower bound. Hold and food are the hull's figures in the export; no stake building carries a food field. Stake fuel is the export's rate per tick for the power plant + central hub, unverified in play; a hull's fuel depends on the route (Loadouts tab). Mining rate is at richness 1.</p>
+                    <p class="rx-note">The export has no prices: the asks start as quoted on ${PRICE_DATE} (Tap, IMP, T3 to T5) and what you type stays in this browser. Hull and stake are compared on the same deposit; richness cancels if it scales both alike (not in the data). Hardness slows the hull, so the break-even ticks are a lower bound. Hold and food are the hull's figures in the export; no stake building carries a food field. Stake fuel is the export's rate per tick for the power plant + the stake's hub, unverified in play; a hull's fuel depends on the route (Loadouts tab). Mining rate is at richness 1.</p>
                 </details>`;
             this.renderMeasure();
         }

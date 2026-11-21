@@ -127,7 +127,9 @@ function researchProjection(u) {
     return {
         exportDate: u.meta && u.meta.exportDate ? String(u.meta.exportDate).slice(0, 10) : null,
         tracks: rn.tags,
-        nodes: rn.nodes,
+        // keys that start with "_" are the editor's own authoring notes (e.g. _c4_council_v10_node): not game data,
+        // read by no module, and not published
+        nodes: rn.nodes.map(n => Object.fromEntries(Object.entries(n).filter(([k]) => !k.startsWith('_')))),
         connections: rn.connections,
         tagToNode: gm._meta.tagToNode,
         gates: {
