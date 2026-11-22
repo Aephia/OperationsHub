@@ -8,7 +8,7 @@ when the cached prices are 55+ minutes old); a whole pass took 28.5 s.
 
 ```
 cd Tools/c4-live
-npm ci --ignore-scripts      # pinned: @aephia/atlas-kit 0.6.1, @solana/kit 6.10.0
+npm ci --ignore-scripts      # pinned: @aephia/atlas-kit 0.7.0, @solana/kit 6.10.0
 npm run collect              # loops: one pass now, then every C4_INTERVAL_MIN (default 60, minimum 5)
 npm run collect:once         # one pass; exit 0 = full, 2 = partial (written, marked), 1 = failed (nothing written)
 powershell -ExecutionPolicy Bypass -File install-schedule.ps1          # hourly Windows task (-Remove to undo); logs to collector.log (rotated at 5 MB via --log)

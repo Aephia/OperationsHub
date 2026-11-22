@@ -572,7 +572,7 @@ the live chain; every other module reads the static uber-export. It has two halv
   `C4Live/app.js` discards every visitor's saved copy once when it is bumped: bump it together with a rebuilt
   `c4-collect.js` if a game update changes account layouts and the reader has to be updated.
 - **Collector** (`Tools/c4-live/`, Node, for local copies): reads every fleet, star system, asteroid being mined, claim stake
-  and player owner through Aephia's [Atlas Kit](https://docs.atlaskit.dev/) (`@aephia/atlas-kit` 0.6.1,
+  and player owner through Aephia's [Atlas Kit](https://docs.atlaskit.dev/) (`@aephia/atlas-kit` 0.7.0,
   pinned by lockfile, own folder, `npm ci --ignore-scripts`). It runs **once an hour**: `npm run collect`
   loops, or `install-schedule.ps1` registers a Windows task. It writes `Data/c4-live/` (git-ignored). The
   data contract, the safety rules (single atomic commit file, lock, partial-pass and suspect-discovery

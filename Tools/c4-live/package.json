@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "description": "Hourly z.ink (SAGE C4) collector for the OperationsHub C4 Live tab. Own lockfile; install with npm ci --ignore-scripts.",
-  "//override": "7-day age rule overridden for @aephia/atlas-kit 0.6.1 by owner on 2026-11-06: vetted (Apache-2.0, Aephia/atlas-kit repo, publisher also maintains @staratlas/dev-sage, no install scripts). Every >=7-day-old version is a 'next' prerelease.",
+  "//override": "7-day age rule overridden for @aephia/atlas-kit 0.6.1 by owner on 2026-11-06: vetted (Apache-2.0, Aephia/atlas-kit repo, publisher also maintains @staratlas/dev-sage, no install scripts). Every >=7-day-old version is a 'next' prerelease. Overridden again for 0.7.0 (published 2026-11-18) by owner on 2026-11-21: same licence, repo and dependencies, no install scripts, lockfile integrity matches the registry. 0.7.0 still pins @staratlas/dev-sage 0.55.0, which cannot read the game deployed 2026-11-21 (zero fleets, INVALID_DISCRIMINATOR on the game account); forcing dev-sage 0.56.0 under it fails fleet decoding (ACCOUNT_DECODE_FAILED), so no override is set - wait for a kit release built on newer bindings.",
   "scripts": {
     "collect": "node collector.mjs",
     "collect:once": "node collector.mjs --once",
@@ -12,7 +12,7 @@
     "probe:holdings": "node probe-holdings.mjs"
   },
   "dependencies": {
-    "@aephia/atlas-kit": "0.6.1",
+    "@aephia/atlas-kit": "0.7.0",
     "@solana/kit": "6.10.0"
   }
 }
