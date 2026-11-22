@@ -7,6 +7,7 @@
 //   data-tap / data-tab     selectors: a click inside one plays that sound
 //   data-open-class         "selector:class, ...": the class appearing plays open, disappearing plays close
 //   data-open-unhide        selectors: the hidden attribute going away plays open, coming back plays close
+//   data-set="click"        dry clicks instead of the tonal set (SFX/ui/click/, made by `build_ui_sfx.py clicks`)
 //   data-mute-mount         where the on/off button goes (it is always added; without a mount it sits bottom-left)
 //   window.UiSfx.play(name) for anything a selector cannot say (the Crew Explorer plays "done" when a roster arrives)
 //
@@ -17,10 +18,14 @@
     'use strict';
     const script = document.currentScript;
     const cfg = script ? script.dataset : {};
-    const BASE = script ? new URL('ui/', script.src).href : 'ui/';
+    // data-set="click" swaps the five tonal files for dry clicks (SFX/ui/click/, same names): for a page that is
+    // clicked all day, where a sweep on every panel grates (C4 Live, 2026-11-21)
+    const SET = cfg.set === 'click' ? 'click' : '';
+    const BASE = script ? new URL(SET ? 'ui/' + SET + '/' : 'ui/', script.src).href : 'ui/';
     // how loud each file plays. Every file is levelled to the same heard loudness (A-weighted RMS 0.09), so these are
     // the whole mix: a tap is the quietest, the chime the fullest. Raise or lower all five together to taste.
-    const GAIN = { tap: 0.22, tab: 0.24, open: 0.28, close: 0.24, done: 0.30 };
+    // The click set is peak-levelled instead (0.5) and a few milliseconds long, so its numbers play far quieter.
+    const GAIN = SET === 'click' ? { tap: 0.16, tab: 0.17, open: 0.20, close: 0.17, done: 0.18 } : { tap: 0.22, tab: 0.24, open: 0.28, close: 0.24, done: 0.30 };
     const RANK = { tap: 1, tab: 2, close: 3, open: 4, done: 5 };
     const NAMES = Object.keys(GAIN);
     const MIN_GAP_MS = 70;
@@ -146,6 +151,6 @@
     }
 
     const debug = () => ({ state: ctx ? ctx.state : 'none', seconds: Object.fromEntries(NAMES.map(n => [n, buffers[n] ? Math.round(buffers[n].duration * 1000) / 1000 : null])) });
-    window.UiSfx = { play, setOff, isOff: () => off, stats, debug, GAIN, NAMES };
+    window.UiSfx = { play, setOff, isOff: () => off, stats, debug, GAIN, NAMES, set: SET || 'tonal', base: BASE };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind); else bind();
 })();

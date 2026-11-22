@@ -43,7 +43,7 @@
     let saved = null;                     // public site: Map of file name -> JSON text from the last good read
     const RELOAD_MS = 5 * 60 * 1000;
     const RM = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
-    const LAYERS = [['systems', 'Systems'], ['fleets', 'Fleets'], ['mining', 'Mining'], ['routes', 'Routes'], ['combat', 'Combat'], ['territory', 'Territory'], ['labels', 'Labels']];
+    const LAYERS = [['systems', 'Systems'], ['fleets', 'Fleets'], ['mining', 'Mining'], ['routes', 'Routes'], ['gates', 'Gates'], ['combat', 'Combat'], ['territory', 'Territory'], ['labels', 'Labels']];
     const FILTERS = [['all', 'All'], ['mud', 'MUD'], ['oni', 'ONI'], ['ustur', 'Ustur'], ['npc', 'NPC']];
     const RES_ROWS = 12;
 
@@ -96,7 +96,7 @@
     function loadCollector() {
         return S.collectorP || (S.collectorP = new Promise((resolve, reject) => {
             const s = document.createElement('script');
-            s.src = 'c4-collect.js?v=20261120b';
+            s.src = 'c4-collect.js?v=20261121a';
             s.onload = resolve;
             s.onerror = () => { S.collectorP = null; reject(new Error('c4-collect.js failed to load')); };
             document.head.append(s);

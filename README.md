@@ -581,6 +581,12 @@ the live chain; every other module reads the static uber-export. It has two halv
 - **Module** (`C4Live/`): a 3D galaxy map (three.js, bundled from `C4Live/scene-src/` into
   `C4Live/c4-scene.js` by `node C4Live/scene-src/build.mjs`) under a glass HUD, plus Mining, Resource, Combat,
   Fleets and Owners tabs.
+  - **Gates** (2026-11-21): a `Gates` map layer (on by default, in the Layers box) draws one soft, broken band of
+    "cloud" between every pair of systems whose starbase gates connect. The pairs come from the chain: the collector
+    writes each system's `id` and the ids it connects to (`to`) into `latest.json`, and `M.gateLinks` in
+    `scene-src/model.js` turns them into one row per pair. The band is a thin wisp over the whole galaxy, widens to a
+    capped width as you zoom in, fades out before it reaches either system, and drifts very slowly (still under
+    reduced motion). A saved copy from before this change has no `id` / `to`, so it draws no lines until the next read.
   - **Resource** (2026-11-13): pick a resource; every system holding it gets a flat green ring on the map (no
     column), bigger, brighter and thicker-stroked the larger the SUM of `rich` over its bodies that list it (world
     scale, sized like the Combat heat rings, linear between the resource's poorest and richest system; best body and
@@ -663,6 +669,12 @@ when a whole roster arrives. This is separate from the older `SFX/sounds.js` the
   every take's numbers and which one was picked. The script also synthesises a fallback take of each sound.
 - **Nobody heard them while building.** They were chosen from measurements; the mix lives in one line (`GAIN` in
   `SFX/ui-sfx.js`). Regenerate with `generate <scratch>` then `build <scratch>`.
+- **Click set (2026-11-21, C4 Live).** The owner found the tonal set annoying on C4 Live, where every panel played
+  a sweep. `data-set="click"` on the script tag swaps in `SFX/ui/click/` (same five names, about 24 KB): dry knocks
+  of 22 to 120 ms with nothing that sweeps, chimes or rings, synthesised by `python -I Tools/sfx/build_ui_sfx.py
+  clicks` (no service; it refuses to write a file longer than 0.13 s or one that rings past 30 ms). The Crew
+  Explorer still plays the tonal set. Also unheard while building: tune pitch and decay in `CLICKS` in the script,
+  loudness in `GAIN`.
 
 ---
 

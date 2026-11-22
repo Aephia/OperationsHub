@@ -135,7 +135,7 @@ The chain keeps **no combat log and no mining history**, so the collector derive
              holdings: { atlas, fleets, ships, hulls{shipConfigName:n}, cargo:[{name, units}] (largest first),
                          refValue?: { basis:'mainnet reference', currency:'ATLAS', atBid, atAsk, priced, unpriced,
                                       pricesAt, top:[{kind:hull|cargo, name, ref (mainnet item), qty, bid, ask}] (8 largest) } } }],
-  systems: [{ a, n, r region, x, y, f starbase faction, lvl, hp, sp, lc, built (builtDestroyedAt), links }],
+  systems: [{ a, n, r region, x, y, f starbase faction, lvl, hp, sp, lc, built (builtDestroyedAt), links, id (chain systemId or null), to (sorted ids of the gate-linked systems; links = to.length) }],
   asteroids: [{ a, sys, sysName, x, y, fleets, ups, res:{resource:{cum, miners, ups, rich}} }],
   stakes: [{ a, o, st, def, defName ("Claim Stake Tier 1" / "Cultivation Stake Tier 2"), tier (1..n), slots, b buildings,
             sys, sysName, x, y, crew, body (planet address) }],

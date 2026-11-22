@@ -3,6 +3,7 @@
 //   node Test/c4-scene-check.js              exit 1 on any FAIL
 //   NO_BROWSER=1 node Test/c4-scene-check.js  node checks only
 //   SHOT_DIR=<dir>                            where the browser screenshots go (default: OS temp)
+//   C4_LATEST=<file>                          use that file as Data/c4-live/latest.json (node checks and the served page)
 // Rebuild first if scene-src changed: node C4Live/scene-src/build.mjs
 const fs = require('fs');
 const os = require('os');
@@ -13,7 +14,7 @@ const {createRequire} = require('module');
 
 const ROOT = path.join(__dirname, '..');
 const BUNDLE = path.join(ROOT, 'C4Live/c4-scene.js');
-const LAYERS = ['systems', 'fleets', 'mining', 'routes', 'combat', 'territory', 'labels'];
+const LAYERS = ['systems', 'fleets', 'mining', 'routes', 'gates', 'combat', 'territory', 'labels'];
 const HOME_DIST = 128; // the scene's home camera distance: focusPoint(x, y, zoom) puts the camera at HOME_DIST / zoom
 const API = ['setData', 'setFilter', 'focusOwner', 'focusPoint', 'pulseEvent', 'on', 'setLayer', 'dispose', 'focusSystem'];
 let pass = 0, fail = 0;
@@ -60,7 +61,7 @@ function transitCases(M) {
   check('bundle carries the three.js MIT banner', /three\.js [\d.]+ \(MIT License/.test(src.slice(0, 400)));
   const s = bundleSurface(src);
   check('bundle sets window.C4Scene.mount in a bare sandbox', s.mount, s);
-  check('C4Scene.layers lists exactly the 7 contract layers', JSON.stringify(s.layers) === JSON.stringify(LAYERS), s.layers);
+  check('C4Scene.layers lists exactly the 8 contract layers', JSON.stringify(s.layers) === JSON.stringify(LAYERS), s.layers);
   // negative control: the same bundle with the export renamed must fail the surface check
   const broken = bundleSurface(src.replace(/window\.C4Scene\s*=/, 'window.C4SceneX='));
   check('NEGATIVE: bundle with the export renamed is detected as missing mount', broken.mount === false, broken);
@@ -103,7 +104,7 @@ function transitCases(M) {
   const gammaTwice = Object.fromEntries(Object.entries(M.FACTION_HEX).map(([k, h]) => [k, [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255)]));
   check('NEGATIVE: un-linearised shader colours (hex/255) fail the palette check', !paletteMatches(M.FACTION_HEX, gammaTwice));
 
-  const latest = JSON.parse(fs.readFileSync(path.join(ROOT, 'Data/c4-live/latest.json'), 'utf8'));
+  const latest = JSON.parse(fs.readFileSync(process.env.C4_LATEST || path.join(ROOT, 'Data/c4-live/latest.json'), 'utf8'));
   const events = JSON.parse(fs.readFileSync(path.join(ROOT, 'Data/c4-live/events.json'), 'utf8'));
   const now = latest.generatedAt;
   const transits = latest.fleets.filter((f) => f.s.kind === 'warp' || f.s.kind === 'subwarp');
@@ -327,6 +328,7 @@ function transitCases(M) {
     const rs = slots.map((s) => s.r / 0.16);
     check('miner slots hug the rock: 128 miners all within 1.08-1.30 R (was 1.25-2.4 R)', Math.min(...rs) >= 1.08 - 1e-9 && Math.max(...rs) <= 1.3 + 1e-9, {min: Math.min(...rs), max: Math.max(...rs)});
     v10model(M, latest, bodies);
+    gateModel(M, latest);
   }
 
   // ---------------- browser drive
@@ -386,6 +388,36 @@ function v10model(M, latest, bodies) {
   check('v10 placement: a claim-stake transfer loops station (phase 0) -> planet (phase 0.5)', Math.hypot(c0[0] - st[0], c0[1] - st[1]) < 1e-9 && Math.hypot(c5[0] - 0.05, c5[1]) < 1e-9, {c0, c5});
 }
 
+// ---- gate links (2026-11-21). Expectations written here by hand / recounted here, not through model.js.
+function gatePairs(systems) { // the recount: undirected pairs of system ADDRESSES, straight from systems[].id / .to
+  const byId = new Map(systems.filter((s) => Number.isInteger(s.id)).map((s) => [s.id, s])), want = new Set();
+  for (const s of systems) for (const t of Array.isArray(s.to) ? s.to : []) { const o = byId.get(t); if (o && o !== s && Number.isInteger(s.id)) want.add([s.a, o.a].sort().join('|')); }
+  return want;
+}
+function gateModel(M, latest) {
+  const sy = [
+    {a: 'A', id: 1, x: 0, y: 0, to: [2, 3, 99]},  // 99 = an id no system has
+    {a: 'B', id: 2, x: 3, y: 4, to: [1]},         // the same link from the other side
+    {a: 'C', id: 3, x: -6, y: 8, to: []},         // listed by A only: still one link
+    {a: 'D', id: 4, x: 1, y: 1, to: [4]},         // a self link
+    {a: 'E', id: 5, x: NaN, y: 0, to: [1]},       // not placed
+    {a: 'F', x: 2, y: 2, to: [1]},                // no id
+    {a: 'G', id: 6, x: 0, y: 0, to: [1]},         // on the same point as A
+  ];
+  const g = M.gateLinks(sy).map((l) => [l.a, l.b, l.len]);
+  check('gate links: one row per undirected pair; unknown id, self link, unplaced, id-less and zero-length are dropped', JSON.stringify(g) === JSON.stringify([['A', 'B', 5], ['A', 'C', 10]]), g);
+  check('gate links: the reversed input gives the same list', JSON.stringify(M.gateLinks(sy.slice().reverse()).map((l) => [l.a, l.b, l.len])) === JSON.stringify(g));
+  check('gate links: data from before the collector change (no id / to) and no data give none, without throwing',
+    M.gateLinks(latest.systems.map(({id, to, ...r}) => r)).length === 0 && M.gateLinks(null).length === 0 && M.gateLinks([null, {}]).length === 0);
+  const want = gatePairs(latest.systems), got = M.gateLinks(latest.systems);
+  const gotSet = new Set(got.map((l) => [l.a, l.b].sort().join('|')));
+  check('gate links on the real latest.json: the file carries links, and the model returns exactly the recounted pairs, each once',
+    want.size > 0 && got.length === want.size && gotSet.size === got.length && [...want].every((k) => gotSet.has(k)), {recount: want.size, model: got.length});
+  const linked = latest.systems.filter((s) => (s.to || []).length);
+  check('gate links on the real latest.json: every linked system has a starbase, and links = to.length on every row',
+    linked.length > 0 && linked.every((s) => !!s.f) && latest.systems.every((s) => s.links === (s.to || []).length), {linked: linked.length});
+}
+
 async function browserDrive(chromium, latest, bodies) {
   const MIME = {'.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json', '.css': 'text/css', '.webp': 'image/webp'};
   const planetReqs = [];
@@ -396,7 +428,9 @@ async function browserDrive(chromium, latest, bodies) {
     if (planet404 && q.url.includes('/Images/planets/' + planet404)) { r.writeHead(404); r.end(); return; } // fault injection
     // OLD_BUNDLE=<file> serves that file as C4Live/c4-scene.js, to prove a browser check FAILS on pre-fix code
     if (process.env.OLD_BUNDLE && /c4-scene\.js$/.test(q.url.split('?')[0])) { fs.readFile(process.env.OLD_BUNDLE, (e, b) => { r.writeHead(e ? 404 : 200, {'content-type': 'text/javascript'}); r.end(b); }); return; }
-    if (!p.startsWith(ROOT)) { r.writeHead(403); r.end(); return; }
+    // C4_LATEST=<file> serves that file as Data/c4-live/latest.json (the node checks above read the same file)
+    if (process.env.C4_LATEST && /\/Data\/c4-live\/latest\.json$/.test(q.url.split('?')[0])) p = process.env.C4_LATEST;
+    else if (!p.startsWith(ROOT)) { r.writeHead(403); r.end(); return; }
     fs.readFile(p, (e, b) => { if (e) { r.writeHead(404); r.end(); return; } r.writeHead(200, {'content-type': MIME[path.extname(p)] || 'application/octet-stream', 'cache-control': 'no-store'}); r.end(b); });
   });
   await new Promise((ok) => server.listen(0, '127.0.0.1', ok));
@@ -408,6 +442,7 @@ async function browserDrive(chromium, latest, bodies) {
     if (process.env.ONLY_T56S) { await task56stars(browser, port, latest); return; } // the #56 starfield block alone
     if (process.env.ONLY_V10) { await taskV10(browser, port, latest, bodies); return; } // the v10 one-world block alone (V10_PARTS=a,b,...)
     if (process.env.ONLY_T58) { await task58(browser, port, latest); return; } // the task #58 / #57 block alone
+    if (process.env.ONLY_GATES) { const errs = []; await gatesDrive(browser, port, latest, shots, errs); check('gates pages: no page errors', errs.length === 0, errs.slice(0, 5)); return; } // the gates block alone
     if (process.env.ONLY_T55) { await task55(browser, port, latest, JSON.parse(fs.readFileSync(path.join(ROOT, 'Data/c4-live/events.json'), 'utf8'))); return; } // the task #55 block alone
     if (process.env.ONLY_T53) { await task53(browser, port, latest); return; } // the task #53 block alone
     if (process.env.ONLY_T51) { await task51(browser, port, latest); return; } // the task #51 block alone
@@ -561,7 +596,7 @@ async function browserDrive(chromium, latest, bodies) {
     check('faction filter accepts npc', await page.evaluate(() => { window.scene.setFilter({faction: 'npc', states: null, owner: null}); const f = window.scene.getStats().filter.faction; window.scene.setFilter({faction: null}); return f === 'npc'; }));
     await sleep(500);
     await page.screenshot({path: path.join(shots, 'c4-scene-pulses.png')});
-    check('setLayer accepts all 7 layers', await page.evaluate((L) => L.every((l) => window.scene.setLayer(l, true)), LAYERS));
+    check('setLayer accepts all 8 layers', await page.evaluate((L) => L.every((l) => window.scene.setLayer(l, true)), LAYERS));
     check('NEGATIVE: setLayer rejects an unknown layer', await page.evaluate(() => window.scene.setLayer('bogus', true) === false));
     check('NEGATIVE: setData rejects a malformed payload', await page.evaluate(() => window.scene.setData({nope: 1}, []) === false));
     // hourly reload must not fly the camera home under a user who zoomed in (reviewer P2-2)
@@ -1435,6 +1470,8 @@ async function browserDrive(chromium, latest, bodies) {
     await taskV10(browser, port, latest, bodies);
     // 2026-11-13 Resource layer (setStatResource + setStatLayer('resource'): columns = bodies' richness per system)
     await taskRes(browser, port, latest, bodies);
+
+    await gatesDrive(browser, port, latest, shots, errors);
 
     // dispose cleans up
     const disp = await page.evaluate(() => { window.scene.dispose(); return document.querySelectorAll('#map canvas').length; });
@@ -2606,6 +2643,63 @@ async function task53(browser, port, latest) {
     await rp.close();
   } catch (e) { check('#53 real-page drive completed without throwing', false, String(e && e.message || e).slice(0, 200)); }
   check('#53 no page errors during the task #53 drives', errs.length === 0, errs.slice(0, 4));
+}
+
+// ---------------- gate links (2026-11-21). ONLY_GATES=1 runs this block alone; OLD_BUNDLE=<a bundle with GATE.gain 0, no trim, a wide band or gain 3> turns its pixel checks red.
+async function gatesDrive(browser, port, latest, shots, errors) {
+  // ---------------- gate links (2026-11-21): the cloud lines between gate-linked systems. Only the gates layer is on,
+  // so every lit pixel in a sampled box is the line itself. GATE_BEFORE=1 marks a run on a bundle from before the layer.
+  try {
+    const pageG = await browser.newPage({viewport: {width: 1600, height: 900}});
+    pageG.on('pageerror', (e) => errors.push(String(e)));
+    await pageG.goto(`http://127.0.0.1:${port}/C4Live/scene-src/dev.html?reduced=1&nobodies=1`);
+    await pageG.waitForFunction(() => window.scene && window.scene.getStats().frames > 10, null, {timeout: 30000});
+    await pageG.evaluate(() => { document.getElementById('bar').style.display = 'none'; });
+    const want = gatePairs(latest.systems);
+    const drawn = await pageG.evaluate(() => ({n: window.scene.getStats().gates, list: typeof window.scene.gateLinks === 'function' ? window.scene.gateLinks() : null}));
+    const drawnSet = new Set((drawn.list || []).map((l) => [l.a, l.b].sort().join('|')));
+    check('gates: the scene draws exactly the recounted pairs of latest.json (getStats().gates + gateLinks())',
+      want.size > 0 && drawn.n === want.size && drawnSet.size === want.size && [...want].every((k) => drawnSet.has(k)), {recount: want.size, stats: drawn.n});
+    await pageG.screenshot({path: path.join(shots, 'c4-gates-galaxy.png')});
+    // the box mean of the brightest channel at a screen point
+    const lumAt = async (p, half = 10) => { const w = half * 2 + 1; const d = (await pageG.screenshot({clip: {x: Math.round(p.clientX) - half, y: Math.round(p.clientY) - half, width: w, height: w}})).toString('base64');
+      return pageG.evaluate(async ({d, w}) => { const img = new Image(); img.src = 'data:image/png;base64,' + d; await img.decode(); const c = document.createElement('canvas'); c.width = w; c.height = w; const g = c.getContext('2d'); g.drawImage(img, 0, 0); const px = g.getImageData(0, 0, w, w).data; let s = 0; for (let i = 0; i < px.length; i += 4) s += Math.max(px[i], px[i + 1], px[i + 2]); return s / (w * w); }, {d, w}); };
+    const only = (on) => pageG.evaluate(({L, on}) => { for (const l of L) window.scene.setLayer(l, l === 'gates' ? on : false); }, {L: LAYERS, on});
+    // an isolated link: no other link's point within 1.5 map units of its middle; the longest such one
+    const list = (drawn.list || []).map((l) => ({...l, mx: (l.ax + l.bx) / 2, my: (l.ay + l.by) / 2}));
+    const dSeg = (l, x, y) => { const dx = l.bx - l.ax, dy = l.by - l.ay, t = Math.max(0, Math.min(1, ((x - l.ax) * dx + (y - l.ay) * dy) / (dx * dx + dy * dy))); return Math.hypot(l.ax + dx * t - x, l.ay + dy * t - y); };
+    const lone = list.filter((l) => l.len > 3 && list.every((o) => o === l || dSeg(o, l.mx, l.my) > 1.5)).sort((a, b) => b.len - a.len)[0];
+    check('gates: found an isolated link longer than 3 map units to measure', !!lone, lone && {a: lone.a, b: lone.b, len: +lone.len.toFixed(2)});
+    if (lone) {
+      const ux = (lone.bx - lone.ax) / lone.len, uy = (lone.by - lone.ay) / lone.len;
+      const measure = async (zoom, tag, half) => { // half = box half-size px: small at galaxy zoom, where 1.2 map units is ~8 px
+        await pageG.evaluate(({l, zoom}) => window.scene.focusPoint(l.mx, l.my, zoom), {l: lone, zoom});
+        await sleep(2600);
+        await only(true); await sleep(250);
+        await pageG.screenshot({path: path.join(shots, `c4-gates-${tag}.png`)});
+        const at = (x, y) => pageG.evaluate(({x, y}) => window.scene.screenOf(x, y), {x, y});
+        // The backdrop (nebula, grid) stays lit with every layer off, so each box is read twice - gates on, gates off -
+        // and what the gates ADD is the difference. lit = the most any of 5 boxes along the middle third gains (a cloud
+        // line has gaps: one box may sit in one); beside = 1.2 map units to the side; end = on the system itself.
+        const pts = [];
+        for (const t of [-0.16, -0.08, 0, 0.08, 0.16]) pts.push(await at(lone.mx + ux * lone.len * t, lone.my + uy * lone.len * t));
+        const pBeside = await at(lone.mx - uy * 1.2, lone.my + ux * 1.2), pEnd = await at(lone.ax, lone.ay);
+        const read = async () => { const o = []; for (const p of pts) o.push(await lumAt(p, half)); return {mid: o, beside: await lumAt(pBeside, half), end: await lumAt(pEnd, 3)}; };
+        const A = await read();
+        await only(false); await sleep(250);
+        const B = await read();
+        return {lit: +Math.max(...A.mid.map((v, i) => v - B.mid[i])).toFixed(2), beside: +(A.beside - B.beside).toFixed(2), end: +(A.end - B.end).toFixed(2), backdrop: +B.mid[2].toFixed(2)};
+      };
+      const far = await measure(1, 'far', 2), near = await measure(Math.max(4, 24 / lone.len), 'near', 10);
+      check('gates: the layer adds light along the middle of the line and none beside it (galaxy zoom)', far.lit > 3 && Math.abs(far.beside) < 1.5, far);
+      check('gates: the layer adds light along the middle of the line and none beside it (zoomed on the link)', near.lit > 6 && Math.abs(near.beside) < 1.5, near);
+      check('gates: SUBTLE - the line adds less than a quarter of full brightness at either zoom', far.lit < 64 && near.lit < 64, {far: far.lit, near: near.lit});
+      check('gates: the band has faded out on the system itself (zoomed on the link)', near.end < near.lit * 0.3 + 1, near);
+    }
+    const stripped = await pageG.evaluate(() => { const old = {...window.latest, systems: window.latest.systems.map(({id, to, ...r}) => r)}; const ok = window.scene.setData(old, window.events); const n = window.scene.getStats().gates; window.scene.setData(window.latest, window.events); return {ok, n, back: window.scene.getStats().gates}; });
+    check('gates: a saved copy from before the collector change (no id / to) draws none and the next read brings them back', stripped.ok === true && stripped.n === 0 && stripped.back === want.size, stripped);
+    await pageG.close();
+  } catch (e) { check('gates drive completed without throwing', false, String(e && e.message || e).slice(0, 200)); }
 }
 
 // ---------------- task #55 (scene v7: DAC CONQUEST lens; owner 2026-11-07 "remove the faction colors and each DAC shows up

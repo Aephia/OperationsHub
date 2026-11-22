@@ -3,7 +3,9 @@
 //   const scene = C4Scene.mount(el, {reducedMotion?, clock?})   clock() -> unix seconds (default: real clock)
 //   scene.setData(latest, events) / setFilter({faction, states, owner}) / focusOwner(profile|null) / focusPoint(x, y, zoom?)
 //   scene.pulseEvent(event) / on('pick'|'hover'|'systemView', cb) -> unsubscribe / setLayer(name, on) / dispose()
-//   LAYERS: systems, fleets, mining, routes, combat, territory, labels
+//   LAYERS: systems, fleets, mining, routes, gates, combat, territory, labels
+//   2026-11-21 'gates' layer: one soft cloud line per pair of gate-linked systems (M.gateLinks over systems[].id / .to);
+//     data without those fields draws none. getStats().gates counts them; gateLinks() lists them (test probe).
 //   ONE CONTINUOUS WORLD (v10, owner 2026-11-08: "It still feels like a transition, I want the star system on the same map,
 //   all the way zoomable"): every system is ALWAYS drawn at its map position with its star, orbits, bodies, starbase,
 //   stakes and ships (system.js); there is no system view, no enter / exit, no reveal threshold. Zoom is one continuous
@@ -53,7 +55,7 @@ import {OutputPass} from 'three/examples/jsm/postprocessing/OutputPass.js';
 import * as M from './model.js';
 import {createWorld, REL_GLSL, STAR_PX, BODY_PX, SB_PX, RING_PX} from './system.js';
 
-const LAYERS = ['systems', 'fleets', 'mining', 'routes', 'combat', 'territory', 'labels'];
+const LAYERS = ['systems', 'fleets', 'mining', 'routes', 'gates', 'combat', 'territory', 'labels'];
 const HOME = {x: 0.5, y: 0.5, dist: 128, polar: 0.72};
 const PULSE_KIND = {combat: 0, destroyed: 1, starbaseCombat: 2, captured: 3, newFleet: 4, gone: 5};
 const PULSE_R = [3, 6, 4.5, 9, 2.6, 1.6];
@@ -288,6 +290,49 @@ void main() {
   float flow = 0.55 + 0.45 * smoothstep(0.0, 0.45, f) * smoothstep(1.0, 0.55, f); // soft travelling pulses, no hard dashes
   float a = prof * flow * (0.3 + 0.45 * vU) * vA;
   gl_FragColor = vec4(mix(vCol, vec3(0.55, 0.7, 0.85), 0.15) * a * 0.42, 1.0);
+}`;
+
+// Gate links (2026-11-21): a soft, broken band of "cloud" between two gate-linked systems - never a ruled line. Width
+// GATE.w map units clamped to [minPx, maxPx] CSS px; the centre meanders, value noise breaks the band into wisps (each
+// octave fades out before its cells get smaller than a few px, so nothing sparkles at galaxy zoom), a very slow drift
+// (uAnim: still under reduced motion), faded in over GATE.trim from each end so the systems themselves stay clear.
+const GATE_VS = REL_GLSL + /* glsl */`
+attribute vec4 iE; // (ax, ay, bx, by)
+attribute vec2 iG; // (seed 0..1, length in map units)
+varying float vS; varying float vX; varying float vL; varying float vSeed; varying float vPpu;
+void main() {
+  float L = iG.y;
+  if (L < 1e-5) COLLAPSE
+  vec2 dir = (iE.zw - iE.xy) / L; vec2 side = vec2(dir.y, -dir.x);
+  float u = position.y + 0.5;
+  vec2 c = mix(iE.xy, iE.zw, u);
+  float ppu = ppuOf(viewOf(relOf(c, vec2(0.0))));
+  float wpx = clamp(${M.GATE.w.toFixed(3)} * ppu, ${M.GATE.minPx.toFixed(1)}, ${M.GATE.maxPx.toFixed(1)});
+  vS = u * L; vX = position.x * 2.0; vL = L; vSeed = iG.x; vPpu = ppu;
+  gl_Position = clipOf(viewOf(relOf(c, side * position.x * wpx / ppu)));
+}`;
+const GATE_FS = /* glsl */`
+uniform float uAnim; uniform vec3 uCol; uniform float uGain;
+varying float vS; varying float vX; varying float vL; varying float vSeed; varying float vPpu;
+float gh(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+float gn(vec2 p) {
+  vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(gh(i), gh(i + vec2(1.0, 0.0)), f.x), mix(gh(i + vec2(0.0, 1.0)), gh(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+void main() {
+  float so = vSeed * 61.0;
+  float k1 = smoothstep(2.0, 8.0, vPpu / 1.6), k2 = smoothstep(2.0, 8.0, vPpu / 5.0); // an octave shows only once its cells are a few px
+  float off = ((gn(vec2(vS * 1.3 + so, 3.7)) - 0.5) * 0.7 + (gn(vec2(vS * 5.1 + so, 9.2)) - 0.5) * 0.25 * k2) * k1;
+  float x = vX - off * 0.55;
+  float edge = 1.0 - vX * vX;
+  float prof = exp(-x * x * 3.2) * edge * edge;
+  float coarse = gn(vec2(vS * 1.6 + so - uAnim * 0.02, x * 1.5 + so));
+  float fine = gn(vec2(vS * 5.0 + so + uAnim * 0.03, x * 3.0 + 4.1));
+  float cloud = mix(0.5, smoothstep(0.2, 0.85, mix(coarse, coarse * 0.6 + fine * 0.4, k2)), k1);
+  float T = min(${M.GATE.trim.toFixed(3)}, ${M.GATE.trimShare.toFixed(3)} * vL);
+  float ends = smoothstep(0.0, T, vS) * smoothstep(0.0, T, vL - vS);
+  float a = prof * (0.16 + 0.84 * cloud) * ends;
+  gl_FragColor = vec4(uCol * a * uGain, 1.0);
 }`;
 
 // Mining beams (v10: every system's miners, at most MINER.beamCap per system - placement iT.y = 1): rock surface ->
@@ -773,8 +818,8 @@ varying vec3 vCol;
 void main() { vec2 q = gl_PointCoord * 2.0 - 1.0; float r2 = dot(q, q); gl_FragColor = vec4(vCol * exp(-r2 * 4.0), 1.0); }`;
 
 // ---------------------------------------------------------------- helpers
-function quadGeometry() {
-  const p = new THREE.PlaneGeometry(1, 1);
+function quadGeometry(segY = 1) {
+  const p = new THREE.PlaneGeometry(1, 1, 1, segY);
   const g = new THREE.InstancedBufferGeometry();
   g.index = p.index; g.setAttribute('position', p.getAttribute('position')); g.setAttribute('uv', p.getAttribute('uv'));
   g.instanceCount = 0;
@@ -1068,6 +1113,12 @@ function mount(container, opts = {}) {
   const dacHalos = mesh(dacGeo, additive(DACHALO_VS, DACHALO_FS, dacU, U.uGal), 1); // over the territory, under routes / systems
   dacHalos.visible = false;
   scene.add(dacHalos);
+  // gate links (2026-11-21): over the territory and the DAC halos, under routes, glyphs and fleets. The quad is cut
+  // into GATE.seg pieces along its length so a link that runs past the camera only bends in its last piece.
+  const gateGeo = quadGeometry(M.GATE.seg);
+  const gateU = {uAnim: U.uAnim, uViewH: U.uViewH, uGain: {value: M.GATE.gain}, uCol: {value: new THREE.Vector3(...M.hexToLinear(M.GATE.hex))}};
+  const gatesMesh = mesh(gateGeo, additive(GATE_VS, GATE_FS, gateU, null), 1.5);
+  scene.add(gatesMesh);
   scene.add(routes, hots, trails, systemsMesh, beams, fleetDots, fleetsMesh, pulses, tracers, statDisc, statCols);
   const tracerA = instanceAttrs(tracerGeo, [['iE', 4], ['iC', 3], ['iC2', 3], ['iS', 2]], TRACER_POOL);
   for (let i = 0; i < TRACER_POOL; i++) tracerA.iS.array[i * 2] = -1e9;
@@ -1079,7 +1130,7 @@ function mount(container, opts = {}) {
 
   // the combat heat / pulse rings (hots) are NOT in layerObjs since task #57: syncHots shows them only while the Combat
   // stat layer leads (and the 'combat' layer switch is on). Mining beams follow fleets AND mining (syncBeams).
-  const layerObjs = {systems: [systemsMesh], fleets: [fleetsMesh, fleetDots, trails], mining: [], routes: [routes], combat: []};
+  const layerObjs = {systems: [systemsMesh], fleets: [fleetsMesh, fleetDots, trails], mining: [], routes: [routes], gates: [gatesMesh], combat: []};
   const layers = Object.fromEntries(LAYERS.map((l) => [l, true]));
   const syncBeams = () => { beams.visible = layers.fleets && layers.mining; };
 
@@ -1389,6 +1440,15 @@ function mount(container, opts = {}) {
       sA.iM.array.set([1, M.seedOf(s.a), 0, WI[i].starR], i * 4); // w: the star's disc radius (the glyph -> star hand-over)
     }
     for (const k in sA) sA[k].needsUpdate = true;
+
+    D.gates = M.gateLinks(D.systems);
+    const gA = instanceAttrs(gateGeo, [['iE', 4], ['iG', 2]], D.gates.length);
+    for (let i = 0; i < D.gates.length; i++) {
+      const g = D.gates[i];
+      gA.iE.array.set([g.ax, g.ay, g.bx, g.by], i * 4);
+      gA.iG.array.set([g.seed, g.len], i * 2);
+    }
+    for (const k in gA) gA[k].needsUpdate = true;
 
     D.hot = M.hotSpots(Array.isArray(events) ? events : [], tBase);
     const hA = instanceAttrs(hotGeo, [['iS', 4], ['iM', 4]], D.hot.length);
@@ -2440,10 +2500,12 @@ function mount(container, opts = {}) {
       const f = D && D.fleets.find((x) => x.a === id);
       return f ? M.atlasCell(shipAtlas, f.flag, f.flagSize) : null;
     },
+    // test probe: the gate links drawn right now (system addresses + map points)
+    gateLinks() { return D ? D.gates.map((g) => ({a: g.a, b: g.b, ax: g.ax, ay: g.ay, bx: g.bx, by: g.by, len: g.len})) : []; },
     getStats() {
       return {ok: true, fps: Math.round(stats.fps * 10) / 10, frameMs: Math.round(stats.frameMs * 100) / 100, frames: stats.frames,
         pixelRatio, drawCalls: renderer.info.render.calls, fleets: D ? D.fleets.length : 0, systems: D ? D.systems.length : 0,
-        hotSpots: D ? D.hot.length : 0, reducedMotion: reduced, bodies: bodiesAll.length,
+        hotSpots: D ? D.hot.length : 0, reducedMotion: reduced, bodies: bodiesAll.length, gates: D ? D.gates.length : 0,
         // systemView (v10): the DOMINANT system (null when none) - see sysStats; galaxyFade = the galaxy-marker distance
         // fade (stat columns, callouts, DAC halos, heat rings, pulses, tracers): 1 at camera distance >= MARK_FAR
         systemView: dom.addr ? sysStats(dom.addr) : null, galaxyFade: Math.round(U.uGal.value * 1000) / 1000,

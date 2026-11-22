@@ -260,6 +260,36 @@ export function stacks(fleets, settledBy = -Infinity) {
 
 // Marker size in world units by ship count (1 ship = 0.55, 75 ships ~ 2.1).
 export const fleetSize = (ships) => 0.55 * (1 + 0.42 * Math.log2(Math.max(1, ships || 1)));
+// Gate links (2026-11-21, owner: "show gates connected to each other in subtle way, like a cloud line"). The chain gives
+// every star system an id and the ids its starbase gate connects to (collector: systems[].id / .to). One row per
+// UNDIRECTED pair, whichever side lists it; a target that is not a known, placed system is dropped, as is a self link
+// and a pair at one point. Order follows the lower id, then the higher, so the same data always gives the same list.
+export function gateLinks(systems) {
+  const byId = new Map();
+  for (const s of systems || []) {
+    if (s && Number.isInteger(s.id) && Number.isFinite(s.x) && Number.isFinite(s.y) && !byId.has(s.id)) byId.set(s.id, s);
+  }
+  const seen = new Set(), out = [];
+  for (const s of byId.values()) {
+    if (!Array.isArray(s.to)) continue;
+    for (const t of s.to) {
+      const o = byId.get(t);
+      if (!o || o === s) continue;
+      const a = s.id < o.id ? s : o, b = a === s ? o : s, key = a.id + '>' + b.id;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const len = Math.hypot(b.x - a.x, b.y - a.y);
+      if (!(len > 1e-6)) continue;
+      out.push({a: a.a, b: b.a, ia: a.id, ib: b.id, ax: a.x, ay: a.y, bx: b.x, by: b.y, len, seed: seedOf(a.a + '>' + b.a)});
+    }
+  }
+  return out.sort((p, q) => p.ia - q.ia || p.ib - q.ib);
+}
+// The cloud line's look: w = band width in map units, clamped to [minPx, maxPx] CSS px on screen (so it is a thin wisp
+// over the whole galaxy and never a wall up close); trim = how far from each system the band has faded in (map units,
+// capped at trimShare of the link so a short link keeps a middle); gain = peak brightness (additive, linear).
+export const GATE = {w: 0.9, minPx: 4, maxPx: 40, trim: 0.45, trimShare: 0.22, gain: 0.15, hex: '#9fc4ee', seg: 24};
+
 export const systemSize = (lvl) => 1.1 + Math.max(0, lvl || 0) * 0.42;
 
 // Recent COMBAT folded into hot spots: events with t in (ref - windowS, ref], grouped by position (0.5 unit cells).

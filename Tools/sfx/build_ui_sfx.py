@@ -5,6 +5,7 @@ pick, trim, band-limit, level and measure them offline.
     python -I Tools/sfx/build_ui_sfx.py generate <scratch dir> [--only NAME] [--takes N]
     python -I Tools/sfx/build_ui_sfx.py build <scratch dir>            # writes SFX/ui/<name>.wav + SFX/ui/report.json
     python -I Tools/sfx/build_ui_sfx.py measure <wav> [<wav> ...]
+    python -I Tools/sfx/build_ui_sfx.py clicks                         # the dry click set: SFX/ui/click/<name>.wav
 
 The key is read from the environment (ELEVENLABS_API_KEY, or the Windows user environment) and is never written
 anywhere. Raw takes stay in the scratch directory, never in the repo.
@@ -219,8 +220,67 @@ def cmd_build(scratch):
     os.replace(tmp, OUT / "report.json")
 
 
+# The "click" set (2026-11-21): the same five names as dry clicks, for a page where the tonal set grates because it
+# is clicked all day (C4 Live). Nothing here has a pitch you could hum: each is one or two damped knocks of a few
+# milliseconds plus a 1 ms noise edge, and nothing sweeps, chimes or rings. name -> (knocks, seconds); a knock is
+# (start s, Hz, decay s, level). Lower Hz = a duller "tock" (panel open / close), higher = a "tick" (tap).
+CLICKS = {
+    "tap":   ([(0.0, 2100, 0.0022, 1.0)], 0.022),
+    "tab":   ([(0.0, 1500, 0.0035, 1.0)], 0.032),
+    "open":  ([(0.0, 820, 0.0070, 1.0)], 0.050),
+    "close": ([(0.0, 560, 0.0060, 1.0)], 0.045),
+    "done":  ([(0.0, 1500, 0.0035, 0.8), (0.085, 1900, 0.0035, 1.0)], 0.120),
+}
+CLICK_PEAK = 0.5
+CLICK_MAX_SECONDS = 0.13     # nothing in this set may be longer: a click cannot ring on
+CLICK_RING_SECONDS = 0.03    # and each knock is 30 dB down within this long
+
+
+def click_wave(name):
+    knocks, seconds = CLICKS[name]
+    rng = np.random.default_rng(20261121)
+    out = np.zeros(int(seconds * RATE))
+    for start, hz, decay, level in knocks:
+        n = len(out) - int(start * RATE)
+        tt = np.arange(n) / RATE
+        k = np.sin(2 * np.pi * hz * tt) * np.exp(-tt / decay) + 0.35 * rng.standard_normal(n) * np.exp(-tt / 0.0009)
+        out[int(start * RATE):] += level * k
+    out = band(out)
+    fin, fout = int(0.0005 * RATE), int(0.004 * RATE)
+    out[:fin] *= np.linspace(0, 1, fin)
+    out[-fout:] *= np.linspace(1, 0, fout) ** 2
+    return out / np.max(np.abs(out)) * CLICK_PEAK
+
+
+def ring_seconds(x, start=0.0):
+    """how long after the knock at `start` the sound stays within 30 dB of that knock's own peak"""
+    seg = np.abs(x[int(start * RATE):])
+    idx = np.nonzero(seg > np.max(seg) * 0.0316)[0]
+    return round(float(idx[-1] + 1) / RATE, 4)
+
+
+def cmd_clicks():
+    out = OUT / "click"
+    out.mkdir(parents=True, exist_ok=True)
+    report = {}
+    for name, (knocks, _) in CLICKS.items():
+        write_wav(out / (name + ".wav"), click_wave(name))
+        x = read_mono(out / (name + ".wav"))
+        s = stats(x)
+        s["ring"] = ring_seconds(x, knocks[-1][0])
+        if s["seconds"] > CLICK_MAX_SECONDS or s["ring"] > CLICK_RING_SECONDS or s["peak"] > CLICK_PEAK + 0.01 or s["peak"] < 0.3:
+            sys.exit("%s: not a click - %s" % (name, json.dumps(s)))
+        report[name] = {"made": "synthesised here, no service", "knocks": knocks, "shipped": s}
+        print("%-6s %s" % (name, s))
+    tmp = out / "report.json.tmp"
+    tmp.write_text(json.dumps(report, indent=1), encoding="utf-8")
+    os.replace(tmp, out / "report.json")
+
+
 def main():
     a = sys.argv[1:]
+    if a == ["clicks"]:
+        return cmd_clicks()
     if len(a) >= 2 and a[0] == "generate":
         only = a[a.index("--only") + 1] if "--only" in a else None
         takes = int(a[a.index("--takes") + 1]) if "--takes" in a else 3

@@ -230,9 +230,11 @@ const NOTE_NEW = 'The game was updated on chain. History and events start again 
 const EPOCH_FAIL = new Error('INJECTED epoch read failure');
 
 function fakeWorld(o = {}) {
-  const { prefix = 'A', fleets = 40, systems = 40, badSys = 0, badKind = 0, emptyNames = 0, bodiesFail = false } = o;
+  const { prefix = 'A', fleets = 40, systems = 40, badSys = 0, badKind = 0, emptyNames = 0, bodiesFail = false, gates = null } = o;
   const sys = Array.from({ length: systems }, (_, i) => ({ address: `${prefix}S${i}`, name: i < emptyNames ? '' : `${prefix} system ${i}`, regionId: 1,
     coordinates: i < badSys ? { x: NaN, y: NaN } : { x: i, y: -i }, starbase: null, celestialBodyAddresses: [`${prefix}B${i}`], connections: [] }));
+  // gates: { index: patch } assigns systemId / connections (or any raw field) to chosen fake systems
+  if (gates) for (const [i, patch] of Object.entries(gates)) Object.assign(sys[i], patch);
   const fl = Array.from({ length: fleets }, (_, i) => ({ address: `${prefix}F${i}`, name: `${prefix} fleet ${i}`, ownerProfile: { address: `${prefix}P${i % 5}` },
     faction: 'mud', npcFactionId: 0, state: { kind: i < badKind ? 'zzzUnknown' : 'idle' }, location: { x: i, y: i }, hp: 100, sp: 50,
     stats: { combat: { hp: 100, sp: 50 }, cargo: {} }, shipCounts: { total: 1, small: 1 }, ships: [{ name: 'Pearce X4', quantity: 1, sizeClass: 'small' }],
@@ -384,6 +386,21 @@ const EPOCH_SCENARIOS = [
   ['same epoch, bodies read fails', [{ world: A40(), epoch: E1 }, { world: fakeWorld({ bodiesFail: true }), epoch: E1 }], [
     ['same epoch + failed bodies read (control): previous bodies.json kept', ([a, b]) => b.latest.quality.bodiesFailed === true && b.after['bodies.json'] === a.after['bodies.json'] && b.bodies.bodies.length === 40],
   ]],
+  // gate links: id + to ride on every systems row; malformed connections are map decoration and never fail a pass
+  ['gate links on the system rows', [{ epoch: E1, world: fakeWorld({ gates: {
+      0: { systemId: 5, connections: [{ systemId: 7 }, { systemId: 3 }, { systemId: 7 }] },   // duplicate + unsorted
+      1: { systemId: 9, connections: [{ systemId: 9 }, { systemId: 2.5 }, { systemId: 'x' }, { systemId: null }, { systemId: '' }, { systemId: [] }, { systemId: '3' }, {}, null, { systemId: 4 }] }, // self, junk
+      2: { systemId: 'abc', connections: [{ systemId: 1 }] },                                  // id not an integer
+      3: { systemId: 11, connections: 'oops' },                                                // connections not a list
+      4: { systemId: 12, connections: null },
+      5: { systemId: 13, connections: undefined } } }) }], [
+    ['gate links (positive control): systems row 0 keeps its name, id 5 and links 2', ([a]) => !a.err && a.latest.systems[0].n === 'A system 0' && a.latest.systems[0].id === 5 && a.latest.systems[0].links === 2],
+    ['gate links: connections [7, 3, 7] -> to [3, 7], links 2', ([a]) => JSON.stringify(a.latest.systems[0].to) === '[3,7]' && a.latest.systems[0].links === a.latest.systems[0].to.length],
+    ['gate links: own id, fraction, text, null, empty and null entries are dropped -> to [4]', ([a]) => JSON.stringify(a.latest.systems[1].to) === '[4]' && a.latest.systems[1].links === 1],
+    ['gate links: a systemId that is not an integer gives id null, its connections still count', ([a]) => a.latest.systems[2].id === null && JSON.stringify(a.latest.systems[2].to) === '[1]'],
+    ['gate links: connections as text / null / missing give to [] and a normal pass', ([a]) => [3, 4, 5].every((i) => Array.isArray(a.latest.systems[i].to) && a.latest.systems[i].to.length === 0 && a.latest.systems[i].links === 0) && a.latest.quality.partial === false],
+    ['gate links: a system with no connections (the fake default) has id null and to []', ([a]) => a.latest.systems[6].id === null && JSON.stringify(a.latest.systems[6].to) === '[]' && a.latest.systems[6].links === 0],
+  ]],
 ];
 
 // readChainEpoch against a fake RPC. full = the programdata account's bytes; dataSlice is honoured like a real node.
@@ -457,7 +474,13 @@ const EPOCH_MUTANTS = [
   ['new bodies not written on a new epoch (marker left)', 'if (bodies && (bodies.length || epochChanged)) writeJson', 'if (false) writeJson'],
   ['deploy slot read at offset 0', 'dataSlice: { offset: 4, length: 8 }', 'dataSlice: { offset: 0, length: 8 }'],
   ['program owner not checked', 'p && p.owner === UPGRADEABLE_LOADER ?', 'p ?'],
-  ['genesis failure swallowed', 'const genesis = await rpc.getGenesisHash().send(opt);', "const genesis = await rpc.getGenesisHash().send(opt).catch(() => '1'.repeat(40));"],
+  ['gate links: the to list is never written', '        id: sysId, to,', '        id: sysId, to: [],'],
+  ['gate links: the list is not sorted', 'toSet].sort((p, q) => p - q)', 'toSet]'],
+  ['gate links: duplicates kept', 'const toSet = new Set();', 'const toSet = { add(t) { (this.l ||= []).push(t); }, [Symbol.iterator]() { return (this.l || [])[Symbol.iterator](); } };'],
+  ['gate links: the own id is not dropped', ' && t !== sysId) toSet.add(t)', ') toSet.add(t)'],
+  ['gate links: links no longer equals to.length', 'links: to.length,', 'links: (s.connections || []).length,'],
+  ['gate links: malformed connections fail the pass', 'if (Array.isArray(s.connections)) {', 'if (s.connections.map) {'],
+  ['genesis failure swallowed','const genesis = await rpc.getGenesisHash().send(opt);', "const genesis = await rpc.getGenesisHash().send(opt).catch(() => '1'.repeat(40));"],
 ];
 
 // ---- 9. the built browser bundle (C4Live/c4-collect.js): C4Collect.epoch / sameEpoch, offline -------------------

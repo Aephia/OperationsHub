@@ -579,12 +579,26 @@ export async function collect(pass, deps = {}) {
     const systems = systemsRaw.map((s) => {
       for (const b of s.celestialBodyAddresses || []) bodyToSystem[b] = s.address;
       const sb = s.starbase;
+      // Gate links (map decoration only - a malformed list yields [] and never fails a pass):
+      // id = chain systemId, to = de-duplicated sorted integer systemIds of the connections.
+      // Only a number or bigint counts as an id: Number('') and Number([]) are 0, which is a real system.
+      const gateId = (v) => { const n = typeof v === 'number' || typeof v === 'bigint' ? Number(v) : NaN; return Number.isSafeInteger(n) && n >= 0 ? n : null; };
+      const sysId = gateId(s.systemId);
+      const toSet = new Set();
+      if (Array.isArray(s.connections)) {
+        for (const c of s.connections) {
+          const t = gateId(c?.systemId);
+          if (t !== null && t !== sysId) toSet.add(t);
+        }
+      }
+      const to = [...toSet].sort((p, q) => p - q);
       return {
+        id: sysId, to,
         a: s.address, n: s.name, r: s.regionId, x: round(s.coordinates.x), y: round(s.coordinates.y),
         f: sb?.owner ?? null, lvl: sb ? Number(String(sb.level).replace(/\D/g, '') || 0) : 0,
         hp: num(sb?.hp), sp: num(sb?.sp), lc: num(sb?.lastCombatUpdateUnixSeconds),
         built: num(sb?.builtDestroyedAtUnixSeconds),
-        links: (s.connections || []).length,
+        links: to.length,
       };
     });
     const sysByAddr = Object.fromEntries(systems.map((s) => [s.a, s]));
