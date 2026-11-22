@@ -8,7 +8,7 @@ when the cached prices are 55+ minutes old); a whole pass took 28.5 s.
 
 ```
 cd Tools/c4-live
-npm ci --ignore-scripts      # pinned: @aephia/atlas-kit 0.7.0, @solana/kit 6.10.0
+npm ci --ignore-scripts      # pinned: @aephia/atlas-kit (vendored build, see below), @solana/kit 6.10.0
 npm run collect              # loops: one pass now, then every C4_INTERVAL_MIN (default 60, minimum 5)
 npm run collect:once         # one pass; exit 0 = full, 2 = partial (written, marked), 1 = failed (nothing written)
 powershell -ExecutionPolicy Bypass -File install-schedule.ps1          # hourly Windows task (-Remove to undo); logs to collector.log (rotated at 5 MB via --log)
@@ -22,6 +22,31 @@ written out).
 
 Check: `node Test/c4-collector-check.js` (from the repo root; `--offline` for the unit part only). It runs
 the real `collect()` three times against z.ink in temp dirs, never touching `Data/c4-live/`.
+
+## The vendored kit (2026-11-22, temporary)
+
+The game moved to SAGE C4 3.2 on 2026-11-21 and the galaxy was reset. The released kit (0.7.0) ships the
+dev-sage 0.55.0 bindings, which cannot read it: zero fleets, an invalid game account, and
+`claimStakeInstance ... could not be decoded` on the public page. Forcing dev-sage 0.56.0 under 0.7.0 does not
+work either (the kit refuses the new fixed-point combat stats).
+
+So the dependency is `vendor/aephia-atlas-kit-0.7.0-pr1156-6011d71f.tgz`: a local build of the kit's
+**unreleased draft** PR [Aephia/atlas-kit#1156](https://github.com/Aephia/atlas-kit/pull/1156), commit
+`6011d71fb2b0e33cbd1fd47e5fbd0ff113fb1eb9`, on `@staratlas/dev-sage` 0.56.0. Owner-approved; only reads are
+used. sha256 `a0bcfacb3149829a1820ceafd62226332c9c52f708b0a3c770ffc007100e601a`. To rebuild it:
+
+```
+git clone --depth 1 --branch feat/sage-3.2-support https://github.com/Aephia/atlas-kit.git   # check the commit
+corepack pnpm install --frozen-lockfile --ignore-scripts --filter @aephia/atlas-kit...
+cd packages/sage && corepack pnpm exec tsc -p tsconfig.json --types node && corepack pnpm pack
+```
+
+**Go back to a registry version** as soon as a kit release ships the 0.56 bindings: pin it in `package.json`,
+delete `vendor/`, `npm install --ignore-scripts`, rebuild `C4Live/c4-collect.js`, rerun both checks.
+
+Measured on the vendored build, 2026-11-22: 217 fleets, 63 owners, 945 systems, 16 claim stakes, 10 stake
+definitions, 3,901 bodies; a pass took 13 s. The pre-reset local copy (2026-11-08, 1,614 fleets) is kept in
+`Data/c4-live/pre-reset-2026-11-08/`.
 
 ## Safety rules the code enforces
 

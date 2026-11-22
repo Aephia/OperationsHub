@@ -584,7 +584,7 @@ async function degradeRun(file, label) {
 const DEGRADE_CASES = [
   ['collect() resolves (the pass is not aborted)', (r) => !r.err && (r.code === 0 || r.code === 2)],
   ['latest.json + db.json written this pass', (r) => r.latest && r.db && r.latest.generatedAt === r.db.state.runAt && r.latest.generatedAt > Date.now() / 1000 - 900],
-  ['core data present (positive control: owners and fleets)', (r) => r.latest.owners.length > 100 && r.latest.fleets.length > 500],
+  ['core data present (positive control: owners and fleets)', (r) => r.latest.owners.length > 20 && r.latest.fleets.length > 100],
   ['partial is decided by the core reads only', (r) => { const q = r.latest.quality; const core = q.mineFailed > q.mineTotal * 0.05 || q.charFailed > q.charTotal * 0.05 || !!q.suspectDiscovery; return q.partial === core; }],
   ['history point added on a non-partial pass', (r) => r.latest.quality.partial || r.db.history.length === r.historyBefore + 1],
   ['quality flags + notes name both failures', (r) => r.latest.quality.namesFailed === true && r.latest.quality.walletsFailed === true && r.latest.quality.pricesFailed === true
