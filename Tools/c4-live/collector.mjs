@@ -30,7 +30,7 @@ import { createSageContext } from '@aephia/atlas-kit/client';
 import { discoverFleetAddresses, getFleets } from '@aephia/atlas-kit/fleets';
 import { getFleetMiningState } from '@aephia/atlas-kit/mining';
 import { getCharacterForProfile } from '@aephia/atlas-kit/identity';
-import { getAllClaimStakes, listClaimStakeDefinitions } from '@aephia/atlas-kit/claim-stakes';
+import { getAllClaimStakes, listClaimStakeDefinitions, listClaimStakeBuildingDefinitions } from '@aephia/atlas-kit/claim-stakes';
 import { getStarSystems, getAllCelestialBodies } from '@aephia/atlas-kit/world';
 import { listCargoDefinitions } from '@aephia/atlas-kit/cargo';
 import { mkdirSync, readFileSync, writeFileSync, appendFileSync, renameSync, existsSync, statSync, unlinkSync, openSync, closeSync } from 'node:fs';
@@ -62,6 +62,19 @@ const LOCK_STALE_MS = 30 * 60_000;
 const resName = (o) => o.cargo?.name || `cargo#${o.cargo?.id}`;
 const num = (v) => (v === undefined || v === null ? 0 : typeof v === 'bigint' ? Number(v) : Number(v));
 const round = (v, d = 3) => Math.round(v * 10 ** d) / 10 ** d;
+// Claim stake building kind from the chain name ("Ice Giant Central Hub Tier 1", "Ore Breaker - Iron Ore Tier 1",
+// "Fuel Processor Tier 1"): the 12 kinds the stake view draws. `ex` = the building has a resourceExtraction entry.
+export const STAKE_KIND_BY_NAME = [['Central Hub', 'central_hub'], ['Cultivation Hub', 'cultivation_hub'], ['Extraction Hub', 'extraction_hub'],
+  ['Processing Hub', 'processing_hub'], ['Storage Hub', 'storage_hub'], ['Farm Hub', 'farm_hub'], ['Power Plant', 'power_plant'],
+  ['Crew Quarters', 'crew_quarters'], ['Storage Module', 'storage_module']];
+export function buildingKind(name, ex) {
+  const s = String(name ?? '');
+  for (const [word, kind] of STAKE_KIND_BY_NAME) if (s.includes(word)) return kind;
+  if (/Processor(\s+Tier\s+\w+)?\s*$/.test(s)) return 'processor';
+  if (s.includes('Farm')) return 'farm';
+  return ex ? 'extractor' : 'processor';
+}
+const ATLAS_DECIMALS = 1e8; // kit: FLOYDS_PER_ATLAS = 100_000_000
 // --log <file>: also append every log line to <file>, rotated to <file>.1 once it passes 5 MB (checked at
 // start and every pass) so an hourly scheduled job cannot grow it without bound. Used by install-schedule.ps1.
 const LOG_FILE = (() => { const i = process.argv.indexOf('--log'); return i > 0 && process.argv[i + 1] ? process.argv[i + 1] : null; })();
@@ -490,7 +503,7 @@ export async function collect(pass, deps = {}) {
   const readEpoch = deps.readEpoch || readChainEpoch;
   // deps.chain swaps the kit readers (offline tests only); the real pass always uses the kit.
   const K = { createSageContext, discoverFleetAddresses, getFleets, getStarSystems, getAllClaimStakes, getFleetMiningState,
-    getCharacterForProfile, listClaimStakeDefinitions, getAllCelestialBodies, listCargoDefinitions, ...(deps.chain || {}) };
+    getCharacterForProfile, listClaimStakeDefinitions, listClaimStakeBuildingDefinitions, getAllCelestialBodies, listCargoDefinitions, ...(deps.chain || {}) };
   const t0 = Date.now();
   // Taken from the pass START, before the reads: a chain event landing during this pass's reads then
   // falls in the NEXT history window instead of slipping between two windows.
@@ -737,17 +750,78 @@ export async function collect(pass, deps = {}) {
       quality.stakeDefsFailed = true; // the page shows "tier unknown (read failed)", not a blank
       log('WARN claim stake definitions read failed', e.code || '', String(e.message).slice(0, 120));
     }
+    // Building definitions (ONE read per pass; only the ids the live stakes use are kept) and cargo names (ONE read per
+    // pass, shared with the bodies block below). Both optional: a failure sets a quality flag, the stakes keep their
+    // chain fields, and pw / cs / su are left out - never zeros that look like facts.
+    const usedBuildingIds = new Set();
+    for (const k of stakesRaw) for (const b of k.buildings || []) usedBuildingIds.add(num(b.buildingId));
+    let buildingDefs = null;
+    if (usedBuildingIds.size) {
+      try {
+        buildingDefs = {};
+        for (const d of await K.listClaimStakeBuildingDefinitions(ctx)) {
+          const id = num(d.id);
+          if (!usedBuildingIds.has(id)) continue;
+          const ex = d.resourceExtraction || [];
+          // `out` / `use` do NOT come from here: a definition's rates are the maximum for every resource the hub type
+          // could extract; the stake's own stored production (resources.netProduction) is the truth.
+          buildingDefs[id] = { n: d.name == null ? `building #${id}` : String(d.name), k: buildingKind(d.name, ex.length > 0), power: num(d.power), cs: num(d.crewSlots), su: num(d.slots) };
+        }
+      } catch (e) {
+        buildingDefs = null;
+        quality.buildingDefsFailed = true; // the page shows the buildings by id and no power / production
+        log('WARN claim stake building definitions read failed', e.code || '', String(e.message).slice(0, 120));
+      }
+    }
+    let cargoDefs = null, cargoDefsErr = null;
+    try { cargoDefs = await K.listCargoDefinitions(ctx); } catch (e) { cargoDefsErr = e; }
+    const cargoName = Object.fromEntries((cargoDefs || []).map((c) => [c.id, c.name]));
     const TIER_NUM = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
     const stakes = stakesRaw.map((k) => {
       const def = stakeDefs[k.claimStakeDefinitionId];
       const sys = sysByAddr[bodyToSystem[k.body?.address]];
-      return {
+      const row = {
         a: k.address, o: k.ownerProfile?.address, st: k.state?.kind, def: k.claimStakeDefinitionId,
         b: (k.buildings || []).reduce((s, b) => s + num(b.quantity), 0),
         sys: sys?.a ?? null, sysName: sys?.n ?? null, x: sys?.x ?? null, y: sys?.y ?? null,
         crew: num(k.neededCrew), body: k.body?.address ?? null,
         defName: def?.name ?? null, tier: def ? (TIER_NUM[def.tier] ?? def.tier) : null, slots: def?.slots ?? null,
       };
+      // buildings: name + kind from the definitions; without them "building #id" / processor, and no sums
+      let known = !quality.buildingDefsFailed;
+      row.bl = (k.buildings || []).map((b) => {
+        const id = num(b.buildingId), q = num(b.quantity), bd = buildingDefs?.[id];
+        if (!bd) known = false;
+        return { id, n: bd ? bd.n : `building #${id}`, q, k: bd ? bd.k : 'processor' };
+      });
+      if (known) {
+        let gen = 0, use = 0, cs = 0, su = 0;
+        for (const b of k.buildings || []) {
+          const bd = buildingDefs[num(b.buildingId)], q = num(b.quantity);
+          if (bd.power > 0) gen += bd.power * q; else use += -bd.power * q;
+          cs += bd.cs * q; su += bd.su * q;
+        }
+        row.pw = { gen, use }; row.cs = cs; row.su = su;
+      }
+      // out / use: the stake's own stored net production, independent of the building definitions
+      const net = k.resources?.netProduction;
+      if (Array.isArray(net)) {
+        const side = (sign) => net.map((e) => ({ r: cargoName[e.id] || (e.name ? String(e.name) : `cargo#${e.id}`), ps: round(sign * num(e.ratePerSecond), 9) }))
+          .filter((o) => o.ps > 0).sort((p, q) => q.ps - p.ps || (p.r < q.r ? -1 : 1));
+        row.out = side(1);
+        row.use = side(-1);
+      }
+      const items = k.resources?.inventory?.items;
+      if (Array.isArray(items)) {
+        row.inv = items.map((i) => ({ r: String(i.name ?? `cargo#${i.id}`), q: num(i.quantityRaw) })).filter((i) => i.q > 0)
+          .sort((p, q) => q.q - p.q || (p.r < q.r ? -1 : 1));
+        row.fuel = row.inv.filter((i) => i.r === 'Fuel').reduce((s, i) => s + i.q, 0);
+      }
+      const cp = k.resources?.capacity;
+      if (cp) row.cap = { used: num(cp.usedRaw), total: num(cp.totalRaw) };
+      if (k.rentBalanceRaw !== undefined && k.rentBalanceRaw !== null) row.rent = { bal: num(k.rentBalanceRaw) / ATLAS_DECIMALS, at: num(k.lastRentAtUnixSeconds) };
+      if (k.constructionRemainingSeconds !== undefined && k.constructionRemainingSeconds !== null) row.con = { rem: num(k.constructionRemainingSeconds), at: num(k.constructionProgressAtUnixSeconds) };
+      return row;
     });
     for (const k of stakes) if (owners[k.o]) owners[k.o].stakesLive = (owners[k.o].stakesLive || 0) + 1;
 
@@ -757,8 +831,8 @@ export async function collect(pass, deps = {}) {
     // the scene lays bodies out on stylised orbits.
     let bodies = null;
     try {
-      const [bodiesRaw, cargoDefs] = await Promise.all([K.getAllCelestialBodies(ctx), K.listCargoDefinitions(ctx)]);
-      const cargoName = Object.fromEntries(cargoDefs.map((c) => [c.id, c.name]));
+      const bodiesRaw = await K.getAllCelestialBodies(ctx);
+      if (cargoDefsErr) throw cargoDefsErr; // the cargo read (made above for the stakes too) failed: same outcome as before
       const stakesByBody = {};
       for (const k of stakes) if (k.body) (stakesByBody[k.body] ??= []).push(k.a);
       bodies = bodiesRaw.map((b) => {

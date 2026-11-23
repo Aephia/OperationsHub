@@ -285,10 +285,14 @@ export function gateLinks(systems) {
   }
   return out.sort((p, q) => p.ia - q.ia || p.ib - q.ib);
 }
-// The cloud line's look: w = band width in map units, clamped to [minPx, maxPx] CSS px on screen (so it is a thin wisp
-// over the whole galaxy and never a wall up close); trim = how far from each system the band has faded in (map units,
-// capped at trimShare of the link so a short link keeps a middle); gain = peak brightness (additive, linear).
-export const GATE = {w: 0.9, minPx: 4, maxPx: 40, trim: 0.45, trimShare: 0.22, gain: 0.15, hex: '#9fc4ee', seg: 24};
+// The gate line's look (2026-11-22: a hairline with dashes and a moving packet, no longer a cloud band).
+// w / minPx / maxPx = the quad that holds the line: map units clamped to CSS px (the line itself is ~1 px, glowPx is
+// the glow's falloff); trim = how far from each system the line has faded in (map units, capped at trimShare of the
+// link so a short link keeps a middle); gain = peak brightness (additive, linear); far = the share of that brightness
+// kept at galaxy zoom; dash = dash period in map units, drawn once a map unit is dashFrom..3x dashFrom px;
+// one packet (length `packet` map units) every `every` map units, moving `speed` map units per second.
+export const GATE = {w: 0.2, minPx: 7, maxPx: 12, trim: 0.45, trimShare: 0.22, gain: 0.32, hex: '#5fd0ff', seg: 24,
+  glowPx: 1.8, far: 0.32, dash: 0.5, dashFrom: 6, every: 6, packet: 0.5, speed: 0.6, packetGain: 1.1};
 
 export const systemSize = (lvl) => 1.1 + Math.max(0, lvl || 0) * 0.42;
 

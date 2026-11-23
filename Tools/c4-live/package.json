@@ -9,7 +9,8 @@
     "collect:once": "node collector.mjs --once",
     "check": "node ../../Test/c4-collector-check.js",
     "check:offline": "node ../../Test/c4-collector-check.js --offline",
-    "probe:holdings": "node probe-holdings.mjs"
+    "probe:holdings": "node probe-holdings.mjs",
+    "config-snapshot": "node config-snapshot.mjs"
   },
   "dependencies": {
     "@aephia/atlas-kit": "file:vendor/aephia-atlas-kit-0.7.0-pr1156-6011d71f.tgz",

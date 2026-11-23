@@ -139,7 +139,7 @@ The chain keeps **no combat log and no mining history**, so the collector derive
 `latest.json`
 ```
 { v, generatedAt (unix s), rpc (host only), intervalMin, tookMs,
-  quality: { mineFailed, mineTotal, charFailed, charTotal, partial, vanished?, suspectDiscovery?, bodiesFailed?, stakeDefsFailed?,
+  quality: { mineFailed, mineTotal, charFailed, charTotal, partial, vanished?, suspectDiscovery?, bodiesFailed?, stakeDefsFailed?, buildingDefsFailed?,
              namesFailed?, walletsFailed?, pricesFailed?, notes?[string] },
   ref: null | { pricesAt (unix s of the mainnet read), source, fetchedThisPass, stale (older than 26 h),
                 match: { hulls:{matched,total}, cargo:{matched,total} } },   // distinct z.ink names seen this pass
@@ -163,9 +163,29 @@ The chain keeps **no combat log and no mining history**, so the collector derive
   systems: [{ a, n, r region, x, y, f starbase faction, lvl, hp, sp, lc, built (builtDestroyedAt), links, id (chain systemId or null), to (sorted ids of the gate-linked systems; links = to.length) }],
   asteroids: [{ a, sys, sysName, x, y, fleets, ups, res:{resource:{cum, miners, ups, rich}} }],
   stakes: [{ a, o, st, def, defName ("Claim Stake Tier 1" / "Cultivation Stake Tier 2"), tier (1..n), slots, b buildings,
-            sys, sysName, x, y, crew, body (planet address) }],
+            sys, sysName, x, y, crew (needed), body (planet address),
+            // detail for the stake view; every field below is optional (a saved copy from before it has none)
+            bl:[{ id, n, q, k }] (building definition id, name, quantity, kind: central_hub|cultivation_hub|extraction_hub|processing_hub|
+               storage_hub|farm_hub|power_plant|crew_quarters|storage_module|farm|extractor|processor; read from the name),
+            pw:{ gen (sum of positive power x q), use (sum of |negative| x q) }, cs (crew slots provided), su (slots used),
+            inv:[{ r resource, q }] (largest first, zero quantities dropped), cap:{ used, total } (storage), fuel (quantity of "Fuel", 0 when none),
+            rent:{ bal (ATLAS, 8 decimals applied), at (last rent, unix s) }, con:{ rem (construction seconds left), at (progress time, unix s) },
+            out:[{ r, ps }] (the stake's OWN stored production: the positive entries of the chain's resources.netProduction, units per SECOND,
+               largest first; zero rates dropped),
+            use:[{ r, ps }] (what the stake consumes, e.g. Fuel burn: the negative entries of resources.netProduction as POSITIVE numbers,
+               largest first, [] when none) }],
   epoch: null | { genesis, sage (deploy slot | null), since (unix s this store first saw it), changed (this pass started it) } }
 ```
+`quality.buildingDefsFailed`: the building definitions could not be read; then `bl[].n` is "building #id", `k` is "processor", and `pw`, `cs`,
+`su` are absent (also absent for a stake with a building that is not in the definitions). `out` and `use` do NOT depend on the definitions:
+they come from the stake row itself, so they are present even then, and absent only when the stake has no `resources.netProduction`.
+(The old `out` summed the building definitions' rates x quantity - the maximum for every resource a hub type could extract, wrong on every
+live stake.) One extra read per pass (`listClaimStakeBuildingDefinitions`, only the ids the live stakes use are kept); cargo names come from
+the one cargo read the bodies use (a resource not in it is named from the production entry, else `cargo#id`; a building definition without a
+name is "building #id").
+`inv[].q` is an item count while `cap` is in storage units (item count x storageCost / 256, rounded up) - they are only equal today because
+every stored item costs 256; do not draw an inventory sum against `cap`. `cap.used` can exceed `cap.total` (the chain models over capacity).
+
 Sum of `owners[].ups` plus NPC fleets' `mine.ups` equals `kpis.galaxyUps`, and so does the sum of `byFaction[].ups`.
 
 `bodies.json` (for the system view): `{ generatedAt, bodies: [{ a, id, n, k: planet|asteroid, sys, sub? (planet type:

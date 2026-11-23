@@ -29,7 +29,7 @@ const KNOWN_PROFILE = '6D19UBwK6WvyC6EVf7JSskmuyJsECBRivMyam2jP7ADE'; // researc
 const KNOWN_ORDER = '3zkqkPf6v4wkiog3xJBQn1DtpPHGrCamQu8RVYGN9B2j';    // researcher-c4-chain p10/p11: an ATLAS-quoted order
 const SAGE_PROGRAM = 'C4SAgeKLgb3pTLWhVr6NRwWyYFuTR7ZeSXFrzoLwfMzF';
 
-let fails = 0, passes = 0;
+let fails = 0, passes = 0, skips = 0;
 const ok = (cond, msg) => { if (cond) { passes++; console.log('  PASS ' + msg); } else { fails++; console.log('  FAIL ' + msg); } };
 // A mutant run: `fn` returns the list of failed case names; it must be non-empty.
 const mutantFails = (label, failed) => ok(failed.length > 0, `mutant "${label}" is caught (${failed.length} case(s) fail on it: ${failed.slice(0, 3).join('; ')})`);
@@ -200,8 +200,9 @@ async function main() {
   // ---- 7. degrade path: the REAL collect() with failing enrichment -----------------------------
   console.log('\n[7] live degrade: name/wallet and price reads fail -> core pass still commits, last values kept');
   const real = await degradeRun(COLLECTOR, 'real');
-  const realFails = degradeVerdict(real);
-  for (const f of real.cases) ok(!realFails.includes(f[0]), 'degrade: ' + f[0]);
+  const realFails = degradeVerdict(real, true);
+  const realSkipped = degradeReport(real).skipped.map((x) => x.name);
+  for (const f of real.cases) if (!realSkipped.includes(f[0])) ok(!realFails.includes(f[0]), 'degrade: ' + f[0]);
   for (const [label, from, to] of [
     ['identity failure aborts the pass', /try \{ ident = await readIdent\(rpc, ownerIds, pass\.abort\.signal\); \} catch \(e\) \{[^\n]*\}/, 'ident = await readIdent(rpc, ownerIds, pass.abort.signal);'],
     ['price failure aborts the pass', /try \{ pr = await readPrices\(pass, nowSec\); \} catch \(e\) \{[^\n]*\}/, 'pr = await readPrices(pass, nowSec);'],
@@ -230,7 +231,9 @@ const NOTE_NEW = 'The game was updated on chain. History and events start again 
 const EPOCH_FAIL = new Error('INJECTED epoch read failure');
 
 function fakeWorld(o = {}) {
-  const { prefix = 'A', fleets = 40, systems = 40, badSys = 0, badKind = 0, emptyNames = 0, bodiesFail = false, gates = null } = o;
+  const { prefix = 'A', fleets = 40, systems = 40, badSys = 0, badKind = 0, emptyNames = 0, bodiesFail = false, gates = null,
+    stakes = [], bdefs = [], bdefsFail = false, cargo = [], cargoFail = false, calls = {} } = o;
+  const count = (n) => { calls[n] = (calls[n] || 0) + 1; };
   const sys = Array.from({ length: systems }, (_, i) => ({ address: `${prefix}S${i}`, name: i < emptyNames ? '' : `${prefix} system ${i}`, regionId: 1,
     coordinates: i < badSys ? { x: NaN, y: NaN } : { x: i, y: -i }, starbase: null, celestialBodyAddresses: [`${prefix}B${i}`], connections: [] }));
   // gates: { index: patch } assigns systemId / connections (or any raw field) to chosen fake systems
@@ -245,12 +248,13 @@ function fakeWorld(o = {}) {
     discoverFleetAddresses: async () => fl.map((f) => f.address),
     getFleets: async () => fl,
     getStarSystems: async () => sys,
-    getAllClaimStakes: async () => [],
+    getAllClaimStakes: async () => stakes,
     getFleetMiningState: async () => null,
     getCharacterForProfile: async () => ({ atlas: 1, xp: {}, counts: {} }),
     listClaimStakeDefinitions: async () => [],
+    listClaimStakeBuildingDefinitions: async () => { count('buildingDefs'); if (bdefsFail) throw new Error('INJECTED building definitions failure'); return bdefs; },
     getAllCelestialBodies: async () => { if (bodiesFail) throw new Error('INJECTED bodies failure'); return bodies; },
-    listCargoDefinitions: async () => [],
+    listCargoDefinitions: async () => { count('cargoDefs'); if (cargoFail) throw new Error('INJECTED cargo definitions failure'); return cargo; },
   };
 }
 const A40 = () => fakeWorld(), A20 = () => fakeWorld({ fleets: 20 });
@@ -272,13 +276,14 @@ async function epochScenario(file, steps) {
       const before = dirFiles(dir);
       const readEpoch = st.epoch instanceof Error ? async () => { throw st.epoch; } : async () => ({ ...st.epoch });
       const pass = { aborted: false, ctx: null, abort: new AbortController() };
+      const world = typeof st.world === 'function' ? st.world() : st.world;   // a function = a fresh world per run
       let code, err = null;
       const orig = console.log; console.log = () => {};   // the collector logs every pass
       // st.crashAt: the rename onto that served file throws - a crash part-way through the writes. The collector's
       // named `node:fs` imports are live bindings, refreshed by syncBuiltinESMExports.
       const realRename = fs.renameSync;
       if (st.crashAt) { fs.renameSync = (a, b) => { if (path.basename(String(b)) === st.crashAt) throw new Error('INJECTED crash at ' + st.crashAt); return realRename(a, b); }; syncBuiltinESMExports(); }
-      try { code = await M.collect(pass, { chain: st.world, readEpoch, readIdentities: identStub, refreshPrices: pricesStub }); } catch (e) { err = e; } finally {
+      try { code = await M.collect(pass, { chain: world, readEpoch, readIdentities: identStub, refreshPrices: pricesStub }); } catch (e) { err = e; } finally {
         console.log = orig;
         if (st.crashAt) { fs.renameSync = realRename; syncBuiltinESMExports(); }
       }
@@ -292,6 +297,54 @@ async function epochScenario(file, steps) {
 const notesOf = (r) => (r.latest && r.latest.quality && r.latest.quality.notes) || [];
 const allB = (keys) => keys.length > 0 && keys.every((k) => k.startsWith('B'));
 const stripEpoch = (dir) => { const f = path.join(dir, 'db.json'); const d = JSON.parse(fs.readFileSync(f, 'utf8')); delete d.state.epoch; fs.writeFileSync(f, JSON.stringify(d)); };
+
+// claim stake fixtures: building definitions in the kit's shape (ids are numbers, rates carry { raw, value }), stakes
+// with bigint fields like the real kit rows
+const BD = (id, name, power, crewSlots, slots, extraction = [], net = []) => ({ id, name, power, crewSlots, slots, resourceExtraction: extraction.map(([cargoId, value]) => ({ cargoId, rate: { raw: 1n, value } })),
+  netResourceProduction: net.map(([cargoId, value]) => ({ cargoId, rate: { raw: 1n, value } })) });
+const STAKE_BDEFS = [
+  BD(0, 'Oceanic Central Hub Tier 1', 100, 4, 0, [[5, 0.25]]), BD(1, 'Ore Breaker - Iron Ore Tier 1', -10, 0, 2, [[5, 0.5]]),
+  BD(2, 'Fuel Processor Tier 1', -30, 1, 8, [], [[2, 1.5], [5, -2]]), BD(3, 'Herb Farm Tier 1', -5, 1, 3),
+  BD(4, 'Gizmo Tier 1', 0, 0, 1, [[7, 0.1]]), BD(5, 'Gizmo Plain Tier 1', 0, 0, 1), BD(6, 'Unused Storage Hub Tier 1', 0, 0, 0),
+  BD(7, undefined, 0, 0, 0),   // a definition with no name
+];
+// The stake's OWN stored net production (kit: resources.netProduction[], ratePerSecond is a plain number). Deliberately NOT
+// what the definitions above would sum to: the old code (definitions x quantity) gives Fuel 3, Iron Ore 2, Ether 0.1.
+const NETP = [
+  { id: 2, name: 'Fuel', ratePerSecond: -0.5 },          // consumption -> use
+  { id: 5, name: 'Iron Ore', ratePerSecond: 2 },         // production, named by the cargo read
+  { id: 7, name: 'Ether', ratePerSecond: 0.1 },
+  { id: 99, ratePerSecond: 0.3 },                         // not in the cargo read, no name -> cargo#99
+  { id: 11, ratePerSecond: -0.02 },                       // consumption, unnamed -> cargo#11
+  { id: 8, name: 'Dust', ratePerSecond: 0 },              // zero rate: in neither list
+];
+const STAKE_CARGO = [{ id: 2, name: 'Fuel' }, { id: 5, name: 'Iron Ore' }, { id: 7, name: 'Ether' }];
+const mkStake = (address, buildings, extra = {}) => ({ address, body: { address: 'AB0' }, ownerProfile: { address: 'AP0' }, claimStakeDefinitionId: 0, neededCrew: 3,
+  state: { kind: 'active' }, buildings, rentBalanceRaw: 1749590852n, lastRentAtUnixSeconds: 1795395752n, constructionRemainingSeconds: 7920n, constructionProgressAtUnixSeconds: 1795395000n,
+  resources: { netProduction: NETP, capacity: { usedRaw: 357n, totalRaw: 1000n }, inventory: { items: [
+    { id: 5, name: 'Biomass', quantityRaw: 300n }, { id: 2, name: 'Fuel', quantityRaw: 50n }, { id: 9, name: 'Fuel Cell', quantityRaw: 7n }, { id: 8, name: 'Dust', quantityRaw: 0n }] } }, ...extra });
+const ST_FULL = mkStake('ST1', [0, 1, 2, 3, 4, 5].map((id, i) => ({ buildingId: id, quantity: [2, 3, 2, 1, 1, 1][i] })));
+const ST_EMPTY = mkStake('ST2', [], { resources: undefined });
+const ST_UNKNOWN = mkStake('ST3', [{ buildingId: 0, quantity: 1 }, { buildingId: 99, quantity: 2 }]);
+const ST_NONAME = mkStake('ST4', [{ buildingId: 7, quantity: 1 }]);
+const ST_NONET = mkStake('ST5', [{ buildingId: 0, quantity: 1 }], { resources: { capacity: { usedRaw: 1n, totalRaw: 10n }, inventory: { items: [] } } }); // resources, but no netProduction
+const stakeRow = (r, a) => r.latest.stakes.find((k) => k.a === a);
+const stakeCalls = {};
+const stakeWorld = (o = {}) => fakeWorld({ stakes: [ST_FULL, ST_EMPTY, ST_UNKNOWN, ST_NONAME, ST_NONET], bdefs: STAKE_BDEFS, cargo: STAKE_CARGO, ...o });
+const OUT_WANT = [{ r: 'Iron Ore', ps: 2 }, { r: 'cargo#99', ps: 0.3 }, { r: 'Ether', ps: 0.1 }];
+const USE_WANT = [{ r: 'Fuel', ps: 0.5 }, { r: 'cargo#11', ps: 0.02 }];
+const sameJson = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+// buildingKind: [name, has extraction, kind]
+const KIND_CASES = [
+  ['Ice Giant Central Hub Tier 1', false, 'central_hub'], ['Terrestrial Cultivation Hub Tier 1', false, 'cultivation_hub'], ['Oceanic Extraction Hub Tier 1', true, 'extraction_hub'],
+  ['Volcanic Processing Hub Tier 1', false, 'processing_hub'], ['Dark Storage Hub Tier 1', false, 'storage_hub'], ['Gas Giant Farm Hub Tier 1', false, 'farm_hub'],
+  ['Ice Giant Power Plant Tier 1', false, 'power_plant'], ['Oceanic Crew Quarters Tier 1', false, 'crew_quarters'], ['Storage Module Tier 1', false, 'storage_module'],
+  ['Fuel Processor Tier 1', false, 'processor'], ['Fuel Processor Tier 1', true, 'processor'], ['Ammunition Processor', true, 'processor'],
+  ['Herb Farm Tier 1', false, 'farm'], ['Farm Processor Tier 2', false, 'processor'], ['Ore Breaker - Iron Ore Tier 1', true, 'extractor'],
+  ['Gas Condenser - Hydrogen Tier 1', true, 'extractor'], ['Mystery Thing Tier 1', false, 'processor'], ['Mystery Thing Tier 1', true, 'extractor'],
+  [undefined, false, 'processor'], ['Central Hub Farm Hub', false, 'central_hub'],
+];
 
 const EPOCH_SCENARIOS = [
   ['same epoch', [{ world: A40(), epoch: E1 }, { world: A20(), epoch: E1 }], [
@@ -401,6 +454,47 @@ const EPOCH_SCENARIOS = [
     ['gate links: connections as text / null / missing give to [] and a normal pass', ([a]) => [3, 4, 5].every((i) => Array.isArray(a.latest.systems[i].to) && a.latest.systems[i].to.length === 0 && a.latest.systems[i].links === 0) && a.latest.quality.partial === false],
     ['gate links: a system with no connections (the fake default) has id null and to []', ([a]) => a.latest.systems[6].id === null && JSON.stringify(a.latest.systems[6].to) === '[]' && a.latest.systems[6].links === 0],
   ]],
+  // claim stake detail rows (spec A): buildings, power, crew slots, slots, inventory, storage, fuel, rent, construction, output
+  ['stake detail fields', [{ epoch: E1, world: () => { stakeCalls.buildingDefs = 0; stakeCalls.cargoDefs = 0; return stakeWorld({ calls: stakeCalls }); } }], [
+    ['stake detail (positive control): the three stakes are written, old fields intact', ([a]) => !a.err && a.latest.stakes.length === 5 && stakeRow(a, 'ST1').crew === 3 && stakeRow(a, 'ST1').b === 10 && stakeRow(a, 'ST1').st === 'active'],
+    ['stake detail: bl = id, name, quantity, kind per building (q > 1 kept)', ([a]) => sameJson(stakeRow(a, 'ST1').bl, [
+      { id: 0, n: 'Oceanic Central Hub Tier 1', q: 2, k: 'central_hub' }, { id: 1, n: 'Ore Breaker - Iron Ore Tier 1', q: 3, k: 'extractor' }, { id: 2, n: 'Fuel Processor Tier 1', q: 2, k: 'processor' },
+      { id: 3, n: 'Herb Farm Tier 1', q: 1, k: 'farm' }, { id: 4, n: 'Gizmo Tier 1', q: 1, k: 'extractor' }, { id: 5, n: 'Gizmo Plain Tier 1', q: 1, k: 'processor' }])],
+    ['stake detail: bl quantities sum to b', ([a]) => a.latest.stakes.every((k) => k.bl.reduce((s, b) => s + b.q, 0) === k.b)],
+    ['stake detail: generated power = sum of positive power x q', ([a]) => stakeRow(a, 'ST1').pw.gen === 200],
+    ['stake detail: used power = sum of |negative| x q (3 x 10 + 2 x 30 + 1 x 5)', ([a]) => stakeRow(a, 'ST1').pw.use === 95],
+    ['stake detail: crew slots = sum crewSlots x q', ([a]) => stakeRow(a, 'ST1').cs === 11],
+    ['stake detail: slots used = sum slots x q', ([a]) => stakeRow(a, 'ST1').su === 27],
+    ['stake detail: out = the stake own positive net production (not the definitions x q), zero dropped, sorted desc, cargo named, cargo#id fallback', ([a]) => sameJson(stakeRow(a, 'ST1').out, OUT_WANT)],
+    ['stake detail: use = the negative net entries as POSITIVE numbers, sorted desc, cargo#id fallback', ([a]) => sameJson(stakeRow(a, 'ST1').use, USE_WANT)],
+    ['stake detail: no negative number and no zero in out or use on any stake', ([a]) => a.latest.stakes.every((k) => [...(k.out || []), ...(k.use || [])].every((o) => o.ps > 0))],
+    ['stake detail: out / use do not depend on the definitions - present on a stake with a building missing from them', ([a]) => sameJson(stakeRow(a, 'ST3').out, OUT_WANT) && sameJson(stakeRow(a, 'ST3').use, USE_WANT)],
+    ['stake detail: resources without netProduction -> out and use absent (not [])', ([a]) => { const k = stakeRow(a, 'ST5'); return k.out === undefined && k.use === undefined && k.cap.total === 10; }],
+    ['stake detail: a definition with no name -> "building #id", never "undefined"', ([a]) => { const k = stakeRow(a, 'ST4'); return k.bl[0].n === 'building #7' && !JSON.stringify(a.latest.stakes).includes('"undefined"') && k.pw !== undefined; }],
+    ['stake detail: inventory sorted by quantity desc, zero quantity dropped, bigint read', ([a]) => sameJson(stakeRow(a, 'ST1').inv, [{ r: 'Biomass', q: 300 }, { r: 'Fuel', q: 50 }, { r: 'Fuel Cell', q: 7 }])],
+    ['stake detail: fuel is the item named exactly Fuel (not Fuel Cell)', ([a]) => stakeRow(a, 'ST1').fuel === 50],
+    ['stake detail: cap = used / total', ([a]) => sameJson(stakeRow(a, 'ST1').cap, { used: 357, total: 1000 })],
+    ['stake detail: rent in ATLAS (8 decimals) + last rent time', ([a]) => sameJson(stakeRow(a, 'ST1').rent, { bal: 17.49590852, at: 1795395752 })],
+    ['stake detail: construction remaining + progress time', ([a]) => sameJson(stakeRow(a, 'ST1').con, { rem: 7920, at: 1795395000 })],
+    ['stake detail: no definitions flag on a good read', ([a]) => a.latest.quality.buildingDefsFailed === undefined],
+    ['stake detail: ONE building definitions read and ONE cargo read per pass', () => stakeCalls.buildingDefs === 1 && stakeCalls.cargoDefs === 1],
+    ['stake detail: a stake with no buildings and no resources has bl [] and zero sums, no out / use / inv / fuel / cap', ([a]) => { const k = stakeRow(a, 'ST2'); return sameJson(k.bl, []) && sameJson(k.pw, { gen: 0, use: 0 }) && k.cs === 0 && k.su === 0 && k.out === undefined && k.use === undefined && k.inv === undefined && k.fuel === undefined && k.cap === undefined; }],
+    ['stake detail: a building missing from the definitions -> "building #id", processor, and no sums for that stake', ([a]) => { const k = stakeRow(a, 'ST3'); return k.bl[1].n === 'building #99' && k.bl[1].k === 'processor' && k.bl[0].n === 'Oceanic Central Hub Tier 1' && k.pw === undefined && k.cs === undefined && k.su === undefined && sameJson(k.out, OUT_WANT); }],
+  ]],
+  ['stake cargo definitions read fails', [{ epoch: E1, world: () => { stakeCalls.cargoDefs = 0; return stakeWorld({ cargoFail: true, calls: stakeCalls }); } }], [
+    ['cargo fail (positive control): the pass is written with exit 0, partial false, stakes intact', ([a]) => a.code === 0 && !a.err && a.latest && a.latest.quality.partial === false && a.latest.stakes.length === 5 && stakeRow(a, 'ST1').b === 10 && stakeRow(a, 'ST1').pw.gen === 200],
+    ['cargo fail: bodiesFailed is true, buildingDefsFailed is not', ([a]) => a.latest.quality.bodiesFailed === true && a.latest.quality.buildingDefsFailed === undefined],
+    ['cargo fail: exactly ONE cargo call (no retry)', () => stakeCalls.cargoDefs === 1],
+    ['cargo fail: out / use still there, resources named from the production entry or cargo#id', ([a]) => sameJson(stakeRow(a, 'ST1').out.map((o) => o.r), ['Iron Ore', 'cargo#99', 'Ether']) && stakeRow(a, 'ST1').use.length === 2],
+  ]],
+  ['stake building definitions read fails', [{ epoch: E1, world: () => stakeWorld({ bdefsFail: true }) }], [
+    ['defs fail: the pass is written, not aborted (positive control: the stakes are there with b and crew)', ([a]) => !a.err && a.latest && a.latest.stakes.length === 5 && stakeRow(a, 'ST1').b === 10],
+    ['defs fail: quality.buildingDefsFailed is true', ([a]) => a.latest.quality.buildingDefsFailed === true],
+    ['defs fail: bl is "building #id" / processor, quantities kept', ([a]) => sameJson(stakeRow(a, 'ST1').bl.map((b) => [b.id, b.n, b.q, b.k]), [[0, 'building #0', 2, 'processor'], [1, 'building #1', 3, 'processor'], [2, 'building #2', 2, 'processor'], [3, 'building #3', 1, 'processor'], [4, 'building #4', 1, 'processor'], [5, 'building #5', 1, 'processor']])],
+    ['defs fail: pw, cs, su are absent on every stake, even the one with no buildings', ([a]) => a.latest.stakes.every((k) => k.pw === undefined && k.cs === undefined && k.su === undefined)],
+    ['defs fail: out and use still arrive from the stake own production; absent only where the stake has none', ([a]) => sameJson(stakeRow(a, 'ST1').out, OUT_WANT) && sameJson(stakeRow(a, 'ST1').use, USE_WANT) && stakeRow(a, 'ST2').out === undefined && stakeRow(a, 'ST2').use === undefined],
+    ['defs fail: the chain-only fields still arrive (inv, fuel, cap, rent, con)', ([a]) => { const k = stakeRow(a, 'ST1'); return k.fuel === 50 && k.cap.total === 1000 && k.rent.bal === 17.49590852 && k.con.rem === 7920 && k.inv.length === 3; }],
+  ]],
 ];
 
 // readChainEpoch against a fake RPC. full = the programdata account's bytes; dataSlice is honoured like a real node.
@@ -428,6 +522,7 @@ const READ_CASES = [
   ['readChainEpoch: programdata read fails -> sage null, genesis kept', async (M) => { const e = await M.readChainEpoch(fakeRpc({ pdFail: true })); return e.sage === null && e.genesis === GEN_A; }],
   ['readChainEpoch: genesis read fails -> rejects', async (M) => { try { await M.readChainEpoch(fakeRpc({ genesisFail: true })); return false; } catch { return true; } }],
   ['readChainEpoch: genesis not a hash -> rejects', async (M) => { try { await M.readChainEpoch(fakeRpc({ genesis: '' })); return false; } catch { return true; } }],
+  ...KIND_CASES.map(([name, ex, want]) => [`buildingKind(${JSON.stringify(name)}, ${ex}) -> ${want}`, async (M) => M.buildingKind(name, ex) === want]),
   ['readChainEpoch: an aborted signal rejects', async (M) => { const ac = new AbortController(); ac.abort(); try { await M.readChainEpoch(fakeRpc(), ac.signal); return false; } catch { return true; } }],
 ];
 const SAME_CASES = [
@@ -480,6 +575,32 @@ const EPOCH_MUTANTS = [
   ['gate links: the own id is not dropped', ' && t !== sysId) toSet.add(t)', ') toSet.add(t)'],
   ['gate links: links no longer equals to.length', 'links: to.length,', 'links: (s.connections || []).length,'],
   ['gate links: malformed connections fail the pass', 'if (Array.isArray(s.connections)) {', 'if (s.connections.map) {'],
+  ['stake detail: generated power ignores the quantity', 'gen += bd.power * q;', 'gen += bd.power;'],
+  ['stake detail: used power ignores the quantity', 'use += -bd.power * q;', 'use += -bd.power;'],
+  ['stake detail: crew slots ignore the quantity', 'cs += bd.cs * q;', 'cs += bd.cs;'],
+  ['stake detail: slots used ignore the quantity', 'su += bd.su * q;', 'su += bd.su;'],
+  ['stake detail: use keeps the negative sign (never flipped)', 'ps: round(sign * num(e.ratePerSecond), 9) }))', 'ps: round(num(e.ratePerSecond), 9) }))'],
+  ['stake detail: negatives left in out', [['ps: round(sign * num(e.ratePerSecond), 9) }))', 'ps: round(num(e.ratePerSecond), 9) }))'], ['.filter((o) => o.ps > 0)', '.filter((o) => o.ps !== 0)']]],
+  ['stake detail: out summed from the definitions again', 'row.out = side(1);', "row.out = Object.entries(Object.fromEntries((k.buildings || []).map((b) => [num(b.buildingId), num(b.quantity)]))).map(([i, q]) => ({ r: 'Fuel', ps: q })).sort((p, q) => q.ps - p.ps);"],
+  ['stake detail: out / use sorted ascending', '.sort((p, q) => q.ps - p.ps ||', '.sort((p, q) => p.ps - q.ps ||'],
+  ['stake detail: out / use [] instead of absent without netProduction', 'const net = k.resources?.netProduction;', 'const net = k.resources?.netProduction || [];'],
+  ['stake detail: zero rate kept', '.filter((o) => o.ps > 0)', '.filter((o) => o.ps >= 0)'],
+  ['stake detail: out / use only when the definitions read', 'if (Array.isArray(net)) {', 'if (Array.isArray(net) && !quality.buildingDefsFailed && known) {'],
+  ['stake detail: nameless definition becomes "undefined"', 'n: d.name == null ? `building #${id}` : String(d.name)', 'n: String(d.name)'],
+  ['stake detail: fuel matches any name containing Fuel', "i.r === 'Fuel'", "i.r.includes('Fuel')"],
+  ['stake detail: inventory sorted ascending', '.sort((p, q) => q.q - p.q ||', '.sort((p, q) => p.q - q.q ||'],
+  ['stake detail: zero quantities kept in the inventory', '.filter((i) => i.q > 0)', '.filter(() => true)'],
+  ['stake detail: rent left in raw units', 'num(k.rentBalanceRaw) / ATLAS_DECIMALS', 'num(k.rentBalanceRaw)'],
+  ['stake detail: a building definitions failure aborts the pass', 'quality.buildingDefsFailed = true; // the page', 'throw e; // the page'],
+  ['stake detail: the failure flag is never set', 'quality.buildingDefsFailed = true; // the page', '// the page'],
+  ['stake detail: sums kept as zeros when the definitions failed', 'let known = !quality.buildingDefsFailed;', 'let known = true; if (!buildingDefs) buildingDefs = new Proxy({}, { get: () => ({ n: "x", k: "processor", power: 0, cs: 0, su: 0 }) });'],
+  ['stake detail: sums computed although a building definition is missing', 'if (!bd) known = false;', ''],
+  ['stake detail: two cargo reads per pass', 'try { cargoDefs = await K.listCargoDefinitions(ctx); }', 'try { await K.listCargoDefinitions(ctx); cargoDefs = await K.listCargoDefinitions(ctx); }'],
+  ['stake detail: a cargo definitions failure aborts the pass', 'catch (e) { cargoDefsErr = e; }', 'catch (e) { throw e; }'],
+  ['stake detail: kind: the processor rule removed', "if (/Processor(\\s+Tier\\s+\\w+)?\\s*$/.test(s)) return 'processor';", ''],
+  ['stake detail: kind: the farm rule removed', "if (s.includes('Farm')) return 'farm';", ''],
+  ['stake detail: kind: no extractor fallback', "return ex ? 'extractor' : 'processor';", "return 'processor';"],
+  ['stake detail: kind: Crew Quarters not recognised', "['Crew Quarters', 'crew_quarters'], ", ''],
   ['genesis failure swallowed','const genesis = await rpc.getGenesisHash().send(opt);', "const genesis = await rpc.getGenesisHash().send(opt).catch(() => '1'.repeat(40));"],
 ];
 
@@ -552,6 +673,44 @@ async function epochChecks(C, kit) {
     fs.writeFileSync(mf, msrc);
     try { mutantFails(label, await epochSuite(mf)); } finally { fs.unlinkSync(mf); }
   }
+  skipPathChecks();
+}
+
+// The live stake checks on fake results: a fresh / reset galaxy (0 or 3 stakes) must SKIP the population checks with a named
+// reason and fail nothing; structural checks still bite on whatever rows exist; over capacity is no failure.
+function skipPathChecks() {
+  console.log('\n[10] live stake checks: population checks skip on a small galaxy, structural checks still run (offline, fake results)');
+  const good = (i) => ({ a: `G${i}`, b: 1, bl: [{ id: 0, n: 'Hub', q: 1, k: 'extraction_hub' }], rent: { bal: 1, at: 1 }, pw: { gen: 1, use: 0 }, cs: 0, su: 0,
+    out: [{ r: 'Fuel', ps: 2 }, { r: 'Iron Ore', ps: 1 }], use: [{ r: 'Fuel', ps: 0.5 }], inv: [{ r: 'Fuel', q: 5 }], fuel: 5, cap: { used: 2, total: 1 } }); // used > total: over capacity
+  const res = (n, patch) => ({ latest: { quality: {}, stakes: Array.from({ length: n }, (_, i) => ({ ...good(i), ...(patch && i === 0 ? patch : {}) })) }, cases: STAKE_LIVE_CASES });
+  const POP = STAKE_LIVE_CASES.filter(([n]) => /population/.test(n)).length;
+  const want = (rep, f, s) => rep.failed.length === f && rep.skipped.length === s;
+  ok(POP === 3, 'skip path: the live stake checks hold 3 population cases');
+  for (const n of [0, 3]) {
+    const rep = degradeReport(res(n));
+    ok(want(rep, 0, POP), `skip path: a fake chain of ${n} stakes -> no failure, ${POP} SKIPPED (got ${rep.failed.length} failed, ${rep.skipped.length} skipped)`);
+    ok(rep.skipped.every((s) => s.name && s.why.includes(`${n} live stake`)), `skip path: each skip names its check and the stake count (${n})`);
+  }
+  const full = degradeReport(res(12));
+  ok(want(full, 0, 0), `skip path (positive control): 12 good stakes -> nothing skipped, nothing failed (got ${full.failed.length} failed, ${full.skipped.length} skipped)`);
+  const noFuel = degradeReport({ latest: { quality: {}, stakes: Array.from({ length: 12 }, (_, i) => ({ ...good(i), fuel: 0, inv: [] })) }, cases: STAKE_LIVE_CASES });
+  ok(want(noFuel, 0, 1) && /Fuel/.test(noFuel.skipped[0].name), 'skip path: 12 stakes and none holds Fuel -> only the Fuel population check is skipped');
+  ok(degradeReport(res(3, { b: 5 })).failed.some((n) => /sum to b/.test(n)), 'skip path: structural check still fails on 3 stakes (bl does not sum to b)');
+  ok(degradeReport(res(3, { out: [{ r: 'Fuel', ps: -1 }] })).failed.some((n) => /well-formed/.test(n)), 'skip path: structural check still fails on 3 stakes (a negative rate in out)');
+  ok(degradeReport(res(3, { use: undefined })).failed.some((n) => /well-formed/.test(n)), 'skip path: out present but use absent is malformed');
+  ok(degradeReport(res(0)).failed.length === 0 && degradeReport(res(3, { out: undefined, use: undefined })).failed.length === 0, 'skip path: absent out and use together is well-formed');
+  // the printed line + the counter: degradeVerdict(.., true) prints one SKIPPED line per skip and counts it apart from pass / fail
+  const lines = [], o = console.log, before = skips; console.log = (m) => lines.push(String(m));
+  try { degradeVerdict(res(3), true); } finally { console.log = o; }
+  ok(lines.filter((l) => /SKIPPED /.test(l)).length === POP && skips - before === POP && lines.some((l) => /live stakes 3;.*over capacity 3/.test(l)), 'skip path: one visible SKIPPED line per skip, counted in the skipped total, and the counts line reports over capacity');
+  skips = before; // these are test skips, not live ones
+  // negative: a harness whose skip branch returns a silent pass (no record, no line) is caught by the same assertions
+  const silent = (r) => { const failed = [], skipped = []; for (const [n, pred] of r.cases) { let v; try { v = pred(r); } catch { v = false; } if (v === SKIP) continue; if (!v) failed.push(n); } return { failed, skipped }; };
+  const mutRep = silent(res(3));
+  ok(!want(mutRep, 0, POP) && mutRep.skipped.length === 0, 'mutant "a skip becomes a silent pass with no line" is caught (the 3-stake assertion fails on it)');
+  // negative: a harness that FAILS a skip is caught by the no-failure assertion
+  const hard = (r) => { const rep = degradeReport(r); return { failed: [...rep.failed, ...rep.skipped.map((s) => s.name)], skipped: [] }; };
+  ok(!want(hard(res(3)), 0, POP), 'mutant "a skip is reported as a failure" is caught');
 }
 
 // Seeds a temp out dir with the served db/history/events/owners (so the pass diffs as usual), a known previous
@@ -581,6 +740,47 @@ async function degradeRun(file, label) {
   const read = (f) => { try { return JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')); } catch { return null; } };
   return { err, code, latest: read('latest.json'), db: read('db.json'), historyBefore, cases: DEGRADE_CASES };
 }
+// ---- live stake checks: population (skippable) + structural (always) --------------------------------------------
+// MIN_STAKES = 10: with fewer live stakes than this the population checks are SKIPPED (the old floor was "more than 10").
+const MIN_STAKES = 10;
+const SKIP = Symbol('skip');
+const KS = 'central_hub cultivation_hub extraction_hub processing_hub storage_hub farm_hub power_plant crew_quarters storage_module farm extractor processor'.split(' ');
+const rateList = (a) => Array.isArray(a) && a.every((o, n) => typeof o.r === 'string' && o.r.length > 0 && Number.isFinite(o.ps) && o.ps > 0 && (n === 0 || a[n - 1].ps >= o.ps));
+// a case returns true / false, or SKIP (+ the reason in skipWhy) when the live galaxy cannot hold the thing it checks
+const STAKE_LIVE_CASES = [
+  ['stake detail (live, population): at least MIN_STAKES stakes were read', (r) => r.latest.stakes.length < MIN_STAKES ? SKIP : true],
+  ['stake detail (live): every stake row carries bl and rent', (r) => r.latest.stakes.every((k) => Array.isArray(k.bl) && k.rent && Number.isFinite(k.rent.bal))],
+  ['stake detail (live, population): at least one stake has buildings', (r) => r.latest.stakes.length < MIN_STAKES ? SKIP : r.latest.stakes.some((k) => k.b > 0)],
+  ['stake detail (live): every stake with b > 0 has bl whose quantities sum to b', (r) => r.latest.stakes.filter((k) => k.b > 0).every((k) => k.bl.length > 0 && k.bl.reduce((s, b) => s + b.q, 0) === k.b)],
+  ['stake detail (live): kinds are the 12 tile kinds, and buildings are named unless the definitions failed', (r) => {
+    const bl = r.latest.stakes.flatMap((k) => k.bl); return bl.every((b) => KS.includes(b.k)) && (r.latest.quality.buildingDefsFailed || bl.every((b) => !/^building #/.test(b.n))); }],
+  ['stake detail (live): rent is a finite number, storage is finite, power present unless the definitions failed', (r) => r.latest.stakes.every((k) => (!k.cap || (Number.isFinite(k.cap.used) && Number.isFinite(k.cap.total) && k.cap.used >= 0 && k.cap.total >= 0))
+    && Number.isFinite(k.rent.bal) && k.rent.bal >= 0 && (r.latest.quality.buildingDefsFailed ? k.pw === undefined : (k.pw && k.pw.gen >= 0 && k.pw.use >= 0)))],
+  ['stake detail (live): out and use are well-formed lists (positive rates, sorted desc), or absent', (r) => r.latest.stakes.every((k) => (k.out === undefined || rateList(k.out)) && (k.use === undefined || rateList(k.use)) && (k.out === undefined) === (k.use === undefined))],
+  ['stake detail (live, population): at least one stake holds Fuel', (r) => r.latest.stakes.length < MIN_STAKES || !r.latest.stakes.some((k) => k.fuel > 0) ? SKIP : true],
+  ['stake detail (live): fuel equals its inventory Fuel item', (r) => r.latest.stakes.every((k) => k.fuel === undefined || k.fuel === (k.inv.find((i) => i.r === 'Fuel')?.q || 0))],
+  ['stake detail (live): inventory sorted by quantity desc', (r) => r.latest.stakes.every((k) => !k.inv || k.inv.every((i, n) => n === 0 || k.inv[n - 1].q >= i.q))],
+];
+// -> { failed: [names], skipped: [{ name, why }] }. over-capacity stakes are REPORTED, never a failure (the chain models
+// over capacity explicitly: capacity.overCapacityRaw).
+function degradeReport(r, cases = r.cases) {
+  const failed = [], skipped = [];
+  for (const [n, pred] of cases) {
+    let v; try { v = pred(r); } catch { v = false; }
+    if (v === SKIP) skipped.push({ name: n, why: `${(r.latest.stakes || []).length} live stake(s), fewer than ${MIN_STAKES} or none with the thing checked` });
+    else if (!v) failed.push(n);
+  }
+  return { failed, skipped };
+}
+function degradeVerdict(r, print = false) {
+  const { failed, skipped } = degradeReport(r);
+  if (print) {
+    const st = r.latest.stakes || [];
+    console.log(`    live stakes ${st.length}; with buildings ${st.filter((k) => k.b > 0).length}; holding Fuel ${st.filter((k) => k.fuel > 0).length}; over capacity ${st.filter((k) => k.cap && k.cap.used > k.cap.total).length}; with out ${st.filter((k) => k.out && k.out.length).length}, with use ${st.filter((k) => k.use && k.use.length).length}`);
+    for (const s of skipped) { skips++; console.log(`  SKIPPED ${s.name} (${s.why})`); }
+  }
+  return failed;
+}
 const DEGRADE_CASES = [
   ['collect() resolves (the pass is not aborted)', (r) => !r.err && (r.code === 0 || r.code === 2)],
   ['latest.json + db.json written this pass', (r) => r.latest && r.db && r.latest.generatedAt === r.db.state.runAt && r.latest.generatedAt > Date.now() / 1000 - 900],
@@ -594,13 +794,14 @@ const DEGRADE_CASES = [
   ['an owner with no previous identity gets null, not a guess', (r) => r.latest.owners.some((o) => o.p !== KNOWN_PROFILE && o.name === null && o.nameAt === null)],
   ['cached prices still value holdings, labelled with their old time', (r) => r.latest.ref?.pricesAt === 222 && r.latest.ref.fetchedThisPass === false
     && r.latest.owners.some((o) => o.holdings?.refValue?.pricesAt === 222 && o.holdings.refValue.basis === 'mainnet reference')],
+  // claim stake detail rows on the real chain (spec A). A chain flag (buildingDefsFailed) is honest degradation, not a failure here.
+  // The live galaxy can be fresh or just reset (few or no stakes, no Fuel yet): the POPULATION checks are then SKIPPED with a
+  // visible line (counted apart from pass / fail); the STRUCTURAL checks run on whatever rows exist (vacuously true on none).
+  ...STAKE_LIVE_CASES,
   ['holdings rolled up from fleets (cargo + hulls)', (r) => r.latest.owners.some((o) => o.holdings?.cargo?.length && Object.keys(o.holdings.hulls).length)],
 ];
-function degradeVerdict(r) {
-  return r.cases.filter(([, pred]) => { try { return !pred(r); } catch { return true; } }).map(([n]) => n);
-}
 
 main().then(() => {
-  console.log(`\n${passes} passed, ${fails} failed`);
+  console.log(`\n${passes} passed, ${fails} failed, ${skips} skipped`);
   process.exit(fails ? 1 : 0);
 }).catch((e) => { console.log('ERROR ' + (e.stack || e.message)); process.exit(1); });

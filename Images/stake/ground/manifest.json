@@ -1,0 +1,20 @@
+{
+ "w": 1600,
+ "h": 900,
+ "scale": 26,
+ "squash": 0.5299,
+ "clear": [
+  7.6,
+  7.0
+ ],
+ "grounds": {
+  "terrestrial": "terrestrial.webp",
+  "oceanic": "oceanic.webp",
+  "volcanic": "volcanic.webp",
+  "barren": "barren.webp",
+  "ice-giant": "ice-giant.webp",
+  "gas-giant": "gas-giant.webp",
+  "dark": "dark.webp",
+  "asteroid": "asteroid.webp"
+ }
+}

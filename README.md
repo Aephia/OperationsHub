@@ -582,12 +582,14 @@ the live chain; every other module reads the static uber-export. It has two halv
 - **Module** (`C4Live/`): a 3D galaxy map (three.js, bundled from `C4Live/scene-src/` into
   `C4Live/c4-scene.js` by `node C4Live/scene-src/build.mjs`) under a glass HUD, plus Mining, Resource, Combat,
   Fleets and Owners tabs.
-  - **Gates** (2026-11-21): a `Gates` map layer (on by default, in the Layers box) draws one soft, broken band of
-    "cloud" between every pair of systems whose starbase gates connect. The pairs come from the chain: the collector
+  - **Gates** (2026-11-21, restyled 2026-11-22): a `Gates` map layer (on by default, in the Layers box) draws one thin
+    line between every pair of systems whose starbase gates connect. The pairs come from the chain: the collector
     writes each system's `id` and the ids it connects to (`to`) into `latest.json`, and `M.gateLinks` in
-    `scene-src/model.js` turns them into one row per pair. The band is a thin wisp over the whole galaxy, widens to a
-    capped width as you zoom in, fades out before it reaches either system, and drifts very slowly (still under
-    reduced motion). A saved copy from before this change has no `id` / `to`, so it draws no lines until the next read.
+    `scene-src/model.js` turns them into one row per pair. The line is a hairline (about 1 px) with a narrow glow at
+    every zoom, dimmer over the whole galaxy, cut into dashes once you zoom in, with one short packet of light running
+    along it (still under reduced motion); it fades out before it reaches either system. The first version was a
+    soft cloud band, which veiled the map. The look is the `M.GATE` constants. A saved copy from before this change
+    has no `id` / `to`, so it draws no lines until the next read.
   - **Resource** (2026-11-13): pick a resource; every system holding it gets a flat green ring on the map (no
     column), bigger, brighter and thicker-stroked the larger the SUM of `rich` over its bodies that list it (world
     scale, sized like the Combat heat rings, linear between the resource's poorest and richest system; best body and
@@ -600,6 +602,31 @@ the live chain; every other module reads the static uber-export. It has two halv
   - **Verdict first**: every tab opens with a sentence computed from the data.
   - **Live counter**: between hourly reads, the mined counter projects each fleet's on-chain rate forward.
   - **Drill-down**: clicking anything opens its owner, asteroid or starbase drawer.
+  - **Claim stake view** (2026-11-22): click a claim stake row in an owner's or a planet's drawer (or open
+    `?stake=<address>`). The map flies to the stake's system and a view opens with the stake's real buildings as
+    tiles on a Blender-rendered surface for that planet type (`Images/stake/ground/`, 8 grounds rendered by
+    `Tools/c4-live/stake-scene/render_grounds.py` with the same camera and light as the building tiles in
+    `Images/stake/`, packed by `pack_grounds.py`). Motion shows what each building kind does and stops for a stake
+    that is not active or is under construction. Stats: fuel and how long it lasts at the stake's own burn, crew
+    needed against crew slots, power made against used, slots, storage, rent balance in ATLAS, production and
+    consumption per hour, inventory, the building list. A field the saved copy does not have shows a dash and one
+    "not read yet" line, never a zero. Model: `M.buildStake` / `M.stakeLayout` in `c4-ui-model.js`.
+  - **Analytics tab** (2026-11-22): charts drawn from the same read, in `C4Live/c4-analytics.js` (a self-contained
+    module: `C4Analytics.build(latest, bodies)` is pure, `render(el, model, opts)` draws inline SVG styled only by
+    classes). Sections: mining rate per ship (by flagship size, by fleet size, base stat against actual, top
+    resources); council rank; claim stakes (planet type, tier, state, buildings, building kinds, power, storage,
+    fuel left, production, stakes per owner); ships against claim stakes (per resource, per crew member, per
+    faction, by ship model against stake tier, who runs what). Opening the tab widens the right panel to
+    min(2200px, 90vw) and gives up to three columns; the panel returns to its own size on any other tab, and the
+    size button there keeps its separate, remembered wide setting (min(1000px, 62vw)). Charts that count things
+    have a number / percent switch (one per card, one for all). A dot or a row opens a card with what it stands
+    for: for a fleet its name, owner, ship models and counts, crew, what it mines and its yield. In the Buildings
+    card (2026-11-23) every bar of both charts opens the stakes behind it: the five with the most of that kind (or
+    five of the stakes with that building count), each line the owner, the system and tier, and the count; the
+    owner is a button that opens that claim stake's view. Under each stake tier in the ship-model chart there is one
+    row per exact number of extractors found (no extractor, 1, 2, 3, 4, ...; no "3 or more" bucket). Stake figures are
+    the rates the chain stores for each stake; against ships only resources that ships also mine are counted, and
+    the caption says what was left out. Captions say what is counted and from how many rows; they give no verdict.
 
 The chain keeps **no combat log and no mining history**; both are derived by diffing hourly reads.
 - **Combat**: a combat stamp means a fleet *took part*; both sides share the second.
@@ -612,6 +639,17 @@ The page says all of this where the numbers appear.
 Checks: `node Test/c4-live-check.js` (panel model against the real data, with mutants that must fail),
 `node Test/c4-browser-collect-check.js` (a real browser reading the real chain as a visitor) and
 `node Test/c4-scene-check.js` (scene API, interpolation, picking and GPU draw in headless Chromium).
+Added 2026-11-22: `node Test/c4-stake-view-check.js` (stake model and the view in a headless browser),
+`node Test/c4-analytics-check.js` (every chart figure re-derived by an independent loop, with mutants),
+`node Test/c4-panel-check.js` (the Analytics tab, the panel sizes, the detail cards),
+`node Test/c4-collector-check.js` (collector; `--offline` for the unit part) and
+`node Test/c4-config-snapshot-check.js` (the config snapshot below).
+
+**On-chain config snapshot** (local tool, 2026-11-22): `npm run config-snapshot` in `Tools/c4-live` reads the game's
+configuration as the chain holds it (claim stake buildings and definitions, recipes, ship configurations, cargo,
+research catalog, combat, factions, territory regions and more: 17 tables today) into `Data/c4-live/config/`
+(git-ignored) and logs what changed since the previous snapshot in `changes.jsonl`. It is not part of the hourly
+pass or the public page. Details: `Tools/c4-live/CONFIG-SNAPSHOT.md`.
 
 ### 9. 🧑‍🚀 **Crew Explorer** (built 2026-11-10)
 

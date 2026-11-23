@@ -1045,7 +1045,127 @@
         return out;
     }
 
+    // ------------------------------------------------------------------ claim stake view (2026-11-22)
+    // buildStake joins one stake with its planet, system and owner record and derives every value the view shows; a field
+    // the collector did not write is reported in `missing` and is null here, NEVER zero. stakeLayout places the stake's
+    // buildings on a pointy-top hex grid inside the clearing of the ground image (world units, y = ground distance:
+    // screen y = y * squash). Contract: Images/stake/manifest.json + Images/stake/ground/manifest.json (spec section B).
+    const STAKE_KINDS = ['central_hub', 'cultivation_hub', 'extraction_hub', 'processing_hub', 'storage_hub', 'farm_hub', 'power_plant', 'crew_quarters', 'storage_module', 'farm', 'extractor', 'processor'];
+    const STAKE_KIND_LABEL = { central_hub: 'Central hub', cultivation_hub: 'Cultivation hub', extraction_hub: 'Extraction hub', processing_hub: 'Processing hub', storage_hub: 'Storage hub', farm_hub: 'Farm hub', power_plant: 'Power plant', crew_quarters: 'Crew quarters', storage_module: 'Storage module', farm: 'Farm', extractor: 'Extractor', processor: 'Processor' };
+    // placement order: centre first, the other hubs on ring 1, then power, crew, storage, and the workers outward
+    const STAKE_PRIORITY = { central_hub: 0, cultivation_hub: 1, extraction_hub: 1, processing_hub: 1, storage_hub: 1, farm_hub: 1, power_plant: 2, crew_quarters: 3, storage_module: 4, processor: 5, farm: 6, extractor: 7 };
+    // one quantity rule for the tiles, the total and the list: the floor of a finite positive number; anything else (0, -3, "4", null, 0.5) is not a building
+    const stakeQty = q => (isNum(q) && q > 0 ? Math.floor(q) : 0);
+    const ownKey = (t, k) => typeof k === 'string' && Object.prototype.hasOwnProperty.call(t, k);   // a chain string like constructor or __proto__ is not a known kind
+    const HEX_DIRS = [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]];
+    const SQRT3 = Math.sqrt(3);
+    // STAKE_RCAP: the largest hex radius (world units). A tile is drawn 0.082 x R of the stage width, the stage is at most
+    // ~1260 px wide on a 1440x900 screen (full-screen view), the tile art is 320 px wide: 4.8 keeps a one-building stake at
+    // 1.55 x the art's own size (above ~1.6 x it goes soft). STAKE_SHARE: the colony's footprint is at most this share of the
+    // clearing's width, so it never touches the ring of the clearing.
+    const STAKE_CAP = 37, STAKE_CLEAR = [7.6, 7.0], STAKE_RCAP = 4.8, STAKE_SHARE = 0.85;
+    function hexSpiral(n) {   // axial cells: the centre, then ring 1, ring 2 ... each ring walked from the same corner
+        const cells = [[0, 0]];
+        for (let k = 1; cells.length < n; k++) {
+            let q = -k, r = k;
+            for (let side = 0; side < 6; side++) for (let j = 0; j < k; j++) { cells.push([q, r]); q += HEX_DIRS[side][0]; r += HEX_DIRS[side][1]; }
+        }
+        return cells.slice(0, n);
+    }
+    // the n cells a colony occupies: whole rings first, and within the last (partial) ring the cells that sit best inside the
+    // clearing ellipse first, so a part-filled ring does not force a small R (n = 8..13 used to shrink to 56 % of the clearing)
+    function stakeCells(n, clear) {
+        if (n <= 1) return hexSpiral(n);
+        let k = 1; while (1 + 3 * k * (k + 1) < n) k++;
+        const all = hexSpiral(1 + 3 * k * (k + 1)), ring = c => Math.max(Math.abs(c[0]), Math.abs(c[1]), Math.abs(c[0] + c[1]));
+        const cost = ([q, r]) => { let m = 0; const cx = SQRT3 * (q + r / 2), cy = 1.5 * r; for (let c = 0; c < 6; c++) { const a = Math.PI / 6 + c * Math.PI / 3; m = Math.max(m, ((cx + Math.cos(a)) / clear[0]) ** 2 + ((cy + Math.sin(a)) / clear[1]) ** 2); } return m; };
+        const rows = all.map((c, i) => ({ c, i, k: ring(c), w: cost(c) }));
+        rows.sort((a, b) => a.k - b.k || a.w - b.w || a.i - b.i);
+        return rows.slice(0, n).map(r => r.c);
+    }
+    function stakeLayout(bl, opts) {
+        opts = opts || {};
+        const cap = opts.cap > 0 ? Math.floor(opts.cap) : STAKE_CAP, clear = opts.clear || STAKE_CLEAR, rcap = opts.rcap > 0 ? opts.rcap : STAKE_RCAP, share = opts.share > 0 ? opts.share : STAKE_SHARE;
+        const rows = (Array.isArray(bl) ? bl : []).map((b, bi) => ({ b, bi, q: b ? stakeQty(b.q) : 0, p: b && ownKey(STAKE_PRIORITY, b.k) ? STAKE_PRIORITY[b.k] : 5 }))
+            .sort((x, y) => x.p - y.p || x.bi - y.bi);
+        let total = 0; for (const r of rows) total += r.q;
+        const items = [];
+        for (const r of rows) for (let i = 0; i < r.q && items.length < cap; i++) items.push(r);
+        const shown = items.length;
+        const sp = stakeCells(shown, clear);
+        // largest R at which every hex corner of every cell stays inside the ellipse, the footprint stays within `share` of
+        // the clearing's width, and the tile art is not stretched past STAKE_RCAP
+        let m = 0, x0 = Infinity, x1 = -Infinity;
+        for (const [q, r] of sp) {
+            const cx = SQRT3 * (q + r / 2), cy = 1.5 * r;
+            for (let c = 0; c < 6; c++) { const ang = Math.PI / 6 + c * Math.PI / 3; const x = cx + Math.cos(ang), y = cy + Math.sin(ang); m = Math.max(m, (x / clear[0]) ** 2 + (y / clear[1]) ** 2); x0 = Math.min(x0, x); x1 = Math.max(x1, x); }
+        }
+        const fit = m > 0 ? Math.floor(10000 / Math.sqrt(m)) / 10000 : rcap, byShare = x1 > x0 ? Math.floor(10000 * share * 2 * clear[0] / (x1 - x0)) / 10000 : rcap;
+        const R = Math.min(rcap, fit, byShare);
+        const cells = items.map((it, i) => {
+            const [q, r] = sp[i];
+            return { slot: i, q, r, x: R * SQRT3 * (q + r / 2), y: R * 1.5 * r, id: it.b.id, n: it.b.n, k: it.b.k, bi: it.bi };
+        });
+        cells.sort((a, b) => a.y - b.y || a.x - b.x || a.slot - b.slot);   // painter's order: far (small y) first, near last
+        cells.forEach((c, i) => { c.ord = i; });
+        let rings = 0; while (1 + 3 * rings * (rings + 1) < shown) rings++;
+        return { cells, R, total, shown, more: total - shown, rings, cap, clear: [clear[0], clear[1]] };
+    }
+    const STAKE_NEW_FIELDS = ['bl', 'pw', 'cs', 'su', 'inv', 'cap', 'fuel', 'rent', 'out', 'use'];
+    const STAKE_DEFS_ONLY = ['pw', 'cs', 'su'];   // absent by design when the building definitions could not be read
+    function buildStake(latest, bodies, addr) {
+        if (!latest || !Array.isArray(latest.stakes)) return null;
+        const k = latest.stakes.find(s => s && s.a === addr);
+        if (!k) return null;
+        const idx = bodies && bodies.byA ? bodies : Array.isArray(bodies) ? indexBodies(bodies) : null;
+        const body = idx && k.body ? idx.byA.get(k.body) || null : null;
+        const system = (latest.systems || []).find(s => s && s.a === k.sys) || null;
+        const owner = (latest.owners || []).find(o => o && o.p === k.o) || null;
+        const quality = latest.quality || {};
+        const has = key => k[key] !== undefined && k[key] !== null;
+        const num = v => (isNum(v) ? v : null);
+        const defsFailed = !!quality.buildingDefsFailed;
+        // a field that is present with the wrong shape (fuel "50", cap {}) is as unread as an absent one
+        const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
+        const SHAPE = { bl: v => Array.isArray(v), pw: v => isObj(v) && isNum(v.gen) && isNum(v.use), cs: isNum, su: isNum, inv: v => Array.isArray(v), cap: v => isObj(v) && isNum(v.used) && isNum(v.total), fuel: isNum, rent: v => isObj(v) && isNum(v.bal), out: v => Array.isArray(v), use: v => Array.isArray(v) };
+        const missing = STAKE_NEW_FIELDS.filter(f => !has(f) || !SHAPE[f](k[f]));
+        const oldCopy = !defsFailed && ['bl', 'inv', 'cap', 'fuel'].every(f => !has(f));
+        let note = '';
+        if (oldCopy) note = 'Not read yet - refresh. This saved copy has no building data.';
+        else if (defsFailed) note = 'The building definitions could not be read, so building names, power, crew and slots are not known.';
+        else if (missing.length) note = 'Not read yet: ' + missing.join(', ') + '.';
+        const bl = Array.isArray(k.bl) ? k.bl.filter(b => isObj(b)).map(b => Object.assign({}, b, { qty: stakeQty(b.q) > 0 ? stakeQty(b.q) : null })) : null;
+        const pw = has('pw') && isObj(k.pw) && isNum(k.pw.gen) && isNum(k.pw.use) ? { gen: k.pw.gen, use: k.pw.use, net: k.pw.gen - k.pw.use } : null;
+        const cap = has('cap') && isObj(k.cap) && isNum(k.cap.used) && isNum(k.cap.total) ? { used: k.cap.used, total: k.cap.total, pct: k.cap.total > 0 ? Math.min(1, k.cap.used / k.cap.total) : null } : null;
+        const rent = has('rent') && isObj(k.rent) && isNum(k.rent.bal) ? { bal: k.rent.bal, at: num(k.rent.at) } : null;
+        const con = has('con') && isObj(k.con) && isNum(k.con.rem) ? { rem: k.con.rem, at: num(k.con.at) } : null;
+        const inv = Array.isArray(k.inv) ? k.inv.filter(x => x && isNum(x.q)).slice().sort((a, b) => b.q - a.q) : null;
+        const perHour = Array.isArray(k.out) ? k.out.filter(x => x && isNum(x.ps)).map(x => ({ r: x.r, ph: x.ps * 3600 })).sort((a, b) => b.ph - a.ph) : null;
+        const usePerHour = Array.isArray(k.use) ? k.use.filter(x => x && isNum(x.ps)).map(x => ({ r: x.r, ph: x.ps * 3600 })).sort((a, b) => b.ph - a.ph) : null;
+        // hours of fuel left = Fuel held / Fuel burned per hour; null (never Infinity) when either side is unknown or nothing burns
+        let fuelHours = null, fuelHoursWhy = null;
+        const fuelNow = has('fuel') ? num(k.fuel) : null;
+        if (fuelNow === null || usePerHour === null) fuelHoursWhy = 'not read yet';
+        else {
+            const burn = usePerHour.find(x => x.r === 'Fuel' && x.ph > 0);
+            if (!burn) fuelHoursWhy = 'no fuel burn';
+            else { fuelHours = fuelNow / burn.ph; fuelHoursWhy = null; }
+        }
+        const ground = !body ? null : body.k === 'asteroid' ? 'asteroid' : (body.sub || 'barren');
+        return {
+            k, a: k.a, st: k.st, label: stakeLabel(k, quality), defName: k.defName || null, tier: num(k.tier),
+            body, system, owner, ground, x: num(k.x), y: num(k.y),
+            slots: { used: has('su') ? num(k.su) : null, total: num(k.slots) },
+            crew: { need: num(k.crew), slots: has('cs') ? num(k.cs) : null, over: isNum(k.crew) && has('cs') && isNum(k.cs) && k.crew > k.cs },
+            power: pw, storage: cap, fuel: has('fuel') ? num(k.fuel) : null, rent, con,
+            underConstruction: k.st === 'design' || !!(con && con.rem > 0),
+            buildings: bl ? { list: bl, total: bl.reduce((s, b) => s + (b.qty || 0), 0) } : null,
+            inventory: inv, perHour, usePerHour, fuelHours, fuelHoursWhy, missing, oldCopy, defsFailed, note
+        };
+    }
+
     const api = {
+        STAKE_KINDS, STAKE_KIND_LABEL, STAKE_PRIORITY, STAKE_CAP, STAKE_CLEAR, STAKE_RCAP, STAKE_SHARE, stakeLayout, buildStake, hexSpiral,
         DAC_FACTIONS, parseDacs, resolveDacs, dacInfluence, dacSummary, exampleDacs, EXAMPLE_SHARE, dacConquest, CONQUEST_METRICS, CONQUEST_LABEL, deepSpaceName,
         coverInsets, sameInsets, STAT_TABS, RES_HEX, fmtRich, RES_WHERE_TEXT, resourceWhere, resourceSystems, resourceIndex, defaultResource, placedCount, resourceView, combatHotSpots, hotOrder, isHotKind,
         GROUPS, GROUP_LABEL, STATES, STATE_LABEL, SIZES, CAREERS, CAREER_LABEL,

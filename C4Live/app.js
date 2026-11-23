@@ -52,11 +52,14 @@
         filter: 'all', states: null, ownerFocus: null, tab: 'mining', scene: null, sceneState: 'loading',
         layers: Object.fromEntries(LAYERS.map(l => [l[0], true])),
         fleetQ: '', fleetSort: ['ups', -1], fleetLimit: 30, ownerSort: ['ups', -1], ownerLimit: 50,
-        seenEvents: null, drawer: null, rendered: {},
+        seenEvents: null, drawer: null, stake: null, rendered: {},
         bodies: null, bodyIdx: null, bodiesP: null, bodiesErr: false, bodiesStale: false, sysView: null,
         view: 'tab',                                             // what the dock shows: 'tab' (S.tab) or 'system'
         res: null, resQ: '',                                     // Resource tab: the chosen resource, the picker's filter text
-        dock: { collapsed: false, w: 440, anim: false }, insets: null,
+        // wide = the expanded dock (button in the dock head); wideUsed = the visitor pressed that button, ever.
+        // The Analytics tab is always shown large (anBig) unless the visitor pressed the button while on it (anOff, this visit).
+        dock: { collapsed: false, w: 440, anim: false, wide: false, wideUsed: false, anOff: false, lastW: 0 }, insets: null,
+        an: { ro: null, w: 0, t: 0 },                              // Analytics tab: the width observer, the width last drawn, the debounce timer
         // DACs: state 'loading' | 'ok' | 'off'; list = the parsed hand-kept file (NEVER written after load); example = the
         // preview toggle (memory only); cache = the derived views for the current snapshot + toggle
         // lens (v7): the conquest lens - on = map coloured by DAC instead of faction; metrics = the selected power metrics
@@ -64,6 +67,9 @@
         dac: { state: 'loading', list: [], errors: [], note: '', why: '', example: false, focus: null, cache: null, lens: { on: false, metrics: ['mining'], scope: null } }
     };
     const DOCK_MIN = 360, DOCK_MAX = 720, RAIL = 58, EDGE = 12;   // px; EDGE = the dock's margin to the viewport edge
+    const WIDE_MAX = 1000, WIDE_FRAC = 0.62;                      // the expanded dock: min(1000px, 62vw)
+    const AN_MAX = 2200, AN_FRAC = 0.9;                           // the dock while the Analytics tab is open: min(2200px, 90vw)
+    const SV_FULL_PX = 700;                                       // the stake view goes full screen when less than this is left beside a wide dock
     const SHEET_MQ = window.matchMedia ? window.matchMedia('(max-width: 699px)') : { matches: false };
     const $ = (sel, el) => (el || document).querySelector(sel);
     const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -215,6 +221,7 @@
         if (S.scene) { try { S.scene.setData(S.latest, S.events, S.bodies || undefined); } catch (e) { console.warn('C4 Live: scene.setData failed', e); } }
         // rebuild() reopened the drawer while the old planets were still in memory: draw an open body drawer again
         if (!initial && S.drawer && S.drawer.kind === 'body') reopenDrawer();
+        if (!initial) reopenStake();
         pushDacs();
         if (S.sysView) renderSystemPanel();
         if (initial) { await S.dacP; applyParams(); }
@@ -248,6 +255,7 @@
         S.rendered = {};
         renderTab(S.tab, !isReload);
         if (S.drawer) reopenDrawer();
+        reopenStake();
     }
     const evKey = e => e.t + ':' + e.k + ':' + (e.f || e.sys);
 
@@ -427,6 +435,7 @@
     let viewTok = 0;
     function showView(view) {
         S.view = view === 'system' && S.sysView ? 'system' : 'tab';
+        syncDockW();   // Analytics is shown large; every other view goes back to the visitor's size
         const dock = $('#c4Dock');
         dock.dataset.acc = S.view === 'system' ? 'system' : S.tab;
         document.querySelectorAll('.c4-tab').forEach(b => {
@@ -453,7 +462,8 @@
     function fitTabs() {
         const nav = $('#c4Tabs');
         if (!nav) return;
-        for (let lv = 0; lv <= 3; lv++) { nav.dataset.fit = String(lv); if (nav.scrollWidth <= nav.clientWidth + 1) return; }
+        // level 4 = icons only, packed closer (seven or eight tabs in a 360 px dock, since the Analytics tab)
+        for (let lv = 0; lv <= 4; lv++) { nav.dataset.fit = String(lv); if (nav.scrollWidth <= nav.clientWidth + 1) return; }
     }
     function setDockCollapsed(c) {
         if (S.dock.collapsed === c) return;
@@ -474,8 +484,56 @@
     function setDockWidth(w, persist) {
         const max = Math.max(DOCK_MIN, Math.min(DOCK_MAX, Math.round(window.innerWidth * 0.6)));
         S.dock.w = Math.round(Math.max(DOCK_MIN, Math.min(max, w)));
-        document.documentElement.style.setProperty('--dock-w', S.dock.w + 'px');
+        document.documentElement.style.setProperty('--dock-w', dockW() + 'px');
         if (persist) { try { localStorage.setItem('c4.dock.w', String(S.dock.w)); } catch (e) { /* private mode */ } }
+        svFit();
+    }
+    // the dock's width now: the visitor's own width (S.dock.w), or min(1000px, 62vw) when expanded. Phones keep the bottom
+    // sheet, whatever was saved. Never narrower than the visitor's own width.
+    // Analytics open (and not shrunk by the visitor): min(2200px, 90vw), so the charts sit side by side.
+    const anBig = () => S.view === 'tab' && S.tab === 'analytics' && !S.dock.anOff && !SHEET_MQ.matches;
+    const onAn = () => S.view === 'tab' && S.tab === 'analytics' && !SHEET_MQ.matches;
+    // on Analytics the size is that tab's own (large, or the visitor's normal width once they shrank it): the remembered
+    // wide choice belongs to the other tabs and is never changed from here
+    const dockBig = () => onAn() ? anBig() : S.dock.wide && !SHEET_MQ.matches;
+    function dockW() {
+        if (SHEET_MQ.matches) return S.dock.w;
+        if (onAn()) return anBig() ? Math.max(S.dock.w, Math.round(Math.min(AN_MAX, window.innerWidth * AN_FRAC))) : S.dock.w;
+        return S.dock.wide ? Math.max(S.dock.w, Math.round(Math.min(WIDE_MAX, window.innerWidth * WIDE_FRAC))) : S.dock.w;
+    }
+    // apply the dock's width when what decides it changed (tab, view, the size button); the map follows as for expand
+    function syncDockW() {
+        const w = dockW();
+        syncWideBtn();
+        if (w === S.dock.lastW) return;
+        const first = !S.dock.lastW; S.dock.lastW = w;
+        setDockWidth(S.dock.w, false);
+        if (first) return;
+        S.dock.anim = !RM.matches;
+        pushInsets(true, targetDockRect());
+        clearTimeout(S.dock.animT);
+        if (!S.dock.anim) pushInsets(true);
+        else S.dock.animT = setTimeout(() => { if (S.dock.anim) { S.dock.anim = false; pushInsets(false); } }, 900);
+    }
+    // expand / restore the dock. byUser = the button (remembered, and it disarms the automatic expansion); otherwise the
+    // automatic one from opening Analytics (not remembered)
+    function setDockWide(on, byUser) {
+        on = !!on;
+        if (byUser) { S.dock.wideUsed = true; try { localStorage.setItem('c4.dock.wide', on ? '1' : '0'); } catch (e) { /* private mode */ } }
+        S.dock.wide = on;
+        syncDockW();   // the width transition runs ~0.55 s: the map gets the TARGET geometry now, the measured one when it ends
+    }
+    function syncWideBtn() {
+        const b = $('#c4DockWide'); if (!b) return;
+        b.setAttribute('aria-pressed', dockBig() ? 'true' : 'false');
+        b.title = dockBig() ? 'Back to the normal panel size' : 'Make the panel larger';
+        $('#c4Dock').classList.toggle('wide', dockBig());
+    }
+    // the stake view sits left of the dock; beside an expanded dock it would be a sliver, so below SV_FULL_PX it covers the page
+    function svFit() {
+        const el = $('#c4StakeView'); if (!el) return;
+        const left = window.innerWidth - dockW() - 3 * EDGE;
+        el.classList.toggle('sv-full', dockBig() && !SHEET_MQ.matches && left < SV_FULL_PX);
     }
     // the layout box of an element without its running transform (a spring slide is mid-flight when we measure)
     function layoutRect(el) {
@@ -488,7 +546,7 @@
     function targetDockRect() {
         const W = window.innerWidth, H = window.innerHeight;
         if (SHEET_MQ.matches) { const h = S.dock.collapsed ? RAIL : Math.round(H * 0.58); return { left: 0, right: W, top: H - h, bottom: H }; }
-        const w = S.dock.collapsed ? RAIL : S.dock.w;
+        const w = S.dock.collapsed ? RAIL : dockW();
         return { left: W - EDGE - w, right: W - EDGE, top: EDGE, bottom: H - EDGE };
     }
     // the floating HUD boxes the map shows through (v3 `avoid`): map controls, brand, age / collector banner and quality
@@ -527,8 +585,10 @@
     let insRaf = 0;
     function queueInsets() { if (S.dock.anim || insRaf) return; insRaf = requestAnimationFrame(() => { insRaf = 0; pushInsets(false); }); }
     function wireDock() {
-        let w = 440, c = false;
-        try { w = +localStorage.getItem('c4.dock.w') || 440; c = localStorage.getItem('c4.dock.collapsed') === '1'; } catch (e) { /* private mode */ }
+        let w = 440, c = false, wd = null;
+        try { w = +localStorage.getItem('c4.dock.w') || 440; c = localStorage.getItem('c4.dock.collapsed') === '1'; wd = localStorage.getItem('c4.dock.wide'); } catch (e) { /* private mode */ }
+        S.dock.wideUsed = wd === '1' || wd === '0'; S.dock.wide = wd === '1';
+        syncWideBtn();
         setDockWidth(w, false);
         if (c) { S.dock.collapsed = true; $('#c4Dock').classList.add('collapsed'); $('#c4DockToggle').setAttribute('aria-expanded', 'false'); $('#c4DockToggle').title = 'Show the panel (D)'; }
         const dock = $('#c4Dock');
@@ -544,11 +604,11 @@
         if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitTabs, () => {});
         fitTabs();
         window.addEventListener('resize', () => { setDockWidth(S.dock.w, false); queueInsets(); });
-        if (SHEET_MQ.addEventListener) SHEET_MQ.addEventListener('change', () => pushInsets(false));
+        if (SHEET_MQ.addEventListener) SHEET_MQ.addEventListener('change', () => { syncDockW(); svFit(); pushInsets(false); });
         // drag the dock's left edge to resize (desktop only)
         const grip = $('#c4DockGrip');
         grip.addEventListener('pointerdown', e => {
-            if (S.dock.collapsed || SHEET_MQ.matches) return;
+            if (S.dock.collapsed || SHEET_MQ.matches || dockBig()) return;     // the expanded width is fixed; restore it first
             e.preventDefault(); grip.setPointerCapture(e.pointerId); dock.classList.add('resizing');
             const move = ev => { setDockWidth(window.innerWidth - EDGE - ev.clientX, false); queueInsets(); };
             const up = () => { grip.removeEventListener('pointermove', move); grip.removeEventListener('pointerup', up); grip.removeEventListener('pointercancel', up); dock.classList.remove('resizing'); setDockWidth(S.dock.w, true); pushInsets(false); };
@@ -558,8 +618,42 @@
     function renderTab(tab, animate) {
         if (!S.D) return;
         const el = $('#sec-' + tab);
-        if (!S.rendered[tab]) { ({ mining: renderMining, resource: renderResource, combat: renderCombat, fleets: renderFleets, owners: renderOwners, dacs: renderDacs })[tab](el); S.rendered[tab] = true; }
+        if (!S.rendered[tab]) { ({ mining: renderMining, resource: renderResource, combat: renderCombat, fleets: renderFleets, owners: renderOwners, analytics: renderAnalytics, dacs: renderDacs })[tab](el); S.rendered[tab] = true; }
         if (animate) animateIn(el);
+    }
+    // ---- Analytics tab (2026-11-22): c4-analytics.js builds the model from latest.json (+ bodies.json for planet types)
+    // and draws it at the width the pane has now; it is drawn again when the pane changes width (expand, window resize)
+    const AN_LABEL = { mining: 'Mining', council: 'Council rank', stakes: 'Claim stakes', compare: 'Ships vs stakes' };
+    function renderAnalytics(el) {
+        const A = window.C4Analytics;
+        if (S.an.ro) { S.an.ro.disconnect(); S.an.ro = null; }
+        if (!A || typeof A.build !== 'function' || typeof A.render !== 'function') { el.innerHTML = note('The analytics charts did not load (c4-analytics.js). Reload the page to try again.'); return; }
+        el.innerHTML = `<nav class="c4an-nav" id="c4AnNav" aria-label="Analytics sections">${(A.sections || []).map(id => `<button type="button" data-an="${esc(id)}">${esc(AN_LABEL[id] || id)}</button>`).join('')}</nav><div class="c4an-mount" id="c4AnMount"></div>`;
+        if (!S.bodies && !S.bodiesP && !S.bodiesErr) loadBodies();   // planet types; the charts draw first without them and again when they land
+        S.an.w = 0;
+        paintAnalytics();
+        const mount = $('#c4AnMount');
+        if (window.ResizeObserver) {
+            S.an.ro = new ResizeObserver(() => { clearTimeout(S.an.t); S.an.t = setTimeout(() => { const m = $('#c4AnMount'); if (m && Math.abs(m.clientWidth - S.an.w) >= 2 && m.clientWidth > 0) paintAnalytics(); }, 120); });
+            S.an.ro.observe(mount);
+        }
+    }
+    // a dot or row card in the Analytics tab asks the page to open what it names: an owner, a fleet's owner, or a claim stake; the tab stays as it is
+    function anPick(p) {
+        if (!p || typeof p.id !== 'string' || !p.id) return;
+        if (p.kind === 'owner') openOwner(p.id);
+        else if (p.kind === 'stake') openStake(p.id);
+        else if (p.kind === 'fleet') { const f = ((S.latest && S.latest.fleets) || []).find(x => x && x.a === p.id); if (f && f.o) openOwner(f.o); }
+    }
+    function paintAnalytics() {
+        const A = window.C4Analytics, m = $('#c4AnMount');
+        if (!A || !m || !S.latest) return;
+        // the pane may be hidden (clientWidth 0) while another tab fades out: use the width the dock is heading for
+        const w = m.clientWidth > 0 ? m.clientWidth : Math.max(240, (S.dock.collapsed ? S.dock.w : dockW()) - 2 * 13 - 2);
+        const main = $('#c4Main'), top = main ? main.scrollTop : 0;
+        try { A.render(m, A.build(S.latest, S.bodies ? { bodies: S.bodies } : null), { width: w, reducedMotion: RM.matches, esc, onPick: anPick }); S.an.w = m.clientWidth > 0 ? m.clientWidth : w; }
+        catch (e) { console.warn('C4 Live: analytics failed', e); m.innerHTML = note('The analytics charts could not be drawn from this data.'); }
+        if (main) main.scrollTop = top;
     }
     const card = (cls, i, title, sub, body) => `<div class="c4-card ${cls}" style="--i:${i}"><h3>${title}</h3>${sub ? `<p class="sub">${sub}</p>` : ''}${body}</div>`;
     const note = html => `<div class="c4-note">${html}</div>`;
@@ -1030,7 +1124,7 @@
         // v2: the drawer slides over the dock and leaves the map centre clear, so no scrim on desktop; phones keep it
         if (SHEET_MQ.matches) { const sc = $('#c4Scrim'); sc.hidden = false; requestAnimationFrame(() => sc.classList.add('show')); }
         pushInsets(false);
-        d.focus({ preventScroll: true });
+        if (!S.stake) d.focus({ preventScroll: true });   // behind the open stake view a reload must not pull focus out of it
         if (!RM.matches) d.querySelectorAll('.c4-anim-in').forEach((x, i) => x.style.setProperty('--i', i));
         d.classList.remove('c4-anim'); void d.offsetWidth; d.classList.add('c4-anim');
     }
@@ -1136,7 +1230,7 @@
             : [['Fleets', ser.fleets, 0], ['Mining fleets', ser.mining, 0], ['ATLAS', ser.atlas, 0]].map(([l, v, d]) => `<div class="c4-spark"><span>${l}</span>${spark(v)}<b>${M.fmt(v[v.length - 1], d)}</b></div>`).join('');
         const stakes = o.stakesLive != null && o.stakesLive !== o.stakes ? `${o.stakes} (${o.stakesLive} live)` : (o.stakes || 0);
         const myStakes = (S.latest.stakes || []).filter(k => k.o === p);
-        const stakeList = myStakes.length ? `<div class="c4-dsec"><span>Claim stakes</span></div><ul class="c4-list c4-anim-in" id="c4OwnerStakes">${myStakes.map(k => `<li ${k.body ? `data-body="${esc(k.body)}"` : ''}><span class="l"><span class="c4-st" title="claim stake definition">${esc(M.stakeLabel(k, S.latest.quality))}</span> ${esc(k.sysName || '')} <span class="c4-st">${esc(k.st)}</span></span><span class="n">${esc(k.b)} bldg / ${esc(k.crew)} crew</span></li>`).join('')}</ul>` : '';
+        const stakeList = myStakes.length ? `<div class="c4-dsec"><span>Claim stakes</span></div><ul class="c4-list c4-anim-in" id="c4OwnerStakes">${myStakes.map(k => `<li data-stake="${esc(k.a)}"><span class="l"><span class="c4-st" title="claim stake definition">${esc(M.stakeLabel(k, S.latest.quality))}</span> ${esc(k.sysName || '')} <span class="c4-st">${esc(k.st)}</span></span><span class="n">${esc(k.b)} bldg / ${esc(k.crew)} crew</span></li>`).join('')}</ul>` : '';
         const rec = (S.ident && S.ident.get(p)) || null;
         openDrawer('owner', p, `<div class="kind">${o.npc ? 'NPC (all NPC fleets share one profile)' : 'Player'}</div>
             <h2><span class="c4-dname">${o.npc ? 'NPC' : ownerLabel(p)}</span>${fa(o.group)}</h2>
@@ -1224,6 +1318,7 @@
     }
     // the Resource tab waits on bodies.json: redraw it (and re-send its layer) whenever a load lands or fails
     function resourceBodiesSettled() {
+        if (S.rendered.analytics) paintAnalytics();   // planet types arrived (or the list was dropped after a game update)
         S.rendered.resource = false;
         if (S.tab === 'resource' && S.D) {   // also behind the System view
             S.resSettling = true;
@@ -1320,7 +1415,7 @@
                 <div class="c4-dsec"><span>Resources and richness</span></div><div class="c4-anim-in">${resBars}</div>
                 <p class="sub">Settled = the asteroid's cumulative counter, which moves when a fleet's mining settles on chain; ${o.activeMiners} active miner slot${o.activeMiners === 1 ? '' : 's'} across its resources.</p>`;
         } else {
-            const stakes = o.stakes.length ? `<ul class="c4-list">${o.stakes.map(k => `<li data-owner="${esc(k.o)}"><span class="l"><span class="addr">${ownerLabel(k.o)}</span> <span class="c4-st">${esc(k.st)}</span><span class="c4-st" title="claim stake definition">${esc(M.stakeLabel(k, S.latest.quality))}</span></span><span class="n">${esc(k.b)} bldg / ${esc(k.crew)} crew</span></li>`).join('')}</ul>` : note('No claim stake on this planet.');
+            const stakes = o.stakes.length ? `<ul class="c4-list">${o.stakes.map(k => `<li data-stake="${esc(k.a)}"><span class="l"><span class="addr">${ownerLabel(k.o)}</span> <span class="c4-st">${esc(k.st)}</span><span class="c4-st" title="claim stake definition">${esc(M.stakeLabel(k, S.latest.quality))}</span></span><span class="n">${esc(k.b)} bldg / ${esc(k.crew)} crew</span></li>`).join('')}</ul>` : note('No claim stake on this planet.');
             body = `<div class="c4-dstats c4-anim-in">${stat('Claim stakes', o.stakes.length)}${stat('Owners', o.stakeOwners)}${stat('Claimed plots', o.claimed)}</div>
                 <div class="c4-dsec"><span>Claim stakes</span></div><div class="c4-anim-in">${stakes}</div>
                 <div class="c4-dsec"><span>Resources and richness</span></div><div class="c4-anim-in">${resBars}</div>`;
@@ -1328,6 +1423,170 @@
         openDrawer('body', a, `<div class="c4-bimg"><img src="${M.bodyImage(o.b, 384)}" alt=""></div><div class="kind">${esc(o.kind)}${sys ? ` in <a href="#" data-enter-system="${esc(sys.a)}">${esc(sys.n)}</a>` : ''}</div>
             <h2>${esc(o.name)}<button class="c4-copy" data-copy="${esc(a)}">Copy</button></h2><div class="full">${esc(a)}</div>
             ${S.bodiesStale ? note(STALE_BODIES) : ''}<p class="c4-verdict">${o.verdict}</p>${body}`);
+    }
+
+    // ================================================================== claim stake view (2026-11-22)
+    // Click a stake row (owner drawer, planet drawer) -> the map flies to the stake's system and a stage fades in over the
+    // map area: the planet's ground, the stake's buildings as tiles on a hex grid (M.stakeLayout), and the numbers
+    // (M.buildStake). Public chain data only. A field the saved copy lacks shows "-" and one line says so, never a zero.
+    // Assets: Images/stake/manifest.json (tiles) + Images/stake/ground/manifest.json (grounds); a missing manifest or
+    // ground image degrades to the contract defaults / a plain dark stage.
+    const STAKE_ZOOM = 10;
+    const SV_TILES = { unit: 150.147, anchor: [160, 302.59], squash: 0.5299, tiles: {} };
+    const SV_GROUND = { w: 1600, h: 900, scale: 26, squash: 0.5299, clear: [7.6, 7.0], grounds: {} };
+    const SV = { tiles: SV_TILES, ground: SV_GROUND, p: null };
+    let svTok = 0, svHide = 0;
+    function loadStakeAssets() {
+        if (SV.p) return SV.p;
+        const get = u => fetch(u).then(r => (r.ok ? r.json() : null)).catch(() => null);
+        SV.p = Promise.all([get('../Images/stake/manifest.json'), get('../Images/stake/ground/manifest.json')]).then(([t, g]) => {
+            if (t && t.unit > 0 && Array.isArray(t.anchor) && t.tiles && typeof t.tiles === 'object') SV.tiles = Object.assign({}, SV_TILES, t);
+            if (g && g.scale > 0 && g.w > 0 && g.h > 0 && Array.isArray(g.clear) && g.grounds && typeof g.grounds === 'object') SV.ground = Object.assign({}, SV_GROUND, g);
+        });
+        return SV.p;
+    }
+    const svDash = '<span class="sv-dash">-</span>';
+    const svKpi = (key, label, val, extra, cls, wide) => `<div class="sv-kpi${cls ? ' ' + cls : ''}${wide ? ' wide' : ''}" data-kpi="${key}"><span>${label}</span><b>${val}</b>${extra || ''}</div>`;
+    // the tile for a building kind: the manifest's file (unknown kind -> the processor tile), a size and the anchor offset
+    function svTile(kind) {
+        const own = (o, k) => typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);   // constructor / __proto__ from the chain are not tile names
+        const t = (own(SV.tiles.tiles, kind) && SV.tiles.tiles[kind]) || (own(SV.tiles.tiles, 'processor') && SV.tiles.tiles.processor) || { file: kind + '.webp', size: [320, 385] };
+        return { src: '../Images/stake/' + String(t.file || kind + '.webp').replace(/[^\w.-]/g, ''), w: (t.size && t.size[0]) || 320, h: (t.size && t.size[1]) || 385 };
+    }
+    function svStageHtml(v, lay) {
+        const G = SV.ground, T = SV.tiles, f = v.buildings ? (v.underConstruction ? ' con' : '') : '';
+        const live = v.st === 'active' && !v.underConstruction && !!v.buildings;
+        const gfile = v.ground && (G.grounds[v.ground] || G.grounds.barren);
+        const px = (x, y) => [50 + x / G.scale * 100, 50 + y * G.squash * (G.w / G.h) / G.scale * 100];   // world -> % of the stage
+        let tiles = '';
+        const pos = new Map();
+        lay.cells.forEach(c => {
+            const t = svTile(c.k), [l, tp] = px(c.x, c.y);
+            pos.set(c, [l, tp]);
+            const w = t.w * lay.R / (T.unit * G.scale) * 100;
+            tiles += `<div class="sv-t k-${esc(c.k)}" data-kind="${esc(c.k)}" style="left:${l.toFixed(3)}%;top:${tp.toFixed(3)}%;width:${w.toFixed(3)}%;--ax:${(-T.anchor[0] / t.w * 100).toFixed(2)}%;--ay:${(-T.anchor[1] / t.h * 100).toFixed(2)}%;--dl:-${((c.ord * 0.37) % 2.4).toFixed(2)}s;z-index:${c.ord + 1}"><img src="${t.src}" alt="${esc((Object.prototype.hasOwnProperty.call(M.STAKE_KIND_LABEL, c.k) && M.STAKE_KIND_LABEL[c.k]) || c.k)}" draggable="false"></div>`;
+        });
+        // cargo dots: from each extractor to the nearest storage (else the central hub); a few, so the stage stays cheap
+        let dots = '';
+        if (live) {
+            const sinks = lay.cells.filter(c => c.k === 'storage_module' || c.k === 'storage_hub'), fb = lay.cells.filter(c => c.k === 'central_hub');
+            const to = sinks.length ? sinks : fb;
+            lay.cells.filter(c => c.k === 'extractor').slice(0, 8).forEach((c, i) => {
+                if (!to.length) return;
+                const [x0, y0] = pos.get(c);
+                let best = to[0], bd = Infinity; for (const s of to) { const d = (s.x - c.x) ** 2 + (s.y - c.y) ** 2; if (d < bd) { bd = d; best = s; } }
+                const [x1, y1] = pos.get(best);
+                dots += `<i class="sv-dot" style="left:${x0.toFixed(3)}%;top:${(y0 - 4).toFixed(3)}%;--dx:${(x1 - x0).toFixed(3)};--dy:${(y1 - y0).toFixed(3)};--dl:-${(i * 0.7).toFixed(2)}s"></i>`;
+            });
+        }
+        const cr = G.clear, cw = 2 * cr[0] / G.scale * 100, ch = 2 * cr[1] * G.squash * (G.w / G.h) / G.scale * 100;
+        let msg = '';
+        if (!v.buildings) msg = v.defsFailed ? 'Buildings not known: the building definitions could not be read.' : 'Not read yet - refresh. This saved copy has no building list.';
+        else if (!lay.shown) msg = 'No buildings placed on this claim stake yet.';
+        let con = '';
+        if (v.underConstruction) {
+            const rem = v.con ? v.con.rem : null;
+            con = `<div class="sv-conbar"><span>${v.st === 'design' ? 'In design' : 'Under construction'}${rem != null && rem > 0 ? ': ' + esc(M.ago(rem)) + ' left' : ''}</span><div class="sv-bar stripe"><i></i></div></div>`;
+        }
+        return `<div class="sv-stagewrap"><div class="sv-stage${gfile ? '' : ' noground'}${live ? ' live' : ''}${f}" data-ground="${esc(v.ground || '')}">
+            ${gfile ? `<img class="sv-ground" src="../Images/stake/ground/${esc(String(gfile).replace(/[^\w.-]/g, ''))}" alt="" draggable="false">` : ''}
+            <div class="sv-clearring" style="left:50%;top:50%;width:${cw.toFixed(2)}%;height:${ch.toFixed(2)}%"></div>
+            ${tiles}${dots}<div class="sv-vig"></div>
+            <span class="sv-state c4-st">${esc(v.st)}</span>
+            ${lay.more > 0 ? `<span class="sv-more" data-more-n="${lay.more}">+${lay.more} more building${lay.more === 1 ? '' : 's'}</span>` : ''}
+            ${msg ? `<div class="sv-empty">${esc(msg)}</div>` : ''}${con}</div></div>`;
+    }
+    // how long the fuel lasts: under 48 h one decimal, 48 h and over in days, 0 -> "empty"; unknown or no burn -> nothing
+    function svFuelLine(h) {
+        if (h == null || !isFinite(h) || h < 0) return '';
+        const txt = h === 0 ? 'empty' : h < 48 ? 'lasts about ' + M.fmt(h, 1) + ' h' : 'lasts about ' + M.fmt(h / 24, 1) + ' days';
+        return `<small class="sv-last${h < 6 ? ' low' : ''}" data-fuel-hours="${h}">${txt}</small>`;
+    }
+    function svStatsHtml(v, lay) {
+        const F = (n, d) => M.fmt(n, d);
+        const gen = S.latest && S.latest.generatedAt;
+        const pw = v.power, sg = v.storage;
+        const kp = [
+            svKpi('fuel', 'Fuel', v.fuel == null ? svDash : F(v.fuel, 0), svFuelLine(v.fuelHours)),
+            svKpi('crew', 'Crew needed / slots', `${v.crew.need == null ? svDash : F(v.crew.need, 0)} <em>/ ${v.crew.slots == null ? '-' : F(v.crew.slots, 0)}</em>`, v.crew.over ? '<small class="sv-crewnote">needs more crew than its slots give</small>' : ''),
+            svKpi('power', 'Power made / used', pw ? `${F(pw.gen, 0)} <em>/ ${F(pw.use, 0)}</em>` : svDash, pw ? `<small>${pw.net >= 0 ? '+' + F(pw.net, 0) + ' surplus' : F(pw.net, 0) + ' deficit'}</small>` : '', pw ? (pw.net >= 0 ? 'good' : 'bad') : ''),
+            svKpi('slots', 'Slots used / total', `${v.slots.used == null ? svDash : F(v.slots.used, 0)} <em>/ ${v.slots.total == null ? '-' : F(v.slots.total, 0)}</em>`),
+            svKpi('storage', 'Storage used / total', sg ? `${F(sg.used, 0)} <em>/ ${F(sg.total, 0)}</em>` : svDash, sg && sg.pct != null ? `<div class="sv-bar"><i class="${sg.pct > 0.9 ? 'hot' : ''}" style="width:${(sg.pct * 100).toFixed(1)}%"></i></div><small>${sg.used > sg.total ? 'over capacity' : M.pct(sg.pct, 0) + ' full'}</small>` : '', '', true),
+            svKpi('rent', 'Rent balance', v.rent ? `${F(v.rent.bal, 2)} <em>ATLAS</em>` : svDash, v.rent && v.rent.at && gen ? `<small>last rent time ${esc(M.ago(gen - v.rent.at))} before this copy</small>` : ''),
+            svKpi('buildings', 'Buildings', v.buildings ? F(v.buildings.total, 0) : svDash),
+            svKpi('state', 'State', esc(v.st) + (v.underConstruction ? ' <em>(building)</em>' : ''), '', '', true)
+        ].join('');
+        const prod = v.perHour ? (v.perHour.length ? `<ul>${v.perHour.slice(0, 14).map(x => `<li><span class="l">${esc(x.r)}</span><span class="n">${F(x.ph, x.ph < 10 ? 2 : 1)}<em> /h</em></span></li>`).join('')}</ul>` : '<p class="sub">No production.</p>') : `<p class="sub">${svDash} ${v.defsFailed ? 'building definitions could not be read' : 'not read yet - refresh'}</p>`;
+        const use = v.usePerHour ? (v.usePerHour.length ? `<ul>${v.usePerHour.slice(0, 14).map(x => `<li><span class="l">${esc(x.r)}</span><span class="n">${F(x.ph, x.ph < 10 ? 2 : 1)}<em> /h</em></span></li>`).join('')}</ul>` : '') : `<p class="sub">${svDash} not read yet - refresh</p>`;
+        const inv = v.inventory ? (v.inventory.length ? `<ul>${v.inventory.slice(0, 14).map(x => `<li><span class="l">${esc(x.r)}</span><span class="n">${F(x.q, 0)}</span></li>`).join('')}${v.inventory.length > 14 ? `<li><span class="l">+${v.inventory.length - 14} more</span><span class="n"></span></li>` : ''}</ul>` : '<p class="sub">Empty.</p>') : '<p class="sub">- not read yet - refresh</p>';
+        const blds = v.buildings ? (v.buildings.list.length ? `<ul>${v.buildings.list.map(b => { const t = svTile(b.k); return `<li><span class="l"><img src="${t.src}" alt="" loading="lazy">${esc(b.n)}</span><span class="n">${b.qty == null ? svDash : 'x ' + F(b.qty, 0)}</span></li>`; }).join('')}</ul>` : '<p class="sub">None.</p>') : '<p class="sub">- not read yet - refresh</p>';
+        return `${v.note ? `<p class="sv-note" data-gap>${esc(v.note)}</p>` : ''}
+            <div class="sv-grid"><div><div class="sv-kpis">${kp}</div></div>
+            <div class="sv-sec"><h3>Production per hour</h3>${prod}${use ? `<h3>Consumption per hour</h3>${use}` : ''}<h3>Inventory</h3>${inv}</div>
+            <div class="sv-sec"><h3>Buildings</h3>${blds}</div></div>`;
+    }
+    function svHtml(v) {
+        const lay = M.stakeLayout(v.buildings ? v.buildings.list : [], { clear: SV.ground.clear });
+        const o = v.owner, b = v.body, sy = v.system;
+        const links = `<span>Owner <button type="button" class="sv-link" data-sv-go="owner" data-id="${esc(v.k.o)}">${ownerLabel(v.k.o)}</button>${o && o.fa ? ' ' + fa(o.fa) : ''}</span>
+            ${b ? `<span>Planet <button type="button" class="sv-link" data-sv-go="body" data-id="${esc(b.a)}">${esc(b.n)}</button></span>` : `<span>Planet ${svDash} <em>${S.bodiesUnread || !S.bodyIdx ? 'not read' : 'not in the planet list'}</em></span>`}
+            ${sy ? `<span>System <button type="button" class="sv-link" data-sv-go="system" data-id="${esc(sy.a)}">${esc(sy.n)}</button></span>` : (v.k.sysName ? `<span>System ${esc(v.k.sysName)}</span>` : '')}`;
+        return `<button type="button" class="sv-x" data-sv-close aria-label="Close the claim stake view">&times;</button>
+            <div class="sv-card" id="c4StakeCard"><div class="sv-head"><div class="kind">Claim stake${v.tier != null ? ' / tier ' + esc(v.tier) : ''}</div>
+            <h2 id="c4StakeTitle">${esc(v.label)}<span class="c4-st">${esc(v.st)}</span></h2><div class="sv-where">${links}</div></div>
+            ${svStageHtml(v, lay)}${svStatsHtml(v, lay)}</div>`;
+    }
+    function svRender() {
+        const el = $('#c4StakeView'); if (!el || !S.stake) return;
+        const v = S.latest ? M.buildStake(S.latest, S.bodyIdx, S.stake.a) : null;
+        const card = el.querySelector('.sv-card'), top = card ? card.scrollTop : 0;
+        const hadFocus = el.contains(document.activeElement);   // innerHTML below replaces the focused button: put focus back on the close button
+        const refocus = () => { if (hadFocus) { const x = el.querySelector('.sv-x'); if (x) x.focus({ preventScroll: true }); } };
+        if (!v) { el.innerHTML = `<button type="button" class="sv-x" data-sv-close aria-label="Close">&times;</button><div class="sv-card"><div class="sv-head"><div class="kind">Claim stake</div><h2>Not in the data</h2></div><p class="sv-note">This claim stake is not in the current data (it may have been removed).</p></div>`; return; }
+        el.innerHTML = svHtml(v);
+        refocus();
+        el.querySelectorAll('img.sv-ground').forEach(im => im.addEventListener('error', () => { im.remove(); const st = el.querySelector('.sv-stage'); if (st) st.classList.add('noground'); }));
+        const c2 = el.querySelector('.sv-card'); if (c2) c2.scrollTop = top;
+    }
+    async function openStake(a) {
+        if (!S.latest || !(S.latest.stakes || []).some(k => k && k.a === a)) return false;
+        const tok = ++svTok;
+        const el = $('#c4StakeView'), sc = $('#c4StakeScrim');
+        const was = !!S.stake;
+        S.stake = { a, tok, from: was ? S.stake.from : document.activeElement };
+        const k = S.latest.stakes.find(s => s.a === a);
+        svFit();
+        await loadStakeAssets();
+        if (!S.bodyIdx) await loadBodies();
+        if (!S.stake || S.stake.tok !== tok) return false;
+        svRender();
+        clearTimeout(svHide);
+        el.hidden = false; sc.hidden = false; el.setAttribute('aria-hidden', 'false');
+        void el.offsetWidth;
+        el.classList.add('open'); sc.classList.add('open');
+        if (!was && k && Number.isFinite(k.x) && Number.isFinite(k.y)) focusXY(k.x, k.y, STAKE_ZOOM);
+        const x = el.querySelector('.sv-x'); if (x) x.focus({ preventScroll: true });
+        return true;
+    }
+    // data reloaded while the view is open: draw it again from the fresh data (no new flight, no re-animation)
+    function reopenStake() { if (S.stake && $('#c4StakeView').classList.contains('open')) svRender(); }
+    // minimal focus trap for the stake view (aria-modal): Tab / Shift+Tab wrap between its first and last focusable element
+    function svTrap(e) {
+        const el = $('#c4StakeView'); if (!el || el.hidden) return;
+        const fs = [...el.querySelectorAll('button, [href], input, select, textarea, [tabindex]')].filter(n => !n.disabled && n.tabIndex >= 0 && !n.closest('[hidden]'));
+        if (!fs.length) { e.preventDefault(); el.focus({ preventScroll: true }); return; }
+        const a = document.activeElement, first = fs[0], last = fs[fs.length - 1];
+        if (e.shiftKey) { if (a === first || !el.contains(a) || a === el) { e.preventDefault(); last.focus({ preventScroll: true }); } }
+        else if (a === last || !el.contains(a)) { e.preventDefault(); first.focus({ preventScroll: true }); }
+    }
+    function closeStake() {
+        if (!S.stake) return;
+        const from = S.stake.from; S.stake = null; svTok++;
+        const el = $('#c4StakeView'), sc = $('#c4StakeScrim');
+        el.classList.remove('open'); sc.classList.remove('open'); el.setAttribute('aria-hidden', 'true');
+        clearTimeout(svHide);
+        svHide = setTimeout(() => { if (!S.stake) { el.hidden = true; sc.hidden = true; el.innerHTML = ''; } }, RM.matches ? 0 : 460);
+        if (from && from.isConnected && from.focus) from.focus({ preventScroll: true }); else if (S.drawer) $('#c4Drawer').focus({ preventScroll: true });
     }
 
     // ================================================================== find
@@ -1469,6 +1728,14 @@
             }
             if (t.closest('[data-close]') || t.id === 'c4Scrim') { closeDrawer(); return; }
             if (t.closest('#c4DockToggle')) { setDockCollapsed(!S.dock.collapsed); return; }
+            if (t.closest('#c4DockWide')) {
+                // on Analytics the button shrinks / regrows that tab for this visit; elsewhere it is the remembered size choice
+                if (S.view === 'tab' && S.tab === 'analytics' && !SHEET_MQ.matches) { S.dock.anOff = !S.dock.anOff; syncDockW(); }
+                else setDockWide(!S.dock.wide, true);
+                return;
+            }
+            const an = t.closest('[data-an]');
+            if (an) { const sec = document.getElementById('c4an-' + an.dataset.an); if (sec) sec.scrollIntoView({ behavior: RM.matches ? 'auto' : 'smooth', block: 'start' }); return; }
             if (t.closest('[data-dac-example]')) { setDacExample(!S.dac.example); return; }
             if (t.closest('[data-age-detail]')) { S.ageOpen = !S.ageOpen; renderAge(); return; }
             if (t.closest('[data-c4-refresh]')) { refreshChain(!!S.updateFailed); return; }   // F3: a retry of a failed update read
@@ -1489,6 +1756,10 @@
             if (ev && t.closest('#sec-combat')) { const e2 = S.D.combat.feed[+ev.dataset.ev]; if (e2) { focusXY(e2.x, e2.y); sceneCall(s => s.pulseEvent(e2)); } return; }
             const es = t.closest('[data-enter-system]'); if (es) { e.preventDefault(); closeDrawer(); openSystemPanel(es.dataset.enterSystem, false); return; }
             if (t.closest('[data-galaxy]')) { closeSystemPanel(false); return; }
+            if (t.closest('[data-sv-close]') || t.id === 'c4StakeScrim') { closeStake(); return; }
+            const svg = t.closest('[data-sv-go]');
+            if (svg) { const id = svg.dataset.id, kd = svg.dataset.svGo; closeStake(); if (kd === 'owner') openOwner(id); else if (kd === 'body') openBody(id); else { closeDrawer(); openSystemPanel(id, false); } return; }
+            const stk = t.closest('[data-stake]'); if (stk) { openStake(stk.dataset.stake); return; }
             const bd = t.closest('[data-body]'); if (bd) { openBody(bd.dataset.body); return; }
             const ast = t.closest('[data-ast]'); if (ast) { openAsteroid(ast.dataset.ast); return; }
             const sys = t.closest('[data-sys]'); if (sys && !t.closest('.c4-feed')) { openSystem(sys.dataset.sys); return; }
@@ -1511,6 +1782,8 @@
         });
         $('#c4Find').addEventListener('keydown', e => { if (e.key === 'Enter') find(e.target.value); });
         document.addEventListener('keydown', e => {
+            if (e.key === 'Escape' && S.stake) { closeStake(); return; }
+            if (S.stake) { if (e.key === 'Tab') svTrap(e); return; }   // modal: Tab stays inside the view, the page's single-key shortcuts (D) are off
             if (e.key === 'Escape' && S.drawer) { closeDrawer(); return; }
             // D toggles the dock, unless the user is typing. Only TEXT entry blocks it: a focused layer checkbox, radio or
             // button does not (v3: D was dead after clicking a layer checkbox)
@@ -1550,10 +1823,11 @@
     function applyParams() {
         const p = new URLSearchParams(location.search);
         const res = p.get('res'); if (res && res.length <= 80) S.res = res;   // untrusted: compared and escaped, never markup
-        const tab = p.get('tab'); if (['mining', 'resource', 'combat', 'fleets', 'owners'].includes(tab) || (tab === 'dacs' && S.dac.state === 'ok')) setTab(tab);
+        const tab = p.get('tab'); if (['mining', 'resource', 'combat', 'fleets', 'owners', 'analytics'].includes(tab) || (tab === 'dacs' && S.dac.state === 'ok')) setTab(tab);
         const o = p.get('owner'); if (o) openOwner(o);
         const sy = p.get('system'); if (sy) openSystemPanel(sy, false);
         const bo = p.get('body'); if (bo) openBody(bo);
+        const sk = p.get('stake'); if (sk && sk.length <= 64) openStake(sk);   // untrusted: matched against the stake list, never markup
     }
 
     // ================================================================== boot

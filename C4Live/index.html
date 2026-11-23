@@ -12,7 +12,8 @@
     <link rel="icon" type="image/jpeg" href="../Images/channels4_profile.jpg">
     <link rel="stylesheet" href="../ResourcesExplorer/styles.css?v=20261001">
     <link rel="stylesheet" href="../ResourcesExplorer/resource-visual.css?v=20261023">
-    <link rel="stylesheet" href="c4.css?v=20261120a">
+    <link rel="stylesheet" href="c4.css?v=20261123a">
+    <link rel="stylesheet" href="c4-analytics.css?v=20261123b">
 </head>
 <body class="c4-app">
     <!-- v2 (2026-11-07): the map IS the page. Everything else floats on it: brand + KPI bar top, map controls left,
@@ -43,10 +44,13 @@
                     <button class="c4-tab" data-tab="combat" role="tab" title="Combat"><i class="ti ti-combat" aria-hidden="true"></i><span>Combat</span></button>
                     <button class="c4-tab" data-tab="fleets" role="tab" title="Fleets"><i class="ti ti-fleets" aria-hidden="true"></i><span>Fleets</span></button>
                     <button class="c4-tab" data-tab="owners" role="tab" title="Owners"><i class="ti ti-owners" aria-hidden="true"></i><span>Owners</span></button>
+                    <!-- Analytics (2026-11-22): balance charts from the chain rows (c4-analytics.js), mounted in #sec-analytics -->
+                    <button class="c4-tab" data-tab="analytics" role="tab" title="Analytics: balance charts"><i class="ti ti-analytics" aria-hidden="true"></i><span>Analytics</span></button>
                     <!-- DACs (2026-11-07): shown only when C4Live/dacs.json loads and is valid -->
                     <button class="c4-tab" data-tab="dacs" role="tab" title="DACs" hidden><i class="ti ti-dacs" aria-hidden="true"></i><span>DACs</span></button>
                     <button class="c4-tab c4-tab-sys" data-view="system" role="tab" title="System" hidden><i class="ti ti-system" aria-hidden="true"></i><span id="c4SysTabName">System</span></button>
                 </nav>
+                <button class="c4-dock-wide" id="c4DockWide" aria-pressed="false" aria-controls="c4Dock" title="Make the panel larger"><i aria-hidden="true"></i></button>
                 <button class="c4-dock-toggle" id="c4DockToggle" aria-controls="c4Dock" aria-expanded="true" title="Hide the panel (D)"><i aria-hidden="true"></i></button>
             </div>
             <label class="c4-find"><span>Find owner</span><input id="c4Find" type="search" placeholder="owner name, profile address or fleet name" autocomplete="off" spellcheck="false"></label>
@@ -56,6 +60,7 @@
                 <section class="c4-sec" id="sec-combat"></section>
                 <section class="c4-sec" id="sec-fleets"></section>
                 <section class="c4-sec" id="sec-owners"></section>
+                <section class="c4-sec" id="sec-analytics"></section>
                 <section class="c4-sec" id="sec-dacs"></section>
                 <section class="c4-sec c4-syspanel" id="c4SysPanel" hidden aria-label="System"></section>
             </div>
@@ -66,12 +71,15 @@
     <div class="c4-empty" id="c4Empty" hidden></div>
     <div class="c4-scrim" id="c4Scrim" hidden></div>
     <aside class="c4-drawer" id="c4Drawer" aria-hidden="true" tabindex="-1"></aside>
+    <div class="sv-scrim" id="c4StakeScrim" hidden></div>
+    <section class="sv" id="c4StakeView" role="dialog" aria-modal="true" aria-label="Claim stake" aria-hidden="true" tabindex="-1" hidden></section>
     <div class="c4-ctip" id="c4ChartTip" hidden></div>
 
-    <script src="c4-ui-model.js?v=20261120b"></script>
+    <script src="c4-ui-model.js?v=20261123a"></script>
     <script src="c4-store.js?v=20261108e"></script>
-    <script src="app.js?v=20261122a"></script>
+    <script src="c4-analytics.js?v=20261123b"></script>
+    <script src="app.js?v=20261123b"></script>
     <!-- quiet interface sounds (2026-11-10; dry clicks since 2026-11-21, data-set="click"); which elements sound is declared here, the on/off button goes in the top bar -->
-    <script src="../SFX/ui-sfx.js?v=20261121a" data-set="click" data-tap=".c4-chip, [data-layer], [data-filter], [data-state], [data-more], th[data-sort], [data-dac-scope], [data-dac-metric], [data-dac-focus], [data-dac-colour], [data-dac-example], [data-copy], [data-clear], [data-close], [data-age-detail], [data-c4-refresh], [data-c4-retry], [data-owner], [data-sys], [data-body], [data-ast], [data-focus-owner], [data-enter-system], [data-galaxy], [data-fx], .c4-feed li, .c4-dock-toggle" data-tab=".c4-tab" data-open-class="#c4Drawer:open, #c4SysPanel:open" data-mute-mount="#c4Topbar"></script>
+    <script src="../SFX/ui-sfx.js?v=20261121a" data-set="click" data-tap=".c4-chip, [data-layer], [data-filter], [data-state], [data-more], th[data-sort], [data-dac-scope], [data-dac-metric], [data-dac-focus], [data-dac-colour], [data-dac-example], [data-copy], [data-clear], [data-close], [data-age-detail], [data-c4-refresh], [data-c4-retry], [data-owner], [data-sys], [data-body], [data-stake], [data-sv-go], [data-ast], [data-focus-owner], [data-enter-system], [data-galaxy], [data-fx], .c4-feed li, .c4-dock-toggle, .c4-dock-wide, .c4an-nav button" data-tab=".c4-tab" data-open-class="#c4Drawer:open, #c4SysPanel:open, #c4StakeView:open" data-mute-mount="#c4Topbar"></script>
 </body>
 </html>

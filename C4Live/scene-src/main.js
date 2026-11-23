@@ -292,14 +292,13 @@ void main() {
   gl_FragColor = vec4(mix(vCol, vec3(0.55, 0.7, 0.85), 0.15) * a * 0.42, 1.0);
 }`;
 
-// Gate links (2026-11-21): a soft, broken band of "cloud" between two gate-linked systems - never a ruled line. Width
-// GATE.w map units clamped to [minPx, maxPx] CSS px; the centre meanders, value noise breaks the band into wisps (each
-// octave fades out before its cells get smaller than a few px, so nothing sparkles at galaxy zoom), a very slow drift
-// (uAnim: still under reduced motion), faded in over GATE.trim from each end so the systems themselves stay clear.
+// Gate links (2026-11-21, restyled 2026-11-22): one quad per pair of gate-linked systems, GATE.w map units wide clamped
+// to [minPx, maxPx] CSS px (the quad only has to hold the hairline and its glow), faded in over GATE.trim from each
+// end so the systems themselves stay clear. The packet moves with uAnim: still under reduced motion.
 const GATE_VS = REL_GLSL + /* glsl */`
 attribute vec4 iE; // (ax, ay, bx, by)
 attribute vec2 iG; // (seed 0..1, length in map units)
-varying float vS; varying float vX; varying float vL; varying float vSeed; varying float vPpu;
+varying float vS; varying float vX; varying float vL; varying float vSeed; varying float vPpu; varying float vHalf;
 void main() {
   float L = iG.y;
   if (L < 1e-5) COLLAPSE
@@ -308,30 +307,29 @@ void main() {
   vec2 c = mix(iE.xy, iE.zw, u);
   float ppu = ppuOf(viewOf(relOf(c, vec2(0.0))));
   float wpx = clamp(${M.GATE.w.toFixed(3)} * ppu, ${M.GATE.minPx.toFixed(1)}, ${M.GATE.maxPx.toFixed(1)});
-  vS = u * L; vX = position.x * 2.0; vL = L; vSeed = iG.x; vPpu = ppu;
+  vS = u * L; vX = position.x * 2.0; vL = L; vSeed = iG.x; vPpu = ppu; vHalf = wpx * 0.5;
   gl_Position = clipOf(viewOf(relOf(c, side * position.x * wpx / ppu)));
 }`;
+// 2026-11-22 (owner: "too overwhelming and cloudy, need more sci-fi look"): the cloud band is gone. A link is now a
+// straight hairline (about 1 CSS px) with a narrow glow, cut into even dashes once the dashes are a few px long, and
+// one short packet of light that runs along it. Everything is measured in CSS px across the line, so it stays a
+// hairline at every zoom; at galaxy zoom it is dimmer still (GATE.far) so 290 links do not veil the map.
 const GATE_FS = /* glsl */`
 uniform float uAnim; uniform vec3 uCol; uniform float uGain;
-varying float vS; varying float vX; varying float vL; varying float vSeed; varying float vPpu;
-float gh(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
-float gn(vec2 p) {
-  vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
-  return mix(mix(gh(i), gh(i + vec2(1.0, 0.0)), f.x), mix(gh(i + vec2(0.0, 1.0)), gh(i + vec2(1.0, 1.0)), f.x), f.y);
-}
+varying float vS; varying float vX; varying float vL; varying float vSeed; varying float vPpu; varying float vHalf;
 void main() {
-  float so = vSeed * 61.0;
-  float k1 = smoothstep(2.0, 8.0, vPpu / 1.6), k2 = smoothstep(2.0, 8.0, vPpu / 5.0); // an octave shows only once its cells are a few px
-  float off = ((gn(vec2(vS * 1.3 + so, 3.7)) - 0.5) * 0.7 + (gn(vec2(vS * 5.1 + so, 9.2)) - 0.5) * 0.25 * k2) * k1;
-  float x = vX - off * 0.55;
-  float edge = 1.0 - vX * vX;
-  float prof = exp(-x * x * 3.2) * edge * edge;
-  float coarse = gn(vec2(vS * 1.6 + so - uAnim * 0.02, x * 1.5 + so));
-  float fine = gn(vec2(vS * 5.0 + so + uAnim * 0.03, x * 3.0 + 4.1));
-  float cloud = mix(0.5, smoothstep(0.2, 0.85, mix(coarse, coarse * 0.6 + fine * 0.4, k2)), k1);
+  float px = abs(vX) * vHalf;                                   // CSS px from the centre line
+  float core = 1.0 - smoothstep(0.35, 1.05, px);
+  float glow = exp(-px * px / ${(M.GATE.glowPx * M.GATE.glowPx).toFixed(2)}) * (1.0 - smoothstep(0.7, 1.0, abs(vX)));
+  float near = smoothstep(${M.GATE.dashFrom.toFixed(1)}, ${(M.GATE.dashFrom * 3).toFixed(1)}, vPpu); // dashes only once they are a few px long
+  float d = fract(vS / ${M.GATE.dash.toFixed(3)} + vSeed);
+  float dash = mix(1.0, 0.35 + 0.65 * smoothstep(0.0, 0.06, d) * (1.0 - smoothstep(0.62, 0.68, d)), near);
+  float ph = fract((vS - uAnim * ${M.GATE.speed.toFixed(3)}) / ${M.GATE.every.toFixed(2)} + vSeed * 7.0);
+  float packet = smoothstep(0.0, 0.012, ph) * (1.0 - smoothstep(0.012, ${(M.GATE.packet / M.GATE.every).toFixed(4)}, ph));
   float T = min(${M.GATE.trim.toFixed(3)}, ${M.GATE.trimShare.toFixed(3)} * vL);
   float ends = smoothstep(0.0, T, vS) * smoothstep(0.0, T, vL - vS);
-  float a = prof * (0.16 + 0.84 * cloud) * ends;
+  float zoomDim = mix(${M.GATE.far.toFixed(2)}, 1.0, near);
+  float a = ((core * 0.6 + glow * 0.22) * dash * zoomDim + packet * (core + glow * 0.5) * ${M.GATE.packetGain.toFixed(2)}) * ends;
   gl_FragColor = vec4(uCol * a * uGain, 1.0);
 }`;
 

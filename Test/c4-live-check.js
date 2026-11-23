@@ -989,7 +989,8 @@ async function browserLayout() {
                         if (nav.scrollWidth > nav.clientWidth + 1) bad.push(`row overflows: scrollWidth ${nav.scrollWidth} > clientWidth ${nav.clientWidth}`);
                         // 5 = four data tabs + System; the DACs tab (2026-11-07) adds one when dacs.json loaded
                         // the Resource tab (2026-11-13) is always there: +1 unconditionally, so a missing button FAILS (review F4)
-                        const want = (nav.querySelector('.c4-tab[data-tab="dacs"]:not([hidden])') ? 6 : 5) + 1;
+                        // the Analytics tab (2026-11-22) is always there too: +1 unconditionally
+                        const want = (nav.querySelector('.c4-tab[data-tab="dacs"]:not([hidden])') ? 6 : 5) + 1 + 1;
                         if (tabs.length !== want) bad.push(`${tabs.length} tabs shown, expected ${want}`);
                         return { bad, fit: nav.dataset.fit, sysLabel: getComputedStyle(nav.querySelector('.c4-tab-sys span')).display !== 'none', dockW: Math.round(dock.right - dock.left) };
                     });
