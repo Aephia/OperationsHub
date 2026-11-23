@@ -25,6 +25,8 @@
 .c4an-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .c4an-wide .c4an-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
 .c4an-x3 .c4an-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.c4an-x4 .c4an-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.c4an-x5 .c4an-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .c4an-card { margin: 0; padding: 12px 14px; min-width: 0; background: var(--an-card); border: 1px solid var(--an-line); border-radius: 10px; }
 .c4an-ct { margin: 0 0 8px; font-size: 0.98rem; font-weight: 700; letter-spacing: 0.04em; color: #fff; }
 .c4an-chart { margin: 0 0 12px; min-width: 0; }
@@ -108,3 +110,8 @@
 .c4an-pk { appearance: none; margin: 0; padding: 0; font: inherit; font-weight: 600; color: #9fc2ff; background: none; border: 0; text-align: left; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; overflow-wrap: anywhere; }
 .c4an-pk:hover { color: #fff; }
 .c4an-pk:focus-visible { outline: 2px solid #fff; outline-offset: 1px; border-radius: 2px; }
+
+/* the plain list of sinks the read cannot see (Emission section) */
+.c4an-ul { margin: 0 0 10px; padding-left: 18px; font-size: 0.95rem; color: var(--an-ink2); }
+.c4an-ul li { margin: 0 0 6px; }
+.c4an-ul b { color: #fff; font-weight: 600; }

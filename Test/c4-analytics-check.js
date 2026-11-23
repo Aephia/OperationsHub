@@ -320,7 +320,7 @@ function suite(A, quiet) {
         ok(tag + '@' + w + ': positive control, svgs drawn', widths.length >= 4, String(widths.length));
         ok(tag + '@' + w + ': every svg fits the width (' + Math.max(0, ...widths) + ')', widths.every(x => x <= (w >= 640 ? (w - 12) / 2 : w)));
         const heads = (h.match(/<h3 class="c4an-h"/g) || []).length;
-        ok(tag + '@' + w + ': four section headings', heads === 4);
+        ok(tag + '@' + w + ': six section headings', heads === 6);
         ok(tag + '@' + w + ': every chart carries a caption line', (h.match(/class="c4an-chart"/g) || []).length === (h.match(/class="c4an-cap"/g) || []).length);
     })));
     safe('width 640 is the wide breakpoint', () => { const a = {}, b = {}; const m = A.build(F.L, F.B); A.render(a, m, { width: 640 }); A.render(b, m, { width: 639 }); ok('640 wide, 639 narrow', a.className.includes('wide') && b.className.includes('narrow')); });
@@ -335,9 +335,86 @@ function suite(A, quiet) {
         const el2 = {}; A.render(el2, A.build(F.L, F.B), { width: 900, esc: s => '[' + String(s).replace(/</g, '&lt;') + ']' });
         ok('opts.esc is honoured', el2.innerHTML.includes('[Alpha'), '');
     });
+    safe('economy', () => {
+        // fixture written out by hand; the expected figures below are per-second sums typed from it, times 86,400
+        const P2 = 'P2aaaaaaaaaaaaaaaaZZZZ';
+        const mf = (a, o, ups, out, st) => ({ a, n: a, o, fa: 'mud', npc: 0, s: { kind: st || 'mining' }, ships: 1, crew: 1, flagSize: 'small', mine: { ups, out } });
+        const L = {
+            owners: [{ p: 'P1', name: '<i>Ann', fa: 'mud' }, { p: P2, fa: 'oni' }, { p: 'P3', name: 'Cy', fa: 'ustur' }],
+            fleets: [
+                mf('F1', 'P1', 3, [{ r: 'Iron', ups: 2 }, { r: 'Copper', ups: 1 }]), mf('F2', P2, 4, [{ r: 'Iron', ups: 4 }]),
+                mf('F3', 'P3', 9, [{ r: 'Iron', ups: 9 }], 'idle'), mf('F4', 'P3', 0, [{ r: 'Iron', ups: 0 }]),
+                mf('G1', 'Q1', 0.1, [{ r: 'Tin', ups: 0.1 }]), mf('G2', 'Q2', 0.2, [{ r: 'Tin', ups: 0.2 }]),
+                mf('G3', 'Q3', 0.3, [{ r: 'Tin', ups: 0.3 }]), mf('G4', 'Q4', 0.4, [{ r: 'Tin', ups: 0.4 }])],
+            stakes: [
+                { a: 'S1', o: 'P1', out: [{ r: 'Iron', ps: 0.5 }, { r: 'Fuel', ps: 0.25 }], use: [{ r: 'Fuel', ps: 0.1 }], rent: { bal: 10 } }, { a: 'S2', o: 'P4', out: [{ r: 'Copper Ore', ps: 1 }], use: [{ r: 'Iron', ps: 1 }, { r: 'Fuel', ps: 0.05 }, { r: 'Gel', ps: 0.01 }], rent: { bal: 2.5 } },
+                { a: 'S3', o: P2, out: [{ r: 'Iron', ps: 0 }], use: [{ r: 'Iron', ps: 0 }] }, { a: 'S4', o: 'P3', rent: { bal: 'x' } }],
+            systems: [{ lvl: 0, f: 'unaligned' }, { lvl: 1, f: 'mud' }, { lvl: 1, f: 'mud' }, { lvl: 1, f: 'oni' }, { lvl: 2, f: 'ustur' }, { lvl: 'x', f: 'mud' }, { lvl: 1.5, f: 'mud' }, { lvl: 3, f: 'weird' }]
+        };
+        const D = 86400, e = A.build(L, null).economy;
+        ok('economy: resources in order of units per day', JSON.stringify(e.res.map(r => r.r)) === JSON.stringify(['Iron', 'Copper', 'Copper Ore', 'Tin', 'Fuel']), JSON.stringify(e.res.map(r => r.r)));
+        ok('economy: Iron is 6 a second from ships and 0.5 from stakes', near(e.res[0].ships, 6 * D) && near(e.res[0].stakes, 0.5 * D) && near(e.res[0].day, 6.5 * D));
+        ok('economy: a stake-only output (Fuel) is counted', near(e.res[4].stakes, 0.25 * D) && e.res[4].ships === 0);
+        ok('economy: totals', near(e.day, 9.75 * D) && near(e.shipsDay, 8 * D) && near(e.stakesDay, 1.75 * D), [e.day, e.shipsDay, e.stakesDay].join());
+        ok('economy: 6 mining fleets (idle and zero-yield ones left out), 2 stakes with output', e.fleets === 6 && e.stakesOut === 2, e.fleets + '/' + e.stakesOut);
+        ok('economy: 7 producers, largest first', e.producers === 7 && JSON.stringify(e.head.map(p => p.o)) === JSON.stringify([P2, 'P1', 'P4', 'Q4', 'Q3']), JSON.stringify(e.head.map(p => p.o)));
+        ok('economy: a player with ships and a stake is one producer with both added', near(e.head[1].day, 3.75 * D));
+        ok('economy: median and average producer', near(e.median, 0.4 * D) && near(e.mean, 9.75 / 7 * D), e.median + ' ' + e.mean);
+        ok('economy: the five largest and the rest', near(e.headDay, 9.45 * D) && near(e.restDay, 0.3 * D) && near(e.namedDay, 9.75 * D), e.headDay + ' ' + e.restDay);
+        ok('economy: starbase levels', JSON.stringify(e.levels.map(l => [l.lvl, l.n])) === JSON.stringify([[0, 1], [1, 3], [2, 1], [3, 1]]) && e.systems === 6 && e.systemsRead === 8, JSON.stringify(e.levels));
+        ok('economy: levels split by faction, an unknown faction counts as unaligned', e.levels[1].by.mud === 2 && e.levels[1].by.oni === 1 && e.levels[2].by.ustur === 1 && e.levels[3].by.unaligned === 1);
+        ok('sinks: what stakes consume, largest first, each beside its own emission', JSON.stringify(e.sinks.map(x => x.r)) === JSON.stringify(['Iron', 'Fuel', 'Gel']) && near(e.sinks[0].day, D) && near(e.sinks[0].emit, 6.5 * D) && near(e.sinks[1].day, 0.15 * D) && near(e.sinks[1].emit, 0.25 * D) && e.sinks[2].emit === 0, JSON.stringify(e.sinks));
+        ok('sinks: total, stakes consuming and rent balances', near(e.sinkDay, 1.16 * D) && e.stakesUse === 2 && near(e.rentBal, 12.5) && e.rentN === 2 && e.stakesRead === 4, [e.sinkDay, e.stakesUse, e.rentBal, e.rentN].join());
+        const el = { innerHTML: '', addEventListener() {} }; A.render(el, A.build(L, null), { width: 900 });
+        const h = el.innerHTML, sec = h.slice(h.indexOf('id="c4an-economy"'));
+        ok('economy: section drawn with the 30-day figure', h.includes('id="c4an-economy"') && sec.includes('25,272,000 over 30 days'), '');
+        ok('economy: an owner name is escaped, an unnamed owner shows a short address', !sec.includes('<i>Ann') && sec.includes('&lt;i&gt;Ann') && sec.includes('P2aa...ZZZZ'));
+        ok('economy: the five largest make 97% of it', sec.includes('make 97%'), '');
+        ok('sinks: drawn with the share of emission, and the unseen sinks are listed', sec.includes('(15% of emission)') && sec.includes('(60% of emission)') && sec.includes('(not emitted)') && sec.includes('Starbase upgrade contributions.') && sec.includes('Warp lane tolls.'), '');
+        const e0 = A.build({}, null).economy, el0 = { innerHTML: '', addEventListener() {} }; A.render(el0, A.build({}, null), { width: 400 });
+        ok('economy: an empty read says so', e0.day === 0 && e0.producers === 0 && el0.innerHTML.includes('Nothing is being produced') && el0.innerHTML.includes('No system reports a starbase level'));
+        if (realData) {
+            const r = A.build(realData.L, realData.B).economy, k = realData.L.kpis;
+            if (k && isNum(k.galaxyUps)) ok('economy (real data): ship emission equals the collector\'s own galaxy total', Math.abs(r.shipsDay - k.galaxyUps * D) <= 1e-6 * r.shipsDay + 1, r.shipsDay + ' vs ' + k.galaxyUps * D);
+            ok('economy (real data): every system with a level is counted once', r.levels.reduce((t, l) => t + l.n, 0) === r.systems && r.systems <= r.systemsRead);
+        }
+    });
+    safe('config', () => {
+        // a small rules file typed by hand, with rows that must be dropped and a name that must be escaped
+        const CFG = {
+            takenAt: 1795000000, sage: 7,
+            recipes: { n: 10, outputs: 9, multi: 1, gated: 4, withFee: 8, feeAtlas: 0.5, byLevel: [{ lvl: 1, n: 8 }, { lvl: 2, n: 2 }, { lvl: 'x', n: 1 }], rawN: 3,
+                rawUse: [{ r: '<b>Ore', n: 5 }, { r: 'Gas', n: 2 }, { n: 9 }], dear: [{ r: 'Big', min: 1000 }, { r: 'Mid', min: 10 }], dearN: 9, rawEqMedian: 10,
+                upgrade: [{ r: 'Frame', lp: 5, raw: 2 }, { r: 'Core', lp: 17, raw: 34 }, { r: 'Zero', lp: 3, raw: 0 }] },
+            ships: { configs: 20, hulls: 4, bySize: [{ size: 'small', n: 3, cargo: 100, mining: 0.5, crew: 2, recovery: 4, fit: 5000, fitN: 9 }, { size: 'titan', n: 1, cargo: 9000, fit: 'x' }] },
+            tolls: { allied: 5000, neutral: 20000, crossFaction: false, research: [{ r: 'Lane <i>Cut', mod: -0.25, atlas: 350 }, { r: 'Free', mod: -0.25, atlas: 0 }] },
+            research: { n: 10, paid: 9, atlas: 3150, byCost: [{ atlas: 350, n: 9 }] },
+            stakes: [{ r: 'Stake T1', slots: 65, rent: 1, place: 16 }, { r: 'Stake T2', slots: 487, rent: 1, place: 16 }]
+        };
+        const c = A.build({}, null, CFG).config;
+        ok('config: malformed rows are dropped (level, raw input, zero-cost upgrade row)', c && c.recipes.byLevel.length === 2 && c.recipes.rawUse.length === 2 && c.recipes.upgrade.length === 2, c && JSON.stringify([c.recipes.byLevel.length, c.recipes.rawUse.length, c.recipes.upgrade.length]));
+        ok('config: loyalty points per raw unit is LP / raw (Frame 5/2, Core 17/34)', c && near(c.recipes.upgrade[0].per, 2.5) && near(c.recipes.upgrade[1].per, 0.5));
+        ok('config: tolls are percent (5000 bps = 50, 20000 bps = 200)', c && c.tolls.allied === 50 && c.tolls.neutral === 200);
+        const el = { innerHTML: '', addEventListener() {} }; A.render(el, A.build({}, null, CFG), { width: 900 });
+        const h = el.innerHTML, sec = h.slice(h.indexOf('id="c4an-config"'));
+        ok('config: the section states the date and the game version of the file', sec.includes('Read on ' + new Date(1795000000 * 1000).toISOString().slice(0, 10) + ', game version 7'));
+        ok('config: toll rates drawn as 50% and 200%', sec.includes('>50%<') && sec.includes('>200%<'));
+        ok('config: only paid research that changes the lane fee is named, and its name is escaped', sec.includes('Lane &lt;i&gt;Cut (-25%, 350 ATLAS)') && !sec.includes('<i>Cut') && !sec.includes('Free ('));
+        ok('config: a raw input name is escaped', sec.includes('&lt;b&gt;Ore') && !sec.includes('<b>Ore'));
+        ok('config: LP per raw unit is drawn largest first', sec.indexOf('Frame: 2.50 LP') > 0 && sec.indexOf('Frame: 2.50 LP') < sec.indexOf('Core: 0.5 LP'));
+        ok('config: a size without a fit-out figure gets no fit-out bar', (sec.match(/median Fit-out cost \(raw units\)/g) || []).length === 1);
+        ok('config: no NaN / undefined / Infinity', !/NaN|undefined|Infinity/.test(sec));
+        const none = A.build({}, null).config, bad = A.build({}, null, { recipes: { n: 'x' }, ships: {}, tolls: {}, research: {} }).config;
+        const el0 = { innerHTML: '', addEventListener() {} }; A.render(el0, A.build({}, null), { width: 400 });
+        ok('config: no file, or a file without a recipe count, gives no model and the section says it did not load', none === null && bad === null && el0.innerHTML.includes('did not load (config-summary.json)'));
+        [[1000, 'c4an-wide', null], [1500, 'c4an-x3', 'c4an-x4'], [2000, 'c4an-x4', 'c4an-x5'], [3000, 'c4an-x5', null]].forEach(([w, has, not]) => {
+            const e = { innerHTML: '', className: '', addEventListener() {} }; A.render(e, A.build({}, null), { width: w });
+            ok('layout: at ' + w + ' px the class is ' + has + (not ? ', not ' + not : ''), e.className.includes(has) && (!not || !e.className.includes(not)), e.className);
+        });
+    });
     safe('contract', () => {
         ok('version 1', A.version === '1');
-        ok('sections list', JSON.stringify(A.sections) === JSON.stringify(['mining', 'council', 'stakes', 'compare']));
+        ok('sections list', JSON.stringify(A.sections) === JSON.stringify(['mining', 'council', 'stakes', 'compare', 'economy', 'config']));
         ok('build is pure: same input twice gives the same model', JSON.stringify(A.build(F.L, F.B)) === JSON.stringify(A.build(F.L, F.B)));
         const before = JSON.stringify(F.L); A.build(F.L, F.B); ok('build does not mutate its input', JSON.stringify(F.L) === before);
     });
@@ -707,6 +784,26 @@ function suite(A, quiet) {
 
 // ---------------------------------------------------------------- mutants
 const MUTANTS = [
+    ["config: tolls left in basis points","tl.allied / 100","tl.allied"],
+    ["config: loyalty points per raw unit inverted","per: u.lp / u.raw","per: u.raw / u.lp"],
+    ["config: an upgrade row with no cost kept",".filter(function (u) { return u.raw > 0; })",""],
+    ["config: free research named as changing the lane fee","t.research.filter(function (x) { return x.atlas > 0; })","t.research"],
+    ["config: research name not escaped","ctx.esc(x.r) + ' (' + fnum(x.mod * 100)","x.r + ' (' + fnum(x.mod * 100)"],
+    ["config: a file without a recipe count is drawn","if (!r || !sh || !tl || !rs || !fin(r.n)) return null;","if (!r || !sh || !tl || !rs) return null;"],
+    ["layout: four columns never used","width >= 1900 ? 4","width >= 99999 ? 4"],
+    ["economy: stake output left out of the total","st += x.ps; any = true;","any = true;"],
+    ["economy: a day is an hour","var DAY = 86400,","var DAY = 3600,"],
+    ["economy: six largest producers instead of five","ECO_HEAD = 5","ECO_HEAD = 6"],
+    ["economy: producers smallest first","return b.day - a.day || (a.o < b.o","return a.day - b.day || (a.o < b.o"],
+    ["economy: a system of an unknown faction dropped from the split","e.n++; e.by[fac(s.f)]++; sbN++;","e.n++; if (e.by[s.f] != null) e.by[s.f]++; sbN++;"],
+    ["economy: a fractional level counted"," || Math.floor(s.lvl) !== s.lvl) return;",") return;"],
+    ["economy: a stake's output not credited to its owner","add(x.r, str(s.o), x.ps, 'stakes')","add(x.r, '', x.ps, 'stakes')"],
+    ["sinks: smallest first","return b.day - a.day || (a.r < b.r ? -1 : 1); });\n        // starbases","return a.day - b.day || (a.r < b.r ? -1 : 1); });\n        // starbases"],
+    ["sinks: a rent balance that is not a number added","if (r && fin(r.bal) && r.bal >= 0) {","if (r) {"],
+    ["sinks: emission of the consumed resource not looked up","emit: emitDay[k] || 0 }","emit: 0 }"],
+    ["sinks: a zero-rate stake counted as consuming","fin(x.ps) && x.ps > 0) { bump(use, x.r, x.ps); any = true; }","fin(x.ps)) { bump(use, x.r, x.ps); any = true; }"],
+    ["economy: section not drawn"," + secEconomy(ctx, model) + secConfig"," + secConfig"],
+    ["config: section not drawn"," + secConfig(ctx, model);",";"],
     ["ships: mixed fleets counted under their largest model","comp.length === 1 ? comp[0].name : null","comp.length > 0 ? comp[0].name : null"],
     ["ships: yield per fleet instead of per ship","median(l.map(function (r) { return r.yps; })), n: l.length","median(l.map(function (r) { return r.ups; })), n: l.length"],
     ["ships: mixed fleets drawn as a row","else R.mixed++; });","else { (byModel['Mixed'] = byModel['Mixed'] || []).push(r); R.mixed++; } });"],

@@ -7,7 +7,7 @@
 (function (root) {
     'use strict';
 
-    var SECTIONS = ['mining', 'council', 'stakes', 'compare'];
+    var SECTIONS = ['mining', 'council', 'stakes', 'compare', 'economy', 'config'];
     var SIZE_ORDER = ['xx-small', 'x-small', 'small', 'medium', 'large', 'capital', 'commander', 'titan'];
     var FACS = ['mud', 'oni', 'ustur', 'unaligned'];
     var FAC_NAME = { mud: 'MUD', oni: 'ONI', ustur: 'Ustur', unaligned: 'Unaligned' };
@@ -57,7 +57,7 @@
     }
 
     // ---------------------------------------------------------------- build
-    function build(latest, bodies) {
+    function build(latest, bodies, config) {
         var L = obj(latest) || {};
         var fleets = arr(L.fleets).filter(obj), owners = arr(L.owners).filter(obj), stakes = arr(L.stakes).filter(obj);
         var bodyList = bodies && Array.isArray(bodies.bodies) ? bodies.bodies.filter(obj) : null;
@@ -70,9 +70,12 @@
             mining: buildMining(fleets, ownerName),
             council: buildCouncil(owners),
             stakes: buildStakes(stakes, bodyList, ownerName),
-            compare: null
+            compare: null,
+            economy: null,
+            config: buildConfig(config)
         };
         model.compare = buildCompare(fleets, owners, stakes, ownerFac, model.mining.rows, model.stakes, ownerName);
+        model.economy = buildEconomy(arr(L.systems).filter(obj), model.mining.rows, stakes, ownerName);
         return model;
     }
 
@@ -150,6 +153,85 @@
             };
         });
         return { owners: owners.length, ranked: owners.length - unranked, unranked: unranked, ranks: ranks };
+    }
+
+    // Emission and starbases (2026-11-23): what enters the economy at the rate of this read, who produces it, and the level
+    // every starbase stands at. A rate is units per SECOND in the read; a "day" here is that rate times 86,400, not a measured day.
+    var DAY = 86400, ECO_TOP = 12, ECO_HEAD = 5;
+    function buildEconomy(systems, mrows, stakes, ownerName) {
+        var res = dict(), who = dict(), ships = 0, st = 0;
+        function add(r, o, ups, side) {
+            var e = res[r] = res[r] || { r: r, ships: 0, stakes: 0 };
+            e[side] += ups;
+            if (o) bump(who, o, ups);
+        }
+        mrows.forEach(function (m) { m.out.forEach(function (x) { add(x.r, m.o, x.ups, 'ships'); ships += x.ups; }); });
+        var stakesOut = 0;
+        stakes.forEach(function (s) {
+            var any = false;
+            arr(s.out).forEach(function (x) { if (obj(x) && str(x.r) && fin(x.ps) && x.ps > 0) { add(x.r, str(s.o), x.ps, 'stakes'); st += x.ps; any = true; } });
+            if (any) stakesOut++;
+        });
+        var list = Object.keys(res).map(function (k) { var e = res[k]; return { r: e.r, ships: e.ships * DAY, stakes: e.stakes * DAY, day: (e.ships + e.stakes) * DAY }; })
+            .filter(function (e) { return e.day > 0; })
+            .sort(function (a, b) { return b.day - a.day || (a.r < b.r ? -1 : 1); });
+        var prod = Object.keys(who).map(function (p) { return { o: p, owner: ownerName[p] || '', day: who[p] * DAY }; })
+            .filter(function (e) { return e.day > 0; })
+            .sort(function (a, b) { return b.day - a.day || (a.o < b.o ? -1 : 1); });
+        var total = (ships + st) * DAY, head = sum(prod.slice(0, ECO_HEAD).map(function (e) { return e.day; }));
+        var named = sum(prod.map(function (e) { return e.day; }));
+        // sinks the read can see: what claim stakes consume each second, and the ATLAS sitting in their rent balances
+        var use = dict(), stakesUse = 0, rentBal = 0, rentN = 0, emitDay = dict();
+        list.forEach(function (e) { emitDay[e.r] = e.day; });
+        stakes.forEach(function (s) {
+            var any = false, r = obj(s.rent);
+            arr(s.use).forEach(function (x) { if (obj(x) && str(x.r) && fin(x.ps) && x.ps > 0) { bump(use, x.r, x.ps); any = true; } });
+            if (any) stakesUse++;
+            if (r && fin(r.bal) && r.bal >= 0) { rentBal += r.bal; rentN++; }
+        });
+        var sinks = Object.keys(use).map(function (k) { return { r: k, day: use[k] * DAY, emit: emitDay[k] || 0 }; })
+            .sort(function (a, b) { return b.day - a.day || (a.r < b.r ? -1 : 1); });
+        // starbases: one row per level, split by the faction that holds the system
+        var lv = dict(), sbN = 0;
+        systems.forEach(function (s) {
+            if (!fin(s.lvl) || s.lvl < 0 || Math.floor(s.lvl) !== s.lvl) return;
+            var e = lv[s.lvl] = lv[s.lvl] || { lvl: s.lvl, n: 0, by: { mud: 0, oni: 0, ustur: 0, unaligned: 0 } };
+            e.n++; e.by[fac(s.f)]++; sbN++;
+        });
+        return {
+            res: list.slice(0, ECO_TOP), resTotal: list.length, day: total, shipsDay: ships * DAY, stakesDay: st * DAY,
+            fleets: mrows.length, stakesOut: stakesOut,
+            sinks: sinks, sinkDay: sum(sinks.map(function (e) { return e.day; })), stakesUse: stakesUse, rentBal: rentBal, rentN: rentN, stakesRead: stakes.length,
+            producers: prod.length, median: median(prod.map(function (e) { return e.day; })), mean: prod.length ? named / prod.length : null,
+            head: prod.slice(0, ECO_HEAD), headDay: head, restDay: named - head, namedDay: named,
+            levels: Object.keys(lv).map(Number).sort(function (a, b) { return a - b; }).map(function (k) { return lv[k]; }), systems: sbN, systemsRead: systems.length
+        };
+    }
+
+    // Game rules (2026-11-23): the summary of the chain's config tables (C4Live/config-summary.json, built by
+    // Tools/c4-live/config-summary.mjs). Everything is checked here: a missing or malformed file gives null and the section says so.
+    function buildConfig(c) {
+        c = obj(c);
+        var r = c && obj(c.recipes), sh = c && obj(c.ships), tl = c && obj(c.tolls), rs = c && obj(c.research);
+        if (!r || !sh || !tl || !rs || !fin(r.n)) return null;
+        function rows(a, keys) {
+            return arr(a).filter(function (x) { return obj(x) && keys.every(function (k) { return k.charAt(0) === '$' ? str(x[k.slice(1)]) !== '' : fin(x[k]); }); });
+        }
+        var up = rows(r.upgrade, ['$r', 'lp', 'raw']).filter(function (u) { return u.raw > 0; });
+        return {
+            takenAt: fin(c.takenAt) ? c.takenAt : null, sage: fin(c.sage) ? c.sage : null,
+            recipes: {
+                n: r.n, outputs: fin(r.outputs) ? r.outputs : null, multi: fin(r.multi) ? r.multi : null, gated: fin(r.gated) ? r.gated : null,
+                withFee: fin(r.withFee) ? r.withFee : null, feeAtlas: fin(r.feeAtlas) ? r.feeAtlas : null,
+                byLevel: rows(r.byLevel, ['lvl', 'n']), rawN: fin(r.rawN) ? r.rawN : null, rawUse: rows(r.rawUse, ['$r', 'n']),
+                dear: rows(r.dear, ['$r', 'min']), dearN: fin(r.dearN) ? r.dearN : null, rawEqMedian: fin(r.rawEqMedian) ? r.rawEqMedian : null,
+                upgrade: up.map(function (u) { return { r: u.r, lp: u.lp, raw: u.raw, per: u.lp / u.raw }; })
+            },
+            ships: { configs: fin(sh.configs) ? sh.configs : null, hulls: fin(sh.hulls) ? sh.hulls : null, bySize: rows(sh.bySize, ['$size', 'n']) },
+            tolls: { allied: fin(tl.allied) ? tl.allied / 100 : null, neutral: fin(tl.neutral) ? tl.neutral / 100 : null, crossFaction: tl.crossFaction === true, research: rows(tl.research, ['$r', 'mod', 'atlas']) },
+            research: { n: fin(rs.n) ? rs.n : null, paid: fin(rs.paid) ? rs.paid : null, atlas: fin(rs.atlas) ? rs.atlas : null, byCost: rows(rs.byCost, ['atlas', 'n']) },
+            stakes: rows(c.stakes, ['$r', 'slots'])
+        };
     }
 
     function buildStakes(stakes, bodyList, ownerName) {
@@ -544,7 +626,7 @@
     // two bars per row. rows: [{label, a, b}], a = ships (f-s1), b = stakes (f-s2)
     function pairBars(ctx, rows, o) {
         // o.pct: each bar is its share of that row's own combined total (a + b), so the two bars of a row add to 100
-        var W = ctx.W, labW = maxLabelPx(rows, W, 0.36), valW = 52, plotW = Math.max(50, W - labW - valW), max = 0;
+        var W = ctx.W, labW = maxLabelPx(rows, W, 0.36), valW = o.valW || 52, per = o.per || 'per hour', plotW = Math.max(50, W - labW - valW), max = 0;
         var sa = function (r) { return o.pct ? (r.a + r.b > 0 ? r.a / (r.a + r.b) * 100 : 0) : r.a; };
         var sb = function (r) { return o.pct ? (r.a + r.b > 0 ? r.b / (r.a + r.b) * 100 : 0) : r.b; };
         rows.forEach(function (r) { max = Math.max(max, sa(r), sb(r)); });
@@ -555,8 +637,8 @@
             var ta = o.pct ? pctTxt(sa(r)) : fnum(r.a), tb = o.pct ? pctTxt(sb(r)) : fnum(r.b);
             var sfx = o.pct ? ' (' + pctTxt(sa(r)) + ' of the combined ' + fnum(r.a + r.b) + ')' : '', sfy = o.pct ? ' (' + pctTxt(sb(r)) + ' of the combined ' + fnum(r.a + r.b) + ')' : '';
             b += tx(labW - 8, y + 18, clip(r.label, labW - 8), 'an-lab', 'end', ctx);
-            b += hbar(labW, y + 2, la, 11, 1, 'f-s1', r.label + ' ships: ' + fnum(r.a) + ' per hour' + sfx, ctx) + tx(labW + la + 5, y + 11, ta, 'an-val', 'start', ctx);
-            b += hbar(labW, y + 15, lb, 11, 1, 'f-s2', r.label + ' stakes: ' + fnum(r.b) + ' per hour' + sfy, ctx) + tx(labW + lb + 5, y + 24, tb, 'an-val', 'start', ctx);
+            b += hbar(labW, y + 2, la, 11, 1, 'f-s1', r.label + ' ships: ' + fnum(r.a) + ' ' + per + sfx, ctx) + tx(labW + la + 5, y + 11, ta, 'an-val', 'start', ctx);
+            b += hbar(labW, y + 15, lb, 11, 1, 'f-s2', r.label + ' stakes: ' + fnum(r.b) + ' ' + per + sfy, ctx) + tx(labW + lb + 5, y + 24, tb, 'an-val', 'start', ctx);
         });
         return svg(ctx, W, H, o.label || 'Paired bars', '<line class="an-axis" x1="' + labW + '" y1="0" x2="' + labW + '" y2="' + H + '"/>' + b);
     }
@@ -842,11 +924,127 @@
         return section('compare', 'Ships against claim stakes', intro, cards);
     }
 
+    function secConfig(ctx, M) {
+        var c = M.config, title = 'Game rules on chain';
+        if (!c) return section('config', title, 'Recipes, ship configurations, tolls and research costs as the chain holds them.',
+            [card('Game rules', note('The game rule tables did not load (config-summary.json), so this section has nothing to draw.'))]);
+        var when = c.takenAt ? new Date(c.takenAt * 1000).toISOString().slice(0, 10) : 'an unknown date';
+        var intro = 'Recipes, ship configurations, tolls and research costs as the chain holds them. Read on ' + when + (c.sage ? ', game version ' + c.sage : '') + '; these change only when the game is redeployed.';
+        var r = c.recipes, cards = [], int = function (v) { return fnum(v); };
+        var rawDef = ' Raw units = the mined inputs it takes to make one, counted through every recipe below it; where an item has more than one recipe the cheapest is used.';
+        // recipes by starbase level
+        cards.push(card('Recipes', r.byLevel.length ? chart('By the starbase level a recipe needs', barList(ctx, r.byLevel.map(function (l) { return { label: 'level ' + l.lvl, v: l.n, tag: pctTxt(l.n / r.n * 100), tip: 'level ' + l.lvl + ': ' + plural(l.n, 'recipe') }; }), { cls: 'f-s7', fmt: int, label: 'Recipes per starbase level needed' }),
+            plural(r.n, 'recipe') + (r.outputs != null ? ' making ' + plural(r.outputs, 'item') : '') + (r.multi != null ? '; ' + plural(r.multi, 'item') + ' can be made more than one way' : '') + (r.gated != null ? '; ' + fnum(r.gated) + ' need research first' : '') +
+            (r.withFee != null && r.feeAtlas != null ? '; ' + fnum(r.withFee) + ' charge a fee of ' + r.feeAtlas + ' ATLAS a run' : '') + '.') : chart('', note('No recipe levels in the file.'), plural(r.n, 'recipe') + '.')));
+        // raw inputs
+        cards.push(card('Raw inputs recipes ask for', r.rawUse.length ? chart('', barList(ctx, r.rawUse.map(function (x) { return { label: x.r, v: x.n, tip: x.r + ': an ingredient of ' + plural(x.n, 'recipe') }; }), { cls: 'f-s3', fmt: int, label: 'Recipes that take each raw input' }),
+            'Recipes that list the input directly as an ingredient; top ' + r.rawUse.length + (r.rawN != null ? ' of the ' + r.rawN + ' inputs that no recipe makes' : '') + '. It counts recipes, not quantity.') : chart('', note('No raw inputs in the file.'), '')));
+        // dearest items
+        cards.push(card('Costliest items to make', r.dear.length ? chart('Raw units for one', barList(ctx, r.dear.map(function (x) { return { label: x.r, v: x.min, tip: x.r + ': ' + fnum(x.min) + ' raw units for one' }; }), { cls: 'f-s2', fmt: int, label: 'Raw units to make one of the costliest items' }),
+            'Top ' + r.dear.length + (r.dearN != null ? ' of ' + fnum(r.dearN) + ' craftable items' : '') + (r.rawEqMedian != null ? '; the median item takes ' + fnum(r.rawEqMedian) : '') + '.' + rawDef) : chart('', note('No item costs in the file.'), '')));
+        // starbase upgrade materials
+        if (r.upgrade.length) {
+            var u1 = chart('Raw units for one', barList(ctx, r.upgrade.map(function (x) { return { label: x.r, v: x.raw, tag: '(' + x.lp + ' LP)', tip: x.r + ': ' + fnum(x.raw) + ' raw units, ' + x.lp + ' loyalty points a unit' }; }), { cls: 'f-s1', fmt: int, label: 'Raw units for one unit of each starbase upgrade material' }),
+                'The ' + r.upgrade.length + ' materials the chain\'s reward table pays loyalty points (LP) for in starbase upgrades, with the LP for one unit.' + rawDef + ' How many of each an upgrade takes is not in these tables.');
+            var per = r.upgrade.slice().sort(function (a, b) { return b.per - a.per || (a.r < b.r ? -1 : 1); });
+            var u2 = chart('Loyalty points per raw unit', barList(ctx, per.map(function (x) { return { label: x.r, v: x.per, tip: x.r + ': ' + fnum(x.per) + ' LP for each raw unit that goes into it' }; }), { cls: 'f-s1', label: 'Loyalty points per raw unit by upgrade material' }),
+                'The LP for one unit divided by the raw units it takes: which material turns mined input into the most loyalty points.');
+            cards.push(card('Starbase upgrade materials', u1 + u2));
+        }
+        // ships
+        var bs = c.ships.bySize;
+        if (bs.length) {
+            var mets = [['cargo', 'Cargo hold (units)'], ['mining', 'Mining rate (units per second)'], ['crew', 'Crew needed'], ['recovery', 'Recovery fee (ATLAS)'], ['fit', 'Fit-out cost (raw units)']];
+            var small = mets.map(function (mm) {
+                var rw = bs.filter(function (b) { return fin(b[mm[0]]); }).map(function (b) { return { label: b.size, v: b[mm[0]], tag: 'n=' + (mm[0] === 'fit' ? b.fitN : b.n), tip: b.size + ' median ' + mm[1] + ': ' + fnum(b[mm[0]]) }; });
+                return '<h5 class="c4an-ch">' + mm[1] + '</h5>' + (rw.length ? barList(ctx, rw, { cls: 'f-s1', label: 'Median ' + mm[1] + ' by ship size' }) : note('Not in the file.'));
+            }).join('');
+            cards.push(card('Ship configurations by size', chart('Median per hull', small,
+                'Each bar is the median over the hulls of that size in their default configuration (n = hulls)' + (c.ships.hulls != null ? '; ' + plural(c.ships.hulls, 'hull') : '') + (c.ships.configs != null ? ', ' + fnum(c.ships.configs) + ' configurations' : '') +
+                '. Fit-out cost is the median, over the other configurations of that size (n = configurations), of the raw units in the components each one lists.' + rawDef)));
+        }
+        // tolls, research, stake slots
+        var t = c.tolls, tr = [];
+        if (t.allied != null) tr.push({ label: 'allied territory', v: t.allied, cls: 'f-s3', tip: 'Toll in allied territory: ' + t.allied + '% of the lane fee' });
+        if (t.neutral != null) tr.push({ label: 'neutral territory', v: t.neutral, cls: 'f-s2', tip: 'Toll in neutral territory: ' + t.neutral + '% of the lane fee' });
+        var pctf = function (v) { return fnum(v) + '%'; };
+        var lane = t.research.filter(function (x) { return x.atlas > 0; }).map(function (x) { return ctx.esc(x.r) + ' (' + fnum(x.mod * 100) + '%, ' + fnum(x.atlas) + ' ATLAS)'; });
+        var c6 = tr.length ? chart('Warp lane toll rates', barList(ctx, tr, { fmt: pctf, label: 'Warp lane toll rate by territory' }),
+            'The toll rates the faction relations table stores, as a percent' + (lane.length ? '; research that changes the lane fee: ' + lane.join(', ') : '') + '. Cross-faction economics is switched ' + (t.crossFaction ? 'on' : 'off') + '. The base lane fee itself is not in these tables.')
+            : chart('Warp lane toll rates', note('No toll rates in the file.'), '');
+        var rs = c.research, c7 = rs.atlas != null ? chart('Research', barList(ctx, [{ label: 'every node', v: rs.atlas, cls: 'f-s7', tip: fnum(rs.atlas) + ' ATLAS buys every research node once' }], { fmt: int, label: 'ATLAS to buy every research node' }),
+            'ATLAS to buy every research node once' + (rs.paid != null && rs.n != null ? ': ' + fnum(rs.paid) + ' of ' + plural(rs.n, 'node') + ' cost ATLAS' : '') + (rs.byCost.length === 1 ? ', each ' + fnum(rs.byCost[0].atlas) : '') + '. Per player, so this sink grows with the player count.') : '';
+        cards.push(card('Tolls and research', c6 + c7));
+        if (c.stakes.length) cards.push(card('Claim stake sizes', chart('Building slots', barList(ctx, c.stakes.map(function (s) { return { label: s.r, v: s.slots, tip: s.r + ': ' + plural(s.slots, 'slot') }; }), { cls: 'f-s2', fmt: int, label: 'Building slots per claim stake definition' }),
+            'Slots each claim stake definition allows' + (c.stakes.every(function (s) { return fin(s.place) && s.place === c.stakes[0].place && fin(s.rent) && s.rent === c.stakes[0].rent; }) && fin(c.stakes[0].place) ? '; every one has a placement fee multiplier of ' + c.stakes[0].place + ' and a rent multiplier of ' + c.stakes[0].rent : '') + '.')));
+        return section('config', title, intro, cards);
+    }
+
+    var UNSEEN = [
+        ['Fuel, food and ammunition burned by fleets.', 'A fleet account stores what is in the hold, not a burn rate.'],
+        ['Crafting inputs and recipe fees.', 'Only visible in the crafting transactions.'],
+        ['Starbase upgrade contributions.', 'The level is read (below); what was paid in to reach it is not.'],
+        ['Research costs.', 'Paid when a node is bought.'],
+        ['Warp lane tolls.', 'Paid per jump.'],
+        ['Rent and placement fees as a rate.', 'Only the balance left is stored.'],
+        ['Ships, cargo and crew lost in combat.', 'Destroyed fleets are counted on the Combat tab, not valued.']
+    ];
+    function secEconomy(ctx, M) {
+        var e = M.economy;
+        var intro = 'What enters the economy at the rate of this read, who produces it, what the read shows leaving it, and the level every starbase stands at.';
+        var rate = ' A day is the rate in this read times 86,400 seconds, not a measured day.';
+        var base = plural(e.fleets, 'mining fleet') + ' with a yield and ' + plural(e.stakesOut, 'claim stake') + ' with output';
+        var cards = [];
+        if (!(e.day > 0)) cards.push(card('Emission by resource', note('Nothing is being produced in this read (' + base + ').')));
+        else {
+            var c1 = chart('', legend([['f-s1', 'Mining ships'], ['f-s2', 'Claim stakes']]) +
+                pairBars(ctx, e.res.map(function (r) { return { label: r.r, a: r.ships, b: r.stakes }; }), { label: 'Units per day by resource, ships and stakes', per: 'a day', valW: 78 }),
+                'Units per day at the current rate, top ' + e.res.length + ' of ' + plural(e.resTotal, 'resource') + '. All of them together: ' + fnum(e.day) + ' a day (' + fnum(e.shipsDay) + ' from ships, ' + fnum(e.stakesDay) + ' from stakes), ' +
+                fnum(e.day * 30) + ' over 30 days at this rate. Stake output is every resource a stake produces, crafted goods such as Fuel included; ' + base + '.' + rate);
+            cards.push(card('Emission by resource', c1));
+            var rows = [];
+            if (e.median != null) rows.push({ label: 'median producer', v: e.median, cls: 'f-s3', tip: 'Half of the ' + plural(e.producers, 'producer') + ' make more than ' + fnum(e.median) + ' a day' });
+            if (e.mean != null) rows.push({ label: 'average producer', v: e.mean, cls: 'f-s3', tip: 'Total divided by ' + plural(e.producers, 'producer') + ': ' + fnum(e.mean) + ' a day' });
+            var c2 = rows.length ? chart('Units per day per producer', barList(ctx, rows, { label: 'Units per day per producing player' }),
+                'A producer is a player with a mining fleet that has a yield or a claim stake with output; ' + plural(e.producers, 'producer') + '.' + rate) : chart('', note('No producing player in this read.'), base + '.');
+            var hd = e.head.map(function (p, i) { return { label: p.owner || shortAddr(p.o), v: p.day, cls: 'f-s7', tip: (p.owner || shortAddr(p.o)) + ': ' + fnum(p.day) + ' a day' }; });
+            if (e.restDay > 0) hd.push({ label: 'everyone else', v: e.restDay, cls: 'f-npc', tip: plural(e.producers - e.head.length, 'other producer') + ': ' + fnum(e.restDay) + ' a day' });
+            var c2b = hd.length ? chart('Who produces it', barList(ctx, hd, { label: 'Share of emission by producer', pct: e.namedDay }),
+                'Share of the daily emission from the ' + e.head.length + ' largest producers and from all the others together; the largest ' + e.head.length + ' make ' + pctTxt(e.headDay / e.namedDay * 100) + '.') : '';
+            cards.push(card('Emission per player', c2 + c2b));
+        }
+        var sk = e.sinks.length ? chart('Consumed by claim stakes', barList(ctx, e.sinks.map(function (x) {
+            var sh = x.emit > 0 ? pctTxt(x.day / x.emit * 100) + ' of emission' : 'not emitted';
+            return { label: x.r, v: x.day, cls: 'f-s2', tag: '(' + sh + ')', tip: x.r + ': ' + fnum(x.day) + ' consumed a day, ' + (x.emit > 0 ? fnum(x.emit) + ' emitted a day' : 'none emitted in this read') };
+        }), { label: 'Units per day consumed by claim stakes' }),
+            'Units per day the buildings on claim stakes consume, the rate the chain stores for each stake, with that as a share of the same resource\'s emission above; ' + plural(e.stakesUse, 'claim stake') + ' consuming, ' + plural(e.stakesRead, 'claim stake') + ' read.' + rate)
+            : chart('Consumed by claim stakes', note('No claim stake reports consumption in this read.'), plural(e.stakesRead, 'claim stake') + ' read.');
+        var rn = chart('ATLAS in rent balances', e.rentN ? barList(ctx, [{ label: 'prepaid rent', v: e.rentBal, cls: 'f-s7', tip: fnum(e.rentBal) + ' ATLAS across ' + plural(e.rentN, 'claim stake') }], { label: 'ATLAS held in claim stake rent balances' }) : note('No claim stake reports a rent balance in this read.'),
+            'ATLAS already paid into rent balances and not yet spent; a balance, not a rate. ' + plural(e.rentN, 'claim stake') + ' with a balance.');
+        cards.push(card('Sinks in this read', sk + rn));
+        cards.push(card('Sinks this read cannot see', chart('', '<ul class="c4an-ul">' + UNSEEN.map(function (u) { return '<li><b>' + u[0] + '</b> ' + u[1] + '</li>'; }).join('') + '</ul>',
+            'These remove resources or ATLAS from the economy, but the page reads current state, not the transactions that spend. They are listed so that nobody reads the card beside this one as the whole of the sinks.')));
+        if (!e.levels.length) cards.push(card('Starbase levels', note('No system reports a starbase level in this read (' + plural(e.systemsRead, 'system') + ' read).')));
+        else {
+            var c3 = chart('', barList(ctx, e.levels.map(function (l) {
+                return { label: 'level ' + l.lvl, v: l.n, tag: pctTxt(l.n / e.systems * 100), tip: 'level ' + l.lvl + ': ' + plural(l.n, 'system') + ' (' + FACS.map(function (f) { return FAC_NAME[f] + ' ' + l.by[f]; }).join(', ') + ')' };
+            }), { cls: 'f-s1', fmt: function (v) { return String(v); }, label: 'Systems per starbase level' }),
+                'Systems at each starbase level, with the share of all ' + plural(e.systems, 'system') + ' with a level; ' + plural(e.systemsRead, 'system') + ' read.');
+            var per = FACS.filter(function (f) { return e.levels.some(function (l) { return l.by[f] > 0; }); }).map(function (f) {
+                return '<h5 class="c4an-ch">' + FAC_NAME[f] + '</h5>' + barList(ctx, e.levels.map(function (l) { return { label: 'level ' + l.lvl, v: l.by[f], tip: FAC_NAME[f] + ' level ' + l.lvl + ': ' + plural(l.by[f], 'system') }; }),
+                    { cls: 'f-' + f, fmt: function (v) { return String(v); }, label: FAC_NAME[f] + ' systems per starbase level' });
+            }).join('');
+            cards.push(card('Starbase levels', c3));
+            cards.push(card('Starbase levels by faction', chart('', per, 'The same count split by the faction that holds each system.')));
+        }
+        return section('economy', 'Emission, sinks and starbases', intro, cards);
+    }
+
     // ---------------------------------------------------------------- render
     function render(el, model, opts) {
         opts = opts || {};
         var width = fin(opts.width) && opts.width > 0 ? opts.width : 360;
-        var wide = width >= 640, cols = width >= 1100 ? 3 : wide ? 2 : 1;
+        var wide = width >= 640, cols = width >= 2700 ? 5 : width >= 1900 ? 4 : width >= 1100 ? 3 : wide ? 2 : 1;
         var colW = (width - 12 * (cols - 1)) / cols;
         var ctx = { W: Math.max(240, Math.floor(colW - 28)), esc: typeof opts.esc === 'function' ? opts.esc : esc };
         var html;
@@ -854,11 +1052,11 @@
             html = '<p class="c4an-empty">No data to chart yet.</p>';
         } else {
             html = '<div class="c4an-bar"><span class="c4an-bl">All charts</span>' + toggle(getMode(), 'data-an-all="1"', 'all charts') + '</div>' +
-                secMining(ctx, model) + secCouncil(ctx, model) + secStakes(ctx, model) + secCompare(ctx, model);
+                secMining(ctx, model) + secCouncil(ctx, model) + secStakes(ctx, model) + secCompare(ctx, model) + secEconomy(ctx, model) + secConfig(ctx, model);
         }
         if (openEl === el) openEl = null;   // the redraw replaces the card host: nothing is open any more
         if (html.indexOf('c4an-bar') >= 0) html += '<div class="c4an-pop" role="dialog" aria-label="Details" hidden></div>';
-        el.className = 'c4an ' + (wide ? 'c4an-wide' : 'c4an-narrow') + (cols === 3 ? ' c4an-x3' : '') + (opts.reducedMotion ? '' : ' c4an-anim');
+        el.className = 'c4an ' + (wide ? 'c4an-wide' : 'c4an-narrow') + (cols >= 3 ? ' c4an-x3' : '') + (cols >= 4 ? ' c4an-x' + cols : '') + (opts.reducedMotion ? '' : ' c4an-anim');
         el.innerHTML = html;
         el._c4an = { model: model, opts: opts, pinned: false, opener: null, key: null };
         // ONE delegated click listener per element, attached the first time it is drawn into (the flag on the element is the guard)

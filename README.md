@@ -268,6 +268,12 @@ Plan claim stake construction and analyze building efficiency
 deg, so a hex of circumradius r projects to 1.732r x 1.06r, the squash the page's grid uses) and
 `Tools/landing/pack_stake_tiles.py` crops them with one fixed box and writes `Images/stake/manifest.json` (unit =
 pixels per world unit, anchor = the ground centre), which is how the page scales a tile to a cell.
+Since 2026-11-23 the tiles come from `Tools/landing/stake_tiles_hifi.py` (same camera and pad, so the same
+manifest contract): modelled detail - lattice towers, pipes, tanks, vents, railings, ladders - and one procedural
+painted-metal material with grime, crevice dirt, edge wear and panel seams. They render at 1280 px and pack at
+640 px wide (`python pack_stake_tiles.py <render_dir> [width]`; it refuses to write unless all twelve renders are
+there). The C4 Live claim stake view reads the same files, and its stage may now grow to 1100 px wide.
+`stake_tiles.py` is the first, simpler set, kept as the reference for the contract.
 
 **Use Case:** Optimizing claim stake layouts and identifying strategic manufacturing locations
 
@@ -616,8 +622,21 @@ the live chain; every other module reads the static uber-export. It has two halv
     classes). Sections: mining rate per ship (by flagship size, by fleet size, base stat against actual, top
     resources); council rank; claim stakes (planet type, tier, state, buildings, building kinds, power, storage,
     fuel left, production, stakes per owner); ships against claim stakes (per resource, per crew member, per
-    faction, by ship model against stake tier, who runs what). Opening the tab widens the right panel to
-    min(2200px, 90vw) and gives up to three columns; the panel returns to its own size on any other tab, and the
+    faction, by ship model against stake tier, who runs what); emission, sinks and starbases (2026-11-23: units per
+    day by resource from ships and stakes with the 30-day figure at that rate, the median and average producing
+    player and the share of the five largest, what claim stakes consume per day beside the same resource's
+    emission, the ATLAS sitting in rent balances, a plain list of the sinks the read cannot see - fleet fuel /
+    food / ammunition, crafting, starbase upgrade contributions, research, warp lane tolls, rent as a rate, combat
+    losses - and the number of systems at each starbase level, in total and per faction; a "day" is the rate in
+    the read times 86,400, not a measured day); game rules on chain (2026-11-23, from `C4Live/config-summary.json`:
+    recipes per starbase level, the raw inputs most recipes ask for, the costliest items in raw units, the
+    starbase upgrade materials with their loyalty points and raw cost, ship configurations by size with the
+    fit-out cost, warp lane toll rates, research cost, claim stake slots). That file is built on this machine:
+    `node Tools/c4-live/config-snapshot.mjs` reads the chain's config tables into `Data/c4-live/config` (local,
+    about 20 MB), then `node Tools/c4-live/config-summary.mjs` boils them down to the 6 KB file that is committed.
+    Re-run both after a game redeploy; the section prints the date and game version of the file it shows.
+    Check: `node Test/c4-config-summary-check.js`. Opening the tab widens the right panel to
+    the full page width inside the edge margins (2026-11-23; it was min(2200px, 90vw)) and gives up to five columns (three from 1100 px, four from 1900 px, five from 2700 px); the panel returns to its own size on any other tab, and the
     size button there keeps its separate, remembered wide setting (min(1000px, 62vw)). Charts that count things
     have a number / percent switch (one per card, one for all). A dot or a row opens a card with what it stands
     for: for a fleet its name, owner, ship models and counts, crew, what it mines and its yield. In the Buildings

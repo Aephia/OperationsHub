@@ -68,7 +68,7 @@
     };
     const DOCK_MIN = 360, DOCK_MAX = 720, RAIL = 58, EDGE = 12;   // px; EDGE = the dock's margin to the viewport edge
     const WIDE_MAX = 1000, WIDE_FRAC = 0.62;                      // the expanded dock: min(1000px, 62vw)
-    const AN_MAX = 2200, AN_FRAC = 0.9;                           // the dock while the Analytics tab is open: min(2200px, 90vw)
+    const AN_MAX = 100000, AN_FRAC = 1;                           // the dock while the Analytics tab is open: the whole page inside the edge margins (2026-11-23); no pixel cap, a wide monitor is filled too
     const SV_FULL_PX = 700;                                       // the stake view goes full screen when less than this is left beside a wide dock
     const SHEET_MQ = window.matchMedia ? window.matchMedia('(max-width: 699px)') : { matches: false };
     const $ = (sel, el) => (el || document).querySelector(sel);
@@ -490,7 +490,7 @@
     }
     // the dock's width now: the visitor's own width (S.dock.w), or min(1000px, 62vw) when expanded. Phones keep the bottom
     // sheet, whatever was saved. Never narrower than the visitor's own width.
-    // Analytics open (and not shrunk by the visitor): min(2200px, 90vw), so the charts sit side by side.
+    // Analytics open (and not shrunk by the visitor): the full page width less the edge margins, like the claim stake view.
     const anBig = () => S.view === 'tab' && S.tab === 'analytics' && !S.dock.anOff && !SHEET_MQ.matches;
     const onAn = () => S.view === 'tab' && S.tab === 'analytics' && !SHEET_MQ.matches;
     // on Analytics the size is that tab's own (large, or the visitor's normal width once they shrank it): the remembered
@@ -498,7 +498,7 @@
     const dockBig = () => onAn() ? anBig() : S.dock.wide && !SHEET_MQ.matches;
     function dockW() {
         if (SHEET_MQ.matches) return S.dock.w;
-        if (onAn()) return anBig() ? Math.max(S.dock.w, Math.round(Math.min(AN_MAX, window.innerWidth * AN_FRAC))) : S.dock.w;
+        if (onAn()) return anBig() ? Math.max(S.dock.w, Math.round(Math.min(AN_MAX, window.innerWidth * AN_FRAC - 2 * EDGE))) : S.dock.w;
         return S.dock.wide ? Math.max(S.dock.w, Math.round(Math.min(WIDE_MAX, window.innerWidth * WIDE_FRAC))) : S.dock.w;
     }
     // apply the dock's width when what decides it changed (tab, view, the size button); the map follows as for expand
@@ -623,13 +623,15 @@
     }
     // ---- Analytics tab (2026-11-22): c4-analytics.js builds the model from latest.json (+ bodies.json for planet types)
     // and draws it at the width the pane has now; it is drawn again when the pane changes width (expand, window resize)
-    const AN_LABEL = { mining: 'Mining', council: 'Council rank', stakes: 'Claim stakes', compare: 'Ships vs stakes' };
+    const AN_LABEL = { mining: 'Mining', council: 'Council rank', stakes: 'Claim stakes', compare: 'Ships vs stakes', economy: 'Emission', config: 'Game rules' };
     function renderAnalytics(el) {
         const A = window.C4Analytics;
         if (S.an.ro) { S.an.ro.disconnect(); S.an.ro = null; }
         if (!A || typeof A.build !== 'function' || typeof A.render !== 'function') { el.innerHTML = note('The analytics charts did not load (c4-analytics.js). Reload the page to try again.'); return; }
         el.innerHTML = `<nav class="c4an-nav" id="c4AnNav" aria-label="Analytics sections">${(A.sections || []).map(id => `<button type="button" data-an="${esc(id)}">${esc(AN_LABEL[id] || id)}</button>`).join('')}</nav><div class="c4an-mount" id="c4AnMount"></div>`;
         if (!S.bodies && !S.bodiesP && !S.bodiesErr) loadBodies();   // planet types; the charts draw first without them and again when they land
+        // the game rule tables (config-summary.json, a static file beside the page): asked for once, the charts redraw when it lands
+        if (!S.an.cfg && !S.an.cfgP) S.an.cfgP = fetch('config-summary.json?v=20261123', { cache: 'no-cache' }).then(r => (r.ok ? r.json() : null)).catch(() => null).then(j => { S.an.cfg = j || false; if (j && S.tab === 'analytics') paintAnalytics(); });
         S.an.w = 0;
         paintAnalytics();
         const mount = $('#c4AnMount');
@@ -651,7 +653,7 @@
         // the pane may be hidden (clientWidth 0) while another tab fades out: use the width the dock is heading for
         const w = m.clientWidth > 0 ? m.clientWidth : Math.max(240, (S.dock.collapsed ? S.dock.w : dockW()) - 2 * 13 - 2);
         const main = $('#c4Main'), top = main ? main.scrollTop : 0;
-        try { A.render(m, A.build(S.latest, S.bodies ? { bodies: S.bodies } : null), { width: w, reducedMotion: RM.matches, esc, onPick: anPick }); S.an.w = m.clientWidth > 0 ? m.clientWidth : w; }
+        try { A.render(m, A.build(S.latest, S.bodies ? { bodies: S.bodies } : null, S.an.cfg || null), { width: w, reducedMotion: RM.matches, esc, onPick: anPick }); S.an.w = m.clientWidth > 0 ? m.clientWidth : w; }
         catch (e) { console.warn('C4 Live: analytics failed', e); m.innerHTML = note('The analytics charts could not be drawn from this data.'); }
         if (main) main.scrollTop = top;
     }

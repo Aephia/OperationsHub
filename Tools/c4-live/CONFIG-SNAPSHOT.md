@@ -2,7 +2,9 @@
 
 The hourly collector saves the galaxy's STATE (fleets, stakes). This tool saves the game's CONFIG as the chain
 holds it today, in a form that can be diffed when the game team redeploys. Local only: not part of the hourly
-pass, not bundled for the browser, not shown on the public page.
+pass and not bundled for the browser. Since 2026-11-23 a small SUMMARY of it is public: `node
+Tools/c4-live/config-summary.mjs` writes `C4Live/config-summary.json` (counts, medians, short ranked lists; no
+addresses), which the Analytics tab's "Game rules" section draws. Run it after every snapshot that reports a change.
 
 ## Run
 
