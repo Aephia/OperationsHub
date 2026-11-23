@@ -33,6 +33,7 @@ import { getCharacterForProfile } from '@aephia/atlas-kit/identity';
 import { getAllClaimStakes, listClaimStakeDefinitions, listClaimStakeBuildingDefinitions } from '@aephia/atlas-kit/claim-stakes';
 import { getStarSystems, getAllCelestialBodies } from '@aephia/atlas-kit/world';
 import { listCargoDefinitions } from '@aephia/atlas-kit/cargo';
+import { listRecipes } from '@aephia/atlas-kit/crafting';
 import { mkdirSync, readFileSync, writeFileSync, appendFileSync, renameSync, existsSync, statSync, unlinkSync, openSync, closeSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -473,6 +474,37 @@ export function sameEpoch(a, b) {
 }
 // An RPC for C4Collect.epoch() in the browser (main.js cannot import the kit itself).
 export const openRpc = () => createSolanaRpc(RPC_URL);
+// ---- Crafting jobs per recipe (2026-11-23) ------------------------------------------------------------------------
+// Every Recipe account stores how many Crafting Processes were STARTED from it (one use per start, whatever the
+// quantity crafted; a cancelled process gives its use back). That is a lifetime count of JOBS, not of units made:
+// jobs x ingredient quantity is only the least that can have been consumed. Read on demand (the Analytics tab), not in
+// the hourly pass. craftingDoc is pure; readCrafting is the one chain read.
+export const CRAFT_NAME_MAX = 80;
+export function craftingDoc(recipes, nowSec) {
+  const int = (v) => { const n = typeof v === 'bigint' ? Number(v) : typeof v === 'number' ? v : typeof v === 'string' && /^\d+$/.test(v) ? Number(v) : NaN; return Number.isSafeInteger(n) && n >= 0 ? n : null; };
+  const name = (v) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, CRAFT_NAME_MAX) : '');
+  const items = (list) => (Array.isArray(list) ? list : []).map((i) => [name(i && i.name), int(i && i.quantityRaw)]).filter(([n, q]) => n && q !== null);
+  const rows = (Array.isArray(recipes) ? recipes : []).filter((r) => r && typeof r === 'object');
+  const used = [];
+  for (const r of rows) {
+    const u = int(r.usageCountRaw), n = name(r.name);
+    if (!n || !u) continue;
+    used.push({ n, u, i: items(r.ingredients), o: items(r.outputs) });
+  }
+  used.sort((a, b) => b.u - a.u || (a.n < b.n ? -1 : a.n > b.n ? 1 : 0));
+  return { v: 1, generatedAt: nowSec, read: rows.length, used: used.length, jobs: used.reduce((t, r) => t + r.u, 0), recipes: used };
+}
+export async function readCrafting(deps = {}) {
+  const ctx = (deps.createSageContext || createSageContext)({ cluster: 'zink-ptr', rpc: deps.rpc || openRpc() });
+  if (deps.onCtx) deps.onCtx(ctx);
+  try {
+    const rows = await (deps.listRecipes || listRecipes)(ctx);
+    if (!Array.isArray(rows) || !rows.length) throw new Error('no recipes were read');
+    return craftingDoc(rows, deps.now ? deps.now() : Math.floor(Date.now() / 1000));
+  } finally {
+    try { await ctx?.dispose?.(); } catch { /* nothing to release */ }
+  }
+}
 // Decode sanity: a changed account layout can decode to nonsense instead of throwing. Refuse such a pass before
 // anything is written. Measured on the 2026-11-20 chain: see the hand-in of task #15 (systems and fleets 100 %).
 export const SANE_SHARE = 0.95;

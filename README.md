@@ -620,7 +620,8 @@ the live chain; every other module reads the static uber-export. It has two halv
   - **Analytics tab** (2026-11-22): charts drawn from the same read, in `C4Live/c4-analytics.js` (a self-contained
     module: `C4Analytics.build(latest, bodies)` is pure, `render(el, model, opts)` draws inline SVG styled only by
     classes). Sections: mining rate per ship (by flagship size, by fleet size, base stat against actual, top
-    resources); council rank; claim stakes (planet type, tier, state, buildings, building kinds, power, storage,
+    resources); council rank (players per rank, what each rank holds, and the level of all six skills the chain
+    stores - pilot, data runner, mining, building, crafting, combat - per rank and over all ranked players); claim stakes (planet type, tier, state, buildings, building kinds, power, storage,
     fuel left, production, stakes per owner); ships against claim stakes (per resource, per crew member, per
     faction, by ship model against stake tier, who runs what); emission, sinks and starbases (2026-11-23: units per
     day by resource from ships and stakes with the 30-day figure at that rate, the median and average producing
@@ -628,14 +629,18 @@ the live chain; every other module reads the static uber-export. It has two halv
     emission, the ATLAS sitting in rent balances, a plain list of the sinks the read cannot see - fleet fuel /
     food / ammunition, crafting, starbase upgrade contributions, research, warp lane tolls, rent as a rate, combat
     losses - and the number of systems at each starbase level, in total and per faction; a "day" is the rate in
-    the read times 86,400, not a measured day); game rules on chain (2026-11-23, from `C4Live/config-summary.json`:
-    recipes per starbase level, the raw inputs most recipes ask for, the costliest items in raw units, the
-    starbase upgrade materials with their loyalty points and raw cost, ship configurations by size with the
-    fit-out cost, warp lane toll rates, research cost, claim stake slots). That file is built on this machine:
-    `node Tools/c4-live/config-snapshot.mjs` reads the chain's config tables into `Data/c4-live/config` (local,
-    about 20 MB), then `node Tools/c4-live/config-summary.mjs` boils them down to the 6 KB file that is committed.
-    Re-run both after a game redeploy; the section prints the date and game version of the file it shows.
-    Check: `node Test/c4-config-summary-check.js`. Opening the tab widens the right panel to
+    the read times 86,400, not a measured day); crafting (2026-11-23: the crafting jobs started from each
+    recipe and the jobs that drew on each ingredient, from the lifetime counter every recipe account stores. A job
+    is one run whatever quantity it made, so these are runs, not units, and the amount consumed is not known; the
+    hover text gives only the least it can be. It is one chain read through `C4Collect.crafting()`
+    (`readCrafting` in the collector), made when the tab is opened, on the public site and on localhost alike, and
+    nothing is stored)). Each section opens with a header band: a small 3D emblem (rendered in Blender by
+    `Tools/c4-live/analytics-art/render_emblems.py`, packed to `Images/c4an/` by `pack_emblems.py`), the title and
+    two or three headline numbers. Bars sit on a faint rail and wear a halo of their own colour; cards rise in and
+    each chart wipes in from its axis (off when the visitor asks for reduced motion); the nav row marks the section
+    being read. A section collapses to its header band and opens again by a click on the band or its chevron
+    button ("Collapse all" / "Expand all" at the top does every section); a nav button always opens its section
+    before scrolling to it. The choice lasts for the page visit. Opening the tab widens the right panel to
     the full page width inside the edge margins (2026-11-23; it was min(2200px, 90vw)) and gives up to five columns (three from 1100 px, four from 1900 px, five from 2700 px); the panel returns to its own size on any other tab, and the
     size button there keeps its separate, remembered wide setting (min(1000px, 62vw)). Charts that count things
     have a number / percent switch (one per card, one for all). A dot or a row opens a card with what it stands

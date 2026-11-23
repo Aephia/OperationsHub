@@ -102,7 +102,7 @@
     function loadCollector() {
         return S.collectorP || (S.collectorP = new Promise((resolve, reject) => {
             const s = document.createElement('script');
-            s.src = 'c4-collect.js?v=20261122a';
+            s.src = 'c4-collect.js?v=20261123a';
             s.onload = resolve;
             s.onerror = () => { S.collectorP = null; reject(new Error('c4-collect.js failed to load')); };
             document.head.append(s);
@@ -623,17 +623,30 @@
     }
     // ---- Analytics tab (2026-11-22): c4-analytics.js builds the model from latest.json (+ bodies.json for planet types)
     // and draws it at the width the pane has now; it is drawn again when the pane changes width (expand, window resize)
-    const AN_LABEL = { mining: 'Mining', council: 'Council rank', stakes: 'Claim stakes', compare: 'Ships vs stakes', economy: 'Emission', config: 'Game rules' };
+    const AN_LABEL = { mining: 'Mining', council: 'Council rank', stakes: 'Claim stakes', compare: 'Ships vs stakes', economy: 'Emission', crafting: 'Crafting' };
     function renderAnalytics(el) {
         const A = window.C4Analytics;
         if (S.an.ro) { S.an.ro.disconnect(); S.an.ro = null; }
         if (!A || typeof A.build !== 'function' || typeof A.render !== 'function') { el.innerHTML = note('The analytics charts did not load (c4-analytics.js). Reload the page to try again.'); return; }
         el.innerHTML = `<nav class="c4an-nav" id="c4AnNav" aria-label="Analytics sections">${(A.sections || []).map(id => `<button type="button" data-an="${esc(id)}">${esc(AN_LABEL[id] || id)}</button>`).join('')}</nav><div class="c4an-mount" id="c4AnMount"></div>`;
         if (!S.bodies && !S.bodiesP && !S.bodiesErr) loadBodies();   // planet types; the charts draw first without them and again when they land
-        // the game rule tables (config-summary.json, a static file beside the page): asked for once, the charts redraw when it lands
-        if (!S.an.cfg && !S.an.cfgP) S.an.cfgP = fetch('config-summary.json?v=20261123', { cache: 'no-cache' }).then(r => (r.ok ? r.json() : null)).catch(() => null).then(j => { S.an.cfg = j || false; if (j && S.tab === 'analytics') paintAnalytics(); });
+        // crafting jobs per recipe: one chain read through the browser collector, asked for once per page load. When it
+        // lands only the Crafting section is swapped in, so an open detail card elsewhere on the tab stays open.
+        if (!S.an.craft) {
+            S.an.craft = { pending: true };
+            loadCollector().then(() => { if (typeof window.C4Collect.crafting !== 'function') throw new Error('this collector build has no crafting read'); return window.C4Collect.crafting(); })
+                .then(doc => { S.an.craft = doc && Array.isArray(doc.recipes) ? doc : { failed: true }; }, e => { console.warn('C4 Live: crafting read', e); S.an.craft = { failed: true }; })
+                .then(swapCrafting);
+        }
         S.an.w = 0;
         paintAnalytics();
+        const pane = $('#c4Main');
+        if (pane && !S.an.spy) {
+            let raf = 0;
+            S.an.spy = () => { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; spyAnalytics(); }); };
+            pane.addEventListener('scroll', S.an.spy, { passive: true });
+        }
+        spyAnalytics();
         const mount = $('#c4AnMount');
         if (window.ResizeObserver) {
             S.an.ro = new ResizeObserver(() => { clearTimeout(S.an.t); S.an.t = setTimeout(() => { const m = $('#c4AnMount'); if (m && Math.abs(m.clientWidth - S.an.w) >= 2 && m.clientWidth > 0) paintAnalytics(); }, 120); });
@@ -647,13 +660,34 @@
         else if (p.kind === 'stake') openStake(p.id);
         else if (p.kind === 'fleet') { const f = ((S.latest && S.latest.fleets) || []).find(x => x && x.a === p.id); if (f && f.o) openOwner(f.o); }
     }
+    // the crafting read landed: draw the tab off-screen at the same width and move only its Crafting section into the page
+    function swapCrafting() {
+        const A = window.C4Analytics, m = $('#c4AnMount'), old = m && m.querySelector('#c4an-crafting');
+        if (!A || !m || !S.latest) return;
+        if (!old || !m._c4an) { if (S.tab === 'analytics') paintAnalytics(); return; }
+        try {
+            const tmp = document.createElement('div'), model = A.build(S.latest, S.bodies ? { bodies: S.bodies } : null, S.an.craft || null);
+            A.render(tmp, model, { width: S.an.w || m.clientWidth || 360, reducedMotion: true, esc });
+            const fresh = tmp.querySelector('#c4an-crafting');
+            if (fresh) { old.replaceWith(fresh); m._c4an.model.crafting = model.crafting; }
+        } catch (e) { console.warn('C4 Live: crafting section', e); }
+    }
+    // mark the nav button of the section the reader is in: the last section whose top has passed the nav row
+    function spyAnalytics() {
+        const nav = $('#c4AnNav'), pane = $('#c4Main');
+        if (!nav || !pane || S.tab !== 'analytics') return;
+        const line = nav.getBoundingClientRect().bottom + 0.3 * pane.clientHeight;   // a section counts once its top is in the upper third of the pane
+        let cur = null;
+        nav.querySelectorAll('[data-an]').forEach(b => { const sec = document.getElementById('c4an-' + b.dataset.an); if (sec && (cur === null || sec.getBoundingClientRect().top <= line)) cur = cur === null || sec.getBoundingClientRect().top <= line ? b.dataset.an : cur; });
+        nav.querySelectorAll('[data-an]').forEach(b => { const on = b.dataset.an === cur; b.classList.toggle('on', on); if (on) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current'); });
+    }
     function paintAnalytics() {
         const A = window.C4Analytics, m = $('#c4AnMount');
         if (!A || !m || !S.latest) return;
         // the pane may be hidden (clientWidth 0) while another tab fades out: use the width the dock is heading for
         const w = m.clientWidth > 0 ? m.clientWidth : Math.max(240, (S.dock.collapsed ? S.dock.w : dockW()) - 2 * 13 - 2);
         const main = $('#c4Main'), top = main ? main.scrollTop : 0;
-        try { A.render(m, A.build(S.latest, S.bodies ? { bodies: S.bodies } : null, S.an.cfg || null), { width: w, reducedMotion: RM.matches, esc, onPick: anPick }); S.an.w = m.clientWidth > 0 ? m.clientWidth : w; }
+        try { A.render(m, A.build(S.latest, S.bodies ? { bodies: S.bodies } : null, S.an.craft || null), { width: w, reducedMotion: RM.matches, esc, onPick: anPick }); S.an.w = m.clientWidth > 0 ? m.clientWidth : w; }
         catch (e) { console.warn('C4 Live: analytics failed', e); m.innerHTML = note('The analytics charts could not be drawn from this data.'); }
         if (main) main.scrollTop = top;
     }
@@ -1737,7 +1771,13 @@
                 return;
             }
             const an = t.closest('[data-an]');
-            if (an) { const sec = document.getElementById('c4an-' + an.dataset.an); if (sec) sec.scrollIntoView({ behavior: RM.matches ? 'auto' : 'smooth', block: 'start' }); return; }
+            if (an) {
+                // a nav button always shows its section: a collapsed one is opened first, then scrolled to
+                const A = window.C4Analytics, mount = $('#c4AnMount');
+                if (A && mount && typeof A.setFolded === 'function' && A.isFolded(an.dataset.an)) A.setFolded(mount, an.dataset.an, false);
+                const sec = document.getElementById('c4an-' + an.dataset.an); if (sec) sec.scrollIntoView({ behavior: RM.matches ? 'auto' : 'smooth', block: 'start' });
+                return;
+            }
             if (t.closest('[data-dac-example]')) { setDacExample(!S.dac.example); return; }
             if (t.closest('[data-age-detail]')) { S.ageOpen = !S.ageOpen; renderAge(); return; }
             if (t.closest('[data-c4-refresh]')) { refreshChain(!!S.updateFailed); return; }   // F3: a retry of a failed update read

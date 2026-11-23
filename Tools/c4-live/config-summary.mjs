@@ -1,6 +1,7 @@
 // config-summary.mjs - boil the local config snapshot (Data/c4-live/config, written by config-snapshot.mjs) down to
-// the small public file the C4 Live Analytics tab reads: C4Live/config-summary.json. The snapshot is ~20 MB and
-// stays local; this summary is counts, medians and short ranked lists, all of it public chain config.
+// one small file of counts, medians and short ranked lists: Data/c4-live/config-summary.json (local, like the
+// snapshot itself). It was drawn on the public Analytics tab for one day (2026-11-23) and taken off again; the
+// tool stays for balance work on this machine.
 //   node Tools/c4-live/config-summary.mjs [--in <config dir>] [--out <file>]
 // Re-run after config-snapshot.mjs whenever the game is redeployed. Exit 1 and nothing written when a table this
 // needs is missing or empty.
@@ -134,7 +135,7 @@ export function summarize(T) {
 function main() {
     const a = process.argv.slice(2), arg = k => { const i = a.indexOf(k); return i >= 0 ? a[i + 1] : null; };
     const dir = path.resolve(arg('--in') || path.join(HERE, '..', '..', 'Data', 'c4-live', 'config'));
-    const out = path.resolve(arg('--out') || path.join(HERE, '..', '..', 'C4Live', 'config-summary.json'));
+    const out = path.resolve(arg('--out') || path.join(HERE, '..', '..', 'Data', 'c4-live', 'config-summary.json'));
     const T = {};
     for (const f of fs.readdirSync(dir)) if (f.endsWith('.json')) T[f.slice(0, -5)] = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
     const sum = summarize(T);

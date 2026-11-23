@@ -115,3 +115,72 @@
 .c4an-ul { margin: 0 0 10px; padding-left: 18px; font-size: 0.95rem; color: var(--an-ink2); }
 .c4an-ul li { margin: 0 0 6px; }
 .c4an-ul b { color: #fff; font-weight: 600; }
+
+/* ---- 2026-11-23: section heroes (emblem, title, headline numbers), bar tracks, glow, entry motion ---- */
+.c4an-sec { margin: 0 0 30px; }
+.c4an-hero { display: flex; align-items: center; gap: 14px; margin: 0 0 12px; padding: 10px 14px; border: 1px solid var(--an-line); border-radius: 12px;
+    background: linear-gradient(100deg, rgba(120, 170, 255, 0.10), rgba(120, 170, 255, 0.02) 55%, transparent); position: relative; overflow: hidden; }
+.c4an-hero::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: linear-gradient(90deg, var(--an-acc, #6fb1ff), transparent 70%); }
+.c4an-emb { flex: none; width: 76px; height: 76px; background: center / contain no-repeat; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.55)); }
+.c4an-hb { flex: 1 1 220px; min-width: 0; }
+.c4an-hero .c4an-h { margin: 0 0 2px; font-size: 1.12rem; }
+.c4an-hero .c4an-intro { margin: 0; }
+.c4an-kpis { display: flex; flex: none; gap: 8px; margin: 0; }
+.c4an-kpi { min-width: 92px; padding: 6px 12px; border-radius: 10px; background: rgba(6, 12, 28, 0.55); border: 1px solid var(--an-line); text-align: right; }
+.c4an-kpi dd { margin: 0; font-family: 'Orbitron', sans-serif; font-size: 1.35rem; font-weight: 700; line-height: 1.15; color: #fff; font-variant-numeric: tabular-nums; text-shadow: 0 0 14px color-mix(in srgb, var(--an-acc, #6fb1ff) 60%, transparent); }
+.c4an-kpi dt { margin: 0; font-size: 0.78rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--an-ink3); white-space: nowrap; }
+.c4an-narrow .c4an-hero { flex-wrap: wrap; }
+.c4an-narrow .c4an-emb { width: 56px; height: 56px; }
+.c4an-narrow .c4an-kpis { flex: 1 1 100%; }
+.c4an-narrow .c4an-kpi { flex: 1 1 0; min-width: 0; padding: 5px 8px; }
+.c4an-narrow .c4an-kpi dd { font-size: 1.05rem; }
+/* one accent per section: the hero line, the headline glow, the card edge */
+#c4an-mining { --an-acc: #5aa6ff; } #c4an-council { --an-acc: #a99bff; } #c4an-stakes { --an-acc: #ff8a4d; }
+#c4an-compare { --an-acc: #49d3c4; } #c4an-economy { --an-acc: #58d68d; } #c4an-crafting { --an-acc: #ffc857; }
+.emb-mining { background-image: url(../Images/c4an/mining.webp); } .emb-council { background-image: url(../Images/c4an/council.webp); }
+.emb-stakes { background-image: url(../Images/c4an/stakes.webp); } .emb-compare { background-image: url(../Images/c4an/compare.webp); }
+.emb-economy { background-image: url(../Images/c4an/economy.webp); } .emb-crafting { background-image: url(../Images/c4an/crafting.webp); }
+
+.c4an-card { background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02)); border-top-color: color-mix(in srgb, var(--an-acc, #6fb1ff) 55%, var(--an-line)); box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22); transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s; }
+.c4an-card:hover { border-color: color-mix(in srgb, var(--an-acc, #6fb1ff) 60%, transparent); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.34), 0 0 0 1px color-mix(in srgb, var(--an-acc, #6fb1ff) 25%, transparent); }
+.c4an-ct::before { content: ''; display: inline-block; width: 7px; height: 7px; margin: 0 8px 1px 0; border-radius: 50%; background: var(--an-acc, #6fb1ff); box-shadow: 0 0 8px var(--an-acc, #6fb1ff); }
+.c4an-cth .c4an-ctt::before { content: ''; display: inline-block; width: 7px; height: 7px; margin: 0 8px 1px 0; border-radius: 50%; background: var(--an-acc, #6fb1ff); box-shadow: 0 0 8px var(--an-acc, #6fb1ff); }
+.c4an-cth.c4an-ct::before { content: none; }
+
+/* bars sit on a faint rail the full width of the plot, and carry a soft glow of their own colour */
+.an-track { fill: rgba(160, 190, 255, 0.07); }
+.f-s1 { color: #3987e5; } .f-s2 { color: #d95926; } .f-s3 { color: #199e70; } .f-s7 { color: #9085e9; } .f-pos { color: #199e70; } .f-neg { color: #e66767; }
+.f-mud { color: var(--an-mud); } .f-oni { color: var(--an-oni); } .f-ustur { color: var(--an-ust); } .f-unaligned, .f-npc { color: var(--an-npc); }
+/* a halo drawn as a wide translucent stroke under the fill: a filter per bar left some bars unpainted in Chromium */
+.c4an-svg path[class^="f-"] { stroke: currentColor; stroke-opacity: 0.28; stroke-width: 4; stroke-linejoin: round; paint-order: stroke; transition: stroke-opacity 0.15s; }
+.c4an-svg:hover path[class^="f-"] { stroke-opacity: 0.45; }
+.an-hit:hover { fill: rgba(160, 190, 255, 0.10); }
+
+@media (prefers-reduced-motion: no-preference) {
+    .c4an-anim .c4an-hero { animation: c4an-rise 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+    .c4an-anim .c4an-card { animation: c4an-rise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+    .c4an-anim .c4an-card:nth-child(2) { animation-delay: 0.06s; } .c4an-anim .c4an-card:nth-child(3) { animation-delay: 0.12s; }
+    .c4an-anim .c4an-card:nth-child(4) { animation-delay: 0.18s; } .c4an-anim .c4an-card:nth-child(n+5) { animation-delay: 0.24s; }
+    @keyframes c4an-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+    /* a chart wipes in from its axis, so the bars read as growing. One animation on the chart's own box: animating a
+       transform on each bar left some bars unpainted in Chromium when the chart was off screen at the time. */
+    .c4an-anim .c4an-svg { animation: c4an-wipe 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+    @keyframes c4an-wipe { from { clip-path: inset(0 100% 0 0); opacity: 0.3; } to { clip-path: inset(0 -8px 0 -8px); opacity: 1; } }
+}
+/* the section the reader is in is marked in the nav row */
+.c4an-nav button.on { color: #06101f; background: #c9d8ff; border-color: #c9d8ff; }
+
+/* collapsible sections: the header band is the handle, the chevron button is the keyboard control */
+.c4an-hero[data-an-fold] { cursor: pointer; }
+.c4an-hero[data-an-fold]:hover { border-color: color-mix(in srgb, var(--an-acc, #6fb1ff) 55%, transparent); }
+.c4an-fb { appearance: none; flex: none; width: 34px; height: 34px; margin: 0; padding: 0; border-radius: 9px; border: 1px solid var(--an-line); background: rgba(6, 12, 28, 0.55); cursor: pointer; display: grid; place-items: center; }
+.c4an-fb i { width: 9px; height: 9px; border-right: 2px solid var(--an-ink2); border-bottom: 2px solid var(--an-ink2); transform: translateY(-2px) rotate(45deg); transition: transform 0.2s; }
+.c4an-fb[aria-expanded="false"] i { transform: translateX(-2px) rotate(-45deg); }
+.c4an-fb:hover { border-color: var(--an-acc, #6fb1ff); }
+.c4an-fb:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.c4an-sec.c4an-fold { margin-bottom: 10px; }
+.c4an-fold .c4an-hero { margin-bottom: 0; }
+.c4an-grid[hidden] { display: none; }
+.c4an-fa { appearance: none; margin: 0 auto 0 0; padding: 3px 12px; font: inherit; font-size: 0.86rem; font-weight: 600; color: var(--an-ink2); background: transparent; border: 1px solid var(--an-line); border-radius: 7px; cursor: pointer; }
+.c4an-fa:hover { color: #fff; background: rgba(160, 190, 255, 0.12); }
+.c4an-fa:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }

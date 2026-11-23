@@ -7,7 +7,7 @@
 (function (root) {
     'use strict';
 
-    var SECTIONS = ['mining', 'council', 'stakes', 'compare', 'economy', 'config'];
+    var SECTIONS = ['mining', 'council', 'stakes', 'compare', 'economy', 'crafting'];
     var SIZE_ORDER = ['xx-small', 'x-small', 'small', 'medium', 'large', 'capital', 'commander', 'titan'];
     var FACS = ['mud', 'oni', 'ustur', 'unaligned'];
     var FAC_NAME = { mud: 'MUD', oni: 'ONI', ustur: 'Ustur', unaligned: 'Unaligned' };
@@ -57,7 +57,7 @@
     }
 
     // ---------------------------------------------------------------- build
-    function build(latest, bodies, config) {
+    function build(latest, bodies, crafting) {
         var L = obj(latest) || {};
         var fleets = arr(L.fleets).filter(obj), owners = arr(L.owners).filter(obj), stakes = arr(L.stakes).filter(obj);
         var bodyList = bodies && Array.isArray(bodies.bodies) ? bodies.bodies.filter(obj) : null;
@@ -72,7 +72,7 @@
             stakes: buildStakes(stakes, bodyList, ownerName),
             compare: null,
             economy: null,
-            config: buildConfig(config)
+            crafting: buildCrafting(crafting)
         };
         model.compare = buildCompare(fleets, owners, stakes, ownerFac, model.mining.rows, model.stakes, ownerName);
         model.economy = buildEconomy(arr(L.systems).filter(obj), model.mining.rows, stakes, ownerName);
@@ -132,6 +132,15 @@
         };
     }
 
+    // the six skills a player record carries, each with xp and a level
+    var SKILLS = [['pilot', 'Pilot'], ['dataRunner', 'Data runner'], ['mining', 'Mining'], ['building', 'Building'], ['crafting', 'Crafting'], ['combat', 'Combat']];
+    function skillsOf(list) {
+        var out = {};
+        SKILLS.forEach(function (sk) {
+            out[sk[0]] = list.map(function (o) { var x = obj(o.xp), m = x && obj(x[sk[0]]); return m ? m.lvl : NaN; }).filter(function (v) { return fin(v) && v >= 0; }).sort(function (a, b) { return a - b; });
+        });
+        return out;
+    }
     function buildCouncil(owners) {
         var groups = dict(), unranked = 0;
         owners.forEach(function (o) {
@@ -149,10 +158,16 @@
                 stakes: median(vals(g, function (o) { return o.stakes; })),
                 ups: median(vals(g, function (o) { return o.ups; })),
                 atlas: median(vals(g, function (o) { return o.atlas; })),
-                lvl: median(lv), lvls: lv.slice().sort(function (a, b) { return a - b; })
+                lvl: median(lv), lvls: lv.slice().sort(function (a, b) { return a - b; }), skills: skillsOf(g)
             };
         });
-        return { owners: owners.length, ranked: owners.length - unranked, unranked: unranked, ranks: ranks };
+        // over every ranked player: the median and the highest level of each skill
+        var all = [], skill = {}, withSkill = 0;
+        Object.keys(groups).forEach(function (k) { all = all.concat(groups[k]); });
+        var sa = skillsOf(all);
+        SKILLS.forEach(function (sk) { var l = sa[sk[0]]; skill[sk[0]] = { n: l.length, med: median(l), max: l.length ? l[l.length - 1] : null }; });
+        all.forEach(function (o) { var x = obj(o.xp); if (x && SKILLS.some(function (sk) { var m = obj(x[sk[0]]); return m && fin(m.lvl); })) withSkill++; });
+        return { owners: owners.length, ranked: owners.length - unranked, unranked: unranked, ranks: ranks, skill: skill, withSkill: withSkill };
     }
 
     // Emission and starbases (2026-11-23): what enters the economy at the rate of this read, who produces it, and the level
@@ -208,29 +223,32 @@
         };
     }
 
-    // Game rules (2026-11-23): the summary of the chain's config tables (C4Live/config-summary.json, built by
-    // Tools/c4-live/config-summary.mjs). Everything is checked here: a missing or malformed file gives null and the section says so.
-    function buildConfig(c) {
-        c = obj(c);
-        var r = c && obj(c.recipes), sh = c && obj(c.ships), tl = c && obj(c.tolls), rs = c && obj(c.research);
-        if (!r || !sh || !tl || !rs || !fin(r.n)) return null;
-        function rows(a, keys) {
-            return arr(a).filter(function (x) { return obj(x) && keys.every(function (k) { return k.charAt(0) === '$' ? str(x[k.slice(1)]) !== '' : fin(x[k]); }); });
-        }
-        var up = rows(r.upgrade, ['$r', 'lp', 'raw']).filter(function (u) { return u.raw > 0; });
+    // Crafting (2026-11-23): jobs started per recipe, from the lifetime counter each recipe stores on chain. A job can
+    // craft any quantity, so jobs x ingredient quantity is only a FLOOR for what was consumed (kept for the hover text).
+    // doc: the collector's craftingDoc, or { pending: true } while it is being read, or { failed: true }.
+    var CRAFT_TOP = 15;
+    function buildCrafting(doc) {
+        var d = obj(doc);
+        if (!d) return { state: 'none', src: null };
+        if (d.pending === true) return { state: 'pending', src: doc };
+        if (d.failed === true || !Array.isArray(d.recipes)) return { state: 'failed', src: doc };
+        function items(a) { return arr(a).filter(function (x) { return Array.isArray(x) && str(x[0]) && fin(x[1]) && x[1] >= 0; }).map(function (x) { return { r: x[0], q: x[1] }; }); }
+        var rec = d.recipes.filter(function (r) { return obj(r) && str(r.n) && fin(r.u) && r.u > 0; }).map(function (r) { return { n: r.n, u: r.u, i: items(r.i), o: items(r.o) }; })
+            .sort(function (a, b) { return b.u - a.u || (a.n < b.n ? -1 : 1); });
+        var jobs = sumArr(rec.map(function (r) { return r.u; }));
+        var ing = dict();
+        rec.forEach(function (r) {
+            var seen = dict();
+            r.i.forEach(function (x) {
+                var e = ing[x.r] = ing[x.r] || { r: x.r, jobs: 0, floor: 0, recipes: 0 };
+                e.floor += r.u * x.q;
+                if (!seen[x.r]) { seen[x.r] = 1; e.jobs += r.u; e.recipes++; }
+            });
+        });
+        var byIng = Object.keys(ing).map(function (k) { return ing[k]; }).sort(function (a, b) { return b.jobs - a.jobs || (a.r < b.r ? -1 : 1); });
         return {
-            takenAt: fin(c.takenAt) ? c.takenAt : null, sage: fin(c.sage) ? c.sage : null,
-            recipes: {
-                n: r.n, outputs: fin(r.outputs) ? r.outputs : null, multi: fin(r.multi) ? r.multi : null, gated: fin(r.gated) ? r.gated : null,
-                withFee: fin(r.withFee) ? r.withFee : null, feeAtlas: fin(r.feeAtlas) ? r.feeAtlas : null,
-                byLevel: rows(r.byLevel, ['lvl', 'n']), rawN: fin(r.rawN) ? r.rawN : null, rawUse: rows(r.rawUse, ['$r', 'n']),
-                dear: rows(r.dear, ['$r', 'min']), dearN: fin(r.dearN) ? r.dearN : null, rawEqMedian: fin(r.rawEqMedian) ? r.rawEqMedian : null,
-                upgrade: up.map(function (u) { return { r: u.r, lp: u.lp, raw: u.raw, per: u.lp / u.raw }; })
-            },
-            ships: { configs: fin(sh.configs) ? sh.configs : null, hulls: fin(sh.hulls) ? sh.hulls : null, bySize: rows(sh.bySize, ['$size', 'n']) },
-            tolls: { allied: fin(tl.allied) ? tl.allied / 100 : null, neutral: fin(tl.neutral) ? tl.neutral / 100 : null, crossFaction: tl.crossFaction === true, research: rows(tl.research, ['$r', 'mod', 'atlas']) },
-            research: { n: fin(rs.n) ? rs.n : null, paid: fin(rs.paid) ? rs.paid : null, atlas: fin(rs.atlas) ? rs.atlas : null, byCost: rows(rs.byCost, ['atlas', 'n']) },
-            stakes: rows(c.stakes, ['$r', 'slots'])
+            state: 'ok', src: doc, at: fin(d.generatedAt) ? d.generatedAt : null, read: fin(d.read) ? d.read : null,
+            used: rec.length, jobs: jobs, recipes: rec.slice(0, CRAFT_TOP), byIng: byIng.slice(0, CRAFT_TOP), ingN: byIng.length
         };
     }
 
@@ -431,6 +449,14 @@
         if (a >= 1) return v.toFixed(2);
         return Number(v.toPrecision(2)).toString();
     }
+    // a headline number: three significant figures with K / M / B from ten thousand up, the plain number below
+    function kfmt(v) {
+        if (!fin(v)) return '-';
+        var a = Math.abs(v), u = a >= 1e9 ? [1e9, 'B'] : a >= 1e6 ? [1e6, 'M'] : a >= 1e4 ? [1e3, 'K'] : null;
+        if (!u) return fnum(v);
+        var x = v / u[0], ax = Math.abs(x);
+        return (ax >= 100 ? x.toFixed(0) : ax >= 10 ? x.toFixed(1) : x.toFixed(2)) + u[1];
+    }
     function plural(n, one, many) { return n + ' ' + (n === 1 ? one : (many || one + 's')); }
     function pretty(k) { return String(k).replace(/_/g, ' ').replace(/-/g, ' '); }
 
@@ -460,6 +486,23 @@
     // per-card display mode, kept for the page's lifetime (module level, so a re-render on reload or resize keeps it)
     var SHARE_CARDS = ['council-rank', 'stakes-where', 'stakes-bld', 'stakes-storage', 'stakes-out', 'stakes-fuel', 'compare-res', 'compare-mix'];
     var modes = {};
+    // which sections are collapsed, kept for the page's lifetime like the display modes (a redraw keeps them)
+    var folded = {};
+    function isFolded(id) { return folded[id] === true; }
+    // collapse / expand one section in place: no redraw, so charts keep their state and nothing animates again
+    function setFolded(el, id, on) {
+        if (SECTIONS.indexOf(id) < 0) return;
+        folded[id] = !!on;
+        var sec = el && typeof el.querySelector === 'function' ? el.querySelector('#c4an-' + id) : null;
+        if (sec) {
+            sec.classList.toggle('c4an-fold', !!on);
+            var grid = sec.querySelector('.c4an-grid'), btn = sec.querySelector('.c4an-fb');
+            if (grid) grid.hidden = !!on;
+            if (btn) { btn.setAttribute('aria-expanded', on ? 'false' : 'true'); btn.setAttribute('title', (on ? 'Expand ' : 'Collapse ') + 'this section'); }
+        }
+        var all = el && typeof el.querySelector === 'function' ? el.querySelector('[data-an-foldall]') : null;
+        if (all) { var any = SECTIONS.some(function (s) { return !isFolded(s); }); all.textContent = any ? 'Collapse all' : 'Expand all'; all.setAttribute('aria-pressed', any ? 'false' : 'true'); }
+    }
     function isPct(id) { return modes[id] === 'pct'; }
     function setMode(m) { if (m !== 'pct' && m !== 'num') return; SHARE_CARDS.forEach(function (id) { modes[id] = m; }); }
     function getMode() {
@@ -510,6 +553,7 @@
             var y = 2 + i * rowH, len = max > 0 ? shr(r) / max * plotW : 0;
             var tip = r.tip || (r.label + ': ' + fmt(r.v));
             b += tx(labW - 8, y + 14, clip(r.label, labW - 8), 'an-lab', 'end', ctx);
+            b += '<rect class="an-track" x="' + r1(labW) + '" y="' + (y + 3) + '" width="' + r1(plotW) + '" height="14" rx="4"/>';
             b += hbar(labW, y + 3, Math.max(len, r.v > 0 ? 2 : 0), 14, 1, r.cls || cls, pt ? tip + ' (' + pctTxt(shr(r)) + ' of the total ' + fnum(pt) + ')' : tip, ctx);
             b += tx(labW + Math.max(len, 0) + 6, y + 14, vtx(r) + (r.tag ? ' ' + r.tag : ''), 'an-val', 'start', ctx);
             // a row with a key is one hit area that opens its detail card (the stakes behind the bar)
@@ -751,9 +795,16 @@
         var shown = 0; rows.forEach(function (r) { shown += r.v; });
         return chart(title, barList(ctx, rows, o2), cap + ' Shown as % of ' + unit + (top ? '; the ' + rows.length + ' rows shown cover ' + pctTxt(shown / total * 100) + ' of it' : '') + '.');
     }
-    function section(id, title, intro, cards) {
-        return '<section class="c4an-sec" id="c4an-' + id + '"><h3 class="c4an-h">' + title + '</h3>' +
-            (intro ? '<p class="c4an-intro">' + intro + '</p>' : '') + '<div class="c4an-grid">' + cards.join('') + '</div></section>';
+    // kpis: [[value text, label], ...] - the section's headline numbers, drawn as tiles beside the title. The emblem is a
+    // decorative background image chosen by the section id in the stylesheet (Images/c4an/<id>.webp, rendered in Blender).
+    function section(id, title, intro, cards, kpis) {
+        var k = arr(kpis).filter(function (x) { return Array.isArray(x) && x[0] != null && x[0] !== '-'; });
+        var f = isFolded(id);
+        return '<section class="c4an-sec' + (f ? ' c4an-fold' : '') + '" id="c4an-' + id + '"><div class="c4an-hero" data-an-fold="' + id + '"><i class="c4an-emb emb-' + id + '" aria-hidden="true"></i>' +
+            '<div class="c4an-hb"><h3 class="c4an-h">' + title + '</h3>' + (intro ? '<p class="c4an-intro">' + intro + '</p>' : '') + '</div>' +
+            (k.length ? '<dl class="c4an-kpis">' + k.map(function (x) { return '<div class="c4an-kpi"><dd>' + esc(x[0]) + '</dd><dt>' + esc(x[1]) + '</dt></div>'; }).join('') + '</dl>' : '') +
+            '<button type="button" class="c4an-fb" data-an-fold="' + id + '" aria-expanded="' + (f ? 'false' : 'true') + '" aria-controls="c4an-grid-' + id + '" aria-label="' + esc(title) + ': show or hide the charts" title="' + (f ? 'Expand' : 'Collapse') + ' this section"><i aria-hidden="true"></i></button>' +
+            '</div><div class="c4an-grid" id="c4an-grid-' + id + '"' + (f ? ' hidden' : '') + '>' + cards.join('') + '</div></section>';
     }
 
     // ---------------------------------------------------------------- sections
@@ -792,7 +843,8 @@
         var c4 = chart('', barList(ctx, m.topRes.map(function (e) { return { label: e.r, v: e.yps, tip: e.r + ': ' + fnum(e.yps) + ' per ship per second, ' + plural(e.fleets, 'fleet') + ', ' + plural(e.ships, 'ship'), tag: 'n=' + e.fleets }; }), { label: 'Top resources by yield per ship' }),
             'Units per second per ship in the fleets mining each resource (n = fleets); top ' + m.topRes.length + ' of ' + plural(m.resTotal, 'resource') + ' by that figure; ' + base + '.');
         return section('mining', 'Mining rate per ship', 'Units per second a fleet mines, divided by its ships.', [
-            card('Yield by flagship size', c1 + c1b), card('Fleet size against yield', c2), card('Base stat against actual yield', c3), card('Top resources', c4)]);
+            card('Yield by flagship size', c1 + c1b), card('Fleet size against yield', c2), card('Base stat against actual yield', c3), card('Top resources', c4)],
+            [[kfmt(m.n), 'mining fleets'], [kfmt(sum(m.rows.map(function (r) { return r.ups; }))), 'units a second'], [kfmt(m.resTotal), 'resources mined']]);
     }
 
     function secCouncil(ctx, M) {
@@ -808,11 +860,18 @@
             return '<h5 class="c4an-ch">' + mm[1] + '</h5>' + (rows.length ? barList(ctx, rows, { cls: 'f-s7', label: 'Median ' + mm[1] + ' per rank' }) : note('No value in this read.'));
         }).join('');
         var c2 = chart('Median per player', small, 'Each bar is the median across the players at that rank; a player with none counts as 0 (n = players); ' + base + '.');
-        var lv = c.ranks.filter(function (r) { return r.lvls.length; });
-        var c3 = lv.length ? chart('', heat(ctx, lv.map(function (r) { return { label: 'rank ' + r.rank, vals: r.lvls }; }), { cls: 'f-s7', label: 'Mining level by council rank' }),
-            'Players per mining level (columns) at each rank (rows); darker = more players; ' + plural(sum(lv.map(function (r) { return r.lvls.length; })), 'player') + ' with a mining level, ' + plural(c.owners, 'player') + ' read.')
-            : chart('', note('No player reports a mining level.'), plural(c.owners, 'player') + ' read.');
-        return section('council', 'Council rank', intro, [card('Players per rank', c1, 'council-rank'), card('What each rank holds', c2), card('Mining level by rank', c3)]);
+        // every skill the chain stores a level for: one grid per skill, players per level (columns) at each rank (rows)
+        var grids = SKILLS.map(function (sk) {
+            var rw = c.ranks.filter(function (r) { return r.skills[sk[0]].length; });
+            return '<h5 class="c4an-ch">' + sk[1] + '</h5>' + (rw.length ? heat(ctx, rw.map(function (r) { return { label: 'rank ' + r.rank, vals: r.skills[sk[0]] }; }), { cls: 'f-s7', label: sk[1] + ' level by council rank' }) : note('No player reports a ' + sk[1].toLowerCase() + ' level.'));
+        }).join('');
+        var c3 = chart('', grids, 'Players per level (columns) at each rank (rows), one grid per skill; darker = more players; ' + plural(c.withSkill, 'player') + ' with skill levels, ' + plural(c.owners, 'player') + ' read.');
+        var sm = SKILLS.map(function (sk) { var e = c.skill[sk[0]]; return e.n ? { label: sk[1], v: e.med, tag: '(top ' + e.max + ')', cls: 'f-s7', tip: sk[1] + ': median level ' + fnum(e.med) + ', highest ' + e.max + ', ' + plural(e.n, 'player') } : null; }).filter(Boolean);
+        var c4 = sm.length ? chart('Median level', barList(ctx, sm, { label: 'Median level per skill over all ranked players' }),
+            'The median level of each skill over the ' + plural(c.withSkill, 'ranked player') + ' with skill levels, with the highest level anyone has reached.')
+            : chart('', note('No player reports a skill level.'), plural(c.owners, 'player') + ' read.');
+        return section('council', 'Council rank', intro, [card('Players per rank', c1, 'council-rank'), card('What each rank holds', c2), card('Skills across all ranks', c4), card('Skill levels by rank', c3)],
+            [[kfmt(c.ranked), 'ranked players'], [kfmt(c.ranks[c.ranks.length - 1].rank), 'highest rank']]);
     }
 
     function secStakes(ctx, M) {
@@ -868,7 +927,7 @@
             T.fuel, plural(T.fuel, 'claim stake') + ' with fuel read');
         cards.push(card('Fuel', fu, s.has.use && s.fuel.n ? 'stakes-fuel' : null));
         cards.push(card('Output and owners', pr + od, 'stakes-out'));
-        return section('stakes', 'Claim stakes', intro, cards);
+        return section('stakes', 'Claim stakes', intro, cards, [[kfmt(s.n), 'claim stakes']]);
     }
 
     function secCompare(ctx, M) {
@@ -921,68 +980,35 @@
             { label: 'ships only', v: mx.shipsOnly, cls: 'f-s1' }, { label: 'stakes only', v: mx.stakesOnly, cls: 'f-s2' },
             { label: 'both', v: mx.both, cls: 'f-s3' }, { label: 'neither', v: mx.neither, cls: 'f-npc' }], { fmt: function (v) { return String(v); }, label: 'Owners by ships and stakes' },
             'Players that run mining ships, claim stakes, both or neither; ' + plural(mx.total, 'player') + ' read.', mx.total, plural(mx.total, 'player')) : chart('', note('No players in this read.'), '0 players read.'), mx.total ? 'compare-mix' : null));
-        return section('compare', 'Ships against claim stakes', intro, cards);
+        return section('compare', 'Ships against claim stakes', intro, cards, [[kfmt(m.n), 'mining fleets'], [kfmt(s.n), 'claim stakes']]);
     }
 
-    function secConfig(ctx, M) {
-        var c = M.config, title = 'Game rules on chain';
-        if (!c) return section('config', title, 'Recipes, ship configurations, tolls and research costs as the chain holds them.',
-            [card('Game rules', note('The game rule tables did not load (config-summary.json), so this section has nothing to draw.'))]);
-        var when = c.takenAt ? new Date(c.takenAt * 1000).toISOString().slice(0, 10) : 'an unknown date';
-        var intro = 'Recipes, ship configurations, tolls and research costs as the chain holds them. Read on ' + when + (c.sage ? ', game version ' + c.sage : '') + '; these change only when the game is redeployed.';
-        var r = c.recipes, cards = [], int = function (v) { return fnum(v); };
-        var rawDef = ' Raw units = the mined inputs it takes to make one, counted through every recipe below it; where an item has more than one recipe the cheapest is used.';
-        // recipes by starbase level
-        cards.push(card('Recipes', r.byLevel.length ? chart('By the starbase level a recipe needs', barList(ctx, r.byLevel.map(function (l) { return { label: 'level ' + l.lvl, v: l.n, tag: pctTxt(l.n / r.n * 100), tip: 'level ' + l.lvl + ': ' + plural(l.n, 'recipe') }; }), { cls: 'f-s7', fmt: int, label: 'Recipes per starbase level needed' }),
-            plural(r.n, 'recipe') + (r.outputs != null ? ' making ' + plural(r.outputs, 'item') : '') + (r.multi != null ? '; ' + plural(r.multi, 'item') + ' can be made more than one way' : '') + (r.gated != null ? '; ' + fnum(r.gated) + ' need research first' : '') +
-            (r.withFee != null && r.feeAtlas != null ? '; ' + fnum(r.withFee) + ' charge a fee of ' + r.feeAtlas + ' ATLAS a run' : '') + '.') : chart('', note('No recipe levels in the file.'), plural(r.n, 'recipe') + '.')));
-        // raw inputs
-        cards.push(card('Raw inputs recipes ask for', r.rawUse.length ? chart('', barList(ctx, r.rawUse.map(function (x) { return { label: x.r, v: x.n, tip: x.r + ': an ingredient of ' + plural(x.n, 'recipe') }; }), { cls: 'f-s3', fmt: int, label: 'Recipes that take each raw input' }),
-            'Recipes that list the input directly as an ingredient; top ' + r.rawUse.length + (r.rawN != null ? ' of the ' + r.rawN + ' inputs that no recipe makes' : '') + '. It counts recipes, not quantity.') : chart('', note('No raw inputs in the file.'), '')));
-        // dearest items
-        cards.push(card('Costliest items to make', r.dear.length ? chart('Raw units for one', barList(ctx, r.dear.map(function (x) { return { label: x.r, v: x.min, tip: x.r + ': ' + fnum(x.min) + ' raw units for one' }; }), { cls: 'f-s2', fmt: int, label: 'Raw units to make one of the costliest items' }),
-            'Top ' + r.dear.length + (r.dearN != null ? ' of ' + fnum(r.dearN) + ' craftable items' : '') + (r.rawEqMedian != null ? '; the median item takes ' + fnum(r.rawEqMedian) : '') + '.' + rawDef) : chart('', note('No item costs in the file.'), '')));
-        // starbase upgrade materials
-        if (r.upgrade.length) {
-            var u1 = chart('Raw units for one', barList(ctx, r.upgrade.map(function (x) { return { label: x.r, v: x.raw, tag: '(' + x.lp + ' LP)', tip: x.r + ': ' + fnum(x.raw) + ' raw units, ' + x.lp + ' loyalty points a unit' }; }), { cls: 'f-s1', fmt: int, label: 'Raw units for one unit of each starbase upgrade material' }),
-                'The ' + r.upgrade.length + ' materials the chain\'s reward table pays loyalty points (LP) for in starbase upgrades, with the LP for one unit.' + rawDef + ' How many of each an upgrade takes is not in these tables.');
-            var per = r.upgrade.slice().sort(function (a, b) { return b.per - a.per || (a.r < b.r ? -1 : 1); });
-            var u2 = chart('Loyalty points per raw unit', barList(ctx, per.map(function (x) { return { label: x.r, v: x.per, tip: x.r + ': ' + fnum(x.per) + ' LP for each raw unit that goes into it' }; }), { cls: 'f-s1', label: 'Loyalty points per raw unit by upgrade material' }),
-                'The LP for one unit divided by the raw units it takes: which material turns mined input into the most loyalty points.');
-            cards.push(card('Starbase upgrade materials', u1 + u2));
-        }
-        // ships
-        var bs = c.ships.bySize;
-        if (bs.length) {
-            var mets = [['cargo', 'Cargo hold (units)'], ['mining', 'Mining rate (units per second)'], ['crew', 'Crew needed'], ['recovery', 'Recovery fee (ATLAS)'], ['fit', 'Fit-out cost (raw units)']];
-            var small = mets.map(function (mm) {
-                var rw = bs.filter(function (b) { return fin(b[mm[0]]); }).map(function (b) { return { label: b.size, v: b[mm[0]], tag: 'n=' + (mm[0] === 'fit' ? b.fitN : b.n), tip: b.size + ' median ' + mm[1] + ': ' + fnum(b[mm[0]]) }; });
-                return '<h5 class="c4an-ch">' + mm[1] + '</h5>' + (rw.length ? barList(ctx, rw, { cls: 'f-s1', label: 'Median ' + mm[1] + ' by ship size' }) : note('Not in the file.'));
-            }).join('');
-            cards.push(card('Ship configurations by size', chart('Median per hull', small,
-                'Each bar is the median over the hulls of that size in their default configuration (n = hulls)' + (c.ships.hulls != null ? '; ' + plural(c.ships.hulls, 'hull') : '') + (c.ships.configs != null ? ', ' + fnum(c.ships.configs) + ' configurations' : '') +
-                '. Fit-out cost is the median, over the other configurations of that size (n = configurations), of the raw units in the components each one lists.' + rawDef)));
-        }
-        // tolls, research, stake slots
-        var t = c.tolls, tr = [];
-        if (t.allied != null) tr.push({ label: 'allied territory', v: t.allied, cls: 'f-s3', tip: 'Toll in allied territory: ' + t.allied + '% of the lane fee' });
-        if (t.neutral != null) tr.push({ label: 'neutral territory', v: t.neutral, cls: 'f-s2', tip: 'Toll in neutral territory: ' + t.neutral + '% of the lane fee' });
-        var pctf = function (v) { return fnum(v) + '%'; };
-        var lane = t.research.filter(function (x) { return x.atlas > 0; }).map(function (x) { return ctx.esc(x.r) + ' (' + fnum(x.mod * 100) + '%, ' + fnum(x.atlas) + ' ATLAS)'; });
-        var c6 = tr.length ? chart('Warp lane toll rates', barList(ctx, tr, { fmt: pctf, label: 'Warp lane toll rate by territory' }),
-            'The toll rates the faction relations table stores, as a percent' + (lane.length ? '; research that changes the lane fee: ' + lane.join(', ') : '') + '. Cross-faction economics is switched ' + (t.crossFaction ? 'on' : 'off') + '. The base lane fee itself is not in these tables.')
-            : chart('Warp lane toll rates', note('No toll rates in the file.'), '');
-        var rs = c.research, c7 = rs.atlas != null ? chart('Research', barList(ctx, [{ label: 'every node', v: rs.atlas, cls: 'f-s7', tip: fnum(rs.atlas) + ' ATLAS buys every research node once' }], { fmt: int, label: 'ATLAS to buy every research node' }),
-            'ATLAS to buy every research node once' + (rs.paid != null && rs.n != null ? ': ' + fnum(rs.paid) + ' of ' + plural(rs.n, 'node') + ' cost ATLAS' : '') + (rs.byCost.length === 1 ? ', each ' + fnum(rs.byCost[0].atlas) : '') + '. Per player, so this sink grows with the player count.') : '';
-        cards.push(card('Tolls and research', c6 + c7));
-        if (c.stakes.length) cards.push(card('Claim stake sizes', chart('Building slots', barList(ctx, c.stakes.map(function (s) { return { label: s.r, v: s.slots, tip: s.r + ': ' + plural(s.slots, 'slot') }; }), { cls: 'f-s2', fmt: int, label: 'Building slots per claim stake definition' }),
-            'Slots each claim stake definition allows' + (c.stakes.every(function (s) { return fin(s.place) && s.place === c.stakes[0].place && fin(s.rent) && s.rent === c.stakes[0].rent; }) && fin(c.stakes[0].place) ? '; every one has a placement fee multiplier of ' + c.stakes[0].place + ' and a rent multiplier of ' + c.stakes[0].rent : '') + '.')));
-        return section('config', title, intro, cards);
+    function secCrafting(ctx, M) {
+        var c = M.crafting, title = 'Crafting';
+        var intro = 'Which recipes players craft: the crafting jobs started from each recipe since the chain began counting.';
+        if (!c || c.state === 'none') return section('crafting', title, intro, [card('Crafting jobs', note('The recipe counters have not been read.'))]);
+        if (c.state === 'pending') return section('crafting', title, intro, [card('Crafting jobs', note('Reading the recipe counters from the chain...'))]);
+        if (c.state === 'failed') return section('crafting', title, intro, [card('Crafting jobs', note('The recipe counters could not be read from the chain this time. Reload the page to try again.'))]);
+        if (!c.jobs) return section('crafting', title, intro, [card('Crafting jobs', note('No recipe has a crafting job on record' + (c.read != null ? ' (' + plural(c.read, 'recipe') + ' read)' : '') + '.'))]);
+        var when = c.at ? new Date(c.at * 1000).toISOString().slice(0, 16).replace('T', ' ') + ' UTC' : 'an unknown time';
+        var what = ' A job is one crafting run started from the recipe, whatever quantity it made, so this counts runs, not units.';
+        var list = function (a) { return a.map(function (x) { return x.q + ' ' + x.r; }).join(', '); };
+        var c1 = chart('', barList(ctx, c.recipes.map(function (r) {
+            return { label: r.n, v: r.u, tag: pctTxt(r.u / c.jobs * 100), cls: 'f-s3', tip: r.n + ': ' + plural(r.u, 'job') + (r.i.length ? '; one unit takes ' + list(r.i) : '') + (r.o.length ? ' and makes ' + list(r.o) : '') };
+        }), { fmt: function (v) { return fnum(v); }, label: 'Crafting jobs started per recipe' }),
+            'Jobs started per recipe with its share of all ' + fnum(c.jobs) + ' jobs; top ' + c.recipes.length + ' of the ' + fnum(c.used) + ' recipes ever used' + (c.read != null ? ' (' + fnum(c.read) + ' recipes exist)' : '') + '. Read ' + when + '.' + what);
+        var c2 = c.byIng.length ? chart('', barList(ctx, c.byIng.map(function (x) {
+            return { label: x.r, v: x.jobs, cls: 'f-s2', tag: '(' + plural(x.recipes, 'recipe') + ')', tip: x.r + ': an ingredient in ' + plural(x.jobs, 'job') + ' across ' + plural(x.recipes, 'recipe') + '; at least ' + fnum(x.floor) + ' consumed if every job made one unit' };
+        }), { fmt: function (v) { return fnum(v); }, label: 'Crafting jobs that used each ingredient' }),
+            'Jobs whose recipe lists the ingredient, with the number of recipes; top ' + c.byIng.length + ' of ' + plural(c.ingN, 'ingredient') + '. The chain does not store how much a job crafted, so the amount consumed is not known: hover a bar for the least it can be (jobs times the recipe quantity).')
+            : chart('', note('No ingredients on the recipes used.'), '');
+        return section('crafting', title, intro, [card('Jobs by recipe', c1), card('Ingredients crafting draws on', c2)],
+            [[kfmt(c.jobs), 'crafting jobs'], [kfmt(c.used), 'recipes used'], [c.read != null ? pctTxt(c.used / c.read * 100) : null, 'of all recipes']]);
     }
 
     var UNSEEN = [
         ['Fuel, food and ammunition burned by fleets.', 'A fleet account stores what is in the hold, not a burn rate.'],
-        ['Crafting inputs and recipe fees.', 'Only visible in the crafting transactions.'],
+        ['Crafting inputs and recipe fees.', 'The Crafting section counts jobs per recipe; the quantity each job consumed is not stored.'],
         ['Starbase upgrade contributions.', 'The level is read (below); what was paid in to reach it is not.'],
         ['Research costs.', 'Paid when a node is bought.'],
         ['Warp lane tolls.', 'Paid per jump.'],
@@ -1037,7 +1063,7 @@
             cards.push(card('Starbase levels', c3));
             cards.push(card('Starbase levels by faction', chart('', per, 'The same count split by the faction that holds each system.')));
         }
-        return section('economy', 'Emission, sinks and starbases', intro, cards);
+        return section('economy', 'Emission, sinks and starbases', intro, cards, e.day > 0 ? [[kfmt(e.day), 'units a day'], [kfmt(e.producers), 'producers'], [pctTxt(e.headDay / e.namedDay * 100), 'from the top ' + e.head.length]] : []);
     }
 
     // ---------------------------------------------------------------- render
@@ -1051,8 +1077,10 @@
         if (!model || typeof model !== 'object' || !model.mining) {
             html = '<p class="c4an-empty">No data to chart yet.</p>';
         } else {
-            html = '<div class="c4an-bar"><span class="c4an-bl">All charts</span>' + toggle(getMode(), 'data-an-all="1"', 'all charts') + '</div>' +
-                secMining(ctx, model) + secCouncil(ctx, model) + secStakes(ctx, model) + secCompare(ctx, model) + secEconomy(ctx, model) + secConfig(ctx, model);
+            var anyOpen = SECTIONS.some(function (s) { return !isFolded(s); });
+            html = '<div class="c4an-bar"><button type="button" class="c4an-fa" data-an-foldall="1" aria-pressed="' + (anyOpen ? 'false' : 'true') + '">' + (anyOpen ? 'Collapse all' : 'Expand all') + '</button>' +
+                '<span class="c4an-bl">All charts</span>' + toggle(getMode(), 'data-an-all="1"', 'all charts') + '</div>' +
+                secMining(ctx, model) + secCouncil(ctx, model) + secStakes(ctx, model) + secCompare(ctx, model) + secEconomy(ctx, model) + secCrafting(ctx, model);
         }
         if (openEl === el) openEl = null;   // the redraw replaces the card host: nothing is open any more
         if (html.indexOf('c4an-bar') >= 0) html += '<div class="c4an-pop" role="dialog" aria-label="Details" hidden></div>';
@@ -1164,6 +1192,11 @@
         if (!t || typeof t.closest !== 'function') return;
         var b = t.closest('[data-an-mode]');
         if (!b) {
+            var fa = t.closest('[data-an-foldall]');
+            if (fa) { closePop(false); var shut = SECTIONS.some(function (s) { return !isFolded(s); }); SECTIONS.forEach(function (s) { setFolded(el, s, shut); }); return; }
+            // the header band (and its chevron button) folds its section
+            var fb = t.closest('[data-an-fold]');
+            if (fb) { closePop(false); var fid = fb.getAttribute('data-an-fold'); setFolded(el, fid, !isFolded(fid)); return; }
             var pk = t.closest('[data-an-pick]');
             if (pk) { doPick(el, pk); return; }
             var mk = t.closest('[data-an-k]');
@@ -1187,7 +1220,7 @@
         }
     }
 
-    var api = { version: '1', build: build, render: render, sections: SECTIONS.slice(), setMode: setMode, getMode: getMode, shareCards: SHARE_CARDS.slice(), card: cardHtml, shortModel: shortModel, close: function () { closePop(false); } };
+    var api = { version: '1', kfmt: kfmt, setFolded: setFolded, isFolded: isFolded, build: build, render: render, sections: SECTIONS.slice(), setMode: setMode, getMode: getMode, shareCards: SHARE_CARDS.slice(), card: cardHtml, shortModel: shortModel, close: function () { closePop(false); } };
     if (typeof window === 'undefined' && typeof module !== 'undefined' && module.exports) module.exports = api;
     else root.C4Analytics = api;
 })(typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this));

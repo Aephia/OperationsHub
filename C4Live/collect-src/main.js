@@ -2,11 +2,12 @@
 // `saved` is the Map of files from the last good pass; the result is a new Map, returned only after a whole pass.
 // C4Collect.epoch() reads only the chain version (3 calls) so the page can tell whether the game was updated on chain;
 // C4Collect.sameEpoch is the collector's own comparison, so both sides decide "same game" the same way.
-import { collect, readChainEpoch, sameEpoch, openRpc } from '../../Tools/c4-live/collector.mjs';
+import { collect, readChainEpoch, sameEpoch, openRpc, readCrafting } from '../../Tools/c4-live/collector.mjs';
 import { seed, dump } from './fs-shim.js';
 
 const PASS_TIMEOUT_MS = 5 * 60_000;
 const EPOCH_TIMEOUT_MS = 15_000;
+const CRAFT_TIMEOUT_MS = 90_000;
 const isObject = v => !!v && typeof v === 'object' && !Array.isArray(v);
 const SHAPE = {
     'db.json': v => isObject(v) && isObject(v.state),
@@ -74,4 +75,17 @@ window.C4Collect = {
         }
     },
     sameEpoch,
+    // Crafting jobs started per recipe (lifetime counters on the Recipe accounts). One list read; rejects on failure or
+    // after 90 s. Not part of run(): the page asks for it when the Analytics tab is opened.
+    async crafting() {
+        let ctx = null, timer;
+        const timeout = new Promise((_, reject) => {
+            timer = setTimeout(() => { Promise.resolve(ctx?.dispose?.()).catch(() => {}); reject(new Error('the recipe read timed out')); }, CRAFT_TIMEOUT_MS);
+        });
+        try {
+            return await Promise.race([readCrafting({ onCtx: c => { ctx = c; } }), timeout]);
+        } finally {
+            clearTimeout(timer);
+        }
+    },
 };

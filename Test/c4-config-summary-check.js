@@ -1,6 +1,6 @@
 // c4-config-summary-check.js - Tools/c4-live/config-summary.mjs against a hand-made set of tables whose answers are
 // typed below (not computed by the tool's own code), then source mutants that must each make a check fail, then the
-// committed C4Live/config-summary.json for shape. Offline. Prints "N passed, M failed".
+// local Data/c4-live/config-summary.json for shape, when this machine has one. Offline. Prints "N passed, M failed".
 //   node Test/c4-config-summary-check.js
 const fs = require('fs'), os = require('os'), path = require('path'), { pathToFileURL } = require('url');
 const ROOT = path.join(__dirname, '..');
@@ -87,13 +87,14 @@ const MUTANTS = [
         if (r.fail > 0) { pass++; console.log('  caught  ' + name + '  (first: ' + r.names[0] + ')'); } else { fail++; console.log('  FAIL mutant NOT caught: ' + name); }
     }
     fs.rmSync(tmpDir, { recursive: true, force: true });
-    console.log('[3] the committed summary file');
+    console.log('[3] the local summary file (skipped when this machine has none)');
     const ok = (name, cond, detail) => { if (cond) pass++; else { fail++; console.log('  FAIL ' + name + (detail ? ' :: ' + detail : '')); } };
-    let S = null; try { S = JSON.parse(fs.readFileSync(path.join(ROOT, 'C4Live', 'config-summary.json'), 'utf8')); } catch (e) { /* reported below */ }
-    ok('C4Live/config-summary.json parses', !!S);
+    let S = null; try { S = JSON.parse(fs.readFileSync(path.join(ROOT, 'Data', 'c4-live', 'config-summary.json'), 'utf8')); } catch (e) { /* reported below */ }
+    if (!fs.existsSync(path.join(ROOT, 'Data', 'c4-live', 'config-summary.json'))) console.log('  skipped: no local file');
+    else ok('the local summary file parses', !!S);
     if (S) {
-        const size = fs.statSync(path.join(ROOT, 'C4Live', 'config-summary.json')).size;
-        ok('it is small enough to ship with the page (under 60 KB; ' + size + ' bytes)', size < 60000);
+        const size = fs.statSync(path.join(ROOT, 'Data', 'c4-live', 'config-summary.json')).size;
+        ok('it is small (under 60 KB; ' + size + ' bytes)', size < 60000);
         ok('it carries a date and a game version', S.takenAt > 1.7e9 && S.sage > 0);
         ok('recipes, levels, raw inputs and costs are filled', S.recipes.n > 100 && S.recipes.byLevel.length >= 1 && S.recipes.rawUse.length > 0 && S.recipes.dear.length > 0 && S.recipes.dear.every(d => d.min >= 1 && d.max >= d.min));
         ok('the level counts add up to the recipe count', S.recipes.byLevel.reduce((t, l) => t + l.n, 0) === S.recipes.n);

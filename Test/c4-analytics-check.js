@@ -379,42 +379,94 @@ function suite(A, quiet) {
             ok('economy (real data): every system with a level is counted once', r.levels.reduce((t, l) => t + l.n, 0) === r.systems && r.systems <= r.systemsRead);
         }
     });
-    safe('config', () => {
-        // a small rules file typed by hand, with rows that must be dropped and a name that must be escaped
-        const CFG = {
-            takenAt: 1795000000, sage: 7,
-            recipes: { n: 10, outputs: 9, multi: 1, gated: 4, withFee: 8, feeAtlas: 0.5, byLevel: [{ lvl: 1, n: 8 }, { lvl: 2, n: 2 }, { lvl: 'x', n: 1 }], rawN: 3,
-                rawUse: [{ r: '<b>Ore', n: 5 }, { r: 'Gas', n: 2 }, { n: 9 }], dear: [{ r: 'Big', min: 1000 }, { r: 'Mid', min: 10 }], dearN: 9, rawEqMedian: 10,
-                upgrade: [{ r: 'Frame', lp: 5, raw: 2 }, { r: 'Core', lp: 17, raw: 34 }, { r: 'Zero', lp: 3, raw: 0 }] },
-            ships: { configs: 20, hulls: 4, bySize: [{ size: 'small', n: 3, cargo: 100, mining: 0.5, crew: 2, recovery: 4, fit: 5000, fitN: 9 }, { size: 'titan', n: 1, cargo: 9000, fit: 'x' }] },
-            tolls: { allied: 5000, neutral: 20000, crossFaction: false, research: [{ r: 'Lane <i>Cut', mod: -0.25, atlas: 350 }, { r: 'Free', mod: -0.25, atlas: 0 }] },
-            research: { n: 10, paid: 9, atlas: 3150, byCost: [{ atlas: 350, n: 9 }] },
-            stakes: [{ r: 'Stake T1', slots: 65, rent: 1, place: 16 }, { r: 'Stake T2', slots: 487, rent: 1, place: 16 }]
-        };
-        const c = A.build({}, null, CFG).config;
-        ok('config: malformed rows are dropped (level, raw input, zero-cost upgrade row)', c && c.recipes.byLevel.length === 2 && c.recipes.rawUse.length === 2 && c.recipes.upgrade.length === 2, c && JSON.stringify([c.recipes.byLevel.length, c.recipes.rawUse.length, c.recipes.upgrade.length]));
-        ok('config: loyalty points per raw unit is LP / raw (Frame 5/2, Core 17/34)', c && near(c.recipes.upgrade[0].per, 2.5) && near(c.recipes.upgrade[1].per, 0.5));
-        ok('config: tolls are percent (5000 bps = 50, 20000 bps = 200)', c && c.tolls.allied === 50 && c.tolls.neutral === 200);
-        const el = { innerHTML: '', addEventListener() {} }; A.render(el, A.build({}, null, CFG), { width: 900 });
-        const h = el.innerHTML, sec = h.slice(h.indexOf('id="c4an-config"'));
-        ok('config: the section states the date and the game version of the file', sec.includes('Read on ' + new Date(1795000000 * 1000).toISOString().slice(0, 10) + ', game version 7'));
-        ok('config: toll rates drawn as 50% and 200%', sec.includes('>50%<') && sec.includes('>200%<'));
-        ok('config: only paid research that changes the lane fee is named, and its name is escaped', sec.includes('Lane &lt;i&gt;Cut (-25%, 350 ATLAS)') && !sec.includes('<i>Cut') && !sec.includes('Free ('));
-        ok('config: a raw input name is escaped', sec.includes('&lt;b&gt;Ore') && !sec.includes('<b>Ore'));
-        ok('config: LP per raw unit is drawn largest first', sec.indexOf('Frame: 2.50 LP') > 0 && sec.indexOf('Frame: 2.50 LP') < sec.indexOf('Core: 0.5 LP'));
-        ok('config: a size without a fit-out figure gets no fit-out bar', (sec.match(/median Fit-out cost \(raw units\)/g) || []).length === 1);
-        ok('config: no NaN / undefined / Infinity', !/NaN|undefined|Infinity/.test(sec));
-        const none = A.build({}, null).config, bad = A.build({}, null, { recipes: { n: 'x' }, ships: {}, tolls: {}, research: {} }).config;
-        const el0 = { innerHTML: '', addEventListener() {} }; A.render(el0, A.build({}, null), { width: 400 });
-        ok('config: no file, or a file without a recipe count, gives no model and the section says it did not load', none === null && bad === null && el0.innerHTML.includes('did not load (config-summary.json)'));
+    safe('layout', () => {
         [[1000, 'c4an-wide', null], [1500, 'c4an-x3', 'c4an-x4'], [2000, 'c4an-x4', 'c4an-x5'], [3000, 'c4an-x5', null]].forEach(([w, has, not]) => {
             const e = { innerHTML: '', className: '', addEventListener() {} }; A.render(e, A.build({}, null), { width: w });
             ok('layout: at ' + w + ' px the class is ' + has + (not ? ', not ' + not : ''), e.className.includes(has) && (!not || !e.className.includes(not)), e.className);
         });
     });
+    safe('crafting', () => {
+        // jobs per recipe typed by hand: Fuel 10 jobs of 3 Hydrogen; Mix 4 jobs of 2 Hydrogen + 1 Ore (Hydrogen listed twice
+        // in Dup to prove a recipe's jobs are counted once per ingredient); a zero-use and two malformed rows to drop
+        const DOC = { v: 1, generatedAt: 1795000000, read: 50, used: 4, jobs: 17, recipes: [
+            { n: 'Fuel', u: 10, i: [['Hydrogen', 3]], o: [['Fuel', 1]] },
+            { n: 'Mix <b>', u: 4, i: [['Hydrogen', 2], ['Ore', 1]], o: [['Mix', 1]] },
+            { n: 'Dup', u: 3, i: [['Hydrogen', 1], ['Hydrogen', 1], ['bad'], ['Neg', -1]], o: [] },
+            { n: 'Zero', u: 0, i: [['Ore', 9]], o: [] }, { n: '', u: 5, i: [], o: [] }, { n: 'NoCount', i: [], o: [] }] };
+        const c = A.build({}, null, DOC).crafting;
+        ok('crafting: 3 recipes used, 17 jobs, most jobs first', c.state === 'ok' && c.used === 3 && c.jobs === 17 && JSON.stringify(c.recipes.map(r => [r.n, r.u])) === JSON.stringify([['Fuel', 10], ['Mix <b>', 4], ['Dup', 3]]), JSON.stringify(c.recipes && c.recipes.map(r => [r.n, r.u])));
+        const hy = c.byIng.find(x => x.r === 'Hydrogen'), ore = c.byIng.find(x => x.r === 'Ore');
+        ok('crafting: Hydrogen is in 17 jobs across 3 recipes (a recipe listing it twice counts its jobs once)', hy && hy.jobs === 17 && hy.recipes === 3, JSON.stringify(hy));
+        ok('crafting: the floor is jobs x quantity over every line (10x3 + 4x2 + 3x1 + 3x1 = 44)', hy && hy.floor === 44, hy && String(hy.floor));
+        ok('crafting: Ore is in 4 jobs (the unused recipe adds nothing); malformed ingredient rows are dropped', ore && ore.jobs === 4 && ore.floor === 4 && c.ingN === 2, JSON.stringify(c.byIng));
+        const el = { innerHTML: '', addEventListener() {} }; A.render(el, A.build({}, null, DOC), { width: 900 });
+        const h = el.innerHTML, sec = h.slice(h.indexOf('id="c4an-crafting"'));
+        ok('crafting: the section says jobs are runs, not units', sec.length > 100 && sec.includes('this counts runs, not units'));
+        ok('crafting: shares of all jobs (Fuel 59%, Dup 18%) and the read time', sec.includes('>10 59%<') && sec.includes('>3 18%<') && sec.includes('Read 2026-11-18 11:06 UTC'), sec.replace(/<[^>]+>/g, ' ').slice(0, 300));
+        ok('crafting: a recipe name is escaped', sec.includes('Mix &lt;b&gt;') && !sec.includes('Mix <b>'));
+        ok('crafting: the amount consumed is offered only as a floor in the hover text', sec.includes('at least 44 consumed if every job made one unit') && sec.includes('the amount consumed is not known'));
+        ok('crafting: no NaN / undefined / Infinity', !/NaN|undefined|Infinity/.test(sec));
+        const st = d => { const e = { innerHTML: '', addEventListener() {} }; A.render(e, A.build({}, null, d), { width: 400 }); return [A.build({}, null, d).crafting.state, e.innerHTML]; };
+        const [s1, h1] = st({ pending: true }), [s2, h2] = st({ failed: true }), [s3, h3] = st(undefined), [s4, h4] = st({ recipes: 'x' }), [s5, h5] = st({ recipes: [], read: 9 });
+        ok('crafting: pending, failed and never-read each say so', s1 === 'pending' && h1.includes('Reading the recipe counters') && s2 === 'failed' && h2.includes('could not be read') && s3 === 'none' && h3.includes('have not been read'));
+        ok('crafting: a malformed answer counts as failed; an empty one says no job is on record', s4 === 'failed' && s5 === 'ok' && h5.includes('No recipe has a crafting job on record (9 recipes read)'));
+        ok('crafting: the model keeps the document it was built from (the page swaps the section in by it)', A.build({}, null, DOC).crafting.src === DOC);
+    });
+    safe('heroes', () => {
+        const k = A.kfmt;
+        ok('headline numbers: plain below ten thousand, then K / M / B to three figures', k(9999) === '9,999' && k(12345) === '12.3K' && k(139393765) === '139M' && k(4181812951) === '4.18B' && k(1500000) === '1.50M' && k(0) === '0' && k(NaN) === '-',
+            [k(9999), k(12345), k(139393765), k(4181812951), k(1500000), k(0), k(NaN)].join(' '));
+        // one mining fleet making 2 a second: 172,800 a day from one producer, who is therefore 100% of it
+        const L = { owners: [{ p: 'P1', name: 'Ann', fa: 'mud', rank: 3 }], fleets: [{ a: 'F1', n: 'F1', o: 'P1', fa: 'mud', npc: 0, s: { kind: 'mining' }, ships: 1, crew: 1, flagSize: 'small', mine: { ups: 2, out: [{ r: 'Iron', ups: 2 }] } }], stakes: [], systems: [] };
+        const el = { innerHTML: '', addEventListener() {} }; A.render(el, A.build(L, null, { recipes: [{ n: 'Fuel', u: 25000, i: [['Hydrogen', 3]], o: [] }], read: 100000, generatedAt: 1 }), { width: 900 });
+        const h = el.innerHTML, sec = id => { const a = h.indexOf('id="c4an-' + id + '"'), b = h.indexOf('<section', a + 1); return h.slice(a, b < 0 ? h.length : b); };
+        const kp = id => (sec(id).match(/<dd>[^<]*<\/dd><dt>[^<]*<\/dt>/g) || []).map(x => x.replace(/<\/dd><dt>/, '|').replace(/<[^>]+>/g, ''));
+        ok('every section opens with a hero that carries its own emblem class', A.sections.every(id => sec(id).includes('class="c4an-hero"') && sec(id).includes('c4an-emb emb-' + id + '"')) && (h.match(/class="c4an-hero"/g) || []).length === A.sections.length);
+        ok('emission headline: 173K units a day, 1 producer, 100% from the top 1', JSON.stringify(kp('economy')) === JSON.stringify(['173K|units a day', '1|producers', '100%|from the top 1']), JSON.stringify(kp('economy')));
+        ok('mining headline: 1 mining fleet, 2 units a second, 1 resource', JSON.stringify(kp('mining')) === JSON.stringify(['1|mining fleets', '2|units a second', '1|resources mined']), JSON.stringify(kp('mining')));
+        ok('council headline: 1 ranked player, highest rank 3', JSON.stringify(kp('council')) === JSON.stringify(['1|ranked players', '3|highest rank']), JSON.stringify(kp('council')));
+        ok('crafting headline: 25.0K jobs, 1 recipe used, 0.0% of all recipes', JSON.stringify(kp('crafting')) === JSON.stringify(['25.0K|crafting jobs', '1|recipes used', '0.0%|of all recipes']), JSON.stringify(kp('crafting')));
+        ok('every bar of a bar list sits on a rail', (sec('economy').match(/class="an-track"/g) || []).length >= 2 && (h.match(/class="an-track"/g) || []).length > 5);
+        const e0 = { innerHTML: '', addEventListener() {} }; A.render(e0, A.build({}, null), { width: 900 });
+        const s0 = e0.innerHTML.slice(e0.innerHTML.indexOf('id="c4an-economy"'), e0.innerHTML.indexOf('id="c4an-crafting"'));
+        ok('an empty read draws no headline numbers for emission (nothing to headline)', s0.includes('class="c4an-hero"') && !s0.includes('c4an-kpis'));
+        ok('headline text is escaped and no hero uses a style attribute', !/c4an-hero[^>]*style=/.test(h) && !/NaN|undefined|Infinity/.test(h));
+    });
+    safe('skills', () => {
+        // four ranked players and one unranked, levels typed by hand; one skill entry malformed, one player with no xp at all
+        const X = (p, rank, lv) => ({ p, fa: 'mud', rank, xp: lv && Object.fromEntries(Object.entries(lv).map(([k, v]) => [k, { xp: 0, lvl: v }])) });
+        const L = { owners: [X('a', 0, { pilot: 1, combat: 0, mining: 2 }), X('b', 0, { pilot: 3, combat: 4, mining: 2, crafting: 'x' }), X('c', 2, { pilot: 5, combat: 9, dataRunner: 1 }), X('d', 2, null), { p: 'e', fa: 'oni', xp: { pilot: { lvl: 50 } } }] };
+        const c = A.build(L, null).council, r0 = c.ranks.find(r => r.rank === 0), r2 = c.ranks.find(r => r.rank === 2);
+        ok('skills: levels per rank, sorted (rank 0 pilot 1,3; combat 0,4; rank 2 combat 9)', r0 && r2 && r0.skills.pilot.join() === '1,3' && r0.skills.combat.join() === '0,4' && r2.skills.combat.join() === '9' && r2.skills.dataRunner.join() === '1', JSON.stringify(r0 && r0.skills));
+        ok('skills: a malformed level is dropped and an unranked player is not counted', r0.skills.crafting.length === 0 && c.skill.pilot.max === 5 && c.skill.pilot.n === 3);
+        ok('skills: median and highest over all ranked players (pilot 1,3,5 -> 3 and 5; combat 0,4,9 -> 4 and 9)', c.skill.pilot.med === 3 && c.skill.combat.med === 4 && c.skill.combat.max === 9 && c.skill.mining.med === 2 && c.skill.building.n === 0);
+        ok('skills: 3 of the 4 ranked players have skill levels', c.withSkill === 3, String(c.withSkill));
+        const el = { innerHTML: '', addEventListener() {} }; A.render(el, A.build(L, null), { width: 900 });
+        const h = el.innerHTML, sec = h.slice(h.indexOf('id="c4an-council"'), h.indexOf('id="c4an-stakes"'));
+        ok('skills: a grid for each of the six skills, and a note for the one nobody has', ['Pilot', 'Data runner', 'Mining', 'Building', 'Crafting', 'Combat'].every(n => sec.includes('<h5 class="c4an-ch">' + n + '</h5>')) && sec.includes('No player reports a building level.'));
+        ok('skills: the summary names the median and the highest level (Combat 4, top 9)', sec.includes('Combat: median level 4, highest 9, 3 players') && sec.includes('>4 (top 9)<'), '');
+        ok('skills: no NaN / undefined / Infinity', !/NaN|undefined|Infinity/.test(sec));
+    });
+    safe('fold', () => {
+        const draw = () => { const e = { innerHTML: '', addEventListener() {} }; A.render(e, A.build({}, null), { width: 900 }); return e.innerHTML; };
+        const part = (h, id) => { const a = h.indexOf('id="c4an-' + id + '"'), b = h.indexOf('<section', a + 1); return h.slice(h.lastIndexOf('<section', a), b < 0 ? h.length : b); };
+        let h = draw();
+        ok('fold: every section starts open, with a chevron button that says so', A.sections.every(id => !A.isFolded(id) && part(h, id).includes('data-an-fold="' + id + '" aria-expanded="true" aria-controls="c4an-grid-' + id + '"') && !/c4an-grid" id="c4an-grid-[a-z]+" hidden/.test(part(h, id))) && h.includes('>Collapse all</button>'));
+        try {
+            A.setFolded(null, 'economy', true);
+            h = draw();
+            ok('fold: a collapsed section keeps its header and hides its charts, across a redraw', A.isFolded('economy') && part(h, 'economy').includes('class="c4an-sec c4an-fold"') && part(h, 'economy').includes('aria-expanded="false"') && part(h, 'economy').includes('id="c4an-grid-economy" hidden') && part(h, 'economy').includes('class="c4an-hero"'));
+            ok('fold: the other sections stay open', A.sections.filter(id => id !== 'economy').every(id => !part(h, id).includes('c4an-fold"') && part(h, id).includes('aria-expanded="true"')));
+            A.sections.forEach(id => A.setFolded(null, id, true));
+            ok('fold: with every section collapsed the top button offers to expand all', draw().includes('aria-pressed="true">Expand all</button>'));
+            A.setFolded(null, 'nonsense', true);
+            ok('fold: an unknown section id is ignored', !A.isFolded('nonsense'));
+        } finally { A.sections.forEach(id => A.setFolded(null, id, false)); }
+        ok('fold: expanding restores the charts', !A.isFolded('economy') && !part(draw(), 'economy').includes(' hidden'));
+    });
     safe('contract', () => {
         ok('version 1', A.version === '1');
-        ok('sections list', JSON.stringify(A.sections) === JSON.stringify(['mining', 'council', 'stakes', 'compare', 'economy', 'config']));
+        ok('sections list', JSON.stringify(A.sections) === JSON.stringify(['mining', 'council', 'stakes', 'compare', 'economy', 'crafting']));
         ok('build is pure: same input twice gives the same model', JSON.stringify(A.build(F.L, F.B)) === JSON.stringify(A.build(F.L, F.B)));
         const before = JSON.stringify(F.L); A.build(F.L, F.B); ok('build does not mutate its input', JSON.stringify(F.L) === before);
     });
@@ -784,12 +836,27 @@ function suite(A, quiet) {
 
 // ---------------------------------------------------------------- mutants
 const MUTANTS = [
-    ["config: tolls left in basis points","tl.allied / 100","tl.allied"],
-    ["config: loyalty points per raw unit inverted","per: u.lp / u.raw","per: u.raw / u.lp"],
-    ["config: an upgrade row with no cost kept",".filter(function (u) { return u.raw > 0; })",""],
-    ["config: free research named as changing the lane fee","t.research.filter(function (x) { return x.atlas > 0; })","t.research"],
-    ["config: research name not escaped","ctx.esc(x.r) + ' (' + fnum(x.mod * 100)","x.r + ' (' + fnum(x.mod * 100)"],
-    ["config: a file without a recipe count is drawn","if (!r || !sh || !tl || !rs || !fin(r.n)) return null;","if (!r || !sh || !tl || !rs) return null;"],
+    ["fold: a collapsed section still shows its charts","'\"' + (f ? ' hidden' : '') + '>' + cards.join('')","'\">' + cards.join('')"],
+    ["fold: the chevron always says expanded","aria-expanded=\"' + (f ? 'false' : 'true') + '\" aria-controls","aria-expanded=\"true\" aria-controls"],
+    ["fold: collapsing is forgotten on a redraw","folded[id] = !!on;","folded[id] = false;"],
+    ["fold: any id can be collapsed","if (SECTIONS.indexOf(id) < 0) return;\n        folded[id] = !!on;","folded[id] = !!on;"],
+    ["skills: every skill reads the mining level","var x = obj(o.xp), m = x && obj(x[sk[0]]); return m ? m.lvl : NaN; }).filter(","var x = obj(o.xp), m = x && obj(x.mining); return m ? m.lvl : NaN; }).filter("],
+    ["skills: the highest level is the lowest","max: l.length ? l[l.length - 1] : null","max: l.length ? l[0] : null"],
+    ["skills: a malformed level kept","return m ? m.lvl : NaN; }).filter(function (v) { return fin(v) && v >= 0; })","return m ? m.lvl : NaN; })"],
+    ["skills: only the first skill gets a grid","var grids = SKILLS.map(function (sk) {","var grids = SKILLS.slice(0, 1).map(function (sk) {"],
+    ["hero: thousands divided as millions","a >= 1e4 ? [1e3, 'K']","a >= 1e4 ? [1e6, 'K']"],
+    ["hero: headline numbers drawn for an empty read","e.day > 0 ? [[kfmt(e.day), 'units a day']","true ? [[kfmt(e.day), 'units a day']"],
+    ["hero: every section wears the same emblem","c4an-emb emb-' + id + '","c4an-emb emb-mining"],
+    ["hero: emission headline shows the hourly figure","[[kfmt(e.day), 'units a day']","[[kfmt(e.day / 24), 'units a day']"],
+    ["hero: crafting share of recipes inverted","pctTxt(c.used / c.read * 100)","pctTxt(c.read / c.used * 100)"],
+    ["bars: no rail behind the bars","b += '<rect class=\"an-track\"","b += '<rect class=\"an-none\""],
+    ["crafting: a recipe listing an ingredient twice counts its jobs twice","if (!seen[x.r]) { seen[x.r] = 1; e.jobs += r.u; e.recipes++; }","e.jobs += r.u; if (!seen[x.r]) { seen[x.r] = 1; e.recipes++; }"],
+    ["crafting: the floor ignores the recipe quantity","e.floor += r.u * x.q;","e.floor += r.u;"],
+    ["crafting: recipes with no jobs kept","str(r.n) && fin(r.u) && r.u > 0; }).map(function (r) { return { n: r.n, u: r.u,","str(r.n) && fin(r.u); }).map(function (r) { return { n: r.n, u: r.u,"],
+    ["crafting: fewest jobs first","return b.u - a.u || (a.n < b.n ? -1 : 1); });\n        var jobs","return a.u - b.u || (a.n < b.n ? -1 : 1); });\n        var jobs"],
+    ["crafting: a failed read drawn as no crafting","if (d.failed === true || !Array.isArray(d.recipes)) return { state: 'failed', src: doc };","if (!Array.isArray(d.recipes)) d = { recipes: [] };"],
+    ["crafting: the floor presented as the amount consumed","'; at least ' + fnum(x.floor) + ' consumed if every job made one unit'","'; ' + fnum(x.floor) + ' consumed'"],
+    ["crafting: section not drawn"," + secCrafting(ctx, model)",""],
     ["layout: four columns never used","width >= 1900 ? 4","width >= 99999 ? 4"],
     ["economy: stake output left out of the total","st += x.ps; any = true;","any = true;"],
     ["economy: a day is an hour","var DAY = 86400,","var DAY = 3600,"],
@@ -802,8 +869,7 @@ const MUTANTS = [
     ["sinks: a rent balance that is not a number added","if (r && fin(r.bal) && r.bal >= 0) {","if (r) {"],
     ["sinks: emission of the consumed resource not looked up","emit: emitDay[k] || 0 }","emit: 0 }"],
     ["sinks: a zero-rate stake counted as consuming","fin(x.ps) && x.ps > 0) { bump(use, x.r, x.ps); any = true; }","fin(x.ps)) { bump(use, x.r, x.ps); any = true; }"],
-    ["economy: section not drawn"," + secEconomy(ctx, model) + secConfig"," + secConfig"],
-    ["config: section not drawn"," + secConfig(ctx, model);",";"],
+    ["economy: section not drawn"," + secEconomy(ctx, model) + secCrafting"," + secCrafting"],
     ["ships: mixed fleets counted under their largest model","comp.length === 1 ? comp[0].name : null","comp.length > 0 ? comp[0].name : null"],
     ["ships: yield per fleet instead of per ship","median(l.map(function (r) { return r.yps; })), n: l.length","median(l.map(function (r) { return r.ups; })), n: l.length"],
     ["ships: mixed fleets drawn as a row","else R.mixed++; });","else { (byModel['Mixed'] = byModel['Mixed'] || []).push(r); R.mixed++; } });"],
@@ -851,7 +917,7 @@ const MUTANTS = [
     ['storage total 0 not guarded', 'if (cap.total > 0) fills.push(cap.used / cap.total);', 'fills.push(cap.used / cap.total);'],
     ['per-crew guard removed (stakes)', 'perCrew: sc > 0 ? su / sc : null', 'perCrew: su / sc'],
     ['style attribute added to svg', "'<svg class=\"c4an-svg\"", "'<svg style=\"x:1\" class=\"c4an-svg\""],
-    ['section id dropped', "'<section class=\"c4an-sec\" id=\"c4an-' + id + '\">", "'<section class=\"c4an-sec\" data-id=\"' + id + '\">"],
+    ['section id dropped', "'\" id=\"c4an-' + id + '\"><div class=\"c4an-hero\"", "'\" data-id=\"' + id + '\"><div class=\"c4an-hero\""],
     ['owner mix: both = either', 'if (hasShips[p] && hasStakes[p]) mix.both++;', 'if (hasShips[p] || hasStakes[p]) mix.both++;'],
     ['planet type join dropped', "(bodyList && subOf[s.body]) || 'unknown'", "'unknown'"],
     ['fresh-read note lost', "var FRESH = 'needs a fresh read';", "var FRESH = 'later';"],

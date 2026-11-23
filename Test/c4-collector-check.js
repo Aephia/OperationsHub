@@ -144,6 +144,7 @@ async function main() {
 
   await epochChecks(C, kit);
   await bundleChecks();
+  await craftingChecks(C);
 
   if (OFFLINE) return;
 
@@ -628,6 +629,40 @@ function rpcFetch(log, slot = 59540350n) {
     return new Response(JSON.stringify({ jsonrpc: '2.0', id: req.id, result }), { status: 200, headers: { 'content-type': 'application/json' } });
   };
 }
+// ---- 10. crafting jobs per recipe: craftingDoc (pure) and readCrafting (stubbed chain) -----------------------------
+async function craftingChecks(C) {
+  console.log('\n[10] crafting jobs per recipe (offline)');
+  const { craftingDoc, readCrafting, CRAFT_NAME_MAX } = C;
+  ok(typeof craftingDoc === 'function' && typeof readCrafting === 'function', 'positive control: craftingDoc and readCrafting are exported');
+  if (typeof craftingDoc !== 'function') return;
+  const rows = [
+    { name: 'Fuel', usageCountRaw: 12n, ingredients: [{ name: 'Hydrogen', quantityRaw: 3n }], outputs: [{ name: 'Fuel', quantityRaw: 1n }] },
+    { name: 'Food', usageCountRaw: 30n, ingredients: [{ name: 'Biomass', quantityRaw: 2n }, { name: '', quantityRaw: 1n }, { name: 'Bad', quantityRaw: -1 }], outputs: [] },
+    { name: 'Never', usageCountRaw: 0n, ingredients: [], outputs: [] },
+    { name: 'Huge', usageCountRaw: 2n ** 60n, ingredients: [], outputs: [] },
+    { name: 'x'.repeat(200) + '\u0007', usageCountRaw: '5', ingredients: [], outputs: [] },
+    { usageCountRaw: 9n }, null, 'junk'];
+  const d = craftingDoc(rows, 1795000000);
+  ok(d.v === 1 && d.generatedAt === 1795000000 && d.read === 6, `the document carries the read time and the recipes read (${d.read} objects of 8 rows)`);
+  ok(d.used === 3 && d.jobs === 47 && d.recipes.map((r) => r.u).join() === '30,12,5', `only recipes with jobs, most first, total 47 (${d.recipes.map((r) => r.u).join()})`);
+  ok(JSON.stringify(d.recipes[1]) === JSON.stringify({ n: 'Fuel', u: 12, i: [['Hydrogen', 3]], o: [['Fuel', 1]] }), `a recipe row is { n, u, i, o } with plain numbers (${JSON.stringify(d.recipes[1])})`);
+  ok(JSON.stringify(d.recipes[0].i) === JSON.stringify([['Biomass', 2]]), 'an ingredient without a name or with a negative quantity is dropped');
+  ok(!d.recipes.some((r) => r.n === 'Huge'), 'a counter beyond the safe integer range is not written as a wrong number');
+  ok(d.recipes[2].n.length === CRAFT_NAME_MAX && !/[\u0000-\u001f]/.test(d.recipes[2].n), 'a name is cut to the cap and control characters are removed');
+  ok(JSON.parse(JSON.stringify(d)).jobs === 47 && !/[1-9A-HJ-NP-Za-km-z]{32,44}/.test(JSON.stringify(craftingDoc(rows.slice(0, 3), 1))), 'the document is plain JSON (no bigint) and holds no address');
+  let disposed = 0;
+  const r = await readCrafting({ createSageContext: () => ({ dispose: async () => { disposed++; } }), rpc: {}, listRecipes: async () => rows.slice(0, 3), now: () => 7 });
+  ok(r.generatedAt === 7 && r.jobs === 42 && disposed === 1, `readCrafting returns the document and releases the chain client (${r.jobs} jobs, disposed ${disposed})`);
+  let err = null; disposed = 0;
+  try { await readCrafting({ createSageContext: () => ({ dispose: async () => { disposed++; } }), rpc: {}, listRecipes: async () => [] }); } catch (e) { err = e; }
+  ok(err && /no recipes/.test(err.message) && disposed === 1, 'an empty recipe list is an error, not "nobody crafts", and the client is still released');
+  err = null; disposed = 0;
+  try { await readCrafting({ createSageContext: () => ({ dispose: async () => { disposed++; } }), rpc: {}, listRecipes: async () => { throw new Error('rpc down'); } }); } catch (e) { err = e; }
+  ok(err && err.message === 'rpc down' && disposed === 1, 'a failed read rejects and the client is still released');
+  let C4 = null; try { C4 = loadBundle(async () => { throw new Error('no network in this check'); }); } catch (e) { /* reported below */ }
+  ok(C4 && typeof C4.crafting === 'function', 'the built browser bundle has C4Collect.crafting');
+}
+
 async function bundleChecks() {
   console.log(`\n[9] browser bundle ${path.relative(ROOT, BUNDLE)}: C4Collect.epoch / sameEpoch (offline, fake fetch)`);
   let C4;

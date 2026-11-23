@@ -119,17 +119,18 @@ async function main() {
             res['mining section number = C4Analytics.build on the same files (' + small.size + ' n=' + small.n + ')'] = !!mi && mi.text.includes(small.size + ' n=' + small.n);
             res['council section number = build (' + model.council.ranked + ' ranked players of ' + model.council.owners + ')'] = !!mi && mi.text.includes(model.council.ranked + ' ranked players of ' + model.council.owners);
             res['stakes section number = build (' + model.stakes.n + ' claim stakes read)'] = !!mi && mi.text.includes(model.stakes.n + ' claim stakes read');
-            res['game rules section is drawn from config-summary.json (recipe count on the page)'] = !!mi && /Game rules on chain/i.test(mi.text) && /\d+ recipes making/.test(mi.text);
             const r0 = model.compare.res[0];
             res['ships-vs-stakes section number = build (' + r0.r + ' ' + fmt(r0.ships) + ')'] = !!mi && mi.text.includes(r0.r + ' ' + fmt(r0.ships));
             res['the page mount equals a fresh C4Analytics render of the same model at the same width'] = await page.evaluate(async ([m, bodies, latest]) => {
                 const el = document.createElement('div'), mount = document.querySelector('#c4AnMount');
-                const cfg = await fetch('config-summary.json').then(r => (r.ok ? r.json() : null)).catch(() => null);   // the page draws the game rules from this file
-                window.C4Analytics.render(el, window.C4Analytics.build(latest, bodies, cfg), { width: mount.clientWidth, reducedMotion: false });
+                // the crafting read is a live chain call: wait for it to settle (read or failed), then draw the reference from the same answer
+                for (let i = 0; i < 400 && /Reading the recipe counters/.test(mount.textContent); i++) await new Promise(r => setTimeout(r, 250));
+                const craft = mount._c4an && mount._c4an.model && mount._c4an.model.crafting ? mount._c4an.model.crafting.src : null;
+                window.C4Analytics.render(el, window.C4Analytics.build(latest, bodies, craft), { width: mount.clientWidth, reducedMotion: false });
                 return el.innerHTML === mount.innerHTML;
             }, [null, { bodies: FX.B.bodies }, FX.L]);
             const nav = await page.evaluate(() => [...document.querySelectorAll('#c4AnNav button')].map(b => b.dataset.an + '|' + b.textContent));
-            res['section nav has six buttons: Mining / Council rank / Claim stakes / Ships vs stakes / Emission / Game rules'] = nav.join(';') === 'mining|Mining;council|Council rank;stakes|Claim stakes;compare|Ships vs stakes;economy|Emission;config|Game rules';
+            res['section nav has six buttons: Mining / Council rank / Claim stakes / Ships vs stakes / Emission / Crafting'] = nav.join(';') === 'mining|Mining;council|Council rank;stakes|Claim stakes;compare|Ships vs stakes;economy|Emission;crafting|Crafting';
             await shot(page, 'analytics-expanded-top');
             const pos = {};
             for (const id of A.sections) {
