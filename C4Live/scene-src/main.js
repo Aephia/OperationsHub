@@ -868,21 +868,8 @@ function rng(seed) { let s = seed >>> 0; return () => { s = (Math.imul(s, 166452
 // ---------------------------------------------------------------- territory
 const TEX = 256, SPAN = 140, CX = 0.5, CY = 0.5;
 function territoryTexture(systems, data) {
-  const W = [new Float32Array(TEX * TEX), new Float32Array(TEX * TEX), new Float32Array(TEX * TEX)];
-  const px = TEX / SPAN, sigma = 3.3 * px, R = Math.ceil(sigma * 3), inv = 1 / (2 * sigma * sigma);
-  for (const s of systems) {
-    const fi = s.f === 'mud' ? 0 : s.f === 'oni' ? 1 : s.f === 'ustur' ? 2 : -1;
-    if (fi < 0) continue;
-    const gx = (s.x - (CX - SPAN / 2)) * px, gy = (s.y - (CY - SPAN / 2)) * px, wt = 0.6 + (s.lvl || 0) * 0.4;
-    const arr = W[fi];
-    for (let j = Math.max(0, Math.floor(gy - R)); j <= Math.min(TEX - 1, Math.ceil(gy + R)); j++) {
-      const dy = j + 0.5 - gy;
-      for (let i = Math.max(0, Math.floor(gx - R)); i <= Math.min(TEX - 1, Math.ceil(gx + R)); i++) {
-        const dx = i + 0.5 - gx;
-        arr[j * TEX + i] += wt * Math.exp(-(dx * dx + dy * dy) * inv);
-      }
-    }
-  }
+  // the weights (glow per faction, pushed back off regions nobody owns) are pure maths in model.js: M.territoryField
+  const W = M.territoryField(systems, TEX, SPAN, CX, CY);
   for (let k = 0; k < TEX * TEX; k++) {
     for (let c = 0; c < 3; c++) data[k * 4 + c] = Math.round(255 * (1 - Math.exp(-W[c][k] * 0.9)));
     data[k * 4 + 3] = 255;

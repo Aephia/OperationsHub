@@ -669,6 +669,14 @@ Added 2026-11-22: `node Test/c4-stake-view-check.js` (stake model and the view i
 `node Test/c4-collector-check.js` (collector; `--offline` for the unit part) and
 `node Test/c4-config-snapshot-check.js` (the config snapshot below).
 
+**Territory on the map** (changed 2026-11-23): the territory layer is a soft glow spread by every faction-owned
+starbase (`territoryField` in `C4Live/scene-src/model.js`). A region in which no faction holds a starbase is neutral
+ground: its starbases push the glow back, so the border runs midway between the nearest owned and neutral starbase
+and the region reads as unowned instead of taking its neighbour's colour (Ledgerlight's region read as Ustur before).
+As soon as a faction takes a starbase in the region it stops pushing. Empty space further than 3.5 map units from
+neutral ground is untouched. Check: `node Test/c4-territory-check.mjs` (hand-built map, the live read when present,
+and source mutants that must fail). Rebuild the map bundle after a change: `node C4Live/scene-src/build.mjs`.
+
 **On-chain config snapshot** (local tool, 2026-11-22): `npm run config-snapshot` in `Tools/c4-live` reads the game's
 configuration as the chain holds it (claim stake buildings and definitions, recipes, ship configurations, cargo,
 research catalog, combat, factions, territory regions and more: 17 tables today) into `Data/c4-live/config/`

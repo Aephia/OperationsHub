@@ -814,3 +814,69 @@ export function fleetLabel(f) {
 }
 export const systemLabel = (s) => `${s.n || 'System'} - ${factionKey(s.f)} starbase lvl ${s.lvl || 0}`;
 export const asteroidLabel = (a) => `${a.sysName || 'Asteroid'} asteroid - ${a.fleets || 0} fleets - ${(a.ups || 0).toFixed(1)} u/s`;
+
+// ---------------------------------------------------------------- territory influence (2026-11-23)
+// One weight per player faction [mud, oni, ustur] per texel of a tex x tex grid covering `span` map units centred on
+// (cx, cy). Every faction-owned starbase spreads a Gaussian glow (TERR_SIGMA units, heavier with starbase level).
+// PUSH-BACK (owner 2026-11-23: an unowned region read as its neighbour's, e.g. Ledgerlight's region as Ustur): a region
+// in which NO faction holds a starbase is neutral ground. Its starbases push the glow back: at each texel the weights
+// are scaled by k = 1 - (1 - m) * near, m = sigmoid((dN - dO) / TERR_PUSH_SOFT), dN / dO = distance to the nearest
+// pushing / faction-owned starbase, near = 1 within TERR_PUSH_R0 of a pushing starbase falling to 0 at TERR_PUSH_R1.
+// So the border between owned and neutral ground runs midway between their starbases, and empty space is untouched.
+// The moment a faction takes a starbase in the region it stops pushing (it is no longer neutral ground).
+export const TERR_SIGMA = 3.3, TERR_PUSH_SOFT = 0.35, TERR_PUSH_R0 = 2, TERR_PUSH_R1 = 3.5;
+const TERR_FA = ['mud', 'oni', 'ustur'];
+// the starbases that push back: unaligned, with a region id, in a region where no faction owns a starbase
+export function territoryPushers(systems) {
+  const list = (systems || []).filter((s) => s && num(s.x) && num(s.y));
+  const ownedRegions = new Set(list.filter((s) => TERR_FA.includes(s.f) && s.r != null).map((s) => s.r));
+  return list.filter((s) => !TERR_FA.includes(s.f) && s.r != null && !ownedRegions.has(s.r));
+}
+export function territoryField(systems, tex, span, cx, cy) {
+  const n = tex * tex, W = [new Float32Array(n), new Float32Array(n), new Float32Array(n)];
+  const px = tex / span, sigma = TERR_SIGMA * px, R = Math.ceil(sigma * 3), inv = 1 / (2 * sigma * sigma);
+  const gx = (x) => (x - (cx - span / 2)) * px, gy = (y) => (y - (cy - span / 2)) * px;
+  const owned = [];
+  for (const s of systems || []) {
+    if (!s || !num(s.x) || !num(s.y)) continue;
+    const fi = TERR_FA.indexOf(s.f);
+    if (fi < 0) continue;
+    const sx = gx(s.x), sy = gy(s.y), wt = 0.6 + (s.lvl || 0) * 0.4, arr = W[fi];
+    owned.push(sx, sy);
+    for (let j = Math.max(0, Math.floor(sy - R)); j <= Math.min(tex - 1, Math.ceil(sy + R)); j++) {
+      const dy = j + 0.5 - sy;
+      for (let i = Math.max(0, Math.floor(sx - R)); i <= Math.min(tex - 1, Math.ceil(sx + R)); i++) {
+        const dx = i + 0.5 - sx;
+        arr[j * tex + i] += wt * Math.exp(-(dx * dx + dy * dy) * inv);
+      }
+    }
+  }
+  const push = territoryPushers(systems);
+  if (!push.length || !owned.length) return W;
+  // nearest pushing starbase per texel, only within reach R1 (texels beyond it keep their glow)
+  const r1 = TERR_PUSH_R1 * px, r0 = TERR_PUSH_R0 * px, RP = Math.ceil(r1), dN = new Float32Array(n).fill(Infinity);
+  for (const s of push) {
+    const sx = gx(s.x), sy = gy(s.y);
+    for (let j = Math.max(0, Math.floor(sy - RP)); j <= Math.min(tex - 1, Math.ceil(sy + RP)); j++) {
+      const dy = j + 0.5 - sy;
+      for (let i = Math.max(0, Math.floor(sx - RP)); i <= Math.min(tex - 1, Math.ceil(sx + RP)); i++) {
+        const dx = i + 0.5 - sx, d = Math.sqrt(dx * dx + dy * dy), k = j * tex + i;
+        if (d < dN[k]) dN[k] = d;
+      }
+    }
+  }
+  const soft = TERR_PUSH_SOFT * px;
+  for (let k = 0; k < n; k++) {
+    const dn = dN[k];
+    if (!(dn < r1)) continue;
+    if (!(W[0][k] > 0 || W[1][k] > 0 || W[2][k] > 0)) continue;
+    const x = (k % tex) + 0.5, y = Math.floor(k / tex) + 0.5;
+    let d2 = Infinity;
+    for (let o = 0; o < owned.length; o += 2) { const dx = owned[o] - x, dy = owned[o + 1] - y, q = dx * dx + dy * dy; if (q < d2) d2 = q; }
+    const m = 1 / (1 + Math.exp(-(dn - Math.sqrt(d2)) / soft));
+    const t = Math.min(1, Math.max(0, (dn - r0) / (r1 - r0))), near = 1 - t * t * (3 - 2 * t);
+    const scale = 1 - (1 - m) * near;
+    W[0][k] *= scale; W[1][k] *= scale; W[2][k] *= scale;
+  }
+  return W;
+}
