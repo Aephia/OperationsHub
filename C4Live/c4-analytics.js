@@ -104,7 +104,7 @@
         var bySize = Object.keys(sizes).sort(function (a, b) { return sizeRank(a) - sizeRank(b) || (a < b ? -1 : 1); }).map(function (k) {
             var list = sizes[k], st = stats(list.map(function (r) { return r.yps; }));
             var cs = stats(list.filter(function (r) { return r.ypc != null; }).map(function (r) { return r.ypc; }));
-            return { size: k, n: st.n, min: st.min, q1: st.q1, med: st.med, q3: st.q3, max: st.max, crew: cs };
+            return { size: k, n: st.n, min: st.min, q1: st.q1, med: st.med, q3: st.q3, max: st.max, crew: cs, day: sum(list.map(function (r) { return r.ups; })) * DAY };
         });
         var scatter = rows.map(function (r, i) { return { n: r.n, fa: r.fa, ships: r.ships, yps: r.yps, k: 'f' + i }; });
         rows.forEach(function (r, i) { r.k = 'f' + i; });
@@ -158,6 +158,9 @@
                 stakes: median(vals(g, function (o) { return o.stakes; })),
                 ups: median(vals(g, function (o) { return o.ups; })),
                 atlas: median(vals(g, function (o) { return o.atlas; })),
+                // the same five figures added up over the rank's players; mining as units a day (rate x 86,400)
+                tot: { fleets: sum(vals(g, function (o) { return o.fleets; })), ships: sum(vals(g, function (o) { return o.ships; })), stakes: sum(vals(g, function (o) { return o.stakes; })),
+                    ups: sum(vals(g, function (o) { return o.ups; })) * DAY, atlas: sum(vals(g, function (o) { return o.atlas; })) },
                 lvl: median(lv), lvls: lv.slice().sort(function (a, b) { return a - b; }), skills: skillsOf(g)
             };
         });
@@ -404,7 +407,7 @@
         mrows.forEach(function (r) { if (r.pure) { (byModel[r.pure] = byModel[r.pure] || []).push(r); R.pureFleets++; } else R.mixed++; });
         var items = Object.keys(byModel).map(function (k) {
             var l = byModel[k];
-            return { kind: 'model', model: k, label: shortModel(k), v: median(l.map(function (r) { return r.yps; })), n: l.length,
+            return { kind: 'model', model: k, label: shortModel(k), v: median(l.map(function (r) { return r.yps; })), n: l.length, day: sum(l.map(function (r) { return r.ups; })) * DAY,
                 list: l.map(function (r) { return { id: r.a, kind: 'fleet', name: r.n, owner: r.owner, o: r.o, v: r.yps }; }) };
         });
         var tiers = dict();
@@ -418,12 +421,13 @@
         });
         Object.keys(tiers).forEach(function (k) {
             var l = tiers[k], it = { kind: 'tier', tier: Number(k), label: 'tier ' + k, v: median(l.map(function (e) { return e.v; })), n: l.length, list: l, ext: [] };
+            it.day = sum(l.map(function (e) { return e.v; })) * DAY;   // every stake of the tier together, units a day
             // one row per exact number of extractors found on this tier's stakes (0, 1, 2, 3, 4, ...), fewest first
             var byN = dict();
             l.forEach(function (e) { if (e.ext == null) return; var key = e.ext; (byN[key] = byN[key] || []).push(e); });
             Object.keys(byN).map(Number).sort(function (a, b) { return a - b; }).forEach(function (n) {
                 var sub = byN[n];
-                it.ext.push({ kind: 'ext', ext: n, label: n === 0 ? 'no extractor' : n === 1 ? '1 extractor' : n + ' extractors', v: median(sub.map(function (e) { return e.v; })), n: sub.length, list: sub });
+                it.ext.push({ kind: 'ext', ext: n, label: n === 0 ? 'no extractor' : n === 1 ? '1 extractor' : n + ' extractors', v: median(sub.map(function (e) { return e.v; })), n: sub.length, day: sum(sub.map(function (e) { return e.v; })) * DAY, list: sub });
             });
             items.push(it);
         });
@@ -503,6 +507,12 @@
         var all = el && typeof el.querySelector === 'function' ? el.querySelector('[data-an-foldall]') : null;
         if (all) { var any = SECTIONS.some(function (s) { return !isFolded(s); }); all.textContent = any ? 'Collapse all' : 'Expand all'; all.setAttribute('aria-pressed', any ? 'false' : 'true'); }
     }
+    // what the median charts draw: 'med' = the median of the group, 'day' = the group's total a day at the rate of the read.
+    // Kept for the page's lifetime like the display modes; nothing is stored on the visitor's PC.
+    var stat = 'med';
+    function isDay() { return stat === 'day'; }
+    function setStat(v) { if (v === 'med' || v === 'day') stat = v; }
+    function getStat() { return stat; }
     function isPct(id) { return modes[id] === 'pct'; }
     function setMode(m) { if (m !== 'pct' && m !== 'num') return; SHARE_CARDS.forEach(function (id) { modes[id] = m; }); }
     function getMode() {
@@ -544,8 +554,8 @@
         var pt = o.pct > 0 ? o.pct : 0;
         var shr = function (r) { return pt ? r.v / pt * 100 : r.v; };
         var vtx = function (r) { return pt ? pctTxt(shr(r)) : fmt(r.v); };
-        var labW = maxLabelPx(rows, W, 0.45), valW = 6;
-        rows.forEach(function (r) { valW = Math.max(valW, (vtx(r) + (r.tag ? ' ' + r.tag : '')).length * 6.2 + 8); });
+        var labW = maxLabelPx(rows, W, 0.45), valW = 6, cw = o.cw > 0 ? o.cw : 6.2;   // o.cw: px kept per character of the value text
+        rows.forEach(function (r) { valW = Math.max(valW, (vtx(r) + (r.tag ? ' ' + r.tag : '')).length * cw + 8); });
         var plotW = Math.max(40, W - labW - valW), max = 0;
         rows.forEach(function (r) { max = Math.max(max, shr(r)); });
         var rowH = 22, H = rows.length * rowH + 4, b = '';
@@ -688,21 +698,28 @@
     }
 
     // ship models and stake tiers on one linear axis from zero. rows: model.compare.rate.rows. Every row is one hit area keyed to its card.
-    function rateBars(ctx, rows) {
+    function rateBars(ctx, rows, day) {
         var W = ctx.W, IND = 14, rowH = 22, H = rows.length * rowH + 4, b = '';
-        var labW = maxLabelPx(rows.map(function (r) { return { label: r.label + (r.kind === 'ext' ? '    ' : '') }; }), W, 0.5), valW = 6, max = 0;
-        var vt = function (r) { return fnum(r.v) + ' n=' + r.n; };
-        rows.forEach(function (r) { valW = Math.max(valW, vt(r).length * 6.2 + 8); max = Math.max(max, r.v); });
+        var labW = maxLabelPx(rows.map(function (r) { return { label: r.label + (r.kind === 'ext' ? '    ' : '') }; }), W, day ? 0.36 : 0.5), valW = 6, max = 0;   // daily rows carry longer text: the names give way
+        var val = function (r) { return day ? r.day : r.v; };
+        if (day) {   // largest daily total first; a tier keeps its extractor rows under it
+            var groups = [];
+            rows.forEach(function (r) { if (r.kind === 'ext' && groups.length) groups[groups.length - 1].push(r); else groups.push([r]); });
+            groups.sort(function (a, b) { return b[0].day - a[0].day || (a[0].label < b[0].label ? -1 : a[0].label > b[0].label ? 1 : 0); });
+            rows = []; groups.forEach(function (g) { g.forEach(function (r) { rows.push(r); }); });
+        }
+        var vt = function (r) { return day ? kfmt(val(r)) + ' med ' + kfmt(r.v * DAY) + ', n=' + r.n : fnum(r.v) + ' n=' + r.n; };
+        rows.forEach(function (r) { valW = Math.max(valW, vt(r).length * (day ? DAYCW : 6.2) + 8); max = Math.max(max, val(r)); });
         var plotW = Math.max(40, W - labW - valW);
         rows.forEach(function (r, i) {
-            var y = 2 + i * rowH, len = max > 0 ? r.v / max * plotW : 0, ind = r.kind === 'ext' ? IND : 0;
-            var tip = (r.kind === 'model' ? r.model : r.label) + ': median ' + fnum(r.v) + ' per second per ' + (r.kind === 'model' ? 'ship' : 'stake') + ', ' + plural(r.n, r.kind === 'model' ? 'fleet' : 'stake');
+            var y = 2 + i * rowH, len = max > 0 ? val(r) / max * plotW : 0, ind = r.kind === 'ext' ? IND : 0;
+            var tip = (r.kind === 'model' ? r.model : r.label) + ': ' + (day ? fnum(r.day) + ' a day in total, median ' + fnum(r.v * DAY) + ' a day per ' : 'median ' + fnum(r.v) + ' per second per ') + (r.kind === 'model' ? 'ship' : 'stake') + ', ' + plural(r.n, r.kind === 'model' ? 'fleet' : 'stake');
             b += tx(2 + ind, y + 14, clip(r.label, labW - 8 - ind), 'an-lab', 'start', ctx);
-            b += hbar(labW, y + 3, Math.max(len, r.v > 0 ? 2 : 0), 14, 1, r.kind === 'model' ? 'f-s1' : 'f-s2', '', ctx);
+            b += hbar(labW, y + 3, Math.max(len, val(r) > 0 ? 2 : 0), 14, 1, r.kind === 'model' ? 'f-s1' : 'f-s2', '', ctx);
             b += tx(labW + Math.max(len, 0) + 6, y + 14, vt(r), 'an-val', 'start', ctx);
             b += '<rect class="an-hit" data-an-k="' + r.k + '" tabindex="0" role="button" aria-label="' + ctx.esc(tip) + '" x="0" y="' + y + '" width="' + W + '" height="' + rowH + '"><title>' + ctx.esc(tip) + '</title></rect>';
         });
-        return svg(ctx, W, H, 'Median units per second: ship models and claim stake tiers', '<line class="an-axis" x1="' + labW + '" y1="0" x2="' + labW + '" y2="' + H + '"/>' + b);
+        return svg(ctx, W, H, day ? 'Total units per day: ship models and claim stake tiers' : 'Median units per second: ship models and claim stake tiers', '<line class="an-axis" x1="' + labW + '" y1="0" x2="' + labW + '" y2="' + H + '"/>' + b);
     }
 
     // ---------------------------------------------------------------- detail cards (pure: model + key -> html or null)
@@ -786,6 +803,16 @@
         };
         return '<span class="c4an-tg" role="group" aria-label="Show ' + what + ' as">' + one('num', '#', 'Show counts') + one('pct', '%', 'Show percent of the total') + '</span>';
     }
+    // the Median / Daily total pair in the bar above the sections: one press redraws the three charts that have a total
+    // (yield by flagship size, what each rank holds, ship models against stake tiers); the other medians stay medians
+    function statToggle() {
+        var one = function (v, text, name) {
+            return '<button type="button" class="c4an-tgb" data-an-stat="' + v + '" aria-pressed="' + (stat === v ? 'true' : 'false') + '" title="' + name + '">' + text + '</button>';
+        };
+        return '<span class="c4an-tg" role="group" aria-label="Median or daily total">' + one('med', 'Median', 'Every chart shows the median of each group') + one('day', 'Daily total', 'Three charts show totals instead: yield by flagship size, what each rank holds, ship models against stake tiers') + '</span>';
+    }
+    var DAYCW = 7.1;   // px kept per character of a daily row's text ("92.2M med 536K, n=164"), the width the font draws at
+    var DAYNOTE = 'a day is the rate in this read times 86,400 seconds, not a measured day';
     // a count chart that can be a share chart. rows as for barList; o = barList options; pctOn = this card is in percent mode;
     // total = what 100 % is; unit = words for the caption ("94 claim stakes"); top = a top-N list (caption then gives the coverage)
     function shareChart(ctx, pctOn, title, rows, o, cap, total, unit, top) {
@@ -813,7 +840,10 @@
         var base = plural(m.n, 'mining fleet') + ' with a yield, ' + plural(m.fleetsRead, 'fleet') + ' read';
         if (!m.n) return section('mining', 'Mining rate per ship', 'Units per second a fleet mines, divided by its ships.',
             [card('Mining yield', note('No mining fleet has a measured yield in this read (' + plural(m.fleetsRead, 'fleet') + ' read).'))]);
-        var c1 = chart('Units per second per ship',
+        var c1 = isDay() ? chart('Units per day, all fleets of the size',
+            barList(ctx, m.bySize.map(function (s) { return { label: s.size, v: s.day, tag: 'med ' + kfmt(s.med * DAY) + ', n=' + s.n, tip: s.size + ': ' + fnum(s.day) + ' a day in total from ' + plural(s.n, 'fleet') + '; median ' + fnum(s.med * DAY) + ' a day per ship' }; }), { fmt: kfmt, cw: DAYCW, label: 'Total units per day by flagship size' }),
+            'Total units per day mined by every fleet of that flagship size (n = fleets); med = the median per ship a day; ' + DAYNOTE + '; ' + base + '.')
+            : chart('Units per second per ship',
             rangeRows(ctx, m.bySize.map(function (s) { return { label: s.size, n: s.n, min: s.min, q1: s.q1, med: s.med, q3: s.q3, max: s.max }; }), { label: 'Yield per ship by flagship size' }),
             'Dot = median, bar = middle half, line = full range, log scale. One row per flagship size; ' + base + '.');
         var crewRows = m.bySize.filter(function (s) { return s.crew; }).map(function (s) { return { label: s.size, n: s.crew.n, min: s.crew.min, q1: s.crew.q1, med: s.crew.med, q3: s.crew.q3, max: s.crew.max }; });
@@ -855,11 +885,17 @@
         var c1 = shareChart(ctx, isPct('council-rank'), '', c.ranks.map(function (r) { return { label: 'rank ' + r.rank, v: r.n, tip: 'rank ' + r.rank + ': ' + plural(r.n, 'player') }; }), { cls: 'f-s7', fmt: function (v) { return String(v); }, label: 'Players per council rank' },
             'Players at each council rank; ' + base + '.', c.ranked, plural(c.ranked, 'ranked player'));
         var metrics = [['fleets', 'Fleets'], ['ships', 'Ships'], ['stakes', 'Claim stakes'], ['ups', 'Mining units per second'], ['atlas', 'ATLAS held']];
+        var D = isDay();
         var small = metrics.map(function (mm) {
-            var rows = c.ranks.filter(function (r) { return r[mm[0]] != null; }).map(function (r) { return { label: 'rank ' + r.rank, v: r[mm[0]], tag: 'n=' + r.n, tip: 'rank ' + r.rank + ' median ' + mm[1] + ': ' + fnum(r[mm[0]]) }; });
-            return '<h5 class="c4an-ch">' + mm[1] + '</h5>' + (rows.length ? barList(ctx, rows, { cls: 'f-s7', label: 'Median ' + mm[1] + ' per rank' }) : note('No value in this read.'));
+            var name = D && mm[0] === 'ups' ? 'Mining units per day' : mm[1];
+            var rows = c.ranks.filter(function (r) { return r[mm[0]] != null; }).map(function (r) {
+                var md = r[mm[0]] * (mm[0] === 'ups' ? DAY : 1);   // the median per player; mining as units a day
+                return D ? { label: 'rank ' + r.rank, v: r.tot[mm[0]], tag: 'med ' + kfmt(md) + ', n=' + r.n, tip: 'rank ' + r.rank + ' total ' + name + ': ' + fnum(r.tot[mm[0]]) + ' (median per player ' + fnum(md) + (mm[0] === 'ups' ? ' a day' : '') + ')' }
+                    : { label: 'rank ' + r.rank, v: r[mm[0]], tag: 'n=' + r.n, tip: 'rank ' + r.rank + ' median ' + mm[1] + ': ' + fnum(r[mm[0]]) };
+            });
+            return '<h5 class="c4an-ch">' + name + '</h5>' + (rows.length ? barList(ctx, rows, { cls: 'f-s7', fmt: D ? kfmt : fnum, cw: D ? DAYCW : 0, label: (D ? 'Total ' : 'Median ') + name + ' per rank' }) : note('No value in this read.'));
         }).join('');
-        var c2 = chart('Median per player', small, 'Each bar is the median across the players at that rank; a player with none counts as 0 (n = players); ' + base + '.');
+        var c2 = D ? chart('Total per rank', small, 'Each bar is the total across the players at that rank (n = players); med = the median per player; for mining, ' + DAYNOTE + '; ' + base + '.') : chart('Median per player', small, 'Each bar is the median across the players at that rank; a player with none counts as 0 (n = players); ' + base + '.');
         // every skill the chain stores a level for: one grid per skill, players per level (columns) at each rank (rows)
         var grids = SKILLS.map(function (sk) {
             var rw = c.ranks.filter(function (r) { return r.skills[sk[0]].length; });
@@ -947,7 +983,11 @@
         else {
             var tail = R.noStakes ? ' No claim stakes in this read, so only ship rows are drawn.' : R.noOut ? ' Stake output ' + FRESH + ', so no stake rows are drawn.' : '';
             var extNote = !R.noStakes && !R.noOut && R.noBl ? ' The extractor rows need the building list (' + FRESH + ').' : '';
-            rc = chart('', legend([['f-s1', 'Ship models, per ship'], ['f-s2', 'Claim stake tiers, per stake']]) + rateBars(ctx, R.rows),
+            if (isDay()) rc = chart('', legend([['f-s1', 'Ship models, fleets made only of the model'], ['f-s2', 'Claim stake tiers, all stakes of the tier']]) + rateBars(ctx, R.rows, true),
+                'Ship row: total units per day from the mining fleets made only of that model (n = fleets); ' + plural(R.mixed, 'mining fleet') + ' with more than one model or no composition read ' + (R.mixed === 1 ? 'is' : 'are') + ' counted, not drawn. ' +
+                'Stake row: total units per day from the stakes of that tier with any production (n = stakes); indented rows split a tier by the extractors installed. med = the median per ship or per stake a day. One linear axis from zero; ' + DAYNOTE + '.' +
+                like + tail + extNote + ' ' + base + ' read.');
+            else rc = chart('', legend([['f-s1', 'Ship models, per ship'], ['f-s2', 'Claim stake tiers, per stake']]) + rateBars(ctx, R.rows),
                 'Ship row: median units per second per ship over the mining fleets made only of that model (n = fleets); ' + plural(R.mixed, 'mining fleet') + ' with more than one model or no composition read ' + (R.mixed === 1 ? 'is' : 'are') + ' counted, not drawn. ' +
                 'Stake row: median units per second per stake over the stakes with any production (n = stakes), the production rate the chain stores for each stake; indented rows split a tier by the extractors installed. One linear axis from zero.' +
                 like + tail + extNote + ' ' + base + ' read.');
@@ -1079,7 +1119,7 @@
         } else {
             var anyOpen = SECTIONS.some(function (s) { return !isFolded(s); });
             html = '<div class="c4an-bar"><button type="button" class="c4an-fa" data-an-foldall="1" aria-pressed="' + (anyOpen ? 'false' : 'true') + '">' + (anyOpen ? 'Collapse all' : 'Expand all') + '</button>' +
-                '<span class="c4an-bl">All charts</span>' + toggle(getMode(), 'data-an-all="1"', 'all charts') + '</div>' +
+                statToggle() + '<span class="c4an-bg"><span class="c4an-bl">All charts</span>' + toggle(getMode(), 'data-an-all="1"', 'all charts') + '</span></div>' +
                 secMining(ctx, model) + secCouncil(ctx, model) + secStakes(ctx, model) + secCompare(ctx, model) + secEconomy(ctx, model) + secCrafting(ctx, model);
         }
         if (openEl === el) openEl = null;   // the redraw replaces the card host: nothing is open any more
@@ -1192,6 +1232,17 @@
         if (!t || typeof t.closest !== 'function') return;
         var b = t.closest('[data-an-mode]');
         if (!b) {
+            var sb = t.closest('[data-an-stat]');
+            if (sb) {
+                closePop(false);
+                var sv = sb.getAttribute('data-an-stat'), s0 = el._c4an;
+                if ((sv !== 'med' && sv !== 'day') || sv === stat) return;
+                stat = sv;
+                if (s0) { var o3 = {}; Object.keys(s0.opts || {}).forEach(function (k) { o3[k] = s0.opts[k]; }); o3.reducedMotion = true; render(el, s0.model, o3); }
+                var nsb = typeof el.querySelector === 'function' ? el.querySelector('[data-an-stat="' + sv + '"]') : null;
+                if (nsb && typeof nsb.focus === 'function') nsb.focus();
+                return;
+            }
             var fa = t.closest('[data-an-foldall]');
             if (fa) { closePop(false); var shut = SECTIONS.some(function (s) { return !isFolded(s); }); SECTIONS.forEach(function (s) { setFolded(el, s, shut); }); return; }
             // the header band (and its chevron button) folds its section
@@ -1220,7 +1271,7 @@
         }
     }
 
-    var api = { version: '1', kfmt: kfmt, setFolded: setFolded, isFolded: isFolded, build: build, render: render, sections: SECTIONS.slice(), setMode: setMode, getMode: getMode, shareCards: SHARE_CARDS.slice(), card: cardHtml, shortModel: shortModel, close: function () { closePop(false); } };
+    var api = { version: '1', kfmt: kfmt, setFolded: setFolded, isFolded: isFolded, build: build, render: render, sections: SECTIONS.slice(), setMode: setMode, getMode: getMode, setStat: setStat, getStat: getStat, shareCards: SHARE_CARDS.slice(), card: cardHtml, shortModel: shortModel, close: function () { closePop(false); } };
     if (typeof window === 'undefined' && typeof module !== 'undefined' && module.exports) module.exports = api;
     else root.C4Analytics = api;
 })(typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this));

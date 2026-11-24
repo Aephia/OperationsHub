@@ -651,6 +651,12 @@ the live chain; every other module reads the static uber-export. It has two halv
     row per exact number of extractors found (no extractor, 1, 2, 3, 4, ...; no "3 or more" bucket). Stake figures are
     the rates the chain stores for each stake; against ships only resources that ships also mine are counted, and
     the caption says what was left out. Captions say what is counted and from how many rows; they give no verdict.
+  - **Median / Daily total switch** (2026-11-24): one pair in the bar above the Analytics sections. *Median* is the
+    default; *Daily total* redraws the three median charts as totals - units per day by flagship size, the totals each
+    council rank holds (mining as units per day), and ship models against stake tiers (rows re-ordered largest total
+    first). Each daily row also prints its median as a daily figure (`92.2M med 536K, n=164`: per ship, per player or
+    per stake). A day is the rate in the read times 86,400 seconds. The totals are
+    summed once in `build()`; the choice lives in memory only (`C4Analytics.setStat/getStat`), nothing is stored.
 
 The chain keeps **no combat log and no mining history**; both are derived by diffing hourly reads.
 - **Combat**: a combat stamp means a fleet *took part*; both sides share the second.

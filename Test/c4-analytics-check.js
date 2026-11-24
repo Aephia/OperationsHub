@@ -484,6 +484,89 @@ function suite(A, quiet) {
         ok('no stakes: compare says so', n.innerHTML.includes('No claim stakes in this read.') );
         ok('no stakes: owners-by-what-they-run still drawn', n.innerHTML.includes('Owners by ships and stakes'));
     });
+    safe('median / daily total switch', () => {
+        // totals re-derived here from the raw fixture rows, with no call into the module
+        const SL = JSON.parse(JSON.stringify(F.L));
+        // the one fleet with the best yield per ship is its own model (highest median, small total); every other fleet is the common model
+        const mine0 = SL.fleets.filter(f => f && f.s && f.s.kind === 'mining' && f.mine && f.mine.ups > 0 && f.ships > 0);
+        const best = mine0.slice().sort((a, b) => b.mine.ups / b.ships - a.mine.ups / a.ships)[0];
+        SL.fleets.forEach(f => { if (f && f.s && f.s.kind === 'mining') f.types = { [(f === best ? 'Solo' : 'Common') + ' Default Config']: f.ships }; });
+        // ATLAS in the hundreds of thousands (a median prints in full, a total as K / M); one more tier whose only stake has no building list
+        SL.owners.forEach(o => { if (isNum(o.atlas)) o.atlas *= 1500; });
+        SL.stakes.push({ a: 'sa9', o: 'C', st: 'active', tier: 2, b: 0, crew: 1, body: 'p2', sysName: 'Delta', pw: { gen: 1, use: 1 }, cap: { used: 1, total: 10 }, out: [{ r: 'Iron Ore', ps: 0.7 }], use: [] });
+        const DAYS = 86400, near = (a, b) => Math.abs(a - b) <= 1e-6 * Math.max(1, Math.abs(a), Math.abs(b));
+        const mfl = SL.fleets.filter(f => f && f.s && f.s.kind === 'mining' && f.mine && f.mine.ups > 0 && f.ships > 0);
+        const bySize = {}; for (const f of mfl) bySize[f.flagSize || 'unknown'] = (bySize[f.flagSize || 'unknown'] || 0) + f.mine.ups * DAYS;
+        const byRank = {}; for (const o of SL.owners) { if (!isNum(o.rank)) continue; const t = byRank[o.rank] = byRank[o.rank] || { fleets: 0, ships: 0, stakes: 0, ups: 0, atlas: 0 }; for (const k of Object.keys(t)) if (isNum(o[k])) t[k] += o[k] * (k === 'ups' ? DAYS : 1); }
+        A.setStat('med');
+        const m = A.build(SL, F.B);
+        ok('stat: positive control, the fixture has mining fleets in more than one size and ranked players', Object.keys(bySize).length > 1 && Object.keys(byRank).length > 1, Object.keys(bySize).length + ' sizes, ' + Object.keys(byRank).length + ' ranks');
+        ok('stat: daily total per flagship size = sum of fleet yield x 86,400', m.mining.bySize.length === Object.keys(bySize).length && m.mining.bySize.every(s => near(s.day, bySize[s.size])), m.mining.bySize.map(s => s.size + ':' + s.day).join());
+        ok('stat: per-rank totals = the sum over the rank\'s players (mining x 86,400)', m.council.ranks.every(r => ['fleets', 'ships', 'stakes', 'ups', 'atlas'].every(k => near(r.tot[k], byRank[r.rank][k]))), JSON.stringify(m.council.ranks.map(r => r.tot)));
+        const rows = m.compare.rate.rows;
+        ok('stat: positive control, the rate chart has ship and tier rows', rows.some(r => r.kind === 'model') && rows.some(r => r.kind === 'tier'), rows.map(r => r.kind).join());
+        ok('stat: a ship model row totals its own fleets, a tier row its own stakes', rows.every(r => near(r.day, r.list.reduce((t, e) => t + (r.kind === 'model' ? mfl.find(f => f.a === e.id).mine.ups : e.v), 0) * DAYS)), rows.map(r => r.label + ':' + r.day).join());
+        ok('stat: the extractor rows of a tier add up to no more than the tier', rows.filter(r => r.kind === 'tier').every(t => t.ext.reduce((a, x) => a + x.day, 0) <= t.day * (1 + 1e-9)));
+        ok('stat: positive control, a tier whose stakes have no extractor count still has a total', rows.some(r => r.kind === 'tier' && r.day > 0 && r.list.some(e => e.ext == null)), rows.filter(r => r.kind === 'tier').map(r => r.label + ':' + r.day).join());
+        // ---- default draws medians, with the pair in the top bar
+        const fakeEl = () => ({ handlers: [], addEventListener(t, f) { if (t === 'click') this.handlers.push(f); } });
+        const press = (e, v) => { const btn = { getAttribute: k => (k === 'data-an-stat' ? v : null) }; e.handlers.forEach(h => h({ target: { closest: sel => (sel === '[data-an-stat]' ? btn : null) } })); };
+        const el = fakeEl(); A.render(el, m, { width: 900 });
+        const h0 = el.innerHTML, on = (h, v) => new RegExp('data-an-stat="' + v + '" aria-pressed="true"').test(h);
+        ok('stat: default is median (pair in the top bar, Median pressed)', A.getStat() === 'med' && on(h0, 'med') && !on(h0, 'day') && h0.indexOf('data-an-stat') < h0.indexOf('<section'));
+        ok('stat: median mode draws the median charts and no total chart', h0.includes('Median per player') && h0.includes('Units per second per ship') && !h0.includes('Total per rank') && !h0.includes('Units per day, all fleets of the size') && h0.includes('>Units per second per ship</h5>'));
+        // the council chart on its own: headings and the text on every bar, against this file's own sums and medians
+        const councilOf = (h, title) => { const i = h.indexOf('<h5 class="c4an-ch">' + title + '</h5>'); return i < 0 ? '' : h.slice(i, h.indexOf('</figure>', i)); };
+        const h5Of = c => [...c.matchAll(/<h5 class="c4an-ch">([^<]*)<\/h5>/g)].map(x => x[1]);
+        const barsOf = c => [...c.matchAll(/class="c4an-tx an-val"[^>]*>([^<]*)</g)].map(x => x[1]);
+        const KEYS = ['fleets', 'ships', 'stakes', 'ups', 'atlas'], rankIds = Object.keys(byRank).map(Number).sort((a, b) => a - b);
+        const nOf = r => SL.owners.filter(o => o.rank === r).length, plain = v => (Math.abs(v) >= 1000 ? Math.round(v).toLocaleString('en-US') : String(v));
+        const c0 = councilOf(h0, 'Median per player');
+        const medAtlas = rankIds.map(r => plain(q7(SL.owners.filter(o => o.rank === r).map(o => o.atlas), 0.5)) + ' n=' + nOf(r));
+        ok('stat: median mode prints an ATLAS median in full, not as K (' + medAtlas[0] + ')', /\d,\d{3} n=/.test(medAtlas[0]) && barsOf(c0).slice(-rankIds.length).join('|') === medAtlas.join('|'), barsOf(c0).slice(-rankIds.length).join('|') + ' vs ' + medAtlas.join('|'));
+        // ---- one press: every median chart becomes its daily total
+        press(el, 'day');
+        const h1 = el.innerHTML;
+        ok('stat: a press on Daily total redraws with it pressed', A.getStat() === 'day' && on(h1, 'day') && !on(h1, 'med'));
+        ok('stat: daily mode draws the totals in place of the medians', h1.includes('Total per rank') && h1.includes('Units per day, all fleets of the size') && h1.includes('Total units per day: ship models and claim stake tiers') && !h1.includes('Median per player') && !h1.includes('>Units per second per ship</h5>'));
+        const c1 = councilOf(h1, 'Total per rank');
+        ok('stat: daily council headings: only mining is per day', h5Of(c1).join('|') === 'Total per rank|Fleets|Ships|Claim stakes|Mining units per day|ATLAS held', h5Of(c1).join('|'));
+        const medRank = (r, k) => q7(SL.owners.filter(o => o.rank === r).map(o => o[k]), 0.5) * (k === 'ups' ? DAYS : 1);
+        const wantBars = []; KEYS.forEach(k => rankIds.forEach(r => wantBars.push(A.kfmt(byRank[r][k]) + ' med ' + A.kfmt(medRank(r, k)) + ', n=' + nOf(r))));
+        ok('stat: positive control, a rank\'s median mining a day is not its median a second', medRank(rankIds[0], 'ups') === 86400 * q7(SL.owners.filter(o => o.rank === rankIds[0]).map(o => o.ups), 0.5) && medRank(rankIds[0], 'ups') > 0);
+        ok('stat: positive control, a rank total differs from its median', byRank[rankIds[0]].fleets !== q7(SL.owners.filter(o => o.rank === rankIds[0]).map(o => o.fleets), 0.5));
+        ok('stat: daily council bars print each rank\'s total and its median per player (mining a day)', barsOf(c1).join('|') === wantBars.join('|'), barsOf(c1).join('|') + ' vs ' + wantBars.join('|'));
+        // the extractor rows stay under their own tier, fewest extractors first, after the re-order
+        const rateSvg = (() => { const i = h1.indexOf('aria-label="Total units per day: ship models and claim stake tiers"'); return i < 0 ? '' : h1.slice(i, h1.indexOf('</svg>', i)); })();
+        const drawn = [...rateSvg.matchAll(/data-an-k="(r\d+)"/g)].map(x => rows.find(r => r.k === x[1]));
+        let cur = null, grouped = drawn.length === rows.length && drawn.every(Boolean), lastExt = -1;
+        drawn.forEach(r => { if (!r) return; if (r.kind !== 'ext') { cur = r; lastExt = -1; return; } if (!cur || cur.kind !== 'tier' || cur.ext.indexOf(r) < 0 || r.ext <= lastExt) grouped = false; lastExt = r.ext; });
+        const tiersDrawn = drawn.filter(r => r && r.kind === 'tier');
+        ok('stat: positive control, a second tier\'s total falls between the first tier\'s extractor rows', tiersDrawn.length > 1 && tiersDrawn[0].ext.some(x => x.day > tiersDrawn[1].day) && tiersDrawn[0].ext.some(x => x.day < tiersDrawn[1].day), tiersDrawn.map(t => t.label + ':' + t.day + '[' + t.ext.map(x => x.day).join() + ']').join(' '));
+        ok('stat: daily extractor rows stay under their own tier, fewest first', grouped, drawn.map(r => r && r.k + ':' + r.kind).join());
+        const big = m.mining.bySize.slice().sort((a, b) => b.day - a.day)[0];
+        ok('stat: the largest size total is printed on its bar (' + A.kfmt(big.day) + ')', h1.includes('>' + A.kfmt(big.day) + ' med ' + A.kfmt(q7(mfl.filter(f => (f.flagSize || 'unknown') === big.size).map(f => f.mine.ups / f.ships), 0.5) * DAYS) + ', n=' + big.n + '<'), A.kfmt(big.day));
+        ok('stat: every daily caption says a day is the rate times 86,400', (h1.match(/a day is the rate in this read times 86,400 seconds, not a measured day/g) || []).length >= 3);
+        ok('stat: the daily view keeps the median in the hover text', /a day in total from \d+ fleets?; median /.test(h1) && /a day in total, median /.test(h1));
+        ok('stat: daily view has no NaN, Infinity, undefined, style= or <script', !/NaN|Infinity|undefined|style=|<script/.test(h1));
+        const topRate = rows.slice().sort((a, b) => b.day - a.day)[0];
+        const topTxt = '>' + A.kfmt(topRate.day) + ' med ' + A.kfmt(q7(topRate.list.map(e => e.v), 0.5) * DAYS) + ', n=' + topRate.n + '<';
+        ok('stat: the rate chart prints each row\'s daily total (' + A.kfmt(topRate.day) + ')', h1.includes(topTxt) && !h0.includes(topTxt) && rows.every(r => h1.includes('>' + A.kfmt(r.day) + ' med ' + A.kfmt(q7(r.list.map(e => e.v), 0.5) * DAYS) + ', n=' + r.n + '<')), topTxt);
+        const medOrder = rows.filter(r => r.kind !== 'ext').map(r => (r.kind === 'model' ? r.model : r.label));
+        const order = [...h1.matchAll(/aria-label="([^"]*?): [\d,.]+ a day in total, median/g)].map(x => x[1]);
+        const want = rows.filter(r => r.kind !== 'ext').slice().sort((a, b) => b.day - a.day).map(r => (r.kind === 'model' ? r.model : r.label));
+        ok('stat: positive control, the fixture\'s median order differs from its total order', medOrder.join('|') !== want.join('|'), medOrder.join('|'));
+        ok('stat: daily rate rows run largest total first', order.filter(l => want.includes(l)).join('|') === want.join('|'), order.join('|') + ' vs ' + want.join('|'));
+        // ---- it survives a redraw, ignores junk, and the # / % modes are untouched
+        const el2 = fakeEl(); A.render(el2, m, { width: 360 });
+        ok('stat: a redraw at another width keeps Daily total', on(el2.innerHTML, 'day') && el2.innerHTML.includes('Total per rank'));
+        press(el2, 'bogus'); A.setStat('bogus'); A.setStat(null);
+        ok('stat: an unknown value is ignored', A.getStat() === 'day');
+        ok('stat: the # / % mode is not changed by the switch', A.getMode() === 'num');
+        press(el2, 'med');
+        ok('stat: back to median restores the first drawing', A.getStat() === 'med' && (() => { const e3 = fakeEl(); A.render(e3, m, { width: 900 }); return e3.innerHTML === h0; })());
+        A.setStat('med');
+    });
     safe('percent toggle', () => {
         const fmtp = p => (p < 10 ? (Math.round(p * 10) / 10).toFixed(1) : String(Math.round(p))) + '%';
         const fakeEl = () => ({ handlers: [], addEventListener(t, f) { if (t === 'click') this.handlers.push(f); } });
@@ -952,6 +1035,27 @@ const MUTANTS = [
     ["pct: mode forgotten on render","function isPct(id) { return modes[id] === 'pct'; }","function isPct(id) { return false; }"],
     ["pct: decimal rule dropped (always whole)","(p < 10 ? (Math.round(p * 10) / 10).toFixed(1) : String(Math.round(p)))","String(Math.round(p))"],
     ["pct: top-N share taken of the rows shown","T.prod, fnum(T.prod)","s.prod.slice(0, 10).reduce(function (t, e) { return t + e.uph; }, 0), fnum(T.prod)"],
+    ["stat: daily total without the 86,400 (size)","crew: cs, day: sum(list.map(function (r) { return r.ups; })) * DAY };","crew: cs, day: sum(list.map(function (r) { return r.ups; })) };"],
+    ["stat: rank total is the median","tot: { fleets: sum(vals(g, function (o) { return o.fleets; }))","tot: { fleets: median(vals(g, function (o) { return o.fleets; }))"],
+    ["stat: rank mining total not per day","ups: sum(vals(g, function (o) { return o.ups; })) * DAY,","ups: sum(vals(g, function (o) { return o.ups; })),"],
+    ["stat: ship model total sums the per-ship yield","n: l.length, day: sum(l.map(function (r) { return r.ups; })) * DAY,","n: l.length, day: sum(l.map(function (r) { return r.yps; })) * DAY,"],
+    ["stat: tier total is the median","it.day = sum(l.map(function (e) { return e.v; })) * DAY;","it.day = it.v * DAY;"],
+    ["stat: switch forgotten on render","function isDay() { return stat === 'day'; }","function isDay() { return false; }"],
+    ["stat: any value accepted","if (v === 'med' || v === 'day') stat = v;","stat = v;"],
+    ["stat: the press does nothing","stat = sv;","void sv;"],
+    ["stat: daily bars still measure the median","var val = function (r) { return day ? r.day : r.v; };","var val = function (r) { return r.v; };"],
+    ["stat: daily council bars draw the median","return D ? { label: 'rank ' + r.rank, v: r.tot[mm[0]],","return D ? { label: 'rank ' + r.rank, v: r[mm[0]],"],
+    ["stat: extractor rows sorted loose among the models","if (r.kind === 'ext' && groups.length) groups[groups.length - 1].push(r); else groups.push([r]);","groups.push([r]);"],
+    ["stat: every council heading says per day","var name = D && mm[0] === 'ups' ? 'Mining units per day' : mm[1];","var name = D ? mm[1] + ' per day' : mm[1];"],
+    ["stat: median council bars printed as K","fmt: D ? kfmt : fnum, cw: D","fmt: kfmt, cw: D"],
+    ["stat: tier total skips stakes without an extractor count","it.day = sum(l.map(function (e) { return e.v; })) * DAY;","it.day = sum(l.filter(function (e) { return e.ext != null; }).map(function (e) { return e.v; })) * DAY;"],
+    ["stat: size median shown per second in the daily view","tag: 'med ' + kfmt(s.med * DAY) + ', n=' + s.n","tag: 'med ' + kfmt(s.med) + ', n=' + s.n"],
+    ["stat: rank mining median shown per second in the daily view","var md = r[mm[0]] * (mm[0] === 'ups' ? DAY : 1);","var md = r[mm[0]];"],
+    ["stat: rank count medians multiplied by a day","var md = r[mm[0]] * (mm[0] === 'ups' ? DAY : 1);","var md = r[mm[0]] * DAY;"],
+    ["stat: rate median shown per second in the daily view","' med ' + kfmt(r.v * DAY) + ', n=' + r.n","' med ' + kfmt(r.v) + ', n=' + r.n"],
+    ["stat: daily view drops the median","tag: 'med ' + kfmt(md) + ', n=' + r.n","tag: 'n=' + r.n"],
+    ["stat: daily rate rows left in median order","groups.sort(function (a, b) { return b[0].day - a[0].day || (a[0].label < b[0].label ? -1 : a[0].label > b[0].label ? 1 : 0); });","void groups;"],
+    ["stat: daily rate rows smallest total first","groups.sort(function (a, b) { return b[0].day - a[0].day","groups.sort(function (a, b) { return a[0].day - b[0].day"],
     ['script tag in output', "return '<div class=\"c4an-chart\">'", "return '<script></script><div class=\"c4an-chart\">'"]
 ];
 
