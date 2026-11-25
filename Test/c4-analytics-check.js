@@ -656,6 +656,20 @@ function suite(A, quiet) {
         const want = rows.filter(r => r.kind !== 'ext').slice().sort((a, b) => b.day - a.day).map(r => (r.kind === 'model' ? r.model : r.label));
         ok('stat: positive control, the fixture\'s median order differs from its total order', medOrder.join('|') !== want.join('|'), medOrder.join('|'));
         ok('stat: daily rate rows run largest total first', order.filter(l => want.includes(l)).join('|') === want.join('|'), order.join('|') + ' vs ' + want.join('|'));
+        // ---- the order pair on the daily card: largest median first on a press, back on the other
+        const pressSort = (e, v) => { const btn = { getAttribute: k => (k === 'data-an-rsort' ? v : null) }; e.handlers.forEach(h => h({ target: { closest: sel => (sel === '[data-an-rsort]' ? btn : null) } })); };
+        const sOn = (h, v) => new RegExp('data-an-rsort="' + v + '" aria-pressed="true"').test(h);
+        const orderOf = h => [...h.matchAll(/aria-label="([^"]*?): [\d,.]+ a day in total, median/g)].map(x => x[1]).filter(l => want.includes(l));
+        ok('sort: the pair is on the daily card only, total pressed by default', A.getRateSort() === 'day' && sOn(h1, 'day') && !sOn(h1, 'med') && !h0.includes('data-an-rsort') && /Rows run largest total first/.test(h1));
+        pressSort(el, 'med');
+        const h1m = el.innerHTML;
+        ok('sort: a press on Sort: median redraws largest median first', A.getRateSort() === 'med' && sOn(h1m, 'med') && orderOf(h1m).join('|') === medOrder.join('|') && /Rows run largest median first/.test(h1m), orderOf(h1m).join('|') + ' vs ' + medOrder.join('|'));
+        const drawnM = [...h1m.slice(h1m.indexOf('aria-label="Total units per day: ship models and claim stake tiers"')).split('</svg>')[0].matchAll(/data-an-k="(r\d+)"/g)].map(x => x[1]);
+        ok('sort: by median the rows are the model order (extractor rows under their tier), still daily totals on the bars', drawnM.join() === rows.map(r => r.k).join() && h1m.includes(topTxt), drawnM.join());
+        pressSort(el, 'bogus'); A.setRateSort('bogus');
+        ok('sort: an unknown value is ignored', A.getRateSort() === 'med');
+        pressSort(el, 'day');
+        ok('sort: a press on Sort: total puts the largest total first again', A.getRateSort() === 'day' && orderOf(el.innerHTML).join('|') === want.join('|'));
         // ---- it survives a redraw, ignores junk, and the # / % modes are untouched
         const el2 = fakeEl(); A.render(el2, m, { width: 360 });
         ok('stat: a redraw at another width keeps Daily total', on(el2.innerHTML, 'day') && el2.innerHTML.includes('Total per rank'));
@@ -1140,6 +1154,9 @@ const MUTANTS = [
     ["stat: ship model total sums the per-ship yield","n: l.length, day: sum(l.map(function (r) { return r.ups; })) * DAY,","n: l.length, day: sum(l.map(function (r) { return r.yps; })) * DAY,"],
     ["stat: tier total is the median","it.day = sum(l.map(function (e) { return e.v; })) * DAY;","it.day = it.v * DAY;"],
     ["stat: switch forgotten on render","function isDay() { return stat === 'day'; }","function isDay() { return false; }"],
+    ["sort: the order switch is ignored","if (day && rateSort !== 'med') {","if (day) {"],
+    ["sort: the press does nothing","rateSort = rv;","void rv;"],
+    ["sort: any value accepted","if (v === 'med' || v === 'day') rateSort = v;","rateSort = v;"],
     ["stat: any value accepted","if (v === 'med' || v === 'day') stat = v;","stat = v;"],
     ["stat: the press does nothing","stat = sv;","void sv;"],
     ["stat: daily bars still measure the median","var val = function (r) { return day ? r.day : r.v; };","var val = function (r) { return r.v; };"],

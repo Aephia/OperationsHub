@@ -667,6 +667,9 @@ the live chain; every other module reads the static uber-export. It has two halv
     first). Each daily row also prints its median as a daily figure (`92.2M med 536K, n=164`: per ship, per player or
     per stake). A day is the rate in the read times 86,400 seconds. The totals are
     summed once in `build()`; the choice lives in memory only (`C4Analytics.setStat/getStat`), nothing is stored.
+    In the daily view the *Ship models against stake tiers* card carries a **Sort: total / Sort: median** pair
+    (2026-11-25): *median* orders the rows largest median per ship or per stake first, bars still daily totals;
+    a tier keeps its extractor rows under it, fewest extractors first (`C4Analytics.setRateSort/getRateSort`).
 
 The chain keeps **no combat log and no mining history**; both are derived by diffing hourly reads.
 - **Combat**: a combat stamp means a fleet *took part*; both sides share the second.

@@ -585,6 +585,10 @@
     function isDay() { return stat === 'day'; }
     function setStat(v) { if (v === 'med' || v === 'day') stat = v; }
     function getStat() { return stat; }
+    // row order of the daily ship-models-against-stake-tiers chart: 'day' = largest daily total first, 'med' = largest median first
+    var rateSort = 'day';
+    function setRateSort(v) { if (v === 'med' || v === 'day') rateSort = v; }
+    function getRateSort() { return rateSort; }
     function isPct(id) { return modes[id] === 'pct'; }
     function setMode(m) { if (m !== 'pct' && m !== 'num') return; SHARE_CARDS.forEach(function (id) { modes[id] = m; }); }
     function getMode() {
@@ -774,7 +778,7 @@
         var W = ctx.W, IND = 14, rowH = 22, H = rows.length * rowH + 4, b = '';
         var labW = maxLabelPx(rows.map(function (r) { return { label: r.label + (r.kind === 'ext' ? '    ' : '') }; }), W, day ? 0.36 : 0.5), valW = 6, max = 0;   // daily rows carry longer text: the names give way
         var val = function (r) { return day ? r.day : r.v; };
-        if (day) {   // largest daily total first; a tier keeps its extractor rows under it
+        if (day && rateSort !== 'med') {   // largest daily total first; a tier keeps its extractor rows under it (the rows arrive largest median first)
             var groups = [];
             rows.forEach(function (r) { if (r.kind === 'ext' && groups.length) groups[groups.length - 1].push(r); else groups.push([r]); });
             groups.sort(function (a, b) { return b[0].day - a[0].day || (a[0].label < b[0].label ? -1 : a[0].label > b[0].label ? 1 : 0); });
@@ -863,7 +867,8 @@
     }
     function note(text) { return '<p class="c4an-empty">' + text + '</p>'; }
     // card(title, inner, id): with an id the header carries the "#" / "%" pair for that card (id must be in SHARE_CARDS)
-    function card(title, inner, id) {
+    function card(title, inner, id, ctrl) {
+        if (ctrl) return '<figure class="c4an-card"><figcaption class="c4an-ct c4an-cth"><span class="c4an-ctt">' + title + '</span>' + ctrl + '</figcaption>' + inner + '</figure>';
         if (!id) return '<figure class="c4an-card"><figcaption class="c4an-ct">' + title + '</figcaption>' + inner + '</figure>';
         return '<figure class="c4an-card"><figcaption class="c4an-ct c4an-cth"><span class="c4an-ctt">' + title + '</span>' +
             toggle(isPct(id) ? 'pct' : 'num', 'data-an-card="' + id + '"', title) + '</figcaption>' + inner + '</figure>';
@@ -882,6 +887,13 @@
             return '<button type="button" class="c4an-tgb" data-an-stat="' + v + '" aria-pressed="' + (stat === v ? 'true' : 'false') + '" title="' + name + '">' + text + '</button>';
         };
         return '<span class="c4an-tg" role="group" aria-label="Median or daily total">' + one('med', 'Median', 'Every chart shows the median of each group') + one('day', 'Daily total', 'Three charts show totals instead: yield by flagship size, what each rank holds, ship models against stake tiers') + '</span>';
+    }
+    // the order pair on the daily ship-models-against-stake-tiers card
+    function sortToggle() {
+        var one = function (v, text, name) {
+            return '<button type="button" class="c4an-tgb" data-an-rsort="' + v + '" aria-pressed="' + (rateSort === v ? 'true' : 'false') + '" title="' + name + '">' + text + '</button>';
+        };
+        return '<span class="c4an-tg" role="group" aria-label="Sort rows by">' + one('day', 'Sort: total', 'Largest daily total first') + one('med', 'Sort: median', 'Largest median per ship or per stake first') + '</span>';
     }
     var DAYCW = 7.1;   // px kept per character of a daily row's text ("92.2M med 536K, n=164"), the width the font draws at
     var DAYNOTE = 'a day is the rate in this read times 86,400 seconds, not a measured day';
@@ -1145,14 +1157,14 @@
             var extNote = !R.noStakes && !R.noOut && R.noBl ? ' The extractor rows need the building list (' + FRESH + ').' : '';
             if (isDay()) rc = chart('', legend([['f-s1', 'Ship models, fleets made only of the model'], ['f-s2', 'Claim stake tiers, all stakes of the tier']]) + rateBars(ctx, R.rows, true),
                 'Ship row: total units per day from the mining fleets made only of that model (n = fleets); ' + plural(R.mixed, 'mining fleet') + ' with more than one model or no composition read ' + (R.mixed === 1 ? 'is' : 'are') + ' counted, not drawn. ' +
-                'Stake row: total units per day from the stakes of that tier with any production (n = stakes); indented rows split a tier by the extractors installed. med = the median per ship or per stake a day. One linear axis from zero; ' + DAYNOTE + '.' +
+                'Stake row: total units per day from the stakes of that tier with any production (n = stakes); indented rows split a tier by the extractors installed. med = the median per ship or per stake a day. Rows run largest ' + (rateSort === 'med' ? 'median' : 'total') + ' first. One linear axis from zero; ' + DAYNOTE + '.' +
                 like + tail + extNote + ' ' + base + ' read.');
             else rc = chart('', legend([['f-s1', 'Ship models, per ship'], ['f-s2', 'Claim stake tiers, per stake']]) + rateBars(ctx, R.rows),
                 'Ship row: median units per second per ship over the mining fleets made only of that model (n = fleets); ' + plural(R.mixed, 'mining fleet') + ' with more than one model or no composition read ' + (R.mixed === 1 ? 'is' : 'are') + ' counted, not drawn. ' +
                 'Stake row: median units per second per stake over the stakes with any production (n = stakes), the production rate the chain stores for each stake; indented rows split a tier by the extractors installed. One linear axis from zero.' +
                 like + tail + extNote + ' ' + base + ' read.');
         }
-        cards.push(card('Ship models against stake tiers', rc));
+        cards.push(card('Ship models against stake tiers', rc, null, R.rows.length && isDay() ? sortToggle() : ''));
         // per resource
         var PR = isPct('compare-res');
         cards.push(card('Units per hour by resource', noOut ? chart('', note(why), base + ' read.') :
@@ -1403,6 +1415,17 @@
                 if (nsb && typeof nsb.focus === 'function') nsb.focus();
                 return;
             }
+            var rs = t.closest('[data-an-rsort]');
+            if (rs) {
+                closePop(false);
+                var rv = rs.getAttribute('data-an-rsort'), r0 = el._c4an;
+                if ((rv !== 'med' && rv !== 'day') || rv === rateSort) return;
+                rateSort = rv;
+                if (r0) { var o4 = {}; Object.keys(r0.opts || {}).forEach(function (k) { o4[k] = r0.opts[k]; }); o4.reducedMotion = true; render(el, r0.model, o4); }
+                var nrs = typeof el.querySelector === 'function' ? el.querySelector('[data-an-rsort="' + rv + '"]') : null;
+                if (nrs && typeof nrs.focus === 'function') nrs.focus();
+                return;
+            }
             var fa = t.closest('[data-an-foldall]');
             if (fa) { closePop(false); var shut = SECTIONS.some(function (s) { return !isFolded(s); }); SECTIONS.forEach(function (s) { setFolded(el, s, shut); }); return; }
             // the header band (and its chevron button) folds its section
@@ -1431,7 +1454,7 @@
         }
     }
 
-    var api = { version: '1', kfmt: kfmt, setFolded: setFolded, isFolded: isFolded, build: build, render: render, sections: SECTIONS.slice(), setMode: setMode, getMode: getMode, setStat: setStat, getStat: getStat, shareCards: SHARE_CARDS.slice(), card: cardHtml, shortModel: shortModel, close: function () { closePop(false); } };
+    var api = { version: '1', kfmt: kfmt, setFolded: setFolded, isFolded: isFolded, build: build, render: render, sections: SECTIONS.slice(), setMode: setMode, getMode: getMode, setStat: setStat, getStat: getStat, setRateSort: setRateSort, getRateSort: getRateSort, shareCards: SHARE_CARDS.slice(), card: cardHtml, shortModel: shortModel, close: function () { closePop(false); } };
     if (typeof window === 'undefined' && typeof module !== 'undefined' && module.exports) module.exports = api;
     else root.C4Analytics = api;
 })(typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this));
