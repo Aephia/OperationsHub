@@ -240,7 +240,7 @@ else {
 console.log('[4] page wiring');
 {
     const html = fs.readFileSync(path.join(ROOT, 'C4Live', 'index.html'), 'utf8'), app = fs.readFileSync(path.join(ROOT, 'C4Live', 'app.js'), 'utf8');
-    check('[4] index.html holds the view, its stylesheet and its script before app.js', /<section class="fv" id="c4FleetView" role="dialog" aria-modal="true"[^>]* hidden>/.test(html) && /c4-fleet-view\.css\?v=\d+/.test(html) && html.indexOf('c4-fleet-view.js?v=') > 0 && html.indexOf('c4-fleet-view.js?v=') < html.indexOf('<script src="app.js'));
+    check('[4] index.html holds the view, its stylesheet and its script before app.js', /<section class="fv" id="c4FleetView" role="dialog" aria-modal="true"[^>]* hidden>/.test(html) && /c4-fleet-view\.css\?v=[0-9a-z]+/.test(html) && html.indexOf('c4-fleet-view.js?v=') > 0 && html.indexOf('c4-fleet-view.js?v=') < html.indexOf('<script src="app.js'));
     check('[4] the owner drawer has the Fleet view button and the page routes its click', /data-fleet-view="\$\{esc\(p\)\}"/.test(app) && /t\.closest\('\[data-fleet-view\]'\)/.test(app));
     check('[4] keys reach the fleet view before the stake view and the drawer', app.indexOf('if (FV && FV.onKey(e)) return;') > 0 && app.indexOf('if (FV && FV.onKey(e)) return;') < app.indexOf("if (e.key === 'Escape' && S.stake)"));
     check('[4] Fly to fleet aims at where the scene draws the fleet now and zooms right in (closer than the zoom 3 of the owner list)', /flyTo: \(x, y, f\) => \{[^}]*flyToFleet\(x, y, f\)/.test(app) && /s\.fleetScreen\(f\.a\)/.test(app) && (() => { const m = /const fleetZoom = f => \(f && f\.kind === 'warp' \? (\d+) : f && f\.kind === 'subwarp' \? (\d+) : (\d+)\);/.exec(app); return !!m && +m[1] > 3 && +m[2] > +m[1] && +m[3] >= +m[2]; })());

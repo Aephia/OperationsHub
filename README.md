@@ -687,6 +687,26 @@ Added 2026-11-22: `node Test/c4-stake-view-check.js` (stake model and the view i
 `node Test/c4-collector-check.js` (collector; `--offline` for the unit part) and
 `node Test/c4-config-snapshot-check.js` (the config snapshot below).
 
+**Bandwidth** (2026-11-25, measured on the live page with the browser's own byte counts). A first visit downloaded
+5.1 MB, of which 4.2 MB were chain reads; three changes cut that:
+- **One read per account per pass.** The kit readers each fetched the game account on their own (3.5 MB, about
+  815 KB compressed): three times in a pass and once more when Analytics opened. The collector's RPC now shares an
+  identical `getAccountInfo` (`shareTransport` in `Tools/c4-live/collector.mjs`): one request, a copy of the answer for
+  each caller. A pass starts with an empty share; the crafting read may reuse the pass's answer for 10 minutes.
+  Measured on one real pass: the game account 4 reads -> 1, pass 20.9 -> 14.1 MB of response bodies, crafting read
+  5.5 -> 2.1 MB.
+- **Stamps are file hashes, and stamped files are cached for a month.** `_headers` (repo root, read by Cloudflare
+  Pages) keeps `/C4Live/*.js` and `*.css` for 30 days and ship, emblem and stake pictures and the click sounds for
+  7 days; the page itself and every `.json` keep the default (asked again on every load). That is only safe because
+  every `?v=` stamp is now the first 10 hex of the file's sha256: run **`node Tools/c4-live/stamp.mjs`** last, after
+  any build or edit of a C4 Live file (`--check` to only verify). The map script used a clock stamp, which made every
+  visitor download its 190 KB again each half hour; it is stamped like the rest now. Trade-off: a replaced picture can
+  take up to a week to reach a returning visitor.
+- **No refresh in a hidden tab** was already in place (`autoUpdate` returns while `document.hidden` and runs when the
+  tab is shown again).
+Check: `node Test/c4-cache-check.js` (stamps equal the hashes, no unstamped script, the header rules cover only what
+may be kept); the shared read is covered in `node Test/c4-collector-check.js` (section [share], with mutants).
+
 **Median | Daily total on the section banners** (2026-11-25): the pair in the bar above the Analytics sections is
 repeated on the banner of the three sections that have a chart with a total (Mining rate per ship, Council rank, Ships
 against claim stakes). It is one setting: a press on any of them switches all three charts.

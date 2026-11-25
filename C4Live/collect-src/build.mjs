@@ -3,6 +3,7 @@
 // esbuild comes from the teardown skill's locked install, as for scene-src/build.mjs. The chain libraries come from
 // Tools/c4-live (npm ci --ignore-scripts). The output is committed: the site is static and has no build step.
 import fs from 'node:fs';
+import crypto from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import {createRequire} from 'node:module';
@@ -15,9 +16,9 @@ const esbuild = createRequire(path.join(DEPS, 'x.js'))('esbuild');
 const shim = name => path.join(HERE, name);
 const outfile = path.join(SITE, 'c4-collect.js');
 
-await esbuild.build({
+const built = await esbuild.build({
   entryPoints: [path.join(HERE, 'main.js')],
-  bundle: true, minify: true, format: 'iife', target: 'es2022', platform: 'browser', legalComments: 'none', outfile,
+  bundle: true, minify: true, format: 'iife', target: 'es2022', platform: 'browser', legalComments: 'none', outfile, metafile: true,
   alias: {'node:fs': shim('fs-shim.js'), 'node:path': shim('path-shim.js'), 'node:url': shim('path-shim.js')},
   inject: [shim('buffer-shim.js')],
   define: {
@@ -30,6 +31,14 @@ await esbuild.build({
   },
   banner: {js: '/* C4 Live browser collector. Source: C4Live/collect-src and Tools/c4-live/collector.mjs. Includes @aephia/atlas-kit and @solana/kit (Apache-2.0 / MIT, see Tools/c4-live/package-lock.json). */'},
 });
+// First line of the bundle: which of this repo's own sources went in, and one hash over them (line endings
+// normalised). Test/c4-cache-check.js recomputes it, so a bundle older than its sources cannot be shipped unnoticed.
+const REPO = path.join(SITE, '..');
+const own = Object.keys(built.metafile.inputs).map((f) => path.relative(REPO, path.resolve(f)).split(path.sep).join('/'))
+  .filter((f) => !f.startsWith('..') && !f.includes('node_modules') && !f.includes('<') && fs.existsSync(path.join(REPO, f))).sort();
+const srcHash = crypto.createHash('sha256');
+for (const f of own) srcHash.update(f + '\n' + fs.readFileSync(path.join(REPO, f), 'utf8').replace(/\r\n/g, '\n') + '\n');
+fs.writeFileSync(outfile, `/* c4-collect-src ${srcHash.digest('hex').slice(0, 16)} ${own.join(' ')} */\n` + fs.readFileSync(outfile, 'utf8'));
 const bytes = fs.statSync(outfile).size;
 if (bytes < 50000 || !fs.readFileSync(outfile, 'utf8').includes('C4Collect')) { console.error('bundle looks wrong', bytes); process.exit(1); }
 console.log(`c4-collect.js ${(bytes / 1024).toFixed(0)} KB`);

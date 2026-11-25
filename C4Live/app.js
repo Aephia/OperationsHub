@@ -103,7 +103,7 @@
     function loadCollector() {
         return S.collectorP || (S.collectorP = new Promise((resolve, reject) => {
             const s = document.createElement('script');
-            s.src = 'c4-collect.js?v=20261125c';
+            s.src = 'c4-collect.js?v=14e366a4fa';
             s.onload = resolve;
             s.onerror = () => { S.collectorP = null; reject(new Error('c4-collect.js failed to load')); };
             document.head.append(s);
@@ -1692,7 +1692,7 @@
     // ================================================================== scene
     function loadScene() {
         const s = document.createElement('script');
-        s.src = 'c4-scene.js?v=' + Date.now().toString(36).slice(0, -4);
+        s.src = 'c4-scene.js?v=a49033cec7';   // the stamp is the file's hash, written by Tools/c4-live/stamp.mjs (it was the clock: a fresh 190 KB download every half hour)
         s.onload = () => mountScene();
         s.onerror = () => noMap('The 3D map is not built yet (<b>C4Live/c4-scene.js</b> is missing). Everything below still works.');
         document.body.appendChild(s);

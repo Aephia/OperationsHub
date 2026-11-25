@@ -27,7 +27,7 @@
 //   gov     governance (fees, voting, governance module) - governance.mjs, 15 getProgramAccounts, all or nothing;
 //           kept in db.json state.gov so a failed read re-serves the last block (its own `at`) on the same chain version
 
-import { createSolanaRpc, getAddressDecoder } from '@solana/kit';
+import { createDefaultRpcTransport, createSolanaRpcFromTransport, getAddressDecoder } from '@solana/kit';
 import { createSageContext } from '@aephia/atlas-kit/client';
 import { discoverFleetAddresses, getFleets } from '@aephia/atlas-kit/fleets';
 import { getFleetMiningState } from '@aephia/atlas-kit/mining';
@@ -548,8 +548,40 @@ export function sameEpoch(a, b) {
   const known = (v) => v !== null && v !== undefined;
   return !known(a.sage) || !known(b.sage) || a.sage === b.sage;
 }
-// An RPC for C4Collect.epoch() in the browser (main.js cannot import the kit itself).
-export const openRpc = () => createSolanaRpc(RPC_URL);
+// ---- one read per account per pass (2026-11-25) ---------------------------------------------------------------
+// Measured on the live page: the kit readers each fetch the game account on their own (3.5 MB, about 815 KB gzipped),
+// three times in one pass and once more for the crafting read: 2.4 MB of a 4.2 MB pass. shareTransport() wraps the
+// RPC transport so that an identical getAccountInfo (same address, same options) is sent once and every later caller
+// gets its own copy of that answer. Only getAccountInfo is shared: list reads and everything else go straight through.
+// A pass starts with an empty share (collect() clears it), so a pass never sees an account older than itself; the
+// crafting read, which runs when the Analytics tab opens, may reuse the pass's answer for SHARE_MS.
+// A failed or error answer is never kept. Known cost: callers that share a read share its abort (the pass has one
+// abort signal; a crafting read joined to a pass read fails if that pass is aborted, and can be asked again).
+export const SHARE_MS = 10 * 60 * 1000;
+const SHARED = new Map();
+const canon = (v) => JSON.stringify(v, (k, x) => (typeof x === 'bigint' ? `${x}n`
+  : x && typeof x === 'object' && !Array.isArray(x) ? Object.fromEntries(Object.keys(x).sort().map((n) => [n, x[n]])) : x));
+export function shareTransport(inner, cache = SHARED, now = Date.now, ttl = SHARE_MS) {
+  return (req) => {
+    const pl = req?.payload;
+    if (!pl || pl.method !== 'getAccountInfo') return inner(req);
+    const key = canon(pl.params);
+    const hit = cache.get(key);
+    if (hit && now() - hit.at < ttl) return hit.p.then((v) => ({ ...structuredClone(v), id: pl.id }));
+    // inner runs NOW, in the caller's tick: the kit wires the abort signal when it runs, and an abort fired in the same
+    // tick would be missed one microtask later. A synchronous throw still becomes a rejection.
+    const e = { at: now(), p: new Promise((res) => res(inner(req))) };
+    cache.set(key, e);
+    const drop = () => { if (cache.get(key) === e) cache.delete(key); };
+    e.p.then((v) => { if (!v || typeof v !== 'object' || 'error' in v || !('result' in v)) drop(); }, drop);
+    return e.p;
+  };
+}
+// The pass's and the crafting read's RPC: the kit's default transport behind the share.
+const sharedRpc = () => createSolanaRpcFromTransport(shareTransport(createDefaultRpcTransport({ url: RPC_URL })));
+// A plain RPC with NO sharing, for C4Collect.epoch() in the browser (main.js cannot import the kit itself) and the
+// config snapshot: the chain-version probe must read the chain every time, never an answer kept from a minute ago.
+export const openRpc = () => createSolanaRpcFromTransport(createDefaultRpcTransport({ url: RPC_URL }));
 // ---- Crafting jobs per recipe (2026-11-23) ------------------------------------------------------------------------
 // Every Recipe account stores how many Crafting Processes were STARTED from it (one use per start, whatever the
 // quantity crafted; a cancelled process gives its use back). That is a lifetime count of JOBS, not of units made:
@@ -571,7 +603,7 @@ export function craftingDoc(recipes, nowSec) {
   return { v: 1, generatedAt: nowSec, read: rows.length, used: used.length, jobs: used.reduce((t, r) => t + r.u, 0), recipes: used };
 }
 export async function readCrafting(deps = {}) {
-  const ctx = (deps.createSageContext || createSageContext)({ cluster: 'zink-ptr', rpc: deps.rpc || openRpc() });
+  const ctx = (deps.createSageContext || createSageContext)({ cluster: 'zink-ptr', rpc: deps.rpc || sharedRpc() });
   if (deps.onCtx) deps.onCtx(ctx);
   try {
     const rows = await (deps.listRecipes || listRecipes)(ctx);
@@ -624,7 +656,8 @@ export async function collect(pass, deps = {}) {
   let ctx;
   try {
     let db = loadDb(); // a corrupt file aborts here, before any network read
-    const rpc = createSolanaRpc(RPC_URL);
+    SHARED.clear(); // a pass shares account reads only with itself
+    const rpc = sharedRpc();
     pass.abort ??= new AbortController();
     ctx = K.createSageContext({ cluster: 'zink-ptr', rpc });
     pass.ctx = ctx;

@@ -146,6 +146,7 @@ async function main() {
   await bundleChecks();
   await craftingChecks(C);
   await fleetStatChecks();
+  await shareChecks();
 
   if (OFFLINE) return;
 
@@ -810,6 +811,84 @@ async function fleetStatSuite(file) {
   fs.rmSync(udir, { recursive: true, force: true });
   for (const [n, pred] of STAT_CASES) { let good; try { good = pred(r); } catch { good = false; } if (!good) failed.push(n); }
   return failed;
+}
+// ---- one read per account per pass: shareTransport() -----------------------------------------------------------------
+// A fake inner transport counts what really goes out. now is a settable clock.
+const SHARE_CASES = [
+  ['the same getAccountInfo asked twice goes out once, and both callers get the answer', (r) => r.twiceCalls === 1 && r.twice[0].result.value.data[0] === 'AAAA' && r.twice[1].result.value.data[0] === 'AAAA'],
+  ['the second caller gets its own copy (changing it does not change the first) under its own request id', (r) => r.twice[0] !== r.twice[1] && r.twice[0].result !== r.twice[1].result && r.twice[1].id === 'b' && r.twice[0].id === 'a' && r.mutated === 'AAAA'],
+  ['the request starts in the caller\'s own tick (an abort fired right after the call still reaches it)', (r) => r.syncCalls === 1],
+  ['the order of the option keys does not make it a different read', (r) => r.orderCalls === 1],
+  ['a different address or different options is its own read', (r) => r.diffCalls === 3],
+  ['callers asking at the same moment share the one request in flight', (r) => r.concurrentCalls === 1 && r.concurrent.every((v) => v.result.value.data[0] === 'AAAA')],
+  ['only getAccountInfo is shared: a list read asked twice goes out twice', (r) => r.listCalls === 2],
+  ['an error answer is not kept: the next caller asks again', (r) => r.errorCalls === 2 && r.errorSecond.result.value.data[0] === 'AAAA'],
+  ['a failed request is not kept: the next caller asks again', (r) => r.rejectFirst === 'boom' && r.rejectCalls === 2],
+  ['an answer older than the limit is asked again; one just inside it is reused', (r) => r.ttlInside === 1 && r.ttlAfter === 2],
+  ['a pass starts with an empty share (collect() clears it before its first read)', (r) => r.clearsFirst === true],
+  ['the chain-version probe never shares: openRpc() is the plain transport', (r) => r.probePlain === true],
+];
+const SHARE_MUTANTS = [
+  ['share: every method is shared', "if (!pl || pl.method !== 'getAccountInfo') return inner(req);", 'if (!pl) return inner(req);'],
+  ['share: the request starts a tick late', 'p: new Promise((res) => res(inner(req))) };', 'p: Promise.resolve().then(() => inner(req)) };'],
+  ['share: nothing is shared', 'if (hit && now() - hit.at < ttl) return', 'if (false) return'],
+  ['share: the answer is handed out without a copy', 'return hit.p.then((v) => ({ ...structuredClone(v), id: pl.id }));', 'return hit.p.then((v) => v);'],
+  ['share: the copy keeps the first caller\'s request id', '({ ...structuredClone(v), id: pl.id })', '(structuredClone(v))'],
+  ['share: the options are left out of the key', 'const key = canon(pl.params);', 'const key = canon(pl.params[0]);'],
+  ['share: option key order makes a new read', '? Object.fromEntries(Object.keys(x).sort().map((n) => [n, x[n]])) : x));', '? x : x));'],
+  ['share: the age limit is ignored', 'if (hit && now() - hit.at < ttl) return', 'if (hit) return'],
+  ['share: an error answer is kept', "if (!v || typeof v !== 'object' || 'error' in v || !('result' in v)) drop(); }, drop);", '}, drop);'],
+  ['share: a failed request is kept', "|| !('result' in v)) drop(); }, drop);", "|| !('result' in v)) drop(); }, () => {});"],
+  ['share: the chain-version probe shares too', 'export const openRpc = () => createSolanaRpcFromTransport(createDefaultRpcTransport({ url: RPC_URL }));', 'export const openRpc = () => sharedRpc();'],
+  ['share: a pass keeps the last pass\'s answers', 'SHARED.clear(); // a pass shares account reads only with itself', ''],
+];
+let shareImport = 0;
+async function shareSuite(file) {
+  const failed = [];
+  let r = {};
+  try {
+    const M = await import(pathToFileURL(file).href + '?share=' + (++shareImport));
+    const src = fs.readFileSync(file, 'utf8');
+    const ok1 = (id) => ({ jsonrpc: '2.0', id, result: { context: { slot: 5n }, value: { data: ['AAAA', 'base64'], lamports: 9n } } });
+    const mk = (answer) => { const st = { calls: 0, t: 1000 }; const inner = async (req) => { st.calls++; return answer ? answer(st.calls, req) : ok1(req.payload.id); }; st.tx = M.shareTransport(inner, new Map(), () => st.t, 600); return st; };
+    const q = (id, addr, opt, method = 'getAccountInfo') => ({ payload: { jsonrpc: '2.0', id, method, params: [addr, opt] } });
+    let a = mk();
+    { const s0 = mk(); const pending = s0.tx(q('a', 'ADDR', { encoding: 'base64' })); r.syncCalls = s0.calls; await pending; }
+    r.twice = [await a.tx(q('a', 'ADDR', { encoding: 'base64', commitment: 'confirmed' })), await a.tx(q('b', 'ADDR', { encoding: 'base64', commitment: 'confirmed' }))];
+    r.twiceCalls = a.calls; r.twice[1].result.value.data[0] = 'ZZZZ'; r.mutated = r.twice[0].result.value.data[0]; r.twice[1].result.value.data[0] = 'AAAA';
+    a = mk(); await a.tx(q('a', 'ADDR', { encoding: 'base64', commitment: 'confirmed' })); await a.tx(q('b', 'ADDR', { commitment: 'confirmed', encoding: 'base64' })); r.orderCalls = a.calls;
+    a = mk(); await a.tx(q('a', 'ADDR', { encoding: 'base64' })); await a.tx(q('b', 'OTHER', { encoding: 'base64' })); await a.tx(q('c', 'ADDR', { encoding: 'base64', dataSlice: { offset: 4, length: 8 } })); r.diffCalls = a.calls;
+    a = mk(); r.concurrent = await Promise.all(['a', 'b', 'c'].map((id) => a.tx(q(id, 'ADDR', { encoding: 'base64' })))); r.concurrentCalls = a.calls;
+    a = mk(); await a.tx(q('a', 'PROG', { encoding: 'base64' }, 'getProgramAccounts')); await a.tx(q('b', 'PROG', { encoding: 'base64' }, 'getProgramAccounts')); r.listCalls = a.calls;
+    a = mk((n, req) => (n === 1 ? { jsonrpc: '2.0', id: req.payload.id, error: { code: -32005, message: 'rate limited' } } : ok1(req.payload.id)));
+    await a.tx(q('a', 'ADDR', { encoding: 'base64' })); await new Promise((res) => setTimeout(res, 5)); r.errorSecond = await a.tx(q('b', 'ADDR', { encoding: 'base64' })); r.errorCalls = a.calls;
+    a = mk((n, req) => { if (n === 1) throw new Error('boom'); return ok1(req.payload.id); });
+    try { await a.tx(q('a', 'ADDR', { encoding: 'base64' })); } catch (e) { r.rejectFirst = e.message; }
+    await new Promise((res) => setTimeout(res, 5)); await a.tx(q('b', 'ADDR', { encoding: 'base64' })); r.rejectCalls = a.calls;
+    a = mk(); await a.tx(q('a', 'ADDR', { encoding: 'base64' })); a.t = 1599; await a.tx(q('b', 'ADDR', { encoding: 'base64' })); r.ttlInside = a.calls; a.t = 1600; await a.tx(q('c', 'ADDR', { encoding: 'base64' })); r.ttlAfter = a.calls;
+    // collect() empties the share before it opens its RPC (read from the source: the pass itself needs the network)
+    const body = src.slice(src.indexOf('export async function collect('));
+    const iClear = body.indexOf('SHARED.clear()'), iRpc = body.indexOf('const rpc = sharedRpc();');
+    // the chain-version probe's RPC is built without the share
+    r.probePlain = /export const openRpc = \(\) => createSolanaRpcFromTransport\(createDefaultRpcTransport\(\{ url: RPC_URL \}\)\);/.test(src);
+    r.clearsFirst = iClear >= 0 && iRpc > iClear && iRpc - iClear < 200;
+  } catch (e) { return ['threw: ' + e.message]; }
+  for (const [n, pred] of SHARE_CASES) { let good; try { good = pred(r); } catch { good = false; } if (!good) failed.push(n); }
+  return failed;
+}
+async function shareChecks() {
+  console.log('\n[share] one read per account per pass (shareTransport)');
+  const realFailed = await shareSuite(COLLECTOR);
+  for (const [n] of SHARE_CASES) ok(!realFailed.includes(n), 'share: ' + n);
+  for (const n of realFailed) if (!SHARE_CASES.some(([c]) => c === n)) ok(false, 'share: ' + n);
+  const src = fs.readFileSync(COLLECTOR, 'utf8');
+  for (const [label, from, to] of SHARE_MUTANTS) {
+    const at = src.indexOf(from);
+    if (at < 0) { ok(false, `mutant "${label}": target text not found in the collector`); continue; }
+    const mf = path.join(KIT_DIR, `.mutant-share-${process.pid}.mjs`);
+    fs.writeFileSync(mf, src.slice(0, at) + to + src.slice(at + from.length));
+    try { mutantFails(label, await shareSuite(mf)); } finally { fs.unlinkSync(mf); }
+  }
 }
 async function fleetStatChecks() {
   console.log('\n[stats] fleet + ship-model stats (statKeys, shipDefs, st, hold, extras)');

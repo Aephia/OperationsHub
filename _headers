@@ -1,0 +1,31 @@
+# Cache rules for the static site (Cloudflare Pages reads this file; it is not served).
+# Default without a rule: "public, max-age=0, must-revalidate" - the browser asks "has this changed?" on every load.
+#
+# C4 Live scripts and styles are always requested with a ?v= stamp that is the file's own hash
+# (node Tools/c4-live/stamp.mjs; Test/c4-cache-check.js fails when a stamp is out of date), so a given URL never
+# changes its content and can be kept for a month. index.html and every .json keep the default, so a new stamp
+# and new data reach visitors at once.
+/C4Live/*.js
+  ! Cache-Control
+  Cache-Control: public, max-age=2592000
+
+/C4Live/*.css
+  ! Cache-Control
+  Cache-Control: public, max-age=2592000
+
+# Pictures and sounds have no stamp: a week. A replaced picture can take up to a week to reach a returning visitor.
+/Images/ships/*.webp
+  ! Cache-Control
+  Cache-Control: public, max-age=604800
+
+/Images/c4an/*.webp
+  ! Cache-Control
+  Cache-Control: public, max-age=604800
+
+/Images/stake/*.webp
+  ! Cache-Control
+  Cache-Control: public, max-age=604800
+
+/SFX/ui/*.wav
+  ! Cache-Control
+  Cache-Control: public, max-age=604800
