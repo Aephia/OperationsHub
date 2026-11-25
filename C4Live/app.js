@@ -103,7 +103,7 @@
     function loadCollector() {
         return S.collectorP || (S.collectorP = new Promise((resolve, reject) => {
             const s = document.createElement('script');
-            s.src = 'c4-collect.js?v=a17eb036e2';
+            s.src = 'c4-collect.js?v=e91dab9d52';
             s.onload = resolve;
             s.onerror = () => { S.collectorP = null; reject(new Error('c4-collect.js failed to load')); };
             document.head.append(s);
@@ -233,7 +233,7 @@
     }
     function showFailed() {
         const el = $('#c4Empty'); el.hidden = false;
-        el.innerHTML = '<div class="c4-loading"><h2>Could not reach z.ink</h2><p>The chain did not answer, so there is nothing to show yet.</p><button type="button" class="c4-refresh" data-c4-retry>Try again</button></div>';
+        el.innerHTML = '<div class="c4-loading"><h2>Could not read the game</h2><p>The read from the z.ink chain failed, so there is nothing to show yet.</p><button type="button" class="c4-refresh" data-c4-retry>Try again</button></div>';
     }
     function showEmpty() {
         if (!LOCAL) { showFailed(); return; }
@@ -346,7 +346,7 @@
             const label = S.refreshing ? 'Refreshing...' : wait > 0 ? `Refresh in ${M.ago(wait)}` : 'Refresh';
             const extra = (S.updateReading ? ['The game was updated on chain. Reading the new state...'] : [])
                 .concat(S.updateFailed ? ['The game was updated on chain, but the new state could not be read. This is still your saved data from before the update. Press Refresh to try again.']
-                    : S.refreshErr ? ['Could not reach z.ink, so this is still your saved data.'] : [])
+                    : S.refreshErr ? ['The read from the z.ink chain failed, so this is still your saved data.'] : [])
                 // this tab's read, or a saved copy (reload, another tab) whose read started the new version (P3)
                 .concat(S.updateNote || (S.latest.epoch && S.latest.epoch.changed === true) ? ['The game was updated on chain, so history and events start again from this read.'] : [])
                 .concat(Array.isArray(S.latest.fleets) && !S.latest.fleets.length ? ['No fleets were found on chain at this read.'] : [])

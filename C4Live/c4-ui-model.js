@@ -77,6 +77,8 @@
             // a read kept out of the trends only because many fleets vanished did not fail: the next note says what happened
             if (parts.length || !q.suspectDiscovery) out.push(`Partial read: ${parts.length ? parts.join(', ') : 'some reads failed'}, so rates are low and no history point was added.`);
         }
+        if (q.unreadFleets > 0) out.push(`${q.unreadFleets} fleet${q.unreadFleets === 1 ? ' is' : 's are'} in a state this page cannot read yet (the game added it), so ${q.unreadFleets === 1 ? 'it is' : 'they are'} left out: fleet and ship counts are that much lower.`);
+        if (q.unreadStakes > 0) out.push(`${q.unreadStakes} claim stake${q.unreadStakes === 1 ? ' is' : 's are'} in a form this page cannot read yet (the game changed it), so ${q.unreadStakes === 1 ? 'it is' : 'they are'} left out.`);
         if (q.suspectDiscovery) out.push('Many fleets disappeared since the previous read, so this read is kept out of the trends and they are not counted as gone yet.');
         // true in both cases: within one chain version the earlier bodies.json is kept; after a game update none is
         if (q.bodiesFailed) out.push('The planets and asteroids read failed on this run, so the planets shown are from an earlier read, or none are shown after a game update.');

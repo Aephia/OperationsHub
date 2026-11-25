@@ -707,6 +707,17 @@ Added 2026-11-22: `node Test/c4-stake-view-check.js` (stake model and the view i
 Check: `node Test/c4-cache-check.js` (stamps equal the hashes, no unstamped script, the header rules cover only what
 may be kept); the shared read is covered in `node Test/c4-collector-check.js` (section [share], with mutants).
 
+**Accounts the bindings cannot decode are left out** (2026-11-25): a game update put 115 of 1,124 fleets into a fleet
+state the game bindings (`@staratlas/dev-sage` 0.56.0) do not know, and changed 55 claim stakes the same way; the kit's
+readers are all-or-nothing, so every read failed and the page showed only saved data (nothing at all for a first visit).
+The collector now repeats such a read with each undecodable account left out (`discoverReadable`, `skipTransport` in
+`Tools/c4-live/collector.mjs`; the chain is asked once, at most `MAX_UNREAD` accounts are skipped), records
+`quality.unreadFleets` / `quality.unreadStakes`, and the page says how many are left out. Fleet, ship and stake counts
+are that much lower while it lasts, and history keeps running, so the trends show a step down at that read. A fleet
+that cannot be decoded is not logged as gone; its last saved entry is kept. The fleet read takes about 30 s longer
+while many accounts are skipped. Remove nothing when new bindings arrive: with none undecodable the path does nothing.
+Check: `node Test/c4-collector-check.js --offline`, section [unread].
+
 **Profitability against origination price** (2026-11-25): a sortable table in the Ships against claim stakes section.
 One row per ship model (mining fleets made only of that model, per ship) and per claim stake tier (per stake): what it
 earns in a day at the Galactic Marketplace's best bids, what it costs to run (a stake's own consumption; a mining fleet's

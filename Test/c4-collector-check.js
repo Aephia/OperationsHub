@@ -148,6 +148,7 @@ async function main() {
   await fleetStatChecks();
   await shareChecks();
   await msrpChecks();
+  await unreadChecks();
 
   if (OFFLINE) return;
 
@@ -869,10 +870,10 @@ async function shareSuite(file) {
     a = mk(); await a.tx(q('a', 'ADDR', { encoding: 'base64' })); a.t = 1599; await a.tx(q('b', 'ADDR', { encoding: 'base64' })); r.ttlInside = a.calls; a.t = 1600; await a.tx(q('c', 'ADDR', { encoding: 'base64' })); r.ttlAfter = a.calls;
     // collect() empties the share before it opens its RPC (read from the source: the pass itself needs the network)
     const body = src.slice(src.indexOf('export async function collect('));
-    const iClear = body.indexOf('SHARED.clear()'), iRpc = body.indexOf('const rpc = sharedRpc();');
+    const iClear = body.indexOf('SHARED.clear()'), iRpc = body.indexOf('const rpc = sharedRpc(unread);');
     // the chain-version probe's RPC is built without the share
     r.probePlain = /export const openRpc = \(\) => createSolanaRpcFromTransport\(createDefaultRpcTransport\(\{ url: RPC_URL \}\)\);/.test(src);
-    r.clearsFirst = iClear >= 0 && iRpc > iClear && iRpc - iClear < 200;
+    r.clearsFirst = iClear >= 0 && iRpc > iClear && iRpc - iClear < 400;
   } catch (e) { return ['threw: ' + e.message]; }
   for (const [n, pred] of SHARE_CASES) { let good; try { good = pred(r); } catch { good = false; } if (!good) failed.push(n); }
   return failed;
@@ -959,6 +960,47 @@ async function msrpSuite(file) {
   const failed = [];
   for (const [n, pred] of MSRP_CASES) { let good; try { good = pred(r); } catch { good = false; } if (!good) failed.push(n); }
   return failed;
+}
+// ---- fleets and stakes the bindings cannot decode: skipTransport() / discoverReadable() ------------------------------
+async function unreadChecks() {
+  console.log('\n[unread] accounts the bindings cannot decode are left out, not fatal');
+  const M = await import(pathToFileURL(COLLECTOR).href + '?unread=1');
+  const decodeErr = (a) => Object.assign(new Error('cannot decode'), { code: 'ACCOUNT_DECODE_FAILED', address: a });
+  const mk = (bad) => {
+    const st = { calls: 0, ctl: { skip: new Set(), hold: null } };
+    const inner = async (req) => { st.calls++; return { jsonrpc: '2.0', id: req.payload.id, result: ['A0', 'A1', 'A2', 'A3', 'A4'].map((p) => ({ pubkey: p, account: { data: ['', 'base64'] } })) }; };
+    const tx = M.skipTransport(inner, st.ctl);
+    st.list = async () => (await tx({ payload: { id: 7, method: 'getProgramAccounts', params: ['PROG'] } })).result.map((a) => a.pubkey);
+    st.discover = async () => { const got = await st.list(); const b = got.find((p) => bad.includes(p)); if (b) throw decodeErr(b); return got; };
+    return st;
+  };
+  let s = mk(['A1', 'A3']);
+  const got = await M.discoverReadable(s.discover, s.ctl);
+  ok(got.join() === 'A0,A2,A4' && s.ctl.skip.size === 2, 'two undecodable accounts are left out, the other three are returned');
+  ok(s.calls === 1, 'the list is read from the chain once while the discovery is repeated (calls ' + s.calls + ')');
+  ok(s.ctl.hold === null && (await s.list()).join() === 'A0,A2,A4' && s.calls === 2, 'after the discovery a new list read goes to the chain again and is still filtered');
+  s = mk([]);
+  ok((await M.discoverReadable(s.discover, s.ctl)).length === 5 && s.ctl.skip.size === 0, 'nothing undecodable: nothing is left out');
+  s = mk(['A0', 'A1', 'A2']);
+  let threw = null; try { await M.discoverReadable(s.discover, s.ctl, 2); } catch (e) { threw = e; }
+  ok(threw && threw.code === 'ACCOUNT_DECODE_FAILED' && s.ctl.skip.size === 2 && s.ctl.hold === null, 'past the limit the failure is passed on');
+  threw = null; try { await M.discoverReadable(async () => { throw Object.assign(new Error('gone'), { code: 'ACCOUNT_NOT_FOUND', address: 'A0' }); }, s.ctl); } catch (e) { threw = e; }
+  ok(threw && threw.code === 'ACCOUNT_NOT_FOUND', 'any other failure is passed on at once');
+  // through a whole pass: two fleets become undecodable on the second pass
+  const world2 = (throwing) => () => {
+    const w = fakeWorld(); const bad = ['AF0', 'AF1']; let i = 0;
+    const rest = async () => (await w.getFleets()).filter((f) => !bad.includes(f.address));
+    return { ...w, discoverFleetAddresses: async () => { if (throwing && i < bad.length) throw decodeErr(bad[i++]); return (await rest()).map((f) => f.address); }, getFleets: rest };
+  };
+  const [, p2] = await epochScenario(COLLECTOR, [{ world: A40, epoch: E1 }, { world: world2(true), epoch: E1 }]);
+  const gone = (r) => (r.events || []).filter((e) => e.k === 'gone').map((e) => e.f).sort().join();
+  ok(!p2.err && p2.code === 0 && p2.latest.fleets.length === 38 && p2.latest.quality.unreadFleets === 2, 'pass with two undecodable fleets: written, 38 fleets, quality.unreadFleets = 2' + (p2.err ? ' (' + p2.err.message + ')' : ''));
+  ok(gone(p2) === '' && p2.db && p2.db.state.fleets.AF0 && p2.db.state.fleets.AF1, 'the undecodable fleets are not logged as gone and keep their saved entry');
+  const [, p3] = await epochScenario(COLLECTOR, [{ world: A40, epoch: E1 }, { world: world2(false), epoch: E1 }]);
+  ok(gone(p3) === 'AF0,AF1' && p3.latest.quality.unreadFleets === undefined, 'control: the same two fleets really absent ARE logged as gone, with no unread count');
+  const UI = require(path.join(path.dirname(COLLECTOR), '..', '..', 'C4Live', 'c4-ui-model.js'));
+  const notes = UI.qualityNotes({ unreadFleets: 115, unreadStakes: 1 });
+  ok(notes.length === 2 && /^115 fleets are in a state/.test(notes[0]) && /^1 claim stake is in a form/.test(notes[1]) && UI.qualityNotes({}).length === 0, 'the page states how many fleets and stakes are left out, and nothing when none are');
 }
 async function msrpChecks() {
   console.log('\n[msrp] origination prices from the marketplace list');

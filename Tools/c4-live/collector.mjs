@@ -623,8 +623,47 @@ export function shareTransport(inner, cache = SHARED, now = Date.now, ttl = SHAR
     return e.p;
   };
 }
-// The pass's and the crafting read's RPC: the kit's default transport behind the share.
-const sharedRpc = () => createSolanaRpcFromTransport(shareTransport(createDefaultRpcTransport({ url: RPC_URL })));
+// ---- fleets the bindings cannot decode (2026-11-25) ----------------------------------------------------------------
+// The kit's fleet discovery decodes every fleet account and is all-or-nothing: on 2026-11-25 the game put 115 of 1,124
+// fleets into a ninth fleet state the bindings do not know ("Union variant out of range ... got 8"), and every pass
+// failed. discoverReadable() asks again with each undecodable account left out; skipTransport() removes those accounts
+// from the list answer and, while a discovery is being repeated (ctl.hold), answers the same list read from memory, so
+// the chain is asked once. ctl = { skip: Set of addresses, hold: Map or null }. Past MAX_UNREAD the pass fails as before.
+export const MAX_UNREAD = 400;
+export function skipTransport(inner, ctl) {
+  return async (req) => {
+    const pl = req?.payload;
+    if (!pl || pl.method !== 'getProgramAccounts' || (!ctl.hold && !ctl.skip.size)) return inner(req);
+    let p;
+    if (ctl.hold) {
+      const hold = ctl.hold, key = canon(pl.params);
+      p = hold.get(key);
+      if (!p) {
+        p = new Promise((res) => res(inner(req)));
+        hold.set(key, p);
+        p.then((v) => { if (!v || typeof v !== 'object' || 'error' in v || !('result' in v)) hold.delete(key); }, () => hold.delete(key));
+      }
+    } else p = inner(req);
+    const v = await p;
+    const list = v && typeof v === 'object' && (Array.isArray(v.result) ? v.result : v.result && Array.isArray(v.result.value) ? v.result.value : null);
+    if (!list) return v;
+    const keep = structuredClone(list.filter((a) => !ctl.skip.has(a?.pubkey)));
+    return { ...v, id: pl.id, result: Array.isArray(v.result) ? keep : { ...v.result, value: keep } };
+  };
+}
+export async function discoverReadable(discover, ctl, max = MAX_UNREAD) {
+  ctl.hold = new Map();
+  try {
+    for (;;) {
+      try { return await discover(); } catch (e) {
+        if (e?.code !== 'ACCOUNT_DECODE_FAILED' || typeof e.address !== 'string' || !e.address || ctl.skip.has(e.address) || ctl.skip.size >= max) throw e;
+        ctl.skip.add(e.address);
+      }
+    }
+  } finally { ctl.hold = null; }
+}
+// The pass's and the crafting read's RPC: the kit's default transport behind the share (and, for a pass, the skip list).
+const sharedRpc = (ctl) => { const t = createDefaultRpcTransport({ url: RPC_URL }); return createSolanaRpcFromTransport(shareTransport(ctl ? skipTransport(t, ctl) : t)); };
 // A plain RPC with NO sharing, for C4Collect.epoch() in the browser (main.js cannot import the kit itself) and the
 // config snapshot: the chain-version probe must read the chain every time, never an answer kept from a minute ago.
 export const openRpc = () => createSolanaRpcFromTransport(createDefaultRpcTransport({ url: RPC_URL }));
@@ -703,7 +742,9 @@ export async function collect(pass, deps = {}) {
   try {
     let db = loadDb(); // a corrupt file aborts here, before any network read
     SHARED.clear(); // a pass shares account reads only with itself
-    const rpc = sharedRpc();
+    const unread = { skip: new Set(), hold: null }; // fleets whose account the bindings cannot decode
+    pass.unread = unread.skip; // (offline tests: a fake discovery reads this set)
+    const rpc = sharedRpc(unread);
     pass.abort ??= new AbortController();
     ctx = K.createSageContext({ cluster: 'zink-ptr', rpc });
     pass.ctx = ctx;
@@ -732,15 +773,16 @@ export async function collect(pass, deps = {}) {
     }
     // ---- reads -------------------------------------------------------------------------------
     // getFleets is all-or-nothing: a fleet closed between discovery and read throws. Re-discover once.
-    let addrs = await K.discoverFleetAddresses(ctx);
+    let addrs = await discoverReadable(() => K.discoverFleetAddresses(ctx), unread);
     let fleetsRaw;
     try { fleetsRaw = await K.getFleets(ctx, addrs); } catch (e) {
       if (e.code !== 'ACCOUNT_NOT_FOUND') throw e;
       log('WARN a fleet vanished between discovery and read - re-discovering once');
-      addrs = await K.discoverFleetAddresses(ctx);
+      addrs = await discoverReadable(() => K.discoverFleetAddresses(ctx), unread);
       fleetsRaw = await K.getFleets(ctx, addrs, { refresh: true });
     }
     log('fleets discovered', addrs.length, 'read', fleetsRaw.length);
+    if (unread.skip.size) log(`WARN ${unread.skip.size} fleet accounts could not be decoded (a state the bindings do not know) - left out of this pass`);
     const systemsRaw = await K.getStarSystems(ctx);
     // Guard: an empty read must never overwrite a good snapshot (LESSONS #14). The exceptions, all needing star
     // systems read: a first run, a new chain version, or a stored snapshot that itself has no fleets (an empty
@@ -757,7 +799,11 @@ export async function collect(pass, deps = {}) {
     log(`decode sanity: systems ${sanity.systemsOk}/${sanity.systems} named + placed, fleets ${sanity.fleetsOk}/${sanity.fleets} in a known state`);
     if (sanity.problem) throw new Error(`decode sanity failed: ${sanity.problem} - the account layout may have changed; nothing written`);
 
-    const stakesRaw = await K.getAllClaimStakes(ctx);
+    // the same rule for claim stakes: an undecodable stake account is left out, not fatal
+    const unreadFleetN = unread.skip.size;
+    const stakesRaw = await discoverReadable(() => K.getAllClaimStakes(ctx), unread);
+    const unreadStakeN = unread.skip.size - unreadFleetN;
+    if (unreadStakeN) log(`WARN ${unreadStakeN} claim stake accounts could not be decoded - left out of this pass`);
     const fleets = fleetsRaw.map(slimFleet);
     // stats as arrays aligned to one key list (size: latest.json is kept in the visitor's IndexedDB)
     const statKeys = statUnion(fleetsRaw);
@@ -778,6 +824,9 @@ export async function collect(pass, deps = {}) {
       mineFailed, mineTotal: miningFleets.length, charFailed, charTotal: ownerIds.length,
       partial: mineFailed > miningFleets.length * MAX_FAIL_SHARE || charFailed > ownerIds.length * MAX_FAIL_SHARE,
     };
+    // Fleets left out because their account could not be decoded: the page says so; counts are that much lower.
+    if (unreadFleetN) quality.unreadFleets = unreadFleetN;
+    if (unreadStakeN) quality.unreadStakes = unreadStakeN;
     if (quality.partial) log(`WARN PARTIAL pass (mining ${mineFailed}/${miningFleets.length}, characters ${charFailed}/${ownerIds.length} failed) - latest.json is marked partial and no history/owner points are added`);
     // nowSec: taken at the pass start (top of collect), before the epoch read and every other read
 
@@ -1135,7 +1184,9 @@ export async function collect(pass, deps = {}) {
     // suspect read: no gone events, and their state entries are carried forward (see carriedFleets).
     const carriedFleets = {};
     if (!firstRun) {
-      const vanished = Object.entries(state.fleets).filter(([a]) => !seenNow.has(a));
+      // A fleet that is on chain but could not be decoded has not vanished: no `gone`, its last known entry is kept.
+      for (const a of unread.skip) if (state.fleets[a] && !seenNow.has(a)) carriedFleets[a] = state.fleets[a];
+      const vanished = Object.entries(state.fleets).filter(([a]) => !seenNow.has(a) && !unread.skip.has(a));
       const prevCount = Object.keys(state.fleets).length;
       quality.vanished = vanished.length;
       const goneEvent = (a, p) => {
