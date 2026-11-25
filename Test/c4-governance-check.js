@@ -365,6 +365,8 @@ async function collectorCases2(collectorFile, govFile) {
 
 // ---- mutants: each removes one guard; the named cases must catch it --------------------------------------
 const MUTANTS = [
+  { file: 'gov', label: 'a contributor resource keeps only its last row (not summed)', from: 'r.res.set(ri, (r.res.get(ri) || 0n) + B(c.quantity));', to: 'r.res.set(ri, B(c.quantity));' },
+  { file: 'gov', label: 'contributor resources not split by resource', from: 'const ri = N(c.resourceIndex);', to: 'const ri = 0;' },
   { file: 'gov', label: 'no size check', from: "if (typeof decoder.fixedSize === 'number' && data.length !== decoder.fixedSize)", to: 'if (false)' },
   { file: 'gov', label: 'no discriminator check', from: 'if (data[i] !== disc[i]) throw', to: 'if (false) throw' },
   { file: 'gov', label: 'a failed type becomes empty (partial block)', from: 'try { rowsByType[n] = await readGovType(rpc, program, n, { signal, game }); } catch (e) { failed ??= e; throw e; }', to: 'try { rowsByType[n] = await readGovType(rpc, program, n, { signal, game }); } catch (e) { rowsByType[n] = []; }' },

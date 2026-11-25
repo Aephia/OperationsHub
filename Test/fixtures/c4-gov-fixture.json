@@ -2865,21 +2865,117 @@
    "sys": "FDnc4UqYLxYSBimofE4cyA9sRGVy457a1wnVeinKSt95",
    "lp": 29010,
    "units": 5100,
-   "rows": 6
+   "rows": 6,
+   "res": [
+    {
+     "id": 1007,
+     "q": 2360,
+     "n": "Alloy Frame"
+    },
+    {
+     "id": 1027,
+     "q": 1620,
+     "n": "Control Circuit"
+    },
+    {
+     "id": 1102,
+     "q": 450,
+     "n": "Generator Coils"
+    },
+    {
+     "id": 1016,
+     "q": 370,
+     "n": "Bio Stabilizer"
+    },
+    {
+     "id": 1199,
+     "q": 200,
+     "n": "Processing Matrix"
+    },
+    {
+     "id": 1243,
+     "q": 100,
+     "n": "Signal Booster"
+    }
+   ]
   },
   {
    "p": "2aCsVB58nEyB8vfyhwUAoj32MrA6GcZkiRDqmHHqxURy",
    "sys": "4StXzBqD1BprBizKfYrCVYYGT1dk2P88YZQjpbceuD5F",
    "lp": 29010,
    "units": 5100,
-   "rows": 7
+   "rows": 7,
+   "res": [
+    {
+     "id": 1007,
+     "q": 2360,
+     "n": "Alloy Frame"
+    },
+    {
+     "id": 1027,
+     "q": 1620,
+     "n": "Control Circuit"
+    },
+    {
+     "id": 1102,
+     "q": 450,
+     "n": "Generator Coils"
+    },
+    {
+     "id": 1016,
+     "q": 370,
+     "n": "Bio Stabilizer"
+    },
+    {
+     "id": 1199,
+     "q": 200,
+     "n": "Processing Matrix"
+    },
+    {
+     "id": 1243,
+     "q": 100,
+     "n": "Signal Booster"
+    }
+   ]
   },
   {
    "p": "BhEWqdoRmc9AxD8Xybj2jL1ZF4z2erQFcru3AuEjo2cv",
    "sys": "7SWCvNy5xwLRxC4JhdwWsVbRfY41FL2ZUHWS1SN22XgY",
    "lp": 29010,
    "units": 7460,
-   "rows": 7
+   "rows": 7,
+   "res": [
+    {
+     "id": 1007,
+     "q": 4720,
+     "n": "Alloy Frame"
+    },
+    {
+     "id": 1027,
+     "q": 1620,
+     "n": "Control Circuit"
+    },
+    {
+     "id": 1102,
+     "q": 450,
+     "n": "Generator Coils"
+    },
+    {
+     "id": 1016,
+     "q": 370,
+     "n": "Bio Stabilizer"
+    },
+    {
+     "id": 1199,
+     "q": 200,
+     "n": "Processing Matrix"
+    },
+    {
+     "id": 1243,
+     "q": 100,
+     "n": "Signal Booster"
+    }
+   ]
   }
  ],
  "counts": {

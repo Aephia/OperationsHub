@@ -488,7 +488,7 @@ function suite(A, quiet) {
                 policy: { defaults: Object.assign({}, FEES), bounds: { minCraftingFeeBps: 10000, maxCraftingFeeBps: 15000, maxLocalMarketFeeBps: 300, maxTreasuryDistributionBps: 10000 } },
                 module: { minTier: 2, bill: [{ id: 1007, q: 2360, n: HB }, { id: 1027, q: 1620 }] },
                 systems, voters: { profiles: 280, pvpIssued: 280000000, pvpReserved: 40000, allocating: 1, top: [{ p: 'PL1', sys: addr(3), power: 40000, pending: 40000, crew: 10 }] },
-                contributors: [{ p: 'PL1', sys: addr(3), lp: 29010, units: 5100, rows: 7 }, { p: 'PL2', sys: addr(1), lp: 29010, units: 7460, rows: 7 }, { p: 'FVRNa2j29ZsbHNVUkRwgE5AWWeUZgGqoNZ7P8f6mdzEB', sys: addr(0), lp: 1, units: 5100, rows: 6 }]
+                contributors: [{ p: 'PL1', sys: addr(3), lp: 29010, units: 5100, rows: 7, res: [{ id: 1007, q: 2360, n: HB }, { id: 1027, q: 2740 }, { id: 5, q: 0 }, null] }, { p: 'PL2', sys: addr(1), lp: 29010, units: 7460, rows: 7, res: [{ id: 1007, q: 7460 }] }, { p: 'FVRNa2j29ZsbHNVUkRwgE5AWWeUZgGqoNZ7P8f6mdzEB', sys: addr(0), lp: 1, units: 5100, rows: 6 }]
             };
             if (mut) mut(L.gov, L);
             return L;
@@ -507,9 +507,9 @@ function suite(A, quiet) {
         ok('gov: output clean (no NaN, undefined, style=, script)', clean(h0) && !/ style=/.test(h0) && !/<script/i.test(h0));
         // card 2: fees. The contract fixture has one system whose voters ask for something else; that row is the only one
         ok('gov: fees card lists the one system whose voters ask for more, with the wording of the page', g0.fees.rows.length === 1 && /<tr><th scope="row"><i class="c4an-sw f-mud" title="MUD"><\/i> Evil&lt;img src=x onerror=1&gt; Sys<\/th><td>x1\.00<\/td><td>0 %<\/td><td>0 %<\/td><td>0 %<\/td><td class="c4an-l">local treasury share 30 %, paid out to voters 100 %<\/td><\/tr>/.test(h0), h0.slice(h0.indexOf('<tbody>'), h0.indexOf('<tbody>') + 400));
-        ok('gov: fees card lists no other system and no "default fees" sentence while a row is shown', (h0.match(/<tr><th scope="row">/g) || []).length === 1 && !h0.includes('Every governed system charges the default fees'));
+        ok('gov: fees card lists no other system and no "default fees" sentence while a row is shown', (h0.match(/<tr><th scope="row"><i class="c4an-sw/g) || []).length === 1 && !h0.includes('Every governed system charges the default fees'));
         const LD = mkL(g => { g.systems[addr(3)].want = null; }), hd = part(draw(LD), 'governance');
-        ok('gov: default fees and nobody asking for more: the one sentence with the defaults and the allowed range', hd.includes('Every governed system charges the default fees (crafting x1.00, local market fee 0 %, local treasury share 0 %, treasury paid out to voters 0 %)') && hd.includes('Allowed range: crafting x1.00 to x1.50; local market fee up to 3 %; treasury paid out to voters up to 100 %.') && !hd.includes('<tbody>'));
+        ok('gov: default fees and nobody asking for more: the one sentence with the defaults and the allowed range', hd.includes('Every governed system charges the default fees (crafting x1.00, local market fee 0 %, local treasury share 0 %, treasury paid out to voters 0 %)') && hd.includes('Allowed range: crafting x1.00 to x1.50; local market fee up to 3 %; treasury paid out to voters up to 100 %.') && !hd.includes('<th scope="col">Crafting fee</th>'));
         const LM = mkL(g => { Object.assign(g.systems[addr(7)].fees, { craft: 15000, mkt: 120, local: 500, dist: 2000 }); g.systems[addr(7)].want = { craft: 15000, mkt: 120, local: 500, dist: 3000 }; }), mM = A.build(LM, F.B), hM = part(draw(LM), 'governance');
         ok('gov: a system whose fees differ from the defaults gets a row with the right numbers (x1.50, 1.2 %, 5 %, 20 %)', mM.gov.fees.rows.length === 2 && hM.includes('Sys 7</th><td>x1.50</td><td>1.2 %</td><td>5 %</td><td>20 %</td><td class="c4an-l">paid out to voters 30 %</td></tr>'), hM.slice(hM.indexOf('<tbody>'), hM.indexOf('<tbody>') + 700));
         const LN = mkL(g => { g.systems[addr(11)].fees.craft = 12000; g.systems[addr(9)].on = 1; }), mN = A.build(LN, F.B), hN = part(draw(LN), 'governance');
@@ -517,7 +517,7 @@ function suite(A, quiet) {
         ok('gov: voting enabled (4) is not the same count as votes setting the fees (1: enabled AND power)', mN.gov.on === 4 && mN.gov.votesSet === 1 && hN.includes('<dd>1</dd><dt>systems where votes set the fees</dt>'));
         // fix round B2-B5 (2026-11-25)
         const LB2 = mkL(g => { g.systems[addr(3)].want = { craft: 10000.4, mkt: 0.2, local: 0, dist: 0 }; }), mB2 = A.build(LB2, F.B), hB2 = part(draw(LB2), 'governance');
-        ok('gov B2: a weighted-mean ask that prints the same as the fees in force is no difference (no row, default sentence)', mB2.gov.fees.rows.length === 0 && hB2.includes('Every governed system charges the default fees') && !hB2.includes('<tbody>'), JSON.stringify(mB2.gov.fees.rows.map(r => r.name)));
+        ok('gov B2: a weighted-mean ask that prints the same as the fees in force is no difference (no row, default sentence)', mB2.gov.fees.rows.length === 0 && hB2.includes('Every governed system charges the default fees') && !hB2.includes('<th scope="col">Crafting fee</th>'), JSON.stringify(mB2.gov.fees.rows.map(r => r.name)));
         const LB2b = mkL(g => { g.systems[addr(3)].want = { craft: 10000.4, mkt: 100.2, local: 0, dist: 0 }; }), mB2b = A.build(LB2b, F.B), hB2b = part(draw(LB2b), 'governance');
         ok('gov B2: positive control, a real ask (1 % market fee) still shows its row, and only that field', mB2b.gov.fees.rows.length === 1 && hB2b.includes('<td class="c4an-l">local market fee 1 %</td>'), hB2b.slice(hB2b.indexOf('<tbody>'), hB2b.indexOf('<tbody>') + 300));
         const LB3 = mkL(g => { g.policy.defaults = { craft: 11000, mkt: 30, local: 250, dist: 1000 }; }), mB3 = A.build(LB3, F.B), hB3 = part(draw(LB3), 'governance');
@@ -533,15 +533,20 @@ function suite(A, quiet) {
         // card 3: modules
         ok('gov: three installed modules at 100 %, a fourth at 25 % funded, contributors counted', g0.modRows.length === 4 && g0.modRows.map(r => Math.round(r.mod.pct)).join() === '100,100,100,25' && /installed 2026-11-2\d, 1 contributor</.test(h0) && h0.includes('being built, 2 contributors<') && h0.includes('(Ustur): 25% funded') && /<li><i class="c4an-sw f-ustur"><\/i>Ustur<\/li>/.test(h0) && h0.includes('>25%<'), JSON.stringify(g0.modRows.map(r => [r.name, r.mod])) + ' ' + (h0.match(/installed[^<]*|being built[^<]*/g) || []).join('|'));
         ok('gov: the bill (name x quantity) and the minimum tier', h0.includes('<li><b>resource 1027</b> x 1,620</li>') && h0.includes('Needs a starbase of at least tier 2.'));
-        ok('gov: contributors by player name else short address, units only (the loyalty-point reading is not confirmed from the kit)', /Two<\/text>/.test(h0) && h0.includes('FVRN...dzEB') && !/loyalty/i.test(h0) && g0.contrib[0].units === 7460 && g0.contrib.every(c => !('lp' in c)), JSON.stringify([/Two<\/text>/.test(h0), h0.includes('FVRN...dzEB'), /loyalty/i.test(h0), g0.contrib[0]]));
+        ok('gov: contributors by player name else short address, units only (the loyalty-point reading is not confirmed from the kit)', /<th scope="row">Two<\/th><td class="c4an-l">[^<]+<\/td><td class="c4an-l">resource 1007 7,460<\/td><td>7,460<\/td>/.test(h0) && h0.includes('FVRN...dzEB') && !/loyalty/i.test(h0) && g0.contrib[0].units === 7460 && g0.contrib.every(c => !('lp' in c)), JSON.stringify([/<th scope="row">Two<\/th>/.test(h0), h0.includes('FVRN...dzEB'), /loyalty/i.test(h0), g0.contrib[0]]));
+        ok('gov: who put what where: each row lists its resources with units, in the order given, zero and junk rows skipped', h0.includes('<td class="c4an-l">Bill&quot;&gt;&lt;script&gt;x&lt;/script&gt; 2,360, resource 1027 2,740</td><td>5,100</td>') && g0.contrib.find(c => c.units === 5100 && c.res.length).res.length === 2, JSON.stringify(g0.contrib.map(c => c.res)));
+        ok('gov: a row from a copy without the split shows a dash and the caption says to refresh', /FVRN\.\.\.dzEB<\/th><td class="c4an-l">[^<]+<\/td><td class="c4an-l">-<\/td><td>5,100<\/td>/.test(h0) && h0.includes('refresh to read it'));
+        ok('gov: with the split on every row the caption has no refresh hint', !part(draw(mkL(g => { g.contributors.splice(2); })), 'governance').includes('refresh to read it'));
         // card 4: voting power
-        ok('gov: one allocation reads as a sentence, not a one-bar chart', h0.includes('280 players hold 280,000,000 voting power in total. 40,000 of it is allocated to systems (under 0.1%).') && /has put 40,000 voting power behind Evil&lt;img src=x onerror=1&gt; Sys with 10 crew members\./.test(h0));
-        const L2 = mkL(g => { g.voters.top.push({ p: 'PL2', sys: addr(1), power: 1000, pending: 0, crew: 2 }); }), h2 = part(draw(L2), 'governance');
-        ok('gov: two allocations draw a bar chart with crew', /Voting power allocated by player and system/.test(h2) && h2.includes('2 crew'));
+        ok('gov: one allocation is one table row: player, system, voting power, crew', h0.includes('280 players hold 280,000,000 voting power in total. 40,000 of it is allocated to systems (under 0.1%).') && /Who committed voting power where<\/h5>.*<tr><th scope="row">[^<]+<\/th><td class="c4an-l">Evil&lt;img src=x onerror=1&gt; Sys<\/td><td>40,000<\/td><td>10<\/td><\/tr><\/tbody>/s.test(h0) && h0.includes('1 allocation, most voting power first'), (h0.match(/Who committed.*?<\/table>/s) || [''])[0].slice(0, 400));
+        const L2 = mkL(g => { g.voters.top.unshift({ p: 'PL2', sys: addr(1), power: 1000, pending: 0, crew: 2 }); }), h2 = part(draw(L2), 'governance');
+        ok('gov: two allocations are two rows, most voting power first', (() => { const t = (h2.match(/Who committed voting power where.*?<\/table>/s) || [''])[0], r = [...t.matchAll(/<td>([\d,]+)<\/td><td>(\d+|-)<\/td><\/tr>/g)].map(x => x[1] + '/' + x[2]); return r.join() === '40,000/10,1,000/2'; })(), (h2.match(/Who committed.*?<\/table>/s) || [''])[0].slice(0, 500));
+        const hV0 = part(draw(mkL(g => { g.voters.top = [{ p: 'PL2', sys: addr(1), power: 5, crew: 0 }, { p: 'PL1', sys: addr(3), power: 0, pending: 9, crew: 1 }]; })), 'governance');
+        ok('gov: an allocation without crew shows a dash, one without voting power is not listed', /<td>5<\/td><td>-<\/td><\/tr><\/tbody>/.test(hV0) && (hV0.match(/Who committed.*?<\/table>/s)[0].match(/<tr><th scope="row">/g) || []).length === 1);
         // hostile text comes out escaped
         ok('gov: hostile player name, system name and bill name are escaped everywhere', !/<img/i.test(h0 + h2) && !/<script/i.test(h0) && h0.includes('Bill&quot;&gt;&lt;script&gt;x&lt;/script&gt;') && h0.includes('Evil&lt;img src=x onerror=1&gt;'));
         const LH = mkL(g => { g.contributors.splice(1); }), hH = part(draw(LH), 'governance');
-        ok('gov: one contributor reads as a sentence with the name escaped', /Evil&lt;img src=x onerror=1&gt; put 5,100 units into the module at /.test(hH) && !/<img/i.test(hH));
+        ok('gov: one contributor is one table row with the name escaped', /<th scope="row">Evil&lt;img src=x onerror=1&gt;<\/th>/.test(hH) && ((hH.match(/Who put what where.*?<\/table>/s) || [''])[0].match(/<th scope="row">Evil/g) || []).length === 1 && !/<img/i.test(hH));
         // absent, null, empty
         const absent = mkL(); delete absent.gov;
         const nul = mkL(); nul.gov = null;
@@ -1194,10 +1199,14 @@ const MUTANTS = [
     ["gov: absent gov throws instead of a note","if (!g) return section('governance',","if (false) return section('governance',"],
     ["gov: bill name not escaped","'<li><b>' + E(b.n) + '</b>","'<li><b>' + b.n + '</b>"],
     ["gov: system name not escaped in the fees table","\"></i> ' + E(r.name) + '</th>","\"></i> ' + r.name + '</th>"],
-    ["gov: contributor name not escaped","note(E(g.contrib[0].player) + ' put '","note(g.contrib[0].player + ' put '"],
-    ["gov: allocation name not escaped","note(E(v.top[0].player) + ' has put '","note(v.top[0].player + ' has put '"],
-    ["gov: contributors ranked by name","return { player: plName(c.p), system: sysName(str(c.sys)), units: c.units };\n        }).sort(function (x, y) { return y.units - x.units ||","return { player: plName(c.p), system: sysName(str(c.sys)), units: c.units };\n        }).sort(function (x, y) { return 0 ||"],
-    ["gov: loyalty points shown without confirmation","chart('Top contributors', cons, 'Units each player put into modules,","chart('Top contributors', cons, 'Loyalty points earned and units each player put into modules,"],
+    ["gov: contributor name not escaped","return '<tr><th scope=\"row\">' + E(c.player) + '</th>","return '<tr><th scope=\"row\">' + c.player + '</th>"],
+    ["gov: contributed resource name not escaped","return E(r.n) + ' ' + E(fnum(r.q)); }).join(', ')","return r.n + ' ' + E(fnum(r.q)); }).join(', ')"],
+    ["gov: contributed resources dropped","units: c.units, res: res };","units: c.units, res: [] };"],
+    ["gov: zero-quantity resource rows kept","return obj(r) && fin(r.q) && r.q > 0; }).map(function (r) { return { n: str(r.n) ||","return obj(r); }).map(function (r) { return { n: str(r.n) ||"],
+    ["gov: allocation system not escaped","E(t.system) + '</td><td>' + E(fnum(t.power))","t.system + '</td><td>' + E(fnum(t.power))"],
+    ["gov: allocations listed in the order read","}).sort(function (x, y) { return y.power - x.power || (x.player < y.player ? -1 : x.player > y.player ? 1 : 0); });\n        var con","}).sort(function (x, y) { return 0; });\n        var con"],
+    ["gov: contributors ranked by name","return { player: plName(c.p), system: sysName(str(c.sys)), units: c.units, res: res };\n        }).sort(function (x, y) { return y.units - x.units ||","return { player: plName(c.p), system: sysName(str(c.sys)), units: c.units, res: res };\n        }).sort(function (x, y) { return 0 ||"],
+    ["gov: loyalty points shown without confirmation","<th scope=\"col\">Units</th></tr></thead><tbody>' +","<th scope=\"col\">Units</th><th scope=\"col\">Loyalty points</th></tr></thead><tbody>' +"],
     ["gov: junk system rows not skipped","            var s = obj(S[a]);\n            if (!s) return;\n            var fa = Object","            var s = S[a];\n            var fa = Object"],
     ['script tag in output', "return '<div class=\"c4an-chart\">'", "return '<script></script><div class=\"c4an-chart\">'"]
 ];

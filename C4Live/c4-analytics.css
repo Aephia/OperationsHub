@@ -159,6 +159,7 @@
 .c4an-tbl.c4an-fit th, .c4an-tbl.c4an-fit td { padding: 4px 6px; }
 .c4an-tbl.c4an-fit th[scope="row"] { white-space: normal; overflow-wrap: anywhere; }
 .c4an-tbl.c4an-fit td.c4an-l { min-width: 0; overflow-wrap: anywhere; }
+.c4an-tbl.c4an-who th[scope="row"], .c4an-tbl.c4an-who td:nth-child(2) { overflow-wrap: break-word; }   /* names keep their words whole; the resource list gives way */
 
 .c4an-card { background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02)); border-top-color: color-mix(in srgb, var(--an-acc, #6fb1ff) 55%, var(--an-line)); box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22); transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s; }
 .c4an-card:hover { border-color: color-mix(in srgb, var(--an-acc, #6fb1ff) 60%, transparent); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.34), 0 0 0 1px color-mix(in srgb, var(--an-acc, #6fb1ff) 25%, transparent); }

@@ -176,14 +176,21 @@ export function buildGov(rowsByType, takenAt, cargoNames) {
     top.push({ pb: B(a.activePvp), row: { p: bk ? String(bk.playerProfile) : null, sys, power: N(a.activePvp), pending: N(a.pendingPvp), crew: N(a.crew) } });
   }
   top.sort((a, b) => (b.pb > a.pb ? 1 : b.pb < a.pb ? -1 : 0));
-  // contributors: one row per profile + system, summed over the module's resources
+  // contributors: one row per profile + system, summed over the module's resources; res = the same units split by
+  // resource (resourceIndex = the position in the module policy's resource list), in the order of the bill
   const cmap = new Map();
   for (const [sys, pjs] of projects) for (const pj of pjs) for (const c of contribs.get(String(pj.address)) || []) {
     const k = String(c.profile) + '|' + sys;
-    const r = cmap.get(k) || cmap.set(k, { p: String(c.profile), sys, lp: 0n, units: 0n, rows: 0 }).get(k);
+    const r = cmap.get(k) || cmap.set(k, { p: String(c.profile), sys, lp: 0n, units: 0n, rows: 0, res: new Map() }).get(k);
     r.lp += B(c.lpEarned); r.units += B(c.quantity); r.rows++;
+    const ri = N(c.resourceIndex);
+    r.res.set(ri, (r.res.get(ri) || 0n) + B(c.quantity));
   }
-  const contributors = [...cmap.values()].sort((a, b) => (b.lp > a.lp ? 1 : b.lp < a.lp ? -1 : 0)).map((r) => ({ ...r, lp: N(r.lp), units: N(r.units) }));
+  const resOf = (m) => [...m.entries()].sort((a, b) => a[0] - b[0]).map(([i, q]) => {
+    const o = { id: modPol && modPol.resourceIds[i] !== undefined ? N(modPol.resourceIds[i]) : 0, q: N(q) };
+    const n = o.id ? nameOf(cargoNames, o.id) : undefined; if (n !== undefined) o.n = n; return o;
+  });
+  const contributors = [...cmap.values()].sort((a, b) => (b.lp > a.lp ? 1 : b.lp < a.lp ? -1 : 0)).map((r) => ({ ...r, lp: N(r.lp), units: N(r.units), res: resOf(r.res) }));
   return {
     at: takenAt, day: N(day), voteEpoch: N(voteEpoch), voteEpochSecs: govs.length ? N(govs[0].voteEpochDurationSecs) : null,
     v: GOV_SHAPE,

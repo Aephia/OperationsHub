@@ -629,8 +629,7 @@ the live chain; every other module reads the static uber-export. It has two halv
     modules installed, systems where votes set the fees and voting power allocated; per faction, the systems, modules,
     voting-enabled systems and voting power allocated; a fees table of only the systems whose fees differ from the
     defaults or whose voters ask for something else, or one sentence with the default fees and the allowed range when
-    none do; module progress per system, the module bill and the top contributors in units; voting power issued,
-    the share allocated and who put it behind which system. A copy of the data without `gov` shows one note. It
+    none do; module progress per system, the module bill and a "Who put what where" table (player, system, each resource with its units, total); voting power issued, the share allocated and a "Who committed voting power where" table (player, system, voting power, crew). A copy of the data without `gov` shows one note. It
     reuses the council emblem until a governance one is rendered); claim stakes (planet type, tier, state, buildings, building kinds, power, storage,
     fuel left, production, stakes per owner); ships against claim stakes (per resource, per crew member, per
     faction, by ship model against stake tier, who runs what); emission, sinks and starbases (2026-11-23: units per

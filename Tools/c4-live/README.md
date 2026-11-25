@@ -218,7 +218,7 @@ after 14 days unseen.
 `latest.gov` (governance, `governance.mjs`; `null` = not read on this chain version): `{ v: 1, at, day, voteEpoch, voteEpochSecs,
 policy:{defaults, constant, bounds}, module:{minTier, bill:[{id, q, n?}]}, curve, housing[], systems:{ [system
 address]: { ctl, lvl, on, mod, fees, src, power, nextPower, want, voters, crew, poolRaw, ballot, days[] } }, voters:{profiles,
-pvpIssued, pvpReserved, allocating, top[<=50]}, contributors[], counts }`. Fees are basis points (`craft` 10000 = x1.00);
+pvpIssued, pvpReserved, allocating, top[<=50]}, contributors[{p, sys, lp, units, rows, res:[{id, q, n?}]}], counts }`. `res` (2026-11-25) splits a contributor's units by module resource, in bill order. Fees are basis points (`craft` 10000 = x1.00);
 `policy.constant` is the fee set a system without voting charges (10000 / 0 / 0 / 0, the kit's constant), not
 `policy.defaults`. `*Raw` amounts are the program's raw ATLAS ledger units; the divisor (8 decimals is likely, as the kit's
 FLOYDS_PER_ATLAS) is NOT emitted until a non-zero pool confirms it, so the page shows no amounts. A u64 above 2^53 is

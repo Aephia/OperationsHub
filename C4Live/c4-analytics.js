@@ -496,7 +496,9 @@
             return { player: plName(t.p), system: sysName(str(t.sys)), power: t.power, crew: fin(t.crew) && t.crew > 0 ? t.crew : 0 };
         }).sort(function (x, y) { return y.power - x.power || (x.player < y.player ? -1 : x.player > y.player ? 1 : 0); });
         var con = arr(G.contributors).filter(obj).filter(function (c) { return fin(c.units) && c.units > 0; }).map(function (c) {
-            return { player: plName(c.p), system: sysName(str(c.sys)), units: c.units };
+            // res: the same units by resource (absent in a copy read before 2026-11-25: the row then shows the total only)
+            var res = arr(c.res).filter(function (r) { return obj(r) && fin(r.q) && r.q > 0; }).map(function (r) { return { n: str(r.n) || (fin(r.id) && r.id ? 'resource ' + r.id : 'unknown resource'), q: r.q }; });
+            return { player: plName(c.p), system: sysName(str(c.sys)), units: c.units, res: res };
         }).sort(function (x, y) { return y.units - x.units || (x.player < y.player ? -1 : x.player > y.player ? 1 : 0); });
         var mod = obj(G.module) || {};
         var bill = arr(mod.bill).filter(function (b) { return obj(b) && fin(b.q) && b.q > 0; }).map(function (b) { return { n: str(b.n) || ('resource ' + b.id), q: b.q }; });
@@ -1063,10 +1065,16 @@
         var tier = g.minTier != null ? 'Needs a starbase of at least tier ' + g.minTier + '.' : '';
         var cons;
         if (!g.contrib.length) cons = note('No one has put resources into a module in this read.');
-        else if (g.contrib.length === 1) cons = note(E(g.contrib[0].player) + ' put ' + fnum(g.contrib[0].units) + ' units into the module at ' + E(g.contrib[0].system) + '.');
-        else cons = barList(ctx, g.contrib.slice(0, 10).map(function (c) { return { label: c.player, v: c.units, cls: 'f-s3', tip: c.player + ' at ' + c.system + ': ' + fnum(c.units) + ' units' }; }), { fmt: fnum, label: 'Units put into modules by player' });
+        else {
+            // who put which resource into which system's module: one row per player and system, most units first
+            var CSHOW = 20, noRes = g.contrib.some(function (c) { return !c.res.length; });
+            cons = '<div class="c4an-tw"><table class="c4an-tbl c4an-fit c4an-who"><thead><tr><th scope="col">Player</th><th scope="col">System</th><th scope="col">Resources put in</th><th scope="col">Units</th></tr></thead><tbody>' +
+                g.contrib.slice(0, CSHOW).map(function (c) {
+                    return '<tr><th scope="row">' + E(c.player) + '</th><td class="c4an-l">' + E(c.system) + '</td><td class="c4an-l">' + (c.res.length ? c.res.map(function (r) { return E(r.n) + ' ' + E(fnum(r.q)); }).join(', ') : '-') + '</td><td>' + E(fnum(c.units)) + '</td></tr>';
+                }).join('') + '</tbody></table></div>';
+        }
         cards.push(card('Governance modules', mc + chart('What a module costs', bl, tier || 'The full bill, once per system.') +
-            chart('Top contributors', cons, 'Units each player put into modules, top ' + Math.min(10, g.contrib.length) + ' of ' + plural(g.contrib.length, 'contributor') + '.')));
+            chart('Who put what where', cons, !g.contrib.length ? 'Resources players put into governance modules.' : 'Resources each player put into the governance module of a system, most units first' + (g.contrib.length > 20 ? ', first 20 of ' + g.contrib.length + ' rows' : '') + '.' + (noRes ? ' A dash: this copy of the data was read before the split by resource existed; refresh to read it.' : ''))));
         // 4. voting power
         var v = g.voters, vc;
         if (!v.issued && !v.allocated && !v.top.length) vc = note('No voting power is recorded in this read.');
@@ -1074,9 +1082,12 @@
             var head = '<p class="c4an-empty">' + (v.issued ? E(plural(v.profiles, 'player')) + ' hold ' + E(fnum(v.issued)) + ' voting power in total. ' : '') + E(fnum(v.allocated)) + ' of it is allocated to systems' + (v.share != null ? ' (' + E(smallPct(v.share)) + ')' : '') + '.</p>';
             var al;
             if (!v.top.length) al = note('No one has allocated voting power to a system yet.');
-            else if (v.top.length === 1) al = note(E(v.top[0].player) + ' has put ' + E(fnum(v.top[0].power)) + ' voting power behind ' + E(v.top[0].system) + (v.top[0].crew ? ' with ' + E(plural(v.top[0].crew, 'crew member')) : '') + '.');
-            else al = barList(ctx, v.top.slice(0, 10).map(function (t) { return { label: t.player + ' → ' + t.system, v: t.power, cls: 'f-s7', tag: t.crew ? plural(t.crew, 'crew') : '', tip: t.player + ' → ' + t.system + ': ' + fnum(t.power) + ' voting power' + (t.crew ? ', ' + plural(t.crew, 'crew member') : '') }; }), { fmt: fnum, label: 'Voting power allocated by player and system' });
-            vc = chart('', head + al, 'Voting power a player allocates to a system counts for the votes there; top ' + Math.min(10, v.top.length) + ' of ' + plural(v.top.length, 'allocation') + '.');
+            // who committed voting power to which system: one row per allocation, most voting power first
+            else al = '<h5 class="c4an-ch">Who committed voting power where</h5><div class="c4an-tw"><table class="c4an-tbl c4an-fit c4an-who"><thead><tr><th scope="col">Player</th><th scope="col">System</th><th scope="col">Voting power</th><th scope="col">Crew</th></tr></thead><tbody>' +
+                v.top.slice(0, 20).map(function (t) {
+                    return '<tr><th scope="row">' + E(t.player) + '</th><td class="c4an-l">' + E(t.system) + '</td><td>' + E(fnum(t.power)) + '</td><td>' + (t.crew ? E(fnum(t.crew)) : '-') + '</td></tr>';
+                }).join('') + '</tbody></table></div>';
+            vc = chart('', head + al, 'Voting power a player commits to a system counts for the votes there, with the crew backing it; ' + (v.top.length > 20 ? 'first 20 of ' : '') + plural(v.top.length, 'allocation') + ', most voting power first.');
         }
         cards.push(card('Voting power', vc));
         return section('governance', 'Governance', intro, cards, [[kfmt(g.n), 'systems with governance'], [kfmt(g.mods), 'modules installed'], [kfmt(g.votesSet), 'systems where votes set the fees'], [kfmt(v.allocated), 'voting power allocated']]);
