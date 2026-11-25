@@ -102,7 +102,7 @@
     function loadCollector() {
         return S.collectorP || (S.collectorP = new Promise((resolve, reject) => {
             const s = document.createElement('script');
-            s.src = 'c4-collect.js?v=20261123a';
+            s.src = 'c4-collect.js?v=20261125a';
             s.onload = resolve;
             s.onerror = () => { S.collectorP = null; reject(new Error('c4-collect.js failed to load')); };
             document.head.append(s);
@@ -623,7 +623,7 @@
     }
     // ---- Analytics tab (2026-11-22): c4-analytics.js builds the model from latest.json (+ bodies.json for planet types)
     // and draws it at the width the pane has now; it is drawn again when the pane changes width (expand, window resize)
-    const AN_LABEL = { mining: 'Mining', council: 'Council rank', stakes: 'Claim stakes', compare: 'Ships vs stakes', economy: 'Emission', crafting: 'Crafting' };
+    const AN_LABEL = { governance: 'Governance', mining: 'Mining', council: 'Council rank', stakes: 'Claim stakes', compare: 'Ships vs stakes', economy: 'Emission', crafting: 'Crafting' };
     function renderAnalytics(el) {
         const A = window.C4Analytics;
         if (S.an.ro) { S.an.ro.disconnect(); S.an.ro = null; }
@@ -1273,7 +1273,7 @@
             ${identRows(p, rec, o.npc)}${o.npc ? '' : dacRow(p)}
             <p class="c4-verdict">${verdict}</p>
             <div class="c4-dstats c4-anim-in">${stat('Fleets', o.fleets)}${stat('Ships', M.fmt(o.ships, 0))}${stat('Mining u/s', o.ups ? M.fmt(o.ups) : '0')}${stat('ATLAS', o.atlas != null ? M.fmt(o.atlas, 0) : '-')}${stat('Council rank', o.rank != null ? o.rank : '-')}${stat('Claim stakes', stakes)}</div>
-            ${o.npc ? '' : wealthSection(rec)}
+            ${o.npc ? '' : wealthSection(rec)}${o.npc ? '' : M.governanceOwnerHtml(M.governanceForOwner(S.latest, p))}
             <div class="c4-dsec"><span>Fleets</span><button class="c4-act" data-focus-owner="${esc(p)}"${S.scene ? '' : ' disabled title="3D map not loaded"'}>Fly to fleets</button></div><div class="c4-anim-in">${fleets}</div>
             ${stakeList}
             <div class="c4-dsec"><span>Mining by resource</span></div><div class="c4-anim-in">${mining}</div>
@@ -1421,6 +1421,7 @@
                 <div class="kind">${sys.f ? `${esc(M.GROUP_LABEL[sys.f] || sys.f)} starbase, level ${esc(sys.lvl)}` : 'No starbase'}</div><h2>${esc(sys.n)}</h2></div>
             ${S.bodiesStale ? note(STALE_BODIES) : ''}<p class="c4-verdict">${v.verdict}</p>
             <div class="c4-dstats">${stat('Fleets here', `${v.fleets.length}`)}${stat('Mining u/s', v.ups ? M.fmt(v.ups) : '0')}${stat('Claim stakes', v.stakes.length)}</div>
+            ${M.governanceHtml(M.governanceForSystem(S.latest, S.sysView))}
             <div class="c4-dsec"><span>Planets</span></div><ul class="c4-list c4-bodies">${v.planets.map(bodyRow).join('') || '<li>none</li>'}</ul>
             <div class="c4-dsec"><span>Asteroids</span></div><ul class="c4-list c4-bodies">${v.asteroids.map(bodyRow).join('') || '<li>none</li>'}</ul>
             <div class="c4-dsec"><span>Fleets by state</span></div><div class="c4-sp-states">${states || 'none'}</div>

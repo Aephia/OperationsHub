@@ -640,3 +640,12 @@ p.c4-dac-legend.none { display: block; margin: 0.2rem 0 0; font-size: 0.78rem; c
     .sv, .sv-scrim, .sv *, .sv *::before, .sv *::after { animation: none !important; transition: none !important; }
     .sv-dot { display: none !important; }
 }
+
+/* governance block (system panel) and owner drawer lines (2026-11-24): reuses .c4-list rows; read-only, so no pointer */
+.c4-gov .c4-list li, .c4-gov-own li { cursor: default; }
+.c4-gov .c4-list li:hover, .c4-gov-own li:hover { color: var(--text-secondary); }
+.c4-gov .c4-list li .l, .c4-gov-own li .l { white-space: normal; overflow: visible; }
+.c4-gov .c4-list li .n, .c4-gov-own li .n { white-space: normal; text-align: right; font-size: 0.7rem; }
+.c4-gov .c4-gov-sub { margin: 0.55rem 0 0.1rem; font-family: 'Orbitron', sans-serif; font-size: 0.5rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-muted); }
+.c4-gov .c4-gov-sub em, .c4-gov .c4-gov-chg { font-style: normal; text-transform: none; letter-spacing: 0; color: var(--cyan); font-family: 'Exo 2', sans-serif; }
+.c4-gov .c4-gov-parts { margin: 0.2rem 0 0.2rem 0.8rem; }

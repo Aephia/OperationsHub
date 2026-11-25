@@ -24,6 +24,8 @@
 //   wallet  profileKeys[0] of each owner's Profile account, only when that key is scoped to the profile program
 //   cargo   rolled up from the fleet accounts already read (cargo pods are nested in the Fleet account: 0 calls)
 //   prices  Solana MAINNET Galactic Marketplace order book + galaxy.staratlas.com/nfts, cached in prices.json
+//   gov     governance (fees, voting, governance module) - governance.mjs, 15 getProgramAccounts, all or nothing;
+//           kept in db.json state.gov so a failed read re-serves the last block (its own `at`) on the same chain version
 
 import { createSolanaRpc, getAddressDecoder } from '@solana/kit';
 import { createSageContext } from '@aephia/atlas-kit/client';
@@ -34,6 +36,9 @@ import { getAllClaimStakes, listClaimStakeDefinitions, listClaimStakeBuildingDef
 import { getStarSystems, getAllCelestialBodies } from '@aephia/atlas-kit/world';
 import { listCargoDefinitions } from '@aephia/atlas-kit/cargo';
 import { listRecipes } from '@aephia/atlas-kit/crafting';
+import { readGovernance, GOV_CALLS, GOV_SHAPE } from './governance.mjs';
+// The governance read's own limit inside the pass (a hung getProgramAccounts must not cost the whole pass).
+const GOV_LIMIT_MS = 60_000;
 import { mkdirSync, readFileSync, writeFileSync, appendFileSync, renameSync, existsSync, statSync, unlinkSync, openSync, closeSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -533,6 +538,9 @@ export async function collect(pass, deps = {}) {
   const readIdent = deps.readIdentities || readIdentities;
   const readPrices = deps.refreshPrices || refreshPrices;
   const readEpoch = deps.readEpoch || readChainEpoch;
+  // A fake chain (deps.chain, offline tests) never reaches the real governance accounts: no reader given = not read.
+  const readGov = deps.readGovernance || (deps.chain ? null : readGovernance);
+  const govLimit = deps.govLimitMs || GOV_LIMIT_MS; // tests inject a short limit
   // deps.chain swaps the kit readers (offline tests only); the real pass always uses the kit.
   const K = { createSageContext, discoverFleetAddresses, getFleets, getStarSystems, getAllClaimStakes, getFleetMiningState,
     getCharacterForProfile, listClaimStakeDefinitions, listClaimStakeBuildingDefinitions, getAllCelestialBodies, listCargoDefinitions, ...(deps.chain || {}) };
@@ -808,6 +816,42 @@ export async function collect(pass, deps = {}) {
     let cargoDefs = null, cargoDefsErr = null;
     try { cargoDefs = await K.listCargoDefinitions(ctx); } catch (e) { cargoDefsErr = e; }
     const cargoName = Object.fromEntries((cargoDefs || []).map((c) => [c.id, c.name]));
+    // ---- governance - enrichment: a failed or suspect read keeps the previous block of this chain version ----
+    // db was replaced by a fresh one on a new chain version, so there db.state.gov is absent and the block is dropped.
+    const tGov = Date.now();
+    const storedGov = db.state.gov && typeof db.state.gov === 'object' ? db.state.gov : null;
+    // A block of another shape (older build: no `v`, or the unverified atlasDecimals) is never re-served.
+    const prevGov = storedGov && storedGov.v === GOV_SHAPE && !('atlasDecimals' in storedGov) ? storedGov : null;
+    let gov = null, govNote = null;
+    if (readGov) {
+      // Its own limit, combined with the pass abort. The race also covers a reader that ignores the signal.
+      const govCtl = new AbortController();
+      const govTimer = setTimeout(() => govCtl.abort(new Error(`timed out after ${govLimit / 1000} s`)), govLimit);
+      const govSig = AbortSignal.any([pass.abort.signal, govCtl.signal]);
+      let stop = null;
+      try {
+        gov = await Promise.race([
+          readGov(rpc, { signal: govSig, cargoNames: cargoName, program: ctx.programs?.sage, game: ctx.game, takenAt: nowSec }),
+          new Promise((_, rej) => {
+            stop = () => rej(govSig.reason instanceof Error ? govSig.reason : new Error('aborted'));
+            if (govSig.aborted) stop(); else govSig.addEventListener('abort', stop, { once: true });
+          }),
+        ]);
+        if (!gov || typeof gov !== 'object' || !gov.systems) throw new Error('reader returned no block');
+        const n = Object.keys(gov.systems).length, prevN = Object.keys(prevGov?.systems || {}).length;
+        if (!n && prevN) { gov = null; govNote = `governance read suspect: 0 systems vs ${prevN} last pass`; }
+      } catch (e) {
+        // the RPC URL may carry a key (paid endpoints) and this text reaches latest.json: redact before cutting
+        gov = null; govNote = `governance read failed: ${String(e?.message ?? e).split(RPC_URL).join(RPC_LABEL).slice(0, 120)}`;
+      } finally { clearTimeout(govTimer); if (stop) govSig.removeEventListener('abort', stop); }
+    }
+    if (govNote) {
+      gov = prevGov;
+      quality.govFailed = true;
+      const dropped = storedGov && !prevGov ? ' (the stored block has an older shape and was dropped)' : '';
+      (quality.notes ??= []).push(`${govNote}${gov ? ` - keeping governance read at ${gov.at}` : ` - no governance shown${dropped}`}`);
+    }
+    log(`governance: ${!readGov ? 'not read (fake chain)' : gov && !govNote ? `${Object.keys(gov.systems).length} systems` : govNote}`, `(${readGov ? GOV_CALLS : 0} calls, ${Date.now() - tGov} ms)`);
     const TIER_NUM = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
     const stakes = stakesRaw.map((k) => {
       const def = stakeDefs[k.claimStakeDefinitionId];
@@ -1062,6 +1106,7 @@ export async function collect(pass, deps = {}) {
       // the chain version this snapshot belongs to; changed = this pass started it (history began again here).
       // null only when no version was ever read (the read failed and nothing was stored).
       epoch: epoch ? { genesis: epoch.genesis, sage: epoch.sage ?? null, since: epoch.since, changed: epochChanged } : null,
+      gov, // governance (governance.mjs); null = never read on this chain version; gov.at = when it was read
     };
 
     // ---- write ---------------------------------------------------------------------------------
@@ -1081,6 +1126,7 @@ export async function collect(pass, deps = {}) {
         starbases: Object.fromEntries(systems.map((s) => [s.a, { lc: s.lc, hp: s.hp, f: s.f }])),
         asteroidCum,
         ident: nextIdent, // last known name / wallet per owner, with the time each was read
+        ...(gov ? { gov } : {}), // last good governance block of this chain version (re-served when a read fails)
         ...(epoch ? { epoch: { genesis: epoch.genesis, sage: epoch.sage ?? null, since: epoch.since } } : {}),
       },
       history, events, owners: ownerSeries,

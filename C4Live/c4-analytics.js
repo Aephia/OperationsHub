@@ -7,7 +7,7 @@
 (function (root) {
     'use strict';
 
-    var SECTIONS = ['mining', 'council', 'stakes', 'compare', 'economy', 'crafting'];
+    var SECTIONS = ['mining', 'council', 'governance', 'stakes', 'compare', 'economy', 'crafting'];
     var SIZE_ORDER = ['xx-small', 'x-small', 'small', 'medium', 'large', 'capital', 'commander', 'titan'];
     var FACS = ['mud', 'oni', 'ustur', 'unaligned'];
     var FAC_NAME = { mud: 'MUD', oni: 'ONI', ustur: 'Ustur', unaligned: 'Unaligned' };
@@ -72,7 +72,8 @@
             stakes: buildStakes(stakes, bodyList, ownerName),
             compare: null,
             economy: null,
-            crafting: buildCrafting(crafting)
+            crafting: buildCrafting(crafting),
+            gov: buildGov(L.gov, arr(L.systems).filter(obj), ownerName)
         };
         model.compare = buildCompare(fleets, owners, stakes, ownerFac, model.mining.rows, model.stakes, ownerName);
         model.economy = buildEconomy(arr(L.systems).filter(obj), model.mining.rows, stakes, ownerName);
@@ -436,6 +437,77 @@
         R.rows.forEach(function (r, i) { r.k = 'r' + i; });
         Object.keys(tiers).forEach(function (k) { tiers[k].forEach(function (e) { if (e.ext === 0) R.noExtractor++; }); });
         return R;
+    }
+
+    // ---------------------------------------------------------------- governance (latest.gov; null when the read did not carry it)
+    var GOV_FAC = { 1: 'mud', 2: 'oni', 3: 'ustur' };
+    var FEE_KEYS = ['craft', 'mkt', 'local', 'dist'];
+    var FEE_NAME = { craft: 'crafting fee', mkt: 'local market fee', local: 'local treasury share', dist: 'paid out to voters' };
+    // a fee set with all four figures finite, else null
+    function feesOf(f) {
+        var o = obj(f), r = {};
+        if (!o) return null;
+        for (var i = 0; i < FEE_KEYS.length; i++) { var v = o[FEE_KEYS[i]]; if (!fin(v)) return null; r[FEE_KEYS[i]] = v; }
+        return r;
+    }
+    // compared as printed: a weighted mean of 10000.4 prints "x1.00", the same as 10000, so it is not a difference
+    function feeDiff(a, b) { return FEE_KEYS.filter(function (k) { return feeTxt(k, a[k]) !== feeTxt(k, b[k]); }); }
+    function craftTxt(b) { return 'x' + (b / 10000).toFixed(2); }
+    function bpsTxt(b) { return Number((b / 100).toFixed(2)) + ' %'; }
+    function feeTxt(k, b) { return k === 'craft' ? craftTxt(b) : bpsTxt(b); }
+    function isoDay(s) { return fin(s) && s > 0 && s < 4e9 ? new Date(s * 1000).toISOString().slice(0, 10) : ''; }
+    // a share of 0-100 for a tiny allocation: pctTxt would print 0.0%
+    function smallPct(p) { return p <= 0 ? '0%' : p < 0.1 ? 'under 0.1%' : pctTxt(p); }
+
+    function buildGov(g, systems, ownerName) {
+        var G = obj(g);
+        if (!G) return null;
+        var names = dict();
+        systems.forEach(function (s) { if (str(s.a) && str(s.n)) names[s.a] = s.n; });
+        var sysName = function (a) { return names[a] || shortAddr(a) || 'unknown system'; };
+        var plName = function (p) { return str(p) ? (ownerName[p] || shortAddr(p)) : 'unknown player'; };
+        // a system without voting charges the kit's constant, not policy.defaults
+        var pol = obj(G.policy) || {}, def = feesOf(pol.constant) || { craft: 10000, mkt: 0, local: 0, dist: 0 }, bounds = obj(pol.bounds) || {};
+        var S = obj(G.systems) || {}, rows = [];
+        Object.keys(S).forEach(function (a) {
+            var s = obj(S[a]);
+            if (!s) return;
+            var fa = Object.prototype.hasOwnProperty.call(GOV_FAC, s.ctl) ? GOV_FAC[s.ctl] : 'unaligned', fees = feesOf(s.fees), want = feesOf(s.want), mod = obj(s.mod);
+            var fund = 0, need = 0;
+            if (mod) { arr(mod.funded).forEach(function (v) { if (fin(v) && v > 0) fund += v; }); arr(mod.need).forEach(function (v) { if (fin(v) && v > 0) need += v; }); }
+            var inst = !!(mod && mod.inst === 1);
+            rows.push({
+                a: a, name: sysName(a), fa: fa, on: s.on === 1, votes: s.src === 'generation', power: fin(s.power) && s.power > 0 ? s.power : 0,
+                fees: fees, want: want, fdiff: fees && def ? feeDiff(fees, def) : [], ask: want ? (fees ? feeDiff(want, fees) : FEE_KEYS.slice()) : [],
+                mod: mod ? { inst: inst, at: inst ? isoDay(mod.at) : '', pct: inst ? 100 : need > 0 ? Math.min(100, fund / need * 100) : 0, who: fin(mod.contributors) && mod.contributors > 0 ? Math.floor(mod.contributors) : 0 } : null
+            });
+        });
+        var byName = function (x, y) { return x.name < y.name ? -1 : x.name > y.name ? 1 : x.a < y.a ? -1 : x.a > y.a ? 1 : 0; };
+        rows.sort(byName);
+        var facs = FACS.map(function (f) {
+            var l = rows.filter(function (r) { return r.fa === f; });
+            return { fa: f, n: l.length, mods: l.filter(function (r) { return r.mod && r.mod.inst; }).length, on: l.filter(function (r) { return r.on; }).length, power: sum(l.map(function (r) { return r.power; })) };
+        }).filter(function (e) { return e.fa !== 'unaligned' || e.n > 0; });
+        var V = obj(G.voters) || {};
+        var issued = fin(V.pvpIssued) && V.pvpIssued > 0 ? V.pvpIssued : 0;
+        // ONE definition of allocated voting power: what counts in systems now (sum of system power), for tile, bars and sentence
+        var allocated = sum(rows.map(function (r) { return r.power; }));
+        var top = arr(V.top).filter(obj).filter(function (t) { return fin(t.power) && t.power > 0; }).map(function (t) {
+            return { player: plName(t.p), system: sysName(str(t.sys)), power: t.power, crew: fin(t.crew) && t.crew > 0 ? t.crew : 0 };
+        }).sort(function (x, y) { return y.power - x.power || (x.player < y.player ? -1 : x.player > y.player ? 1 : 0); });
+        var con = arr(G.contributors).filter(obj).filter(function (c) { return fin(c.units) && c.units > 0; }).map(function (c) {
+            return { player: plName(c.p), system: sysName(str(c.sys)), units: c.units };
+        }).sort(function (x, y) { return y.units - x.units || (x.player < y.player ? -1 : x.player > y.player ? 1 : 0); });
+        var mod = obj(G.module) || {};
+        var bill = arr(mod.bill).filter(function (b) { return obj(b) && fin(b.q) && b.q > 0; }).map(function (b) { return { n: str(b.n) || ('resource ' + b.id), q: b.q }; });
+        return {
+            n: rows.length, mods: rows.filter(function (r) { return r.mod && r.mod.inst; }).length, votesSet: rows.filter(function (r) { return r.on && r.power > 0; }).length,
+            on: rows.filter(function (r) { return r.on; }).length, facs: facs,
+            fees: { def: def, bounds: bounds, rows: rows.filter(function (r) { return r.fdiff.length || r.ask.length; }) },
+            modRows: rows.filter(function (r) { return r.mod; }).sort(function (x, y) { return y.mod.pct - x.mod.pct || byName(x, y); }),
+            bill: bill, minTier: fin(mod.minTier) ? mod.minTier : null, contrib: con,
+            voters: { profiles: fin(V.profiles) && V.profiles > 0 ? V.profiles : 0, issued: issued, allocated: allocated, share: issued > 0 ? allocated / issued * 100 : null, top: top }
+        };
     }
 
     // ---------------------------------------------------------------- formatting
@@ -910,6 +982,94 @@
             [[kfmt(c.ranked), 'ranked players'], [kfmt(c.ranks[c.ranks.length - 1].rank), 'highest rank']]);
     }
 
+    // one row per system module: name, a bar for the share of the bill funded, the share, and a small line under it
+    function fundBars(ctx, rows, label) {
+        var W = ctx.W, labW = Math.min(Math.max(maxLabelPx(rows, W, 0.4), 56), 130), valW = 50, plotW = Math.max(40, W - labW - valW), rowH = 38, b = '';
+        rows.forEach(function (r, i) {
+            var y = 2 + i * rowH, len = r.pct / 100 * plotW;
+            b += tx(labW - 8, y + 14, clip(r.label, labW - 8), 'an-lab', 'end', ctx);
+            b += '<rect class="an-track" x="' + r1(labW) + '" y="' + (y + 3) + '" width="' + r1(plotW) + '" height="14" rx="4"/>';
+            b += hbar(labW, y + 3, Math.max(len, r.pct > 0 ? 2 : 0), 14, 1, r.cls, r.tip, ctx);
+            b += tx(labW + plotW + 6, y + 14, pctTxt(r.pct), 'an-val', 'start', ctx);
+            b += tx(labW, y + 31, clip(r.sub, (W - labW) * 1.2), 'an-sub', 'start', ctx);
+        });
+        return svg(ctx, W, rows.length * rowH + 4, label, '<line class="an-axis" x1="' + labW + '" y1="0" x2="' + labW + '" y2="' + (rows.length * rowH + 4) + '"/>' + b);
+    }
+
+    function secGovernance(ctx, M) {
+        var g = M.gov, E = ctx.esc;
+        var intro = 'Who governs each system: the governance module, the fees in force, and the voting power players have put behind systems.';
+        if (!g) return section('governance', 'Governance', intro, [card('Governance', note('Governance has not been read in this copy of the data. Refresh to read it.'))]);
+        var base = plural(g.n, 'governed system') + ' read';
+        var cards = [];
+        // 1. per faction: four small comparisons, one bar per faction
+        if (!g.n) cards.push(card('Governance by faction', note('No system has governance in this read.')));
+        else {
+            var metric = function (title, key, unit) {
+                return '<h5 class="c4an-ch">' + title + '</h5>' + barList(ctx, g.facs.map(function (f) {
+                    return { label: FAC_NAME[f.fa], v: f[key], cls: 'f-' + f.fa, fmt: function (v) { return key === 'power' ? fnum(v) : String(v); }, tip: FAC_NAME[f.fa] + ': ' + fnum(f[key]) + ' ' + unit };
+                }), { label: title + ' by faction' });
+            };
+            cards.push(card('Governance by faction', chart('',
+                metric('Systems with governance', 'n', 'systems') + metric('Governance modules installed', 'mods', 'modules') + metric('Systems with voting enabled', 'on', 'systems') + metric('Voting power allocated', 'power', 'voting power'),
+                'One bar per faction; a system takes the faction that holds it; ' + base + '.')));
+        }
+        // 2. fees: only systems that differ from the defaults or whose voters ask for something else
+        var F = g.fees, fc;
+        var allowed = [];
+        var bd = F.bounds;
+        if (fin(bd.minCraftingFeeBps) && fin(bd.maxCraftingFeeBps)) allowed.push('crafting ' + craftTxt(bd.minCraftingFeeBps) + ' to ' + craftTxt(bd.maxCraftingFeeBps));
+        if (fin(bd.maxLocalMarketFeeBps)) allowed.push('local market fee up to ' + bpsTxt(bd.maxLocalMarketFeeBps));
+        if (fin(bd.maxTreasuryDistributionBps)) allowed.push('treasury paid out to voters up to ' + bpsTxt(bd.maxTreasuryDistributionBps));
+        if (!g.n) fc = note('No system has governance in this read.');
+        else if (!F.rows.length) {
+            var dv = F.def ? ' (crafting ' + craftTxt(F.def.craft) + ', local market fee ' + bpsTxt(F.def.mkt) + ', local treasury share ' + bpsTxt(F.def.local) + ', treasury paid out to voters ' + bpsTxt(F.def.dist) + ')' : '';
+            fc = note('Every governed system charges the default fees' + dv + ', and no voter asks for anything else.' + (allowed.length ? ' Allowed range: ' + allowed.join('; ') + '.' : ''));
+        } else {
+            var SHOW = 20, shown = F.rows.slice(0, SHOW);
+            var ask = function (r) {
+                if (!r.want) return '-';
+                return r.ask.length ? r.ask.map(function (k) { return FEE_NAME[k] + ' ' + feeTxt(k, r.want[k]); }).join(', ') : 'no change';
+            };
+            var cell = function (r, k) { return r.fees ? E(feeTxt(k, r.fees[k])) : '-'; };
+            fc = '<div class="c4an-chart"><div class="c4an-tw"><table class="c4an-tbl c4an-fit"><thead><tr><th scope="col">System</th><th scope="col">Crafting fee</th><th scope="col">Local market fee</th><th scope="col">Local treasury share</th><th scope="col">Paid out to voters</th><th scope="col">Voters ask for</th></tr></thead><tbody>' +
+                shown.map(function (r) {
+                    return '<tr><th scope="row"><i class="c4an-sw f-' + r.fa + '" title="' + E(FAC_NAME[r.fa]) + '"></i> ' + E(r.name) + '</th><td>' + cell(r, 'craft') + '</td><td>' + cell(r, 'mkt') + '</td><td>' + cell(r, 'local') + '</td><td>' + cell(r, 'dist') + '</td><td class="c4an-l">' + E(ask(r)) + '</td></tr>';
+                }).join('') + '</tbody></table></div><p class="c4an-cap">Systems whose fees differ from the defaults' + (F.def ? ' (crafting ' + craftTxt(F.def.craft) + ', market ' + bpsTxt(F.def.mkt) + ', local share ' + bpsTxt(F.def.local) + ', paid out ' + bpsTxt(F.def.dist) + ')' : '') +
+                ', or whose voters ask for something different; ' + plural(F.rows.length, 'system') + ' of ' + plural(g.n, 'governed system') + (F.rows.length > SHOW ? ', first ' + SHOW + ' shown' : '') + '.' + (allowed.length ? ' Allowed range: ' + allowed.join('; ') + '.' : '') + '</p></div>';
+        }
+        cards.push(card('Fees by system', fc));
+        // 3. modules: progress per system, the bill, the top contributors
+        var mc;
+        if (!g.modRows.length) mc = chart('', note('No system has started a governance module in this read.'), base + '.');
+        else mc = chart('', facLegend(FACS.filter(function (f) { return g.modRows.some(function (r) { return r.fa === f; }); })) + fundBars(ctx, g.modRows.map(function (r) {
+            var who = plural(r.mod.who, 'contributor');
+            return { label: r.name, pct: r.mod.pct, cls: 'f-' + r.fa, sub: (r.mod.inst ? 'installed' + (r.mod.at ? ' ' + r.mod.at : '') : 'being built') + ', ' + who,
+                tip: r.name + ' (' + FAC_NAME[r.fa] + '): ' + (r.mod.inst ? 'installed' + (r.mod.at ? ' ' + r.mod.at : '') : pctTxt(r.mod.pct) + ' funded') + ', ' + who };
+        }), 'Governance module progress per system'), 'Share of the module bill funded, per system that has started one; ' + plural(g.mods, 'module') + ' installed.');
+        var bl = g.bill.length ? '<ul class="c4an-ul">' + g.bill.map(function (b) { return '<li><b>' + E(b.n) + '</b> x ' + E(fnum(b.q)) + '</li>'; }).join('') + '</ul>' : note('The module bill is not in this read.');
+        var tier = g.minTier != null ? 'Needs a starbase of at least tier ' + g.minTier + '.' : '';
+        var cons;
+        if (!g.contrib.length) cons = note('No one has put resources into a module in this read.');
+        else if (g.contrib.length === 1) cons = note(E(g.contrib[0].player) + ' put ' + fnum(g.contrib[0].units) + ' units into the module at ' + E(g.contrib[0].system) + '.');
+        else cons = barList(ctx, g.contrib.slice(0, 10).map(function (c) { return { label: c.player, v: c.units, cls: 'f-s3', tip: c.player + ' at ' + c.system + ': ' + fnum(c.units) + ' units' }; }), { fmt: fnum, label: 'Units put into modules by player' });
+        cards.push(card('Governance modules', mc + chart('What a module costs', bl, tier || 'The full bill, once per system.') +
+            chart('Top contributors', cons, 'Units each player put into modules, top ' + Math.min(10, g.contrib.length) + ' of ' + plural(g.contrib.length, 'contributor') + '.')));
+        // 4. voting power
+        var v = g.voters, vc;
+        if (!v.issued && !v.allocated && !v.top.length) vc = note('No voting power is recorded in this read.');
+        else {
+            var head = '<p class="c4an-empty">' + (v.issued ? E(plural(v.profiles, 'player')) + ' hold ' + E(fnum(v.issued)) + ' voting power in total. ' : '') + E(fnum(v.allocated)) + ' of it is allocated to systems' + (v.share != null ? ' (' + E(smallPct(v.share)) + ')' : '') + '.</p>';
+            var al;
+            if (!v.top.length) al = note('No one has allocated voting power to a system yet.');
+            else if (v.top.length === 1) al = note(E(v.top[0].player) + ' has put ' + E(fnum(v.top[0].power)) + ' voting power behind ' + E(v.top[0].system) + (v.top[0].crew ? ' with ' + E(plural(v.top[0].crew, 'crew member')) : '') + '.');
+            else al = barList(ctx, v.top.slice(0, 10).map(function (t) { return { label: t.player + ' → ' + t.system, v: t.power, cls: 'f-s7', tag: t.crew ? plural(t.crew, 'crew') : '', tip: t.player + ' → ' + t.system + ': ' + fnum(t.power) + ' voting power' + (t.crew ? ', ' + plural(t.crew, 'crew member') : '') }; }), { fmt: fnum, label: 'Voting power allocated by player and system' });
+            vc = chart('', head + al, 'Voting power a player allocates to a system counts for the votes there; top ' + Math.min(10, v.top.length) + ' of ' + plural(v.top.length, 'allocation') + '.');
+        }
+        cards.push(card('Voting power', vc));
+        return section('governance', 'Governance', intro, cards, [[kfmt(g.n), 'systems with governance'], [kfmt(g.mods), 'modules installed'], [kfmt(g.votesSet), 'systems where votes set the fees'], [kfmt(v.allocated), 'voting power allocated']]);
+    }
+
     function secStakes(ctx, M) {
         var s = M.stakes, E = ctx.esc;
         var intro = 'Claim stakes read from the chain.';
@@ -1120,7 +1280,7 @@
             var anyOpen = SECTIONS.some(function (s) { return !isFolded(s); });
             html = '<div class="c4an-bar"><button type="button" class="c4an-fa" data-an-foldall="1" aria-pressed="' + (anyOpen ? 'false' : 'true') + '">' + (anyOpen ? 'Collapse all' : 'Expand all') + '</button>' +
                 statToggle() + '<span class="c4an-bg"><span class="c4an-bl">All charts</span>' + toggle(getMode(), 'data-an-all="1"', 'all charts') + '</span></div>' +
-                secMining(ctx, model) + secCouncil(ctx, model) + secStakes(ctx, model) + secCompare(ctx, model) + secEconomy(ctx, model) + secCrafting(ctx, model);
+                secMining(ctx, model) + secCouncil(ctx, model) + secGovernance(ctx, model) + secStakes(ctx, model) + secCompare(ctx, model) + secEconomy(ctx, model) + secCrafting(ctx, model);
         }
         if (openEl === el) openEl = null;   // the redraw replaces the card host: nothing is open any more
         if (html.indexOf('c4an-bar') >= 0) html += '<div class="c4an-pop" role="dialog" aria-label="Details" hidden></div>';

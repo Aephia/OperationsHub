@@ -1164,7 +1164,150 @@
         };
     }
 
+    // ------------------------------------------------------------------ governance (2026-11-24)
+    // latest.gov (contract: Tools/c4-live/README.md). Absent / null / wrong shape = nothing is built, never an error. Every
+    // number is checked finite before it is printed, so no produced string holds "undefined" or "NaN".
+    const GOV_CTL = { 1: 'mud', 2: 'oni', 3: 'ustur' };
+    const GOV_CONSTANT = { craft: 10000, mkt: 0, local: 0, dist: 0 };
+    const GOV_FEES = [['craft', 'Crafting fee', 'mult'], ['mkt', 'Local market fee', 'pct'], ['local', 'Share kept by the local treasury', 'pct'], ['dist', 'Treasury paid out to voters', 'pct']];
+    const GOV_POOL = [['open', 'open'], ['vault', 'in the vault'], ['dao', 'kept by the DAO'], ['funded', 'funded'], ['claimed', 'claimed']];
+    const govNum = v => typeof v === 'number' && isFinite(v);
+    const govObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
+    const govOwn = (o, k) => govObj(o) && Object.prototype.hasOwnProperty.call(o, k);
+    const govInt = n => Math.round(n).toLocaleString('en-US');
+    // 10000 -> "x1.00", 15000 -> "x1.50"
+    function govMult(bps) { return govNum(bps) ? 'x' + (bps / 10000).toFixed(2) : null; }
+    // 100 -> "1 %", 2500 -> "25 %", 60 -> "0.6 %"
+    function govPct(bps) { return govNum(bps) ? String(Math.round(bps) / 100) + ' %' : null; }
+    function govFee(kind, bps) { return kind === 'mult' ? govMult(bps) : govPct(bps); }
+    // chain day (unix day) / unix seconds -> "2026-11-24" (UTC)
+    function govDate(sec) {
+        if (!govNum(sec)) return null;
+        const d = new Date(sec * 1000);
+        return isFinite(d.getTime()) ? d.toISOString().slice(0, 10) : null;
+    }
+    const govDay = day => govNum(day) ? govDate(day * DAY) : null;
+    // the fee fields of `a` that differ from `b`, as [{k, label, now, was}] (both must be readable)
+    function govDiff(a, b) {
+        const out = [];
+        if (!govObj(a) || !govObj(b)) return out;
+        for (const [k, label, kind] of GOV_FEES) {
+            if (!govNum(a[k]) || !govNum(b[k])) continue;
+            const now = govFee(kind, a[k]), was = govFee(kind, b[k]);
+            if (now === was) continue; // compare what the page prints: a weighted mean of 10000.4 is "x1.00" too
+            out.push({ k, label, now, was });
+        }
+        return out;
+    }
+    function govSysName(latest, a) {
+        const s = latest && Array.isArray(latest.systems) ? latest.systems.find(x => x && x.a === a) : null;
+        return s && s.n ? String(s.n) : shortAddr(String(a == null ? '' : a)) || 'an unknown system';
+    }
+    // everything the system block shows, as plain (unescaped) text; null = this system has no governance entry
+    function governanceForSystem(latest, addr) {
+        const gov = latest && latest.gov;
+        if (!govObj(gov) || !govOwn(gov.systems, addr)) return null;
+        const e = gov.systems[addr];
+        if (!govObj(e)) return null;
+        // a system without voting charges the kit's constant, not policy.defaults
+        const defaults = gov.policy && govObj(gov.policy.constant) ? gov.policy.constant : GOV_CONSTANT;
+        const group = govOwn(GOV_CTL, e.ctl) ? GOV_CTL[e.ctl] : null;
+        const v = { addr, group, factionLabel: group ? GROUP_LABEL[group] : null, level: govNum(e.lvl) ? e.lvl : null };
+        // module
+        const mod = govObj(e.mod) ? e.mod : null;
+        const bill = gov.module && Array.isArray(gov.module.bill) ? gov.module.bill : [];
+        const funded = mod && Array.isArray(mod.funded) ? mod.funded : [], need = mod && Array.isArray(mod.need) ? mod.need : [];
+        const sumF = funded.reduce((s, x) => s + (govNum(x) ? x : 0), 0), sumN = need.reduce((s, x) => s + (govNum(x) ? x : 0), 0);
+        if (mod && mod.inst === 1) {
+            const d = govDate(mod.at);
+            v.module = { state: 'installed', text: d ? 'installed ' + d : 'installed', pct: 100, parts: [] };
+        } else if (mod && sumN > 0 && sumF > 0) {
+            const p = Math.min(100, Math.floor(sumF / sumN * 100));
+            const parts = [];
+            need.forEach((n, i) => {
+                if (!govNum(n) || n <= 0) return;
+                const b = govObj(bill[i]) ? bill[i] : null;
+                const name = b && b.n ? String(b.n) : b && govNum(b.id) ? 'cargo #' + b.id : 'resource ' + (i + 1);
+                parts.push({ name, funded: govNum(funded[i]) ? funded[i] : 0, need: n });
+            });
+            v.module = { state: 'building', text: 'being built: ' + p + ' % funded', pct: p, parts };
+        } else v.module = { state: 'none', text: 'not started', pct: 0, parts: [] };
+        // fees in force
+        const f = govObj(e.fees) ? e.fees : null;
+        v.fees = [];
+        if (f) for (const [k, label, kind] of GOV_FEES) {
+            const txt = govFee(kind, f[k]);
+            if (txt === null) continue;
+            const dd = defaults && govNum(defaults[k]) && defaults[k] !== f[k] ? govFee(kind, defaults[k]) : null;
+            v.fees.push({ k, label, text: txt, changed: dd !== null, def: dd });
+        }
+        v.feeSrc = e.src === 'generation' ? 'set by votes' : e.src === 'governance' ? "set by the starbase's governance" : 'default fees (voting not enabled here)';
+        // voting
+        const power = govNum(e.power) ? e.power : 0, voters = govNum(e.voters) ? e.voters : 0, crew = govNum(e.crew) ? e.crew : 0;
+        v.voting = power > 0 || voters > 0 || crew > 0 ? { power, voters, crew } : null;
+        v.want = govDiff(govObj(e.want) ? e.want : null, f);
+        // last weekly vote
+        const b = govObj(e.ballot) ? e.ballot : null;
+        v.lastVote = null;
+        if (b && govDay(b.cutoffDay)) {
+            v.lastVote = { date: govDay(b.cutoffDay), power: govNum(b.power) ? b.power : 0, expected: govNum(b.expected) ? b.expected : 0, outcome: govDiff(govObj(b.winner) ? b.winner : null, f) };
+        }
+        // reward pool: only once the data builder states the divisor, and only non-zero amounts
+        v.pool = [];
+        if (govNum(gov.atlasDecimals) && gov.atlasDecimals >= 0 && govObj(e.poolRaw)) {
+            for (const [k, label] of GOV_POOL) {
+                const raw = e.poolRaw[k];
+                if (!govNum(raw) || raw === 0) continue;
+                const amt = raw / Math.pow(10, gov.atlasDecimals);
+                v.pool.push({ k, label, text: amt.toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' ATLAS' });
+            }
+        }
+        return v;
+    }
+    // the same block as HTML (every dynamic string escaped); '' when the system has no entry
+    function governanceHtml(v) {
+        if (!v) return '';
+        const rows = [];
+        const row = (l, r) => rows.push(`<li><span class="l">${esc(l)}</span><span class="n">${r}</span></li>`);
+        // faction only: the governance level read like a contradiction under the header's starbase level
+        if (v.group) row('Controlled by', `<span class="c4-fa fc-${esc(v.group)}"><i></i>${esc(v.factionLabel)}</span>`);
+        row('Governance module', esc(v.module.text));
+        const parts = v.module.parts.length ? `<ul class="c4-list c4-gov-parts">${v.module.parts.map(p => `<li><span class="l">${esc(p.name)}</span><span class="n">${esc(govInt(p.funded))} / ${esc(govInt(p.need))}</span></li>`).join('')}</ul>` : '';
+        let fees = '';
+        if (v.fees.length) {
+            fees = `<div class="c4-gov-sub">Fees in force${v.feeSrc ? ` <em>${esc(v.feeSrc)}</em>` : ''}</div><ul class="c4-list">${v.fees.map(x => `<li><span class="l">${esc(x.label)}</span><span class="n">${esc(x.text)}${x.changed ? ` <em class="c4-gov-chg" title="differs from the default">default ${esc(x.def)}</em>` : ''}</span></li>`).join('')}</ul>`;
+        }
+        const vt = [];
+        if (v.voting) {
+            vt.push(`<li><span class="l">Voting power</span><span class="n">${esc(govInt(v.voting.power))}</span></li>`);
+            vt.push(`<li><span class="l">Voters / crew backing it</span><span class="n">${esc(govInt(v.voting.voters))} / ${esc(govInt(v.voting.crew))}</span></li>`);
+        }
+        if (v.want.length) vt.push(`<li><span class="l">Voters are asking for</span><span class="n">${v.want.map(x => esc(x.label + ' ' + x.now)).join(', ')}</span></li>`);
+        const lv = v.lastVote;
+        if (lv) {
+            vt.push(`<li><span class="l">Last weekly vote</span><span class="n">${esc(lv.date)}: ${esc(govInt(lv.power))} of ${esc(govInt(lv.expected))} voting power counted</span></li>`);
+            if (lv.outcome.length) vt.push(`<li><span class="l">Vote outcome</span><span class="n">${lv.outcome.map(x => esc(x.label + ' ' + x.now)).join(', ')}</span></li>`);
+        }
+        const pool = v.pool.length ? v.pool.map(x => `<li><span class="l">Reward pool ${esc(x.label)}</span><span class="n">${esc(x.text)}</span></li>`).join('') : '';
+        return `<div class="c4-dsec"><span>Governance</span></div><div class="c4-gov"><ul class="c4-list">${rows.join('')}</ul>${parts}${fees}${vt.length || pool ? `<ul class="c4-list c4-gov-vote">${vt.join('')}${pool}</ul>` : ''}</div>`;
+    }
+    // the owner drawer: [{text}] lines, only for what applies (voting power from voters.top, contributions from contributors)
+    function governanceForOwner(latest, p) {
+        const gov = latest && latest.gov;
+        const out = [];
+        if (!govObj(gov) || typeof p !== 'string' || !p) return out;
+        const top = govObj(gov.voters) && Array.isArray(gov.voters.top) ? gov.voters.top : [];
+        for (const x of top) if (govObj(x) && x.p === p && govNum(x.power) && x.power > 0) out.push({ k: 'voting', l: 'Voting power', n: `${govInt(x.power)} in ${govSysName(latest, x.sys)}`, text: `Voting power: ${govInt(x.power)} in ${govSysName(latest, x.sys)}` });
+        const cons = Array.isArray(gov.contributors) ? gov.contributors : [];
+        for (const x of cons) if (govObj(x) && x.p === p && govNum(x.units) && x.units > 0) out.push({ k: 'module', l: 'Governance module', n: `contributed ${govInt(x.units)} unit${x.units === 1 ? '' : 's'} to ${govSysName(latest, x.sys)}`, text: `Governance module: contributed ${govInt(x.units)} unit${x.units === 1 ? '' : 's'} to ${govSysName(latest, x.sys)}` });
+        return out;
+    }
+    function governanceOwnerHtml(lines) {
+        return lines && lines.length ? `<div class="c4-dsec"><span>Governance</span></div><ul class="c4-list c4-gov-own">${lines.map(l => `<li><span class="l">${esc(l.l)}</span><span class="n">${esc(l.n)}</span></li>`).join('')}</ul>` : '';
+    }
+
     const api = {
+        governanceForSystem, governanceHtml, governanceForOwner, governanceOwnerHtml, govMult, govPct, govDay,
         STAKE_KINDS, STAKE_KIND_LABEL, STAKE_PRIORITY, STAKE_CAP, STAKE_CLEAR, STAKE_RCAP, STAKE_SHARE, stakeLayout, buildStake, hexSpiral,
         DAC_FACTIONS, parseDacs, resolveDacs, dacInfluence, dacSummary, exampleDacs, EXAMPLE_SHARE, dacConquest, CONQUEST_METRICS, CONQUEST_LABEL, deepSpaceName,
         coverInsets, sameInsets, STAT_TABS, RES_HEX, fmtRich, RES_WHERE_TEXT, resourceWhere, resourceSystems, resourceIndex, defaultResource, placedCount, resourceView, combatHotSpots, hotOrder, isHotKind,

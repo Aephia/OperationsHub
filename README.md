@@ -577,6 +577,10 @@ the live chain; every other module reads the static uber-export. It has two halv
   or under 95 % of systems or fleets readable) is refused and the last good copy stays up. `DATA_VERSION` in
   `C4Live/app.js` discards every visitor's saved copy once when it is bumped: bump it together with a rebuilt
   `c4-collect.js` if a game update changes account layouts and the reader has to be updated.
+- **Governance (2026-11-24).** Every read also takes the on-chain governance of the 36 governed systems (fees in force,
+  voting power, the governance module and who funded it) into `latest.gov`: 15 extra calls, about 1 s, ~26 KB
+  (`Tools/c4-live/governance.mjs`). Like names and prices it never fails a read: if it fails, the last good governance
+  of the same chain version is kept with its own time and a note. Check: `node Test/c4-governance-check.js`.
 - **Collector** (`Tools/c4-live/`, Node, for local copies): reads every fleet, star system, asteroid being mined, claim stake
   and player owner through Aephia's [Atlas Kit](https://docs.atlaskit.dev/) (`@aephia/atlas-kit`, since
   2026-11-22 a vendored build of the kit's SAGE C4 3.2 support branch in `Tools/c4-live/vendor/`, until a kit
@@ -621,7 +625,13 @@ the live chain; every other module reads the static uber-export. It has two halv
     module: `C4Analytics.build(latest, bodies)` is pure, `render(el, model, opts)` draws inline SVG styled only by
     classes). Sections: mining rate per ship (by flagship size, by fleet size, base stat against actual, top
     resources); council rank (players per rank, what each rank holds, and the level of all six skills the chain
-    stores - pilot, data runner, mining, building, crafting, combat - per rank and over all ranked players); claim stakes (planet type, tier, state, buildings, building kinds, power, storage,
+    stores - pilot, data runner, mining, building, crafting, combat - per rank and over all ranked players); governance (2026-11-24, from `latest.gov`: systems with governance,
+    modules installed, systems where votes set the fees and voting power allocated; per faction, the systems, modules,
+    voting-enabled systems and voting power allocated; a fees table of only the systems whose fees differ from the
+    defaults or whose voters ask for something else, or one sentence with the default fees and the allowed range when
+    none do; module progress per system, the module bill and the top contributors in units; voting power issued,
+    the share allocated and who put it behind which system. A copy of the data without `gov` shows one note. It
+    reuses the council emblem until a governance one is rendered); claim stakes (planet type, tier, state, buildings, building kinds, power, storage,
     fuel left, production, stakes per owner); ships against claim stakes (per resource, per crew member, per
     faction, by ship model against stake tier, who runs what); emission, sinks and starbases (2026-11-23: units per
     day by resource from ships and stakes with the 30-day figure at that rate, the median and average producing

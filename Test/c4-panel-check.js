@@ -3,7 +3,7 @@
 //                                          of app.js broken and requires the named check to FAIL after it passed unbroken)
 //   SHOTS=<dir> node Test/c4-panel-check.js   also saves screenshots into <dir>
 // Headless Chromium on a local static server (the page's LOCAL mode reads Data/c4-live/*; the 3D scene is a stub that records
-// setInsets). Scenarios: A the Analytics tab (six sections, nav, numbers equal C4Analytics.build on the same files, a data
+// setInsets). Scenarios: A the Analytics tab (seven sections, nav, numbers equal C4Analytics.build on the same files, a data
 // reload redraws), B the expand button (width before / after / after reload, map inset, Mining tab fits, auto-expand once,
 // the visitor's choice wins), C the claim stake view beside a wide dock, D phone widths (nothing changes).
 'use strict';
@@ -112,7 +112,7 @@ async function main() {
             res['the dock has an Analytics tab (positive control: the Mining tab is there too)'] = await page.evaluate(() => !!document.querySelector('.c4-tab[data-tab="analytics"]') && !!document.querySelector('.c4-tab[data-tab="mining"]'));
             await openTab(page, 'analytics');
             const mi = await mountInfo(page);
-            res['analytics tab shows all six sections (' + A.sections.join(', ') + ')'] = !!mi && A.sections.length === 6 && A.sections.every(id => mi.ids.includes('c4an-' + id));
+            res['analytics tab shows all seven sections (' + A.sections.join(', ') + ')'] = !!mi && A.sections.length === 7 && A.sections.every(id => mi.ids.includes('c4an-' + id));
             if (!mi || !mi.ids.length) return res;   // nothing drawn: the rest cannot run (a broken page ends here, with the check above FAIL)
             const model = A.build(FX.L, FX.B);
             const small = model.mining.bySize.slice().sort((a, b) => b.n - a.n)[0];
@@ -130,7 +130,7 @@ async function main() {
                 return el.innerHTML === mount.innerHTML;
             }, [null, { bodies: FX.B.bodies }, FX.L]);
             const nav = await page.evaluate(() => [...document.querySelectorAll('#c4AnNav button')].map(b => b.dataset.an + '|' + b.textContent));
-            res['section nav has six buttons: Mining / Council rank / Claim stakes / Ships vs stakes / Emission / Crafting'] = nav.join(';') === 'mining|Mining;council|Council rank;stakes|Claim stakes;compare|Ships vs stakes;economy|Emission;crafting|Crafting';
+            res['section nav has seven buttons: Mining / Council rank / Governance / Claim stakes / Ships vs stakes / Emission / Crafting'] = nav.join(';') === 'mining|Mining;council|Council rank;governance|Governance;stakes|Claim stakes;compare|Ships vs stakes;economy|Emission;crafting|Crafting';
             await shot(page, 'analytics-expanded-top');
             const pos = {};
             for (const id of A.sections) {
@@ -147,7 +147,7 @@ async function main() {
             // normal width: the visitor restores the dock
             await page.click('#c4DockWide'); await settle(page);
             const mn = await mountInfo(page), fn = await paneFits(page);
-            res['normal width: analytics is c4an-narrow, all six sections, no horizontal scrollbar'] = !!mn && /c4an-narrow/.test(mn.cls) && A.sections.every(id => mn.ids.includes('c4an-' + id)) && fn.sw <= fn.cw + 1;
+            res['normal width: analytics is c4an-narrow, all seven sections, no horizontal scrollbar'] = !!mn && /c4an-narrow/.test(mn.cls) && A.sections.every(id => mn.ids.includes('c4an-' + id)) && fn.sw <= fn.cw + 1;
             await page.evaluate(() => { document.querySelector('#c4Main').scrollTop = 0; }); await sleep(200);
             await shot(page, 'analytics-normal-top');
             res['no page errors on the Analytics tab'] = errors.length === 0;
@@ -321,7 +321,7 @@ async function main() {
             const d1 = await page.evaluate(() => { const r = document.querySelector('#c4Dock').getBoundingClientRect(); return { w: r.width, h: r.height }; });
             res['phone: the sheet stays full width and its height does not change (saved wide choice ignored)'] = Math.abs(d1.w - 390) < 2 && Math.abs(d0.h - d1.h) < 2 && Math.abs(d0.w - 390) < 2;
             const mi = await mountInfo(page), f = await paneFits(page);
-            res['phone: Analytics shows all six sections, narrow, no horizontal scrollbar'] = !!mi && /c4an-narrow/.test(mi.cls) && A.sections.every(id => mi.ids.includes('c4an-' + id)) && f.sw <= f.cw + 1;
+            res['phone: Analytics shows all seven sections, narrow, no horizontal scrollbar'] = !!mi && /c4an-narrow/.test(mi.cls) && A.sections.every(id => mi.ids.includes('c4an-' + id)) && f.sw <= f.cw + 1;
             await shot(page, 'phone-analytics');
             res['phone: no page errors'] = errors.length === 0;
         } finally { await ctx.close(); }
@@ -442,8 +442,8 @@ async function main() {
     shotsOn = false;   // the broken pages must not overwrite the screenshots
     console.log('\n[N] Negative controls: app.js broken in one place; the named check must FAIL (it passed above)');
     const NEG = [
-        ['Analytics tab draws nothing (renderTab entry removed)', t => t.replace('analytics: renderAnalytics,', 'analytics: () => {},'), scenA, /analytics tab shows all six sections/, rA],
-        ['tab clicks do nothing (tab handler removed)', t => t.replace("if (tab) { setDockCollapsed(false);", 'if (false) { setDockCollapsed(false);'), scenA, /analytics tab shows all six sections/, rA],
+        ['Analytics tab draws nothing (renderTab entry removed)', t => t.replace('analytics: renderAnalytics,', 'analytics: () => {},'), scenA, /analytics tab shows all seven sections/, rA],
+        ['tab clicks do nothing (tab handler removed)', t => t.replace("if (tab) { setDockCollapsed(false);", 'if (false) { setDockCollapsed(false);'), scenA, /analytics tab shows all seven sections/, rA],
         // two paths redraw the tab after a reload (rebuild() and the bodies reload), so both are cut
         ['a data reload does not redraw Analytics (rendered cache kept, bodies redraw removed)', t => t.replace('S.rendered = {};', 'S.rendered = S.rendered || {};').replace('if (S.rendered.analytics) paintAnalytics();', ''), scenReload, /a data reload redraws the Analytics tab/, rR],
         ['the old Analytics button line is back (shrinking Analytics also clears the remembered wide choice)', t => t.replace('S.dock.anOff = !S.dock.anOff; syncDockW(); }', 'S.dock.anOff = !S.dock.anOff; if (S.dock.anOff && S.dock.wide) setDockWide(false, true); else syncDockW(); }'), scenB, /back on Mining the dock is STILL/, rB],

@@ -320,7 +320,7 @@ function suite(A, quiet) {
         ok(tag + '@' + w + ': positive control, svgs drawn', widths.length >= 4, String(widths.length));
         ok(tag + '@' + w + ': every svg fits the width (' + Math.max(0, ...widths) + ')', widths.every(x => x <= (w >= 640 ? (w - 12) / 2 : w)));
         const heads = (h.match(/<h3 class="c4an-h"/g) || []).length;
-        ok(tag + '@' + w + ': six section headings', heads === 6);
+        ok(tag + '@' + w + ': seven section headings (governance added)', heads === 7);
         ok(tag + '@' + w + ': every chart carries a caption line', (h.match(/class="c4an-chart"/g) || []).length === (h.match(/class="c4an-cap"/g) || []).length);
     })));
     safe('width 640 is the wide breakpoint', () => { const a = {}, b = {}; const m = A.build(F.L, F.B); A.render(a, m, { width: 640 }); A.render(b, m, { width: 639 }); ok('640 wide, 639 narrow', a.className.includes('wide') && b.className.includes('narrow')); });
@@ -466,9 +466,108 @@ function suite(A, quiet) {
     });
     safe('contract', () => {
         ok('version 1', A.version === '1');
-        ok('sections list', JSON.stringify(A.sections) === JSON.stringify(['mining', 'council', 'stakes', 'compare', 'economy', 'crafting']));
+        ok('sections list', JSON.stringify(A.sections) === JSON.stringify(['mining', 'council', 'governance', 'stakes', 'compare', 'economy', 'crafting']));
         ok('build is pure: same input twice gives the same model', JSON.stringify(A.build(F.L, F.B)) === JSON.stringify(A.build(F.L, F.B)));
         const before = JSON.stringify(F.L); A.build(F.L, F.B); ok('build does not mutate its input', JSON.stringify(F.L) === before);
+    });
+    // ---- governance section: a gov block built to the contract (36 systems 12 / 12 / 12, 3 modules, 3 voting enabled, 40,000 of 280,000,000)
+    safe('governance', () => {
+        const HOSTILE = 'Evil<img src=x onerror=1>', HB = 'Bill"><script>x</script>';
+        const FEES = { craft: 10000, mkt: 0, local: 0, dist: 0 };
+        const addr = i => 'GovSys' + String(i).padStart(2, '0') + 'x'.repeat(30);
+        const mkL = (mut) => {
+            const L = JSON.parse(JSON.stringify(F.L));
+            L.systems = []; for (let i = 0; i < 36; i++) L.systems.push({ a: addr(i), n: i === 3 ? HOSTILE + ' Sys' : 'Sys ' + i });
+            L.owners.push({ p: 'PL1', name: HOSTILE, fa: 'mud' }, { p: 'PL2', name: 'Two', fa: 'oni' });
+            const systems = {};
+            for (let i = 0; i < 36; i++) systems[addr(i)] = { ctl: i % 3 + 1, lvl: 2, on: 0, mod: null, fees: Object.assign({}, FEES), src: 'baseline', power: 0, nextPower: 0, want: null, voters: 0, crew: 0 };
+            [0, 1, 3].forEach(i => { Object.assign(systems[addr(i)], { on: 1, src: 'generation', mod: { inst: 1, at: 1795580000, funded: [10, 5], need: [10, 5], contributors: 1 } }); });
+            Object.assign(systems[addr(3)], { power: 40000, voters: 1, crew: 10, want: { craft: 10000, mkt: 0, local: 3000, dist: 10000 } });
+            systems[addr(5)].mod = { inst: 0, funded: [50, 0], need: [100, 100], contributors: 2 };
+            L.gov = {
+                policy: { defaults: Object.assign({}, FEES), bounds: { minCraftingFeeBps: 10000, maxCraftingFeeBps: 15000, maxLocalMarketFeeBps: 300, maxTreasuryDistributionBps: 10000 } },
+                module: { minTier: 2, bill: [{ id: 1007, q: 2360, n: HB }, { id: 1027, q: 1620 }] },
+                systems, voters: { profiles: 280, pvpIssued: 280000000, pvpReserved: 40000, allocating: 1, top: [{ p: 'PL1', sys: addr(3), power: 40000, pending: 40000, crew: 10 }] },
+                contributors: [{ p: 'PL1', sys: addr(3), lp: 29010, units: 5100, rows: 7 }, { p: 'PL2', sys: addr(1), lp: 29010, units: 7460, rows: 7 }, { p: 'FVRNa2j29ZsbHNVUkRwgE5AWWeUZgGqoNZ7P8f6mdzEB', sys: addr(0), lp: 1, units: 5100, rows: 6 }]
+            };
+            if (mut) mut(L.gov, L);
+            return L;
+        };
+        const draw = L => { const e = { innerHTML: '', addEventListener() {} }; A.render(e, A.build(L, F.B), { width: 900 }); return e.innerHTML; };
+        const part = (h, id) => { const a = h.indexOf('id="c4an-' + id + '"'), b = h.indexOf('<section', a + 1); return h.slice(h.lastIndexOf('<section', a), b < 0 ? h.length : b); };
+        const clean = s => !/NaN|undefined|Infinity|\[object/.test(s);
+        const L0 = mkL(), m0 = A.build(L0, F.B), g0 = m0.gov, h0 = part(draw(L0), 'governance');
+        // exact numbers
+        ok('gov: 36 systems, 3 modules installed, 3 voting enabled, 1 where votes set the fees (only one has power)', g0 && g0.n === 36 && g0.mods === 3 && g0.on === 3 && g0.votesSet === 1, JSON.stringify(g0 && [g0.n, g0.mods, g0.on, g0.votesSet]));
+        ok('gov: 40,000 allocated of 280,000,000 issued', g0.voters.allocated === 40000 && g0.voters.issued === 280000000 && g0.voters.profiles === 280);
+        ok('gov: per faction systems 12 / 12 / 12', g0.facs.map(f => f.fa + f.n).join() === 'mud12,oni12,ustur12', g0.facs.map(f => f.fa + f.n).join());
+        ok('gov: per faction modules 2 / 1 / 0, voting enabled 2 / 1 / 0, power 40000 / 0 / 0', g0.facs.map(f => f.mods).join() === '2,1,0' && g0.facs.map(f => f.on).join() === '2,1,0' && g0.facs.map(f => f.power).join() === '40000,0,0');
+        ok('gov: the four headline tiles', ['<dd>36</dd><dt>systems with governance</dt>', '<dd>3</dd><dt>modules installed</dt>', '<dd>1</dd><dt>systems where votes set the fees</dt>', '<dd>40.0K</dd><dt>voting power allocated</dt>'].every(s => h0.includes(s)));
+        ok('gov: the section follows Council rank and precedes Claim stakes', (() => { const h = draw(L0); return h.indexOf('id="c4an-council"') < h.indexOf('id="c4an-governance"') && h.indexOf('id="c4an-governance"') < h.indexOf('id="c4an-stakes"'); })());
+        ok('gov: output clean (no NaN, undefined, style=, script)', clean(h0) && !/ style=/.test(h0) && !/<script/i.test(h0));
+        // card 2: fees. The contract fixture has one system whose voters ask for something else; that row is the only one
+        ok('gov: fees card lists the one system whose voters ask for more, with the wording of the page', g0.fees.rows.length === 1 && /<tr><th scope="row"><i class="c4an-sw f-mud" title="MUD"><\/i> Evil&lt;img src=x onerror=1&gt; Sys<\/th><td>x1\.00<\/td><td>0 %<\/td><td>0 %<\/td><td>0 %<\/td><td class="c4an-l">local treasury share 30 %, paid out to voters 100 %<\/td><\/tr>/.test(h0), h0.slice(h0.indexOf('<tbody>'), h0.indexOf('<tbody>') + 400));
+        ok('gov: fees card lists no other system and no "default fees" sentence while a row is shown', (h0.match(/<tr><th scope="row">/g) || []).length === 1 && !h0.includes('Every governed system charges the default fees'));
+        const LD = mkL(g => { g.systems[addr(3)].want = null; }), hd = part(draw(LD), 'governance');
+        ok('gov: default fees and nobody asking for more: the one sentence with the defaults and the allowed range', hd.includes('Every governed system charges the default fees (crafting x1.00, local market fee 0 %, local treasury share 0 %, treasury paid out to voters 0 %)') && hd.includes('Allowed range: crafting x1.00 to x1.50; local market fee up to 3 %; treasury paid out to voters up to 100 %.') && !hd.includes('<tbody>'));
+        const LM = mkL(g => { Object.assign(g.systems[addr(7)].fees, { craft: 15000, mkt: 120, local: 500, dist: 2000 }); g.systems[addr(7)].want = { craft: 15000, mkt: 120, local: 500, dist: 3000 }; }), mM = A.build(LM, F.B), hM = part(draw(LM), 'governance');
+        ok('gov: a system whose fees differ from the defaults gets a row with the right numbers (x1.50, 1.2 %, 5 %, 20 %)', mM.gov.fees.rows.length === 2 && hM.includes('Sys 7</th><td>x1.50</td><td>1.2 %</td><td>5 %</td><td>20 %</td><td class="c4an-l">paid out to voters 30 %</td></tr>'), hM.slice(hM.indexOf('<tbody>'), hM.indexOf('<tbody>') + 700));
+        const LN = mkL(g => { g.systems[addr(11)].fees.craft = 12000; g.systems[addr(9)].on = 1; }), mN = A.build(LN, F.B), hN = part(draw(LN), 'governance');
+        ok('gov: fees differing from the defaults with nobody asking for more still get a row (x1.20, asks: dash)', mN.gov.fees.rows.map(r => r.name).join() === 'Evil<img src=x onerror=1> Sys,Sys 11' && hN.includes('Sys 11</th><td>x1.20</td><td>0 %</td><td>0 %</td><td>0 %</td><td class="c4an-l">-</td></tr>'), mN.gov.fees.rows.map(r => r.name).join());
+        ok('gov: voting enabled (4) is not the same count as votes setting the fees (1: enabled AND power)', mN.gov.on === 4 && mN.gov.votesSet === 1 && hN.includes('<dd>1</dd><dt>systems where votes set the fees</dt>'));
+        // fix round B2-B5 (2026-11-25)
+        const LB2 = mkL(g => { g.systems[addr(3)].want = { craft: 10000.4, mkt: 0.2, local: 0, dist: 0 }; }), mB2 = A.build(LB2, F.B), hB2 = part(draw(LB2), 'governance');
+        ok('gov B2: a weighted-mean ask that prints the same as the fees in force is no difference (no row, default sentence)', mB2.gov.fees.rows.length === 0 && hB2.includes('Every governed system charges the default fees') && !hB2.includes('<tbody>'), JSON.stringify(mB2.gov.fees.rows.map(r => r.name)));
+        const LB2b = mkL(g => { g.systems[addr(3)].want = { craft: 10000.4, mkt: 100.2, local: 0, dist: 0 }; }), mB2b = A.build(LB2b, F.B), hB2b = part(draw(LB2b), 'governance');
+        ok('gov B2: positive control, a real ask (1 % market fee) still shows its row, and only that field', mB2b.gov.fees.rows.length === 1 && hB2b.includes('<td class="c4an-l">local market fee 1 %</td>'), hB2b.slice(hB2b.indexOf('<tbody>'), hB2b.indexOf('<tbody>') + 300));
+        const LB3 = mkL(g => { g.policy.defaults = { craft: 11000, mkt: 30, local: 250, dist: 1000 }; }), mB3 = A.build(LB3, F.B), hB3 = part(draw(LB3), 'governance');
+        ok('gov B3: policy.defaults 11000/30/250/1000 with every system on the constant: 0 rows, the sentence quotes the constant', mB3.gov.fees.rows.every(r => r.fdiff.length === 0) && mB3.gov.fees.rows.length === 1 && hB3.includes('crafting x1.00, market 0 %') && !hB3.includes('x1.10'), JSON.stringify(mB3.gov.fees.rows.map(r => [r.name, r.fdiff])));
+        const LB3b = mkL(g => { g.policy.defaults = { craft: 11000, mkt: 30, local: 250, dist: 1000 }; g.policy.constant = { craft: 12000, mkt: 0, local: 0, dist: 0 }; }), mB3b = A.build(LB3b, F.B);
+        ok('gov B3: positive control, a stated policy.constant is the reference (all 36 systems differ from x1.20)', mB3b.gov.fees.rows.length === 36, String(mB3b.gov.fees.rows.length));
+        const LB4 = mkL(g => { g.systems[addr(8)].ctl = '__proto__'; g.systems[addr(9)].ctl = 'constructor'; }), mB4 = A.build(LB4, F.B), hB4 = part(draw(LB4), 'governance');
+        ok('gov B4: ctl "__proto__" and "constructor" go to Unaligned (2), every system still counted (36), no junk class', mB4.gov.facs.map(f => f.fa + f.n).join() === 'mud11,oni12,ustur11,unaligned2' && mB4.gov.n === 36 && clean(hB4) && !/f-\[object|f-function/.test(hB4), mB4.gov.facs.map(f => f.fa + f.n).join());
+        const LB5 = mkL(g => { g.voters.pvpReserved = 99999; }), mB5 = A.build(LB5, F.B), hB5 = part(draw(LB5), 'governance');
+        ok('gov B5: allocated voting power is the sum of system power everywhere (tile, bars, sentence), not pvpReserved', mB5.gov.voters.allocated === 40000 && hB5.includes('<dd>40.0K</dd><dt>voting power allocated</dt>') && hB5.includes('40,000 of it is allocated to systems') && !/99,?999|100K|100.0K/.test(hB5) && mB5.gov.facs.reduce((t, f) => t + f.power, 0) === 40000, String(mB5.gov.voters.allocated));
+        ok('gov B7: the fees table carries the fit class (cells wrap, no clipping) and the stylesheet defines it', hM.includes('<table class="c4an-tbl c4an-fit">') && fs.readFileSync(path.join(__dirname, '..', 'C4Live', 'c4-analytics.css'), 'utf8').includes('.c4an-tbl.c4an-fit td.c4an-l { min-width: 0;'));
+        ok('gov: the unmutated system is not in that table', !/Sys 8<\/th>/.test(hM) && !/Sys 0<\/th>/.test(hM));
+        // card 3: modules
+        ok('gov: three installed modules at 100 %, a fourth at 25 % funded, contributors counted', g0.modRows.length === 4 && g0.modRows.map(r => Math.round(r.mod.pct)).join() === '100,100,100,25' && /installed 2026-11-2\d, 1 contributor</.test(h0) && h0.includes('being built, 2 contributors<') && h0.includes('(Ustur): 25% funded') && /<li><i class="c4an-sw f-ustur"><\/i>Ustur<\/li>/.test(h0) && h0.includes('>25%<'), JSON.stringify(g0.modRows.map(r => [r.name, r.mod])) + ' ' + (h0.match(/installed[^<]*|being built[^<]*/g) || []).join('|'));
+        ok('gov: the bill (name x quantity) and the minimum tier', h0.includes('<li><b>resource 1027</b> x 1,620</li>') && h0.includes('Needs a starbase of at least tier 2.'));
+        ok('gov: contributors by player name else short address, units only (the loyalty-point reading is not confirmed from the kit)', /Two<\/text>/.test(h0) && h0.includes('FVRN...dzEB') && !/loyalty/i.test(h0) && g0.contrib[0].units === 7460 && g0.contrib.every(c => !('lp' in c)), JSON.stringify([/Two<\/text>/.test(h0), h0.includes('FVRN...dzEB'), /loyalty/i.test(h0), g0.contrib[0]]));
+        // card 4: voting power
+        ok('gov: one allocation reads as a sentence, not a one-bar chart', h0.includes('280 players hold 280,000,000 voting power in total. 40,000 of it is allocated to systems (under 0.1%).') && /has put 40,000 voting power behind Evil&lt;img src=x onerror=1&gt; Sys with 10 crew members\./.test(h0));
+        const L2 = mkL(g => { g.voters.top.push({ p: 'PL2', sys: addr(1), power: 1000, pending: 0, crew: 2 }); }), h2 = part(draw(L2), 'governance');
+        ok('gov: two allocations draw a bar chart with crew', /Voting power allocated by player and system/.test(h2) && h2.includes('2 crew'));
+        // hostile text comes out escaped
+        ok('gov: hostile player name, system name and bill name are escaped everywhere', !/<img/i.test(h0 + h2) && !/<script/i.test(h0) && h0.includes('Bill&quot;&gt;&lt;script&gt;x&lt;/script&gt;') && h0.includes('Evil&lt;img src=x onerror=1&gt;'));
+        const LH = mkL(g => { g.contributors.splice(1); }), hH = part(draw(LH), 'governance');
+        ok('gov: one contributor reads as a sentence with the name escaped', /Evil&lt;img src=x onerror=1&gt; put 5,100 units into the module at /.test(hH) && !/<img/i.test(hH));
+        // absent, null, empty
+        const absent = mkL(); delete absent.gov;
+        const nul = mkL(); nul.gov = null;
+        [['absent', absent], ['null', nul]].forEach(([n, L]) => {
+            const h = part(draw(L), 'governance');
+            ok('gov ' + n + ': one note and no card', h.includes('Governance has not been read in this copy of the data. Refresh to read it.') && (h.match(/<figure/g) || []).length === 1 && !h.includes('c4an-chart') && clean(h) && A.build(L, F.B).gov === null);
+        });
+        const cases = {
+            'systems: {}': g => { g.systems = {}; },
+            'voters.top: []': g => { g.voters.top = []; },
+            'contributors: []': g => { g.contributors = []; },
+            'zero issued': g => { g.voters.pvpIssued = 0; g.voters.pvpReserved = 0; g.voters.profiles = 0; g.voters.top = []; },
+            'zero issued, something allocated': g => { g.voters.pvpIssued = 0; },
+            'empty gov {}': g => { Object.keys(g).forEach(k => delete g[k]); },
+            'junk values': g => { g.systems = { x: null, y: 5, z: { ctl: 'a', fees: { craft: 'q' }, mod: { funded: 'no', need: [0, 0] } } }; g.voters = { top: [null, { p: null, sys: 3, power: 'x' }], pvpIssued: 'big' }; g.contributors = [null, { units: NaN }]; g.module = { bill: [{ q: 'x' }, null] }; g.policy = { defaults: 3 }; }
+        };
+        Object.keys(cases).forEach(n => {
+            let h = '';
+            try { h = part(draw(mkL(cases[n])), 'governance'); ok('gov ' + n + ': no throw, a section', h.includes('id="c4an-governance"')); } catch (e) { ok('gov ' + n + ' (threw)', false, String(e.message)); return; }
+            ok('gov ' + n + ': no NaN / undefined / Infinity in the HTML', clean(h), (/.{30}(NaN|undefined|Infinity).{30}/.exec(h) || [''])[0]);
+        });
+        const hz = part(draw(mkL(cases['zero issued, something allocated'])), 'governance');
+        ok('gov zero issued: the share is left out, not divided', hz.includes('40,000 of it is allocated to systems.') && A.build(mkL(cases['zero issued, something allocated']), F.B).gov.voters.share === null);
+        const he = part(draw(mkL(cases['systems: {}'])), 'governance');
+        ok('gov systems {}: each card has its own empty state', he.includes('No system has started a governance module in this read.') && (he.match(/No system has governance in this read\./g) || []).length === 2);
+        ok('gov: the model without a gov block is null and the other sections are unchanged', A.build(F.L, F.B).gov === null && JSON.stringify(A.build(L0, F.B).council) === JSON.stringify(A.build(absent, F.B).council) && JSON.stringify(A.build(L0, F.B).stakes) === JSON.stringify(A.build(absent, F.B).stakes));
     });
     safe('old and none render notes', () => {
         const o = {}; A.render(o, A.build(oldF.L, oldF.B), { width: 900 });
@@ -1056,6 +1155,33 @@ const MUTANTS = [
     ["stat: daily view drops the median","tag: 'med ' + kfmt(md) + ', n=' + r.n","tag: 'n=' + r.n"],
     ["stat: daily rate rows left in median order","groups.sort(function (a, b) { return b[0].day - a[0].day || (a[0].label < b[0].label ? -1 : a[0].label > b[0].label ? 1 : 0); });","void groups;"],
     ["stat: daily rate rows smallest total first","groups.sort(function (a, b) { return b[0].day - a[0].day","groups.sort(function (a, b) { return a[0].day - b[0].day"],
+    ["gov: section not registered","var SECTIONS = ['mining', 'council', 'governance', 'stakes',","var SECTIONS = ['mining', 'council', 'stakes',"],
+    ["gov: faction taken from nothing","var fa = Object.prototype.hasOwnProperty.call(GOV_FAC, s.ctl) ? GOV_FAC[s.ctl] : 'unaligned', fees","var fa = 'mud', fees"],
+    ["gov B7: fees table without the fit class","<table class=\"c4an-tbl c4an-fit\"><thead>","<table class=\"c4an-tbl\"><thead>"],
+    ["gov B4: faction by plain lookup (prototype keys leak)","var fa = Object.prototype.hasOwnProperty.call(GOV_FAC, s.ctl) ? GOV_FAC[s.ctl] : 'unaligned', fees","var fa = GOV_FAC[s.ctl] || 'unaligned', fees"],
+    ["gov B2: fee ask compared by raw number","return feeTxt(k, a[k]) !== feeTxt(k, b[k]);","return a[k] !== b[k];"],
+    ["gov B3: reference is policy.defaults","def = feesOf(pol.constant) || { craft: 10000, mkt: 0, local: 0, dist: 0 }","def = feesOf(pol.defaults)"],
+    ["gov B3: stated policy.constant ignored","def = feesOf(pol.constant) || {","def = feesOf(null) || {"],
+    ["gov B5: allocated read from pvpReserved","allocated = sum(rows.map(function (r) { return r.power; }));","allocated = fin(V.pvpReserved) && V.pvpReserved > 0 ? V.pvpReserved : 0;"],
+    ["gov: voting enabled counts every system","on: s.on === 1, votes:","on: true, votes:"],
+    ["gov: votes-set tile counts voting enabled","return r.on && r.power > 0; }).length,","return r.on; }).length,"],
+    ["gov: modules installed counts every started module","inst = !!(mod && mod.inst === 1);","inst = !!mod;"],
+    ["gov: fees never compared with the defaults","fdiff: fees && def ? feeDiff(fees, def) : [],","fdiff: [],"],
+    ["gov: what voters ask for ignored","ask: want ? (fees ? feeDiff(want, fees) : FEE_KEYS.slice()) : [],","ask: [],"],
+    ["gov: no default-fees sentence","else if (!F.rows.length) {","else if (false) {"],
+    ["gov: crafting multiple off by a hundred","function craftTxt(b) { return 'x' + (b / 10000).toFixed(2); }","function craftTxt(b) { return 'x' + (b / 100).toFixed(2); }"],
+    ["gov: percent of a fee in basis points not divided","function bpsTxt(b) { return Number((b / 100).toFixed(2)) + ' %'; }","function bpsTxt(b) { return Number(b.toFixed(2)) + ' %'; }"],
+    ["gov: share funded is not a share","Math.min(100, fund / need * 100)","Math.min(100, fund / need)"],
+    ["gov: share of voting power divides by zero","share: issued > 0 ? allocated / issued * 100 : null","share: allocated / issued * 100"],
+    ["gov: tiny share printed as 0.0%","p < 0.1 ? 'under 0.1%' : pctTxt(p)","pctTxt(p)"],
+    ["gov: absent gov throws instead of a note","if (!g) return section('governance',","if (false) return section('governance',"],
+    ["gov: bill name not escaped","'<li><b>' + E(b.n) + '</b>","'<li><b>' + b.n + '</b>"],
+    ["gov: system name not escaped in the fees table","\"></i> ' + E(r.name) + '</th>","\"></i> ' + r.name + '</th>"],
+    ["gov: contributor name not escaped","note(E(g.contrib[0].player) + ' put '","note(g.contrib[0].player + ' put '"],
+    ["gov: allocation name not escaped","note(E(v.top[0].player) + ' has put '","note(v.top[0].player + ' has put '"],
+    ["gov: contributors ranked by name","return { player: plName(c.p), system: sysName(str(c.sys)), units: c.units };\n        }).sort(function (x, y) { return y.units - x.units ||","return { player: plName(c.p), system: sysName(str(c.sys)), units: c.units };\n        }).sort(function (x, y) { return 0 ||"],
+    ["gov: loyalty points shown without confirmation","chart('Top contributors', cons, 'Units each player put into modules,","chart('Top contributors', cons, 'Loyalty points earned and units each player put into modules,"],
+    ["gov: junk system rows not skipped","            var s = obj(S[a]);\n            if (!s) return;\n            var fa = Object","            var s = S[a];\n            var fa = Object"],
     ['script tag in output', "return '<div class=\"c4an-chart\">'", "return '<script></script><div class=\"c4an-chart\">'"]
 ];
 

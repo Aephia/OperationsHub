@@ -84,6 +84,11 @@ definitions, 3,901 bodies; a pass took 13 s. The pre-reset local copy (2026-11-0
   in `quality.namesFailed` / `walletsFailed` / `pricesFailed` and `quality.notes`. These reads never set
   `quality.partial`, and a partial read is never written as truth: each read either completes or is
   discarded whole.
+- **Governance is enrichment too (2026-11-24).** `governance.mjs` reads 15 governance account types (one
+  `getProgramAccounts` each, about 1 s, ~26 KB in `latest.json`). One failed type, one account of an unexpected
+  size or discriminator, or one decode error fails the whole read. A failed read, or one that suddenly finds 0
+  governed systems after some, keeps the previous block from `db.json` `state.gov` (it carries its own `at`),
+  sets `quality.govFailed` and adds a note; on a new chain version the old block is dropped instead (`gov: null`).
 - The first version's `state.json` is migrated once and renamed `state.json.migrated`. If `db.json` is
   later missing, the next pass starts a **fresh cursor**: first-run seeding, deduped against the events
   copy, with history and owners recovered from the served copies. It never silently resumes an old cursor.
@@ -209,6 +214,27 @@ otherCurrency, items}, items:[{ mint, name, symbol, itemType, atlas?:{bestBid, b
 `prices.attempt.json` stamps every mainnet attempt (`{at, ok, error?}`), so a failing endpoint is also retried at most once
 per 55 minutes. `db.json` `state.ident` holds the last known name/wallet per owner (`{n, nt?, na, w, wy?, wa}`), dropped
 after 14 days unseen.
+
+`latest.gov` (governance, `governance.mjs`; `null` = not read on this chain version): `{ v: 1, at, day, voteEpoch, voteEpochSecs,
+policy:{defaults, constant, bounds}, module:{minTier, bill:[{id, q, n?}]}, curve, housing[], systems:{ [system
+address]: { ctl, lvl, on, mod, fees, src, power, nextPower, want, voters, crew, poolRaw, ballot, days[] } }, voters:{profiles,
+pvpIssued, pvpReserved, allocating, top[<=50]}, contributors[], counts }`. Fees are basis points (`craft` 10000 = x1.00);
+`policy.constant` is the fee set a system without voting charges (10000 / 0 / 0 / 0, the kit's constant), not
+`policy.defaults`. `*Raw` amounts are the program's raw ATLAS ledger units; the divisor (8 decimals is likely, as the kit's
+FLOYDS_PER_ATLAS) is NOT emitted until a non-zero pool confirms it, so the page shows no amounts. A u64 above 2^53 is
+written as a decimal string, never rounded. `v` is the block's shape version: a stored block (`db.json` `state.gov`) of
+another shape, or one still carrying `atlasDecimals`, is never re-served after a failed read (note: "older shape").
+Per system only the rows of the LIVE governance count (no successor, highest `starbaseSeqId`): history, days, module
+status / project, allocations match its address (where the row carries a `governance`) and its `starbaseSeqId`;
+generation and ballot follow the live history's `generation`; contributions and backings follow their live project /
+allocation and its sequence. After a starbase changes hands, the old owner's rows are ignored. The read has its own
+60 s limit inside the pass (combined with the pass abort); on timeout it is a failed read (previous block + note).
+Error text in the note has the RPC URL replaced by its host.
+`fees` follow the kit's resolver: history enabled = its generation's fees (`src: 'generation'`); history disabled = the
+constant default 10000 / 0 / 0 / 0 (`'baseline'`); no history = `starbaseGovernance.activeParams` if that governance is
+enabled (`'governance'`), else the constant default (`'default'`). Wherever a history exists, `starbaseGovernance.activeParams`
+is a stale legacy value (100 / 2500 / 5000 on every system on 2026-11-24) and is never written.
+Check: `node Test/c4-governance-check.js` (`C4_OFFLINE=1` skips the one live read).
 
 ### Owner identity and wealth (2026-11-07)
 

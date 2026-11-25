@@ -1,0 +1,2902 @@
+{
+ "at": 1795580583,
+ "day": 20779,
+ "voteEpoch": 2968,
+ "voteEpochSecs": 604800,
+ "v": 1,
+ "policy": {
+  "defaults": {
+   "craft": 10000,
+   "mkt": 0,
+   "local": 0,
+   "dist": 0
+  },
+  "constant": {
+   "craft": 10000,
+   "mkt": 0,
+   "local": 0,
+   "dist": 0
+  },
+  "bounds": {
+   "minCraftingFeeBps": 10000,
+   "maxCraftingFeeBps": 15000,
+   "maxLocalMarketFeeBps": 300,
+   "minDaoShareBps": 7000,
+   "maxTreasuryDistributionBps": 10000,
+   "craftingFeeStepBps": 1000,
+   "localMarketFeeStepBps": 60,
+   "localTreasuryShareStepBps": 500,
+   "treasuryDistributionStepBps": 2000
+  }
+ },
+ "module": {
+  "minTier": 2,
+  "bill": [
+   {
+    "id": 1007,
+    "q": 2360,
+    "n": "Alloy Frame"
+   },
+   {
+    "id": 1027,
+    "q": 1620,
+    "n": "Control Circuit"
+   },
+   {
+    "id": 1102,
+    "q": 450,
+    "n": "Generator Coils"
+   },
+   {
+    "id": 1016,
+    "q": 370,
+    "n": "Bio Stabilizer"
+   },
+   {
+    "id": 1199,
+    "q": 200,
+    "n": "Processing Matrix"
+   },
+   {
+    "id": 1243,
+    "q": 100,
+    "n": "Signal Booster"
+   }
+  ]
+ },
+ "curve": {
+  "pvpThreshold": 1000000,
+  "basePvpPerCrew": 4000,
+  "maxPvp": 1000000000000
+ },
+ "housing": [
+  {
+   "id": 50000,
+   "f": 1,
+   "tier": 0,
+   "cap": 20
+  },
+  {
+   "id": 50001,
+   "f": 1,
+   "tier": 1,
+   "cap": 415
+  },
+  {
+   "id": 50002,
+   "f": 1,
+   "tier": 2,
+   "cap": 2450
+  },
+  {
+   "id": 50003,
+   "f": 1,
+   "tier": 3,
+   "cap": 5400
+  },
+  {
+   "id": 50004,
+   "f": 1,
+   "tier": 4,
+   "cap": 50000
+  },
+  {
+   "id": 50005,
+   "f": 1,
+   "tier": 5,
+   "cap": 570000
+  },
+  {
+   "id": 50006,
+   "f": 2,
+   "tier": 0,
+   "cap": 20
+  },
+  {
+   "id": 50007,
+   "f": 2,
+   "tier": 1,
+   "cap": 415
+  },
+  {
+   "id": 50008,
+   "f": 2,
+   "tier": 2,
+   "cap": 2450
+  },
+  {
+   "id": 50009,
+   "f": 2,
+   "tier": 3,
+   "cap": 5400
+  },
+  {
+   "id": 50010,
+   "f": 2,
+   "tier": 4,
+   "cap": 50000
+  },
+  {
+   "id": 50011,
+   "f": 2,
+   "tier": 5,
+   "cap": 570000
+  },
+  {
+   "id": 50012,
+   "f": 3,
+   "tier": 0,
+   "cap": 20
+  },
+  {
+   "id": 50013,
+   "f": 3,
+   "tier": 1,
+   "cap": 415
+  },
+  {
+   "id": 50014,
+   "f": 3,
+   "tier": 2,
+   "cap": 2450
+  },
+  {
+   "id": 50015,
+   "f": 3,
+   "tier": 3,
+   "cap": 5400
+  },
+  {
+   "id": 50016,
+   "f": 3,
+   "tier": 4,
+   "cap": 50000
+  },
+  {
+   "id": 50017,
+   "f": 3,
+   "tier": 5,
+   "cap": 570000
+  }
+ ],
+ "systems": {
+  "H4FRDkfSMvREG8bKaZAahzc7pWXju57CrhVk18ASe8H4": {
+   "ctl": 3,
+   "lvl": 2,
+   "on": 0,
+   "mod": null,
+   "fees": {
+    "craft": 10000,
+    "mkt": 0,
+    "local": 0,
+    "dist": 0
+   },
+   "src": "baseline",
+   "power": 0,
+   "nextPower": 0,
+   "want": null,
+   "voters": 0,
+   "crew": 0,
+   "poolRaw": {
+    "open": 0,
+    "vault": 0,
+    "dao": 0,
+    "funded": 0,
+    "claimed": 0
+   },
+   "ballot": null,
+   "days": [
+    {
+     "d": 20779,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20780,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20781,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    }
+   ]
+  },
+  "BiFQBwtDGWSDffrhXc9oSTRw5LHyGZ3kFAMfumZPurAw": {
+   "ctl": 1,
+   "lvl": 2,
+   "on": 0,
+   "mod": null,
+   "fees": {
+    "craft": 10000,
+    "mkt": 0,
+    "local": 0,
+    "dist": 0
+   },
+   "src": "baseline",
+   "power": 0,
+   "nextPower": 0,
+   "want": null,
+   "voters": 0,
+   "crew": 0,
+   "poolRaw": {
+    "open": 0,
+    "vault": 0,
+    "dao": 0,
+    "funded": 0,
+    "claimed": 0
+   },
+   "ballot": {
+    "status": 2,
+    "cutoffDay": 20779,
+    "power": 0,
+    "expected": 0,
+    "receipts": 0,
+    "winner": {
+     "craft": 10000,
+     "mkt": 0,
+     "local": 0,
+     "dist": 0
+    }
+   },
+   "days": [
+    {
+     "d": 20778,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20779,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20780,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20781,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    }
+   ]
+  },
+  "74g6NYFwvsABQrfT9AtBJRCYsYD3ZyV6vT9YPXhvAQdc": {
+   "ctl": 3,
+   "lvl": 2,
+   "on": 0,
+   "mod": null,
+   "fees": {
+    "craft": 10000,
+    "mkt": 0,
+    "local": 0,
+    "dist": 0
+   },
+   "src": "baseline",
+   "power": 0,
+   "nextPower": 0,
+   "want": null,
+   "voters": 0,
+   "crew": 0,
+   "poolRaw": {
+    "open": 0,
+    "vault": 0,
+    "dao": 0,
+    "funded": 0,
+    "claimed": 0
+   },
+   "ballot": null,
+   "days": [
+    {
+     "d": 20779,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20780,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20781,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    }
+   ]
+  },
+  "3UN7SmfCt5UnK5o3TcEkEmmykwMMA29vvH8NXbHNhjdD": {
+   "ctl": 3,
+   "lvl": 2,
+   "on": 0,
+   "mod": null,
+   "fees": {
+    "craft": 10000,
+    "mkt": 0,
+    "local": 0,
+    "dist": 0
+   },
+   "src": "baseline",
+   "power": 0,
+   "nextPower": 0,
+   "want": null,
+   "voters": 0,
+   "crew": 0,
+   "poolRaw": {
+    "open": 0,
+    "vault": 0,
+    "dao": 0,
+    "funded": 0,
+    "claimed": 0
+   },
+   "ballot": null,
+   "days": [
+    {
+     "d": 20779,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20780,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20781,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    }
+   ]
+  },
+  "49Und6dPPsFZ2Y34JATTWXv6yzXRVoF7mFR6zaZVsK65": {
+   "ctl": 1,
+   "lvl": 2,
+   "on": 0,
+   "mod": null,
+   "fees": {
+    "craft": 10000,
+    "mkt": 0,
+    "local": 0,
+    "dist": 0
+   },
+   "src": "baseline",
+   "power": 0,
+   "nextPower": 0,
+   "want": null,
+   "voters": 0,
+   "crew": 0,
+   "poolRaw": {
+    "open": 0,
+    "vault": 0,
+    "dao": 0,
+    "funded": 0,
+    "claimed": 0
+   },
+   "ballot": {
+    "status": 2,
+    "cutoffDay": 20779,
+    "power": 0,
+    "expected": 0,
+    "receipts": 0,
+    "winner": {
+     "craft": 10000,
+     "mkt": 0,
+     "local": 0,
+     "dist": 0
+    }
+   },
+   "days": [
+    {
+     "d": 20778,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20779,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20780,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20781,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    }
+   ]
+  },
+  "EF6HeBAd7Z9b2HNbvWy5vPcJMWnvfwUaJoJEeGT3spyj": {
+   "ctl": 2,
+   "lvl": 2,
+   "on": 0,
+   "mod": null,
+   "fees": {
+    "craft": 10000,
+    "mkt": 0,
+    "local": 0,
+    "dist": 0
+   },
+   "src": "baseline",
+   "power": 0,
+   "nextPower": 0,
+   "want": null,
+   "voters": 0,
+   "crew": 0,
+   "poolRaw": {
+    "open": 0,
+    "vault": 0,
+    "dao": 0,
+    "funded": 0,
+    "claimed": 0
+   },
+   "ballot": null,
+   "days": [
+    {
+     "d": 20779,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20780,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20781,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    }
+   ]
+  },
+  "3o6RyN8G8ehDtzueteEukf358eoN5uSejKVW8btnU9Ry": {
+   "ctl": 3,
+   "lvl": 2,
+   "on": 0,
+   "mod": null,
+   "fees": {
+    "craft": 10000,
+    "mkt": 0,
+    "local": 0,
+    "dist": 0
+   },
+   "src": "baseline",
+   "power": 0,
+   "nextPower": 0,
+   "want": null,
+   "voters": 0,
+   "crew": 0,
+   "poolRaw": {
+    "open": 0,
+    "vault": 0,
+    "dao": 0,
+    "funded": 0,
+    "claimed": 0
+   },
+   "ballot": null,
+   "days": [
+    {
+     "d": 20779,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20780,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20781,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    }
+   ]
+  },
+  "E7LWcwKYyBjXWQyQrTnMUrVvTWuJ3bpTBtSoEd8rnaJQ": {
+   "ctl": 3,
+   "lvl": 2,
+   "on": 0,
+   "mod": null,
+   "fees": {
+    "craft": 10000,
+    "mkt": 0,
+    "local": 0,
+    "dist": 0
+   },
+   "src": "baseline",
+   "power": 0,
+   "nextPower": 0,
+   "want": null,
+   "voters": 0,
+   "crew": 0,
+   "poolRaw": {
+    "open": 0,
+    "vault": 0,
+    "dao": 0,
+    "funded": 0,
+    "claimed": 0
+   },
+   "ballot": null,
+   "days": [
+    {
+     "d": 20779,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20780,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20781,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    }
+   ]
+  },
+  "FpBG1iazWPjt2zi39MGHBdyP7VeZDfRVB3yxC2j3iu5P": {
+   "ctl": 3,
+   "lvl": 2,
+   "on": 0,
+   "mod": null,
+   "fees": {
+    "craft": 10000,
+    "mkt": 0,
+    "local": 0,
+    "dist": 0
+   },
+   "src": "baseline",
+   "power": 0,
+   "nextPower": 0,
+   "want": null,
+   "voters": 0,
+   "crew": 0,
+   "poolRaw": {
+    "open": 0,
+    "vault": 0,
+    "dao": 0,
+    "funded": 0,
+    "claimed": 0
+   },
+   "ballot": null,
+   "days": [
+    {
+     "d": 20779,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20780,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20781,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    }
+   ]
+  },
+  "FDnc4UqYLxYSBimofE4cyA9sRGVy457a1wnVeinKSt95": {
+   "ctl": 2,
+   "lvl": 2,
+   "on": 1,
+   "mod": {
+    "inst": 1,
+    "at": 1795580000,
+    "funded": [
+     2360,
+     1620,
+     450,
+     370,
+     200,
+     100,
+     0
+    ],
+    "need": [
+     2360,
+     1620,
+     450,
+     370,
+     200,
+     100,
+     0
+    ],
+    "contributors": 1
+   },
+   "fees": {
+    "craft": 10000,
+    "mkt": 0,
+    "local": 0,
+    "dist": 0
+   },
+   "src": "generation",
+   "power": 0,
+   "nextPower": 0,
+   "want": null,
+   "voters": 0,
+   "crew": 0,
+   "poolRaw": {
+    "open": 0,
+    "vault": 0,
+    "dao": 0,
+    "funded": 0,
+    "claimed": 0
+   },
+   "ballot": null,
+   "days": [
+    {
+     "d": 20779,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20780,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20781,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    }
+   ]
+  },
+  "jPbcGcLmMEDtRDh88n2JYVopLrUEiCcFYaPMm7Hu1Qv": {
+   "ctl": 1,
+   "lvl": 2,
+   "on": 0,
+   "mod": null,
+   "fees": {
+    "craft": 10000,
+    "mkt": 0,
+    "local": 0,
+    "dist": 0
+   },
+   "src": "baseline",
+   "power": 0,
+   "nextPower": 0,
+   "want": null,
+   "voters": 0,
+   "crew": 0,
+   "poolRaw": {
+    "open": 0,
+    "vault": 0,
+    "dao": 0,
+    "funded": 0,
+    "claimed": 0
+   },
+   "ballot": {
+    "status": 2,
+    "cutoffDay": 20779,
+    "power": 0,
+    "expected": 0,
+    "receipts": 0,
+    "winner": {
+     "craft": 10000,
+     "mkt": 0,
+     "local": 0,
+     "dist": 0
+    }
+   },
+   "days": [
+    {
+     "d": 20778,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20779,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20780,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20781,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    }
+   ]
+  },
+  "HUoc7ewRuh5jYfCFQaPKpNMMxT6pbYbuXLAju4dd84Gr": {
+   "ctl": 2,
+   "lvl": 2,
+   "on": 0,
+   "mod": null,
+   "fees": {
+    "craft": 10000,
+    "mkt": 0,
+    "local": 0,
+    "dist": 0
+   },
+   "src": "baseline",
+   "power": 0,
+   "nextPower": 0,
+   "want": null,
+   "voters": 0,
+   "crew": 0,
+   "poolRaw": {
+    "open": 0,
+    "vault": 0,
+    "dao": 0,
+    "funded": 0,
+    "claimed": 0
+   },
+   "ballot": null,
+   "days": [
+    {
+     "d": 20779,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20780,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20781,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    }
+   ]
+  },
+  "86WCcw4ThFU5D7ag8HSKizunN5pgmwYWkJyBVG6qy26d": {
+   "ctl": 1,
+   "lvl": 2,
+   "on": 0,
+   "mod": null,
+   "fees": {
+    "craft": 10000,
+    "mkt": 0,
+    "local": 0,
+    "dist": 0
+   },
+   "src": "baseline",
+   "power": 0,
+   "nextPower": 0,
+   "want": null,
+   "voters": 0,
+   "crew": 0,
+   "poolRaw": {
+    "open": 0,
+    "vault": 0,
+    "dao": 0,
+    "funded": 0,
+    "claimed": 0
+   },
+   "ballot": {
+    "status": 2,
+    "cutoffDay": 20779,
+    "power": 0,
+    "expected": 0,
+    "receipts": 0,
+    "winner": {
+     "craft": 10000,
+     "mkt": 0,
+     "local": 0,
+     "dist": 0
+    }
+   },
+   "days": [
+    {
+     "d": 20778,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20779,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20780,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20781,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    }
+   ]
+  },
+  "8yDSKuTgRjcQnJbaLVFuvo7p1dPim5DjvKKG9UiPxnYk": {
+   "ctl": 3,
+   "lvl": 2,
+   "on": 0,
+   "mod": null,
+   "fees": {
+    "craft": 10000,
+    "mkt": 0,
+    "local": 0,
+    "dist": 0
+   },
+   "src": "baseline",
+   "power": 0,
+   "nextPower": 0,
+   "want": null,
+   "voters": 0,
+   "crew": 0,
+   "poolRaw": {
+    "open": 0,
+    "vault": 0,
+    "dao": 0,
+    "funded": 0,
+    "claimed": 0
+   },
+   "ballot": null,
+   "days": [
+    {
+     "d": 20779,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20780,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20781,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    }
+   ]
+  },
+  "EzfDzXb6js49Gx7b1SEjuEP8knDzWiSajZ7QtnSXwHRX": {
+   "ctl": 1,
+   "lvl": 2,
+   "on": 0,
+   "mod": null,
+   "fees": {
+    "craft": 10000,
+    "mkt": 0,
+    "local": 0,
+    "dist": 0
+   },
+   "src": "baseline",
+   "power": 0,
+   "nextPower": 0,
+   "want": null,
+   "voters": 0,
+   "crew": 0,
+   "poolRaw": {
+    "open": 0,
+    "vault": 0,
+    "dao": 0,
+    "funded": 0,
+    "claimed": 0
+   },
+   "ballot": {
+    "status": 2,
+    "cutoffDay": 20779,
+    "power": 0,
+    "expected": 0,
+    "receipts": 0,
+    "winner": {
+     "craft": 10000,
+     "mkt": 0,
+     "local": 0,
+     "dist": 0
+    }
+   },
+   "days": [
+    {
+     "d": 20778,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20779,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20780,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20781,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    }
+   ]
+  },
+  "EjXirQXJWix5nuhsocb8auHCXKgd6rco4vBgeDwUMeYm": {
+   "ctl": 2,
+   "lvl": 2,
+   "on": 0,
+   "mod": null,
+   "fees": {
+    "craft": 10000,
+    "mkt": 0,
+    "local": 0,
+    "dist": 0
+   },
+   "src": "baseline",
+   "power": 0,
+   "nextPower": 0,
+   "want": null,
+   "voters": 0,
+   "crew": 0,
+   "poolRaw": {
+    "open": 0,
+    "vault": 0,
+    "dao": 0,
+    "funded": 0,
+    "claimed": 0
+   },
+   "ballot": null,
+   "days": [
+    {
+     "d": 20779,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20780,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20781,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    }
+   ]
+  },
+  "CyGUb3emangVWqtF7QQwC6h9g248CRBQ2Tb3isBTYkrb": {
+   "ctl": 2,
+   "lvl": 2,
+   "on": 0,
+   "mod": null,
+   "fees": {
+    "craft": 10000,
+    "mkt": 0,
+    "local": 0,
+    "dist": 0
+   },
+   "src": "baseline",
+   "power": 0,
+   "nextPower": 0,
+   "want": null,
+   "voters": 0,
+   "crew": 0,
+   "poolRaw": {
+    "open": 0,
+    "vault": 0,
+    "dao": 0,
+    "funded": 0,
+    "claimed": 0
+   },
+   "ballot": null,
+   "days": [
+    {
+     "d": 20779,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20780,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20781,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    }
+   ]
+  },
+  "FqiPuKnrrNCejpkPCeUwfqpexTNGm8Z9T8vzcEqs23oB": {
+   "ctl": 3,
+   "lvl": 2,
+   "on": 0,
+   "mod": null,
+   "fees": {
+    "craft": 10000,
+    "mkt": 0,
+    "local": 0,
+    "dist": 0
+   },
+   "src": "baseline",
+   "power": 0,
+   "nextPower": 0,
+   "want": null,
+   "voters": 0,
+   "crew": 0,
+   "poolRaw": {
+    "open": 0,
+    "vault": 0,
+    "dao": 0,
+    "funded": 0,
+    "claimed": 0
+   },
+   "ballot": null,
+   "days": [
+    {
+     "d": 20779,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20780,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20781,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    }
+   ]
+  },
+  "JqC9NsENbLVGQ3WkAhJjR5uSbtSCVLQ1Q857KVsMQyK": {
+   "ctl": 2,
+   "lvl": 2,
+   "on": 0,
+   "mod": null,
+   "fees": {
+    "craft": 10000,
+    "mkt": 0,
+    "local": 0,
+    "dist": 0
+   },
+   "src": "baseline",
+   "power": 0,
+   "nextPower": 0,
+   "want": null,
+   "voters": 0,
+   "crew": 0,
+   "poolRaw": {
+    "open": 0,
+    "vault": 0,
+    "dao": 0,
+    "funded": 0,
+    "claimed": 0
+   },
+   "ballot": null,
+   "days": [
+    {
+     "d": 20779,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20780,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20781,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    }
+   ]
+  },
+  "ADNi3uEyJ9ktYQmNeA9eNre5DWadyuj3yn1Rr1sGzvdP": {
+   "ctl": 3,
+   "lvl": 2,
+   "on": 0,
+   "mod": null,
+   "fees": {
+    "craft": 10000,
+    "mkt": 0,
+    "local": 0,
+    "dist": 0
+   },
+   "src": "baseline",
+   "power": 0,
+   "nextPower": 0,
+   "want": null,
+   "voters": 0,
+   "crew": 0,
+   "poolRaw": {
+    "open": 0,
+    "vault": 0,
+    "dao": 0,
+    "funded": 0,
+    "claimed": 0
+   },
+   "ballot": null,
+   "days": [
+    {
+     "d": 20779,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20780,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20781,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    }
+   ]
+  },
+  "GhFFHFv9mpw2dDfcTzedSfYQeeBmDzP1iceqmM2fsmaw": {
+   "ctl": 3,
+   "lvl": 2,
+   "on": 0,
+   "mod": null,
+   "fees": {
+    "craft": 10000,
+    "mkt": 0,
+    "local": 0,
+    "dist": 0
+   },
+   "src": "baseline",
+   "power": 0,
+   "nextPower": 0,
+   "want": null,
+   "voters": 0,
+   "crew": 0,
+   "poolRaw": {
+    "open": 0,
+    "vault": 0,
+    "dao": 0,
+    "funded": 0,
+    "claimed": 0
+   },
+   "ballot": null,
+   "days": [
+    {
+     "d": 20779,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20780,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20781,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    }
+   ]
+  },
+  "3MDP3z2xHybqRPBmeWBrAKYqFfwQ4cxEiN2DNR5fNQnh": {
+   "ctl": 3,
+   "lvl": 2,
+   "on": 0,
+   "mod": null,
+   "fees": {
+    "craft": 10000,
+    "mkt": 0,
+    "local": 0,
+    "dist": 0
+   },
+   "src": "baseline",
+   "power": 0,
+   "nextPower": 0,
+   "want": null,
+   "voters": 0,
+   "crew": 0,
+   "poolRaw": {
+    "open": 0,
+    "vault": 0,
+    "dao": 0,
+    "funded": 0,
+    "claimed": 0
+   },
+   "ballot": null,
+   "days": [
+    {
+     "d": 20779,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20780,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20781,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    }
+   ]
+  },
+  "CTGgZKht1ujvg4pw5sQyiNgab8Mqyuf8FYgzd6xG3WuV": {
+   "ctl": 2,
+   "lvl": 2,
+   "on": 0,
+   "mod": null,
+   "fees": {
+    "craft": 10000,
+    "mkt": 0,
+    "local": 0,
+    "dist": 0
+   },
+   "src": "baseline",
+   "power": 0,
+   "nextPower": 0,
+   "want": null,
+   "voters": 0,
+   "crew": 0,
+   "poolRaw": {
+    "open": 0,
+    "vault": 0,
+    "dao": 0,
+    "funded": 0,
+    "claimed": 0
+   },
+   "ballot": null,
+   "days": [
+    {
+     "d": 20779,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20780,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20781,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    }
+   ]
+  },
+  "EK5tzgzFe43sF8soX6PbBXDtMSvjYUhKfCYpzKdaVtwj": {
+   "ctl": 1,
+   "lvl": 2,
+   "on": 0,
+   "mod": null,
+   "fees": {
+    "craft": 10000,
+    "mkt": 0,
+    "local": 0,
+    "dist": 0
+   },
+   "src": "baseline",
+   "power": 0,
+   "nextPower": 0,
+   "want": null,
+   "voters": 0,
+   "crew": 0,
+   "poolRaw": {
+    "open": 0,
+    "vault": 0,
+    "dao": 0,
+    "funded": 0,
+    "claimed": 0
+   },
+   "ballot": {
+    "status": 2,
+    "cutoffDay": 20779,
+    "power": 0,
+    "expected": 0,
+    "receipts": 0,
+    "winner": {
+     "craft": 10000,
+     "mkt": 0,
+     "local": 0,
+     "dist": 0
+    }
+   },
+   "days": [
+    {
+     "d": 20778,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20779,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20780,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20781,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    }
+   ]
+  },
+  "iLjXobofS7hduD8XpiPm6DALuYp4GXbeafC4PViFbEb": {
+   "ctl": 2,
+   "lvl": 2,
+   "on": 0,
+   "mod": null,
+   "fees": {
+    "craft": 10000,
+    "mkt": 0,
+    "local": 0,
+    "dist": 0
+   },
+   "src": "baseline",
+   "power": 0,
+   "nextPower": 0,
+   "want": null,
+   "voters": 0,
+   "crew": 0,
+   "poolRaw": {
+    "open": 0,
+    "vault": 0,
+    "dao": 0,
+    "funded": 0,
+    "claimed": 0
+   },
+   "ballot": null,
+   "days": [
+    {
+     "d": 20779,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20780,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20781,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    }
+   ]
+  },
+  "7SWCvNy5xwLRxC4JhdwWsVbRfY41FL2ZUHWS1SN22XgY": {
+   "ctl": 1,
+   "lvl": 2,
+   "on": 1,
+   "mod": {
+    "inst": 1,
+    "at": 1795577243,
+    "funded": [
+     2360,
+     1620,
+     450,
+     370,
+     200,
+     100,
+     0
+    ],
+    "need": [
+     2360,
+     1620,
+     450,
+     370,
+     200,
+     100,
+     0
+    ],
+    "contributors": 1
+   },
+   "fees": {
+    "craft": 10000,
+    "mkt": 0,
+    "local": 0,
+    "dist": 0
+   },
+   "src": "generation",
+   "power": 0,
+   "nextPower": 0,
+   "want": null,
+   "voters": 0,
+   "crew": 0,
+   "poolRaw": {
+    "open": 0,
+    "vault": 0,
+    "dao": 0,
+    "funded": 0,
+    "claimed": 0
+   },
+   "ballot": {
+    "status": 2,
+    "cutoffDay": 20779,
+    "power": 0,
+    "expected": 0,
+    "receipts": 0,
+    "winner": {
+     "craft": 10000,
+     "mkt": 0,
+     "local": 0,
+     "dist": 0
+    }
+   },
+   "days": [
+    {
+     "d": 20778,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20779,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20780,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20781,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    }
+   ]
+  },
+  "6VMBZx22UDwHys4bLKTuFyu995n5TUecCKStQ5oZiEYY": {
+   "ctl": 2,
+   "lvl": 2,
+   "on": 0,
+   "mod": null,
+   "fees": {
+    "craft": 10000,
+    "mkt": 0,
+    "local": 0,
+    "dist": 0
+   },
+   "src": "baseline",
+   "power": 0,
+   "nextPower": 0,
+   "want": null,
+   "voters": 0,
+   "crew": 0,
+   "poolRaw": {
+    "open": 0,
+    "vault": 0,
+    "dao": 0,
+    "funded": 0,
+    "claimed": 0
+   },
+   "ballot": null,
+   "days": [
+    {
+     "d": 20779,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20780,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20781,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    }
+   ]
+  },
+  "HR1jEjGQi2EiVfwEfCdsRogbnvgDuKp1j33DFjUuMrtr": {
+   "ctl": 1,
+   "lvl": 2,
+   "on": 0,
+   "mod": null,
+   "fees": {
+    "craft": 10000,
+    "mkt": 0,
+    "local": 0,
+    "dist": 0
+   },
+   "src": "baseline",
+   "power": 0,
+   "nextPower": 0,
+   "want": null,
+   "voters": 0,
+   "crew": 0,
+   "poolRaw": {
+    "open": 0,
+    "vault": 0,
+    "dao": 0,
+    "funded": 0,
+    "claimed": 0
+   },
+   "ballot": {
+    "status": 2,
+    "cutoffDay": 20779,
+    "power": 0,
+    "expected": 0,
+    "receipts": 0,
+    "winner": {
+     "craft": 10000,
+     "mkt": 0,
+     "local": 0,
+     "dist": 0
+    }
+   },
+   "days": [
+    {
+     "d": 20778,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20779,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20780,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20781,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    }
+   ]
+  },
+  "3cSYRGaKTH7yuTLWLpwHRp4dSBuRrztQhsLe98HzCdee": {
+   "ctl": 1,
+   "lvl": 2,
+   "on": 0,
+   "mod": null,
+   "fees": {
+    "craft": 10000,
+    "mkt": 0,
+    "local": 0,
+    "dist": 0
+   },
+   "src": "baseline",
+   "power": 0,
+   "nextPower": 0,
+   "want": null,
+   "voters": 0,
+   "crew": 0,
+   "poolRaw": {
+    "open": 0,
+    "vault": 0,
+    "dao": 0,
+    "funded": 0,
+    "claimed": 0
+   },
+   "ballot": {
+    "status": 2,
+    "cutoffDay": 20779,
+    "power": 0,
+    "expected": 0,
+    "receipts": 0,
+    "winner": {
+     "craft": 10000,
+     "mkt": 0,
+     "local": 0,
+     "dist": 0
+    }
+   },
+   "days": [
+    {
+     "d": 20778,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20779,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20780,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20781,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    }
+   ]
+  },
+  "7TjTV4Su76raZsiCfqzQTe1YzTKa9wTS2izhxL748mCV": {
+   "ctl": 2,
+   "lvl": 2,
+   "on": 0,
+   "mod": null,
+   "fees": {
+    "craft": 10000,
+    "mkt": 0,
+    "local": 0,
+    "dist": 0
+   },
+   "src": "baseline",
+   "power": 0,
+   "nextPower": 0,
+   "want": null,
+   "voters": 0,
+   "crew": 0,
+   "poolRaw": {
+    "open": 0,
+    "vault": 0,
+    "dao": 0,
+    "funded": 0,
+    "claimed": 0
+   },
+   "ballot": null,
+   "days": [
+    {
+     "d": 20779,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20780,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20781,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    }
+   ]
+  },
+  "4StXzBqD1BprBizKfYrCVYYGT1dk2P88YZQjpbceuD5F": {
+   "ctl": 1,
+   "lvl": 2,
+   "on": 1,
+   "mod": {
+    "inst": 1,
+    "at": 1795487644,
+    "funded": [
+     2360,
+     1620,
+     450,
+     370,
+     200,
+     100,
+     0
+    ],
+    "need": [
+     2360,
+     1620,
+     450,
+     370,
+     200,
+     100,
+     0
+    ],
+    "contributors": 1
+   },
+   "fees": {
+    "craft": 10000,
+    "mkt": 0,
+    "local": 0,
+    "dist": 0
+   },
+   "src": "generation",
+   "power": 40000,
+   "nextPower": 40000,
+   "want": {
+    "craft": 10000,
+    "mkt": 0,
+    "local": 3000,
+    "dist": 10000
+   },
+   "voters": 1,
+   "crew": 10,
+   "poolRaw": {
+    "open": 0,
+    "vault": 0,
+    "dao": 0,
+    "funded": 0,
+    "claimed": 0
+   },
+   "ballot": {
+    "status": 2,
+    "cutoffDay": 20779,
+    "power": 0,
+    "expected": 0,
+    "receipts": 0,
+    "winner": {
+     "craft": 10000,
+     "mkt": 0,
+     "local": 0,
+     "dist": 0
+    }
+   },
+   "days": [
+    {
+     "d": 20778,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20779,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20780,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20781,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    }
+   ]
+  },
+  "D6TDJHFFtmwPPFmpTsd4tavaGuKYzUKCPjJek4SphQY6": {
+   "ctl": 2,
+   "lvl": 2,
+   "on": 0,
+   "mod": null,
+   "fees": {
+    "craft": 10000,
+    "mkt": 0,
+    "local": 0,
+    "dist": 0
+   },
+   "src": "baseline",
+   "power": 0,
+   "nextPower": 0,
+   "want": null,
+   "voters": 0,
+   "crew": 0,
+   "poolRaw": {
+    "open": 0,
+    "vault": 0,
+    "dao": 0,
+    "funded": 0,
+    "claimed": 0
+   },
+   "ballot": null,
+   "days": [
+    {
+     "d": 20779,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20780,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20781,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    }
+   ]
+  },
+  "H2hndf1TY779iVLzbP5uSSCyDBjyVPeXZdqNJVTt8tPK": {
+   "ctl": 1,
+   "lvl": 2,
+   "on": 0,
+   "mod": null,
+   "fees": {
+    "craft": 10000,
+    "mkt": 0,
+    "local": 0,
+    "dist": 0
+   },
+   "src": "baseline",
+   "power": 0,
+   "nextPower": 0,
+   "want": null,
+   "voters": 0,
+   "crew": 0,
+   "poolRaw": {
+    "open": 0,
+    "vault": 0,
+    "dao": 0,
+    "funded": 0,
+    "claimed": 0
+   },
+   "ballot": {
+    "status": 2,
+    "cutoffDay": 20779,
+    "power": 0,
+    "expected": 0,
+    "receipts": 0,
+    "winner": {
+     "craft": 10000,
+     "mkt": 0,
+     "local": 0,
+     "dist": 0
+    }
+   },
+   "days": [
+    {
+     "d": 20778,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20779,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20780,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20781,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    }
+   ]
+  },
+  "4K7cFHsK3VdHpUAW2uBC9bE3GX9itQP3eoTusowYGCJh": {
+   "ctl": 1,
+   "lvl": 2,
+   "on": 0,
+   "mod": null,
+   "fees": {
+    "craft": 10000,
+    "mkt": 0,
+    "local": 0,
+    "dist": 0
+   },
+   "src": "baseline",
+   "power": 0,
+   "nextPower": 0,
+   "want": null,
+   "voters": 0,
+   "crew": 0,
+   "poolRaw": {
+    "open": 0,
+    "vault": 0,
+    "dao": 0,
+    "funded": 0,
+    "claimed": 0
+   },
+   "ballot": {
+    "status": 2,
+    "cutoffDay": 20779,
+    "power": 0,
+    "expected": 0,
+    "receipts": 0,
+    "winner": {
+     "craft": 10000,
+     "mkt": 0,
+     "local": 0,
+     "dist": 0
+    }
+   },
+   "days": [
+    {
+     "d": 20778,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20779,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20780,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20781,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    }
+   ]
+  },
+  "7PwYe3DVJRHB9MXf7W9cGej1zrT67bqme28JpRawoZPP": {
+   "ctl": 3,
+   "lvl": 2,
+   "on": 0,
+   "mod": null,
+   "fees": {
+    "craft": 10000,
+    "mkt": 0,
+    "local": 0,
+    "dist": 0
+   },
+   "src": "baseline",
+   "power": 0,
+   "nextPower": 0,
+   "want": null,
+   "voters": 0,
+   "crew": 0,
+   "poolRaw": {
+    "open": 0,
+    "vault": 0,
+    "dao": 0,
+    "funded": 0,
+    "claimed": 0
+   },
+   "ballot": null,
+   "days": [
+    {
+     "d": 20779,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20780,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20781,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    }
+   ]
+  },
+  "CSNqVCbZEJi9FtacnpQycWzJLSWX9uLKJU9T1sFuCNFU": {
+   "ctl": 2,
+   "lvl": 2,
+   "on": 0,
+   "mod": null,
+   "fees": {
+    "craft": 10000,
+    "mkt": 0,
+    "local": 0,
+    "dist": 0
+   },
+   "src": "baseline",
+   "power": 0,
+   "nextPower": 0,
+   "want": null,
+   "voters": 0,
+   "crew": 0,
+   "poolRaw": {
+    "open": 0,
+    "vault": 0,
+    "dao": 0,
+    "funded": 0,
+    "claimed": 0
+   },
+   "ballot": null,
+   "days": [
+    {
+     "d": 20779,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20780,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    },
+    {
+     "d": 20781,
+     "fees": {
+      "craft": 10000,
+      "mkt": 0,
+      "local": 0,
+      "dist": 0
+     },
+     "power": 0,
+     "poolRaw": 0,
+     "daoRaw": 0
+    }
+   ]
+  }
+ },
+ "voters": {
+  "profiles": 280,
+  "pvpIssued": 280000000,
+  "pvpReserved": 40000,
+  "allocating": 1,
+  "top": [
+   {
+    "p": "2aCsVB58nEyB8vfyhwUAoj32MrA6GcZkiRDqmHHqxURy",
+    "sys": "4StXzBqD1BprBizKfYrCVYYGT1dk2P88YZQjpbceuD5F",
+    "power": 40000,
+    "pending": 40000,
+    "crew": 10
+   }
+  ]
+ },
+ "contributors": [
+  {
+   "p": "FVRNa2j29ZsbHNVUkRwgE5AWWeUZgGqoNZ7P8f6mdzEB",
+   "sys": "FDnc4UqYLxYSBimofE4cyA9sRGVy457a1wnVeinKSt95",
+   "lp": 29010,
+   "units": 5100,
+   "rows": 6
+  },
+  {
+   "p": "2aCsVB58nEyB8vfyhwUAoj32MrA6GcZkiRDqmHHqxURy",
+   "sys": "4StXzBqD1BprBizKfYrCVYYGT1dk2P88YZQjpbceuD5F",
+   "lp": 29010,
+   "units": 5100,
+   "rows": 7
+  },
+  {
+   "p": "BhEWqdoRmc9AxD8Xybj2jL1ZF4z2erQFcru3AuEjo2cv",
+   "sys": "7SWCvNy5xwLRxC4JhdwWsVbRfY41FL2ZUHWS1SN22XgY",
+   "lp": 29010,
+   "units": 7460,
+   "rows": 7
+  }
+ ],
+ "counts": {
+  "starbaseGovernance": 36,
+  "democracySystemHistory": 36,
+  "democracyGenerationHistory": 36,
+  "democracyHistoryDay": 120,
+  "democracyWeeklyBallot": 12,
+  "governanceModuleStatus": 3,
+  "governanceModuleProject": 3,
+  "governanceModuleContribution": 20,
+  "democracyPtrAllocation": 1,
+  "democracyPtrBacking": 1,
+  "democracyHistoryPolicy": 1,
+  "governanceModulePolicy": 1,
+  "democracyCurveConfig": 1,
+  "democracyHousingMap": 1,
+  "democracyPtrRoot": 280
+ }
+}
