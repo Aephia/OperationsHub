@@ -681,6 +681,100 @@ function suite(A, quiet) {
         ok('sort: an unknown value is ignored', A.getRateSort() === 'med');
         pressSort(el, 'day');
         ok('sort: a press on Sort: total puts the largest total first again', A.getRateSort() === 'day' && orderOf(el.innerHTML).join('|') === want.join('|'));
+        // ---- profitability against origination price: a day's output at marketplace prices, per ship / per stake
+        {
+            const DAYS = 86400, RATE = 0.0001, EVIL = '<img src=x onerror=1>';
+            const idx = A.msrpIndex({ 'Armstrong IMP': 10, 'Armstrong IMP Tip': 20, 'Zero': 0, 'Neg': -5, 'Text': 'x', 'Nan': NaN });
+            ok('profit: a configuration is priced as the LONGEST listed hull name it starts with, on a whole word; junk prices are dropped', idx.length === 2 && A.msrpOf(idx, 'Armstrong IMP Tip Mining Min Config') === 20 && A.msrpOf(idx, 'Armstrong IMP Default Config') === 10 && A.msrpOf(idx, 'Armstrong IMPX Default Config') === null && A.msrpOf(idx, '') === null && A.msrpIndex(null).length === 0 && A.msrpIndex([1]).length === 0, JSON.stringify(idx));
+            ok('profit: a read without prices says so and draws no table', m.compare.profit.state === 'unread' && m.compare.profit.rows.length === 0 && /Profitability against origination price[^]*?have not been read in this copy of the data\. Refresh to read them\./.test(el.innerHTML) && !el.innerHTML.includes('data-an-psort'));
+            // prices for every resource but one; one resource with an ask and no bid; a model the list does not price; a hostile model
+            const SP = JSON.parse(JSON.stringify(SL));
+            const pureOf = f => { const k = Object.keys(f.types || {}); return k.length === 1 ? k[0] : null; };
+            const mfl = () => SP.fleets.filter(f => f.s && f.s.kind === 'mining' && f.mine && f.mine.ups > 0 && f.ships > 0);
+            const evilF = JSON.parse(JSON.stringify(mfl().find(pureOf))); evilF.a = 'EVILFLEET'; evilF.types = { [EVIL + ' Default Config']: evilF.ships }; SP.fleets.push(evilF);
+            const mixF = JSON.parse(JSON.stringify(evilF)); mixF.a = 'MIXFLEET'; mixF.ships = 2; mixF.types = { 'Mix A Default Config': 1, 'Mix B Default Config': 1 }; SP.fleets.push(mixF);   // two models: belongs to no row
+            const resAll = [...new Set([].concat(...mfl().map(f => (f.mine.out || []).map(o => o.r)), ...SP.stakes.map(s => (s.out || []).map(o => o.r))))].sort();
+            const px = {}; resAll.slice(1).forEach((r, i) => { px[r] = [i === 0 ? null : 0.001 * (i + 1), 0.002 * (i + 2)]; });
+            const hull = c => c.replace(/ (Default )?Config$/, ''), modelsAll = [...new Set(mfl().map(pureOf).filter(Boolean))].sort();
+            const msrp = {}; modelsAll.slice(1).forEach((c, i) => { msrp[hull(c)] = 100 + 50 * i; }); [...new Set(SP.stakes.map(s => s.tier))].forEach(t => { msrp['Claim Stake Tier ' + t] = 30 * t; });
+            SP.ref = Object.assign({}, SP.ref, { px, msrp, atlasUsd: RATE, atlasUsdAt: 1700000000, pricesAt: 1700003600 });
+            // what things burn: Food and Ammunition on every mining fleet's stat row but one (unknown cost), consumption on the stakes
+            px.Food = [0.004, 0.005]; px.Ammunition = [null, 0.003]; px[resAll[1]] = px[resAll[1]] || [0.001, 0.002];
+            SP.statKeys = ['cargo.ammoConsumptionRate', 'cargo.foodConsumptionRate', 'combat.hp'];
+            mfl().forEach((f, i) => { f.st = [0.01 * (i + 1), 0.02 * (i + 1), 100]; });
+            const soloNoSt = mfl().find(f => pureOf(f) === modelsAll[modelsAll.length - 1]); delete soloNoSt.st;
+            SP.stakes.forEach((s, i) => { if (Array.isArray(s.out)) s.use = [{ r: resAll[1], ps: 0.001 * (i + 1) }, { r: 'Unpriced Burn', ps: 5 }, { r: 'Food', ps: 0 }]; });
+            const tier0 = SP.stakes.find(s => Array.isArray(s.out) && typeof s.tier === 'number');
+            const costOf = list => list.reduce((t, [r, u]) => { const q = px[r]; return t + (u > 0 && q ? u * (q[1] != null ? q[1] : q[0]) : 0); }, 0);
+            const mp = A.build(SP, F.B), P = mp.compare.profit;
+            // this file's own figures
+            const valOf = list => { let bid = 0, ask = 0, priced = 0, total = 0; for (const [r, u] of list) { if (!(u > 0)) continue; total += u; const p = px[r]; if (!p) continue; priced += u; if (p[0] != null) bid += u * p[0]; ask += u * p[1]; } return { bid, ask, priced, total }; };
+            const want = [];
+            for (const c of modelsAll) {
+                const vs = mfl().filter(f => pureOf(f) === c).map(f => { const v = valOf((f.mine.out || []).map(o => [o.r, o.ups])); return { bid: v.bid / f.ships, ask: v.ask / f.ships, priced: v.priced / f.ships, total: v.total / f.ships, cost: f.st ? costOf([['Food', f.st[1]], ['Ammunition', f.st[0]]]) / f.ships : null }; }).filter(v => v.total > 0);
+                if (vs.length) want.push({ name: c, usd: msrp[hull(c)] || null, vs });
+            }
+            for (const t of [...new Set(SP.stakes.map(s => s.tier))].filter(t => typeof t === 'number' && isFinite(t))) {
+                const vs = SP.stakes.filter(s => s.tier === t && Array.isArray(s.out)).map(s => Object.assign(valOf(s.out.map(o => [o.r, o.ps])), { cost: costOf(s.use.map(o => [o.r, o.ps])) })).filter(v => v.total > 0);
+                if (vs.length) want.push({ name: 'Claim Stake Tier ' + t, usd: msrp['Claim Stake Tier ' + t] || null, vs });
+            }
+            const near = (a, b) => (a == null || b == null ? a === b : Math.abs(a - b) <= 1e-9 * Math.max(1e-12, Math.abs(a), Math.abs(b)));
+            const sum = (a, k) => a.reduce((t, v) => t + v[k], 0);
+            ok('profit: positive control, the fixture gives several rows, an unpriced resource, a bid-less resource, an unpriced model and a mixed fleet', P.state === 'ok' && mfl().some(f => f.a === 'MIXFLEET') && !P.rows.some(r => /Mix [AB]|null/.test(r.label)) && want.length >= 4 && want.some(w => !w.usd) && want.some(w => sum(w.vs, 'priced') < sum(w.vs, 'total') - 1e-12) && P.pricedRes >= resAll.length - 1, want.length + ' rows');
+            ok('profit: one row per ship model with a one-model mining fleet and per stake tier with production', P.rows.length === want.length && want.every(w => P.rows.some(r => r.name === w.name)), P.rows.map(r => r.name).join('|') + ' WANT ' + want.map(w => w.name + ':' + w.vs.length).join('|'));
+            const cmp = want.map(w => { const r = P.rows.find(x => x.name === w.name) || {}; const bid = q7(w.vs.map(v => v.bid), 0.5) * DAYS, ask = q7(w.vs.map(v => v.ask), 0.5) * DAYS; return { w, r, bid, ask }; });
+            ok('profit: ATLAS a day = the median over the fleets (per ship) or stakes of units a second x price x 86,400, at bids and at asks', cmp.every(c => near(c.r.bid, c.bid) && near(c.r.ask, c.ask) && c.r.n === c.w.vs.length), JSON.stringify(cmp.filter(c => !near(c.r.bid, c.bid) || !near(c.r.ask, c.ask)).map(c => [c.w.name, c.r.bid, c.bid, c.r.ask, c.ask])));
+            cmp.forEach(c => { c.known = c.w.vs.every(v => v.cost !== null); c.cost = c.known ? q7(c.w.vs.map(v => v.cost), 0.5) * DAYS : null; });
+            const payW = (usd, net) => (!usd || net === null ? null : net > 0 ? usd / (net * RATE) : Infinity);
+            ok('profit: positive control, the fixture has a row with costs, a row whose costs are unknown, a burned resource with no price and one bought at its bid', cmp.some(c => c.known && c.cost > 0) && cmp.some(c => !c.known) && P.unpricedCost.join() === 'Unpriced Burn' && px.Ammunition[0] === null && px[resAll[1]][1] != null, JSON.stringify(cmp.map(c => [c.w.name, c.cost])));
+            ok('profit: costs a day = what it burns x the best ask (the bid when nothing is offered) x 86,400, the median per ship or per stake; unknown when a fleet has no stat row', cmp.every(c => near(c.r.cost, c.cost)) && P.shipCosts === true, JSON.stringify(cmp.map(c => [c.w.name, c.r.cost, c.cost])));
+            ok('profit: net = earns minus costs, at bids and at asks; nothing when the costs are unknown', cmp.every(c => near(c.r.netBid, c.known ? c.bid - c.cost : null) && near(c.r.netAsk, c.known ? c.ask - c.cost : null)));
+            ok('profit: dollars = ATLAS x the ATLAS price; days to pay back = origination price / NET dollars a day, "never" (Infinity) when the net is not above zero', cmp.every(c => near(c.r.usdBid, c.bid * RATE) && near(c.r.usdAsk, c.ask * RATE) && near(c.r.usdCost, c.known ? c.cost * RATE : null) && near(c.r.usdNetBid, c.known ? (c.bid - c.cost) * RATE : null) &&
+                (c.r.payBid === payW(c.w.usd, c.known ? c.bid - c.cost : null) || near(c.r.payBid, payW(c.w.usd, c.known ? c.bid - c.cost : null))) && (c.r.payAsk === payW(c.w.usd, c.known ? c.ask - c.cost : null) || near(c.r.payAsk, payW(c.w.usd, c.known ? c.ask - c.cost : null))) && (c.r.usd || null) === c.w.usd), JSON.stringify(cmp.map(c => [c.w.name, c.r.payBid, payW(c.w.usd, c.known ? c.bid - c.cost : null)])));
+            // a stake that burns more than it earns never pays back
+            const SNv = JSON.parse(JSON.stringify(SP)); SNv.stakes.forEach(s => { if (Array.isArray(s.out)) s.use = [{ r: 'Food', ps: 1e6 }]; });
+            const Pnv = A.build(SNv, F.B).compare.profit, tNever = Pnv.rows.filter(r => r.kind === 'tier' && r.usd);
+            const elnv = fakeEl(); A.setProfitSort('payBid', 1); A.render(elnv, A.build(SNv, F.B), { width: 900 });
+            ok('profit: a net at or below zero reads "never" and sorts after every finite payback', tNever.length > 0 && tNever.every(r => r.payBid === Infinity && r.usdNetBid < 0) && /<td>never<\/td><td>never<\/td><\/tr>/.test(elnv.innerHTML) && !/Infinity/.test(elnv.innerHTML));
+            ok('profit: the share of output with a price is priced units over all units', cmp.every(c => near(c.r.cover, sum(c.w.vs, 'priced') / sum(c.w.vs, 'total'))));
+            const elp = fakeEl(); A.setProfitSort('payBid', 1); A.render(elp, mp, { width: 900 });
+            const cardOf = h => { const i = h.indexOf('Profitability against origination price'); return i < 0 ? '' : h.slice(i, h.indexOf('</figure>', i)); };
+            const labelsOf = h => [...cardOf(h).matchAll(/<th scope="row"><i class="c4an-sw f-s[12]"><\/i>([^<]*?) <em class="c4an-n">/g)].map(x => x[1]);
+            const lab = r => (r.kind === 'model' ? r.label : r.label), E = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            const sorted = (k, d) => P.rows.slice().sort((a, b) => { const x = k === 'name' ? a.label.toLowerCase() : a[k], y = k === 'name' ? b.label.toLowerCase() : b[k]; if ((x == null) !== (y == null)) return x == null ? 1 : -1; if (x != null && x !== y) return (x < y ? -1 : 1) * d; return a.label < b.label ? -1 : a.label > b.label ? 1 : 0; }).map(r => E(lab(r)));
+            const h0p = elp.innerHTML;
+            ok('profit: the table opens fastest payback at bids first, rows without a payback last, and says so on its header', labelsOf(h0p).join('|') === sorted('payBid', 1).join('|') && /<th scope="col" aria-sort="ascending"><button type="button" class="c4an-sortb" data-an-psort="payBid"/.test(h0p) && (cardOf(h0p).match(/aria-sort=/g) || []).length === 1 && (cardOf(h0p).match(/data-an-psort=/g) || []).length === 7, labelsOf(h0p).join('|') + ' vs ' + sorted('payBid', 1).join('|'));
+            const pressP = (e, k) => { const btn = { getAttribute: a => (a === 'data-an-psort' ? k : null) }; e.handlers.forEach(h => h({ target: { closest: sel => (sel === '[data-an-psort]' ? btn : null) } })); };
+            pressP(elp, 'payBid');
+            ok('profit: a second press on the same header reverses it, the empty rows still last', A.getProfitSort().d === -1 && labelsOf(elp.innerHTML).join('|') === sorted('payBid', -1).join('|') && sorted('payBid', -1).join('|') !== sorted('payBid', 1).join('|') && /aria-sort="descending"><button type="button" class="c4an-sortb" data-an-psort="payBid"/.test(elp.innerHTML));
+            pressP(elp, 'name');
+            ok('profit: a press on the name header runs A to Z', A.getProfitSort().k === 'name' && A.getProfitSort().d === 1 && labelsOf(elp.innerHTML).join('|') === sorted('name', 1).join('|'));
+            pressP(elp, 'usdBid');
+            ok('profit: a press on a value header runs largest first', A.getProfitSort().k === 'usdBid' && A.getProfitSort().d === -1 && labelsOf(elp.innerHTML).join('|') === sorted('usdBid', -1).join('|'));
+            pressP(elp, 'usd'); const byUsd = labelsOf(elp.innerHTML).join('|'); pressP(elp, 'usdCost'); const byCover = labelsOf(elp.innerHTML).join('|');
+            ok('profit: every column orders the rows by its own figure', byUsd === sorted('usd', -1).join('|') && byCover === sorted('usdCost', -1).join('|') && byUsd !== byCover);
+            pressP(elp, 'bogus'); pressP(elp, 'cover'); A.setProfitSort('bogus', 1); A.setProfitSort('usd', 5);
+            ok('profit: an unknown column or direction is ignored', A.getProfitSort().k === 'usdCost' && A.getProfitSort().d === -1);
+            A.setProfitSort('payBid', 1); const elq = fakeEl(); A.render(elq, mp, { width: 900 }); const hq = cardOf(elq.innerHTML);
+            const best = P.rows.filter(r => r.payBid != null).sort((a, b) => a.payBid - b.payBid)[0], none = P.rows.find(r => !r.usd);
+            const rowHtml = r => { const i = hq.indexOf('</i>' + E(lab(r)) + ' <em'); return hq.slice(i, hq.indexOf('</tr>', i)); };
+            ok('profit: a row prints its origination price, what it earns, costs and nets in dollars a day, and the two paybacks', new RegExp('<td>\\$' + best.usd + '(\\.00)?</td><td>\\$[0-9.,KM]+</td><td>\\$[0-9.,KMe-]+</td><td>\\$[0-9.,KM]+</td><td>[0-9.,KM]+</td><td>[0-9.,KM]+</td></tr>'.replace('</tr>', '')).test(rowHtml(best)), rowHtml(best));
+            ok('profit: a model the list does not price shows dashes for its price and paybacks, and the caption counts it', /<td>-<\/td><td>\$[^<]+<\/td><td>[^<]+<\/td><td>[^<]+<\/td><td>-<\/td><td>-<\/td>/.test(rowHtml(none)) && /; 2 rows have none listed|; 1 row has none listed/.test(hq), rowHtml(none));
+            const unk = P.rows.find(r => r.cost === null);
+            ok('profit: a row whose costs were not read shows no cost, no net and no payback, the caption counts it, and a burned resource with no price is named', /<td>\$[^<]+<\/td><td>-<\/td><td>-<\/td><td>-<\/td><td>-<\/td>/.test(rowHtml(unk)) && /1 row has no cost figure in this copy of the data/.test(hq) && /Burned with no market price, counted as free: Unpriced Burn\./.test(hq), rowHtml(unk));
+            ok('profit: the caption says what the costs cover and that a ship\'s travelling fuel is not in them', /for a stake everything it consumes/.test(hq) && /food and ammunition its fleet uses while mining/.test(hq) && /fuel for travelling and hauling is NOT in the costs/.test(hq) && /"never" = the net is zero or less/.test(hq));
+            ok('profit: a hostile model name is escaped in the cell and in the hover text', !hq.includes('<img src=x') && hq.includes('&lt;img src=x onerror=1&gt;') && P.rows.some(r => r.label === EVIL));
+            ok('profit: the caption says where the prices come from, what is not subtracted, and that it is a reference', /best bid on the Galactic Marketplace \(sell now\)/.test(hq) && /ATLAS at \$0\.0001 \(CoinGecko, 2023-11-14 22:13 UTC\)/.test(hq) && /from 2023-11-14 23:13 UTC/.test(hq) && /not what it trades for now/.test(hq) && /a reference, not a forecast/.test(hq), hq.slice(hq.indexOf('One ship of the model')).slice(0, 300));
+            ok('profit: no NaN, undefined or Infinity in the table', !/NaN|undefined|Infinity/.test(hq));
+            // no ATLAS price: ATLAS figures stay, dollars and paybacks are empty, the caption says why
+            const SN = JSON.parse(JSON.stringify(SP)); delete SN.ref.atlasUsd; const Pn = A.build(SN, F.B).compare.profit; const eln = fakeEl(); A.render(eln, A.build(SN, F.B), { width: 900 });
+            ok('profit: without an ATLAS price the dollar and payback columns are empty and the caption says so', Pn.state === 'ok' && Pn.rate === null && Pn.rows.every(r => r.usdBid === null && r.usdCost === null && r.payBid === null && r.bid >= 0) && /The ATLAS price in dollars was not read/.test(cardOf(eln.innerHTML)) && !/NaN|undefined|Infinity/.test(cardOf(eln.innerHTML)));
+            // junk in every price field
+            const SJ = JSON.parse(JSON.stringify(SP)); SJ.ref.px = Object.assign({ Junk1: 'x', Junk2: [NaN, -1], Junk3: null, Junk4: [0, 0], '__proto__x': [1, 1] }, SJ.ref.px); SJ.ref.msrp = Object.assign({ J: 'x', K: -1 }, SJ.ref.msrp); SJ.ref.atlasUsd = 'x';
+            const Pj = A.build(SJ, F.B).compare.profit, elj = fakeEl(); A.render(elj, A.build(SJ, F.B), { width: 900 });
+            ok('profit: junk prices are ignored, never printed', Pj.state === 'ok' && Pj.rate === null && Pj.pricedRes === P.pricedRes + 1 && !/NaN|undefined|Infinity/.test(cardOf(elj.innerHTML)) && A.build(Object.assign(JSON.parse(JSON.stringify(SP)), { ref: { px: { A: 'x' }, msrp: msrp } }), F.B).compare.profit.state === 'unread');
+            A.setProfitSort('payBid', 1);
+        }
         // ---- it survives a redraw, ignores junk, and the # / % modes are untouched
         const el2 = fakeEl(); A.render(el2, m, { width: 360 });
         ok('stat: a redraw at another width keeps Daily total', on(el2.innerHTML, 'day') && el2.innerHTML.includes('Total per rank'));
@@ -1171,6 +1265,39 @@ const MUTANTS = [
     ["stat: no pair on the section banners","var ctrl = STAT_SECTIONS.indexOf(id) >= 0 ?","var ctrl = false ?"],
     ["stat: the pair on every section banner","var ctrl = STAT_SECTIONS.indexOf(id) >= 0 ?","var ctrl = true ?"],
     ["stat: a banner pair is not marked with its section","(at ? ' data-an-at=\"' + at + '\"' : '') + '>' + text","'>' + text"],
+    ["profit: value not per day","var med = function (f) { return median(vals.map(f)) * DAY; };","var med = function (f) { return median(vals.map(f)); };"],
+    ["profit: the mean, not the median","var med = function (f) { return median(vals.map(f)) * DAY; };","var med = function (f) { return sum(vals.map(f)) / vals.length * DAY; };"],
+    ["profit: ask column valued at bids","if (p[1] !== null) o.ask += x.u * p[1];","if (p[0] !== null) o.ask += x.u * p[0];"],
+    ["profit: fleet value not divided by its ships","['bid', 'ask', 'priced', 'total', 'cost'].forEach(function (k) { if (v[k] !== null) v[k] = v[k] / m.ships; });   // per ship","if (v.cost !== null) v.cost = v.cost / m.ships;"],
+    ["profit: mixed fleets counted under a model","if (!m.pure) return;\n            var v = value(","var v = value("],
+    ["profit: dollars without the ATLAS price","return v !== null && P.rate !== null ? v * P.rate : null; };","return v; };"],
+    ["profit: payback upside down","return !usd || net === null ? null : net > 0 ? usd / net : Infinity; };","return !usd || net === null ? null : net > 0 ? net / usd : Infinity; };"],
+    ["profit: payback at asks uses the bids","r.payBid = pay(r.usdNetBid); r.payAsk = pay(r.usdNetAsk);","r.payBid = pay(r.usdNetBid); r.payAsk = pay(r.usdNetBid);"],
+    ["profit: payback on the gross figure","r.payBid = pay(r.usdNetBid); r.payAsk = pay(r.usdNetAsk);","r.payBid = pay(r.usdBid); r.payAsk = pay(r.usdAsk);"],
+    ["profit: a negative net pays back in negative days","return !usd || net === null ? null : net > 0 ? usd / net : Infinity; };","return !usd || net === null ? null : usd / net; };"],
+    ["profit: costs not subtracted","if (r.cost !== null) { r.netBid = r.bid - r.cost; r.netAsk = r.ask - r.cost; }","if (r.cost !== null) { r.netBid = r.bid; r.netAsk = r.ask; }"],
+    ["profit: costs bought at the bid","at = p ? (p[1] !== null ? p[1] : p[0]) : null;","at = p ? (p[0] !== null ? p[0] : p[1]) : null;"],
+    ["profit: a burned resource with no price not named","if (at === null) { noCost[x.r] = 1; return; }","if (at === null) { return; }"],
+    ["profit: a fleet without a stat row costs nothing","v.cost = burn[m.a] ? cost(burn[m.a]) : null;","v.cost = burn[m.a] ? cost(burn[m.a]) : 0;"],
+    ["profit: fleet costs not divided by its ships","['bid', 'ask', 'priced', 'total', 'cost'].forEach(function (k) { if (v[k] !== null) v[k] = v[k] / m.ships; });   // per ship","['bid', 'ask', 'priced', 'total'].forEach(function (k) { if (v[k] !== null) v[k] = v[k] / m.ships; });   // per ship"],
+    ["profit: food read from the ammunition column","var fo = f.st[iFood], am = f.st[iAmmo];","var fo = f.st[iAmmo], am = f.st[iAmmo];"],
+    ["profit: a stake's consumption ignored","v.cost = Array.isArray(s.use) ? cost(s.use.filter(","v.cost = Array.isArray(s.use) ? 0 * cost(s.use.filter("],
+    ["profit: never printed as Infinity","function paybackText(v) { return v === Infinity ? 'never' : daysText(v); }","function paybackText(v) { return String(v); }"],
+    ["profit: share with a price always 100%","cover: total > 0 ? priced / total : null,","cover: total > 0 ? 1 : null,"],
+    ["profit: a bid-less resource counted as unpriced","o.priced += x.u;\n                if (p[0] !== null) o.bid","if (p[0] !== null) o.priced += x.u;\n                if (p[0] !== null) o.bid"],
+    ["profit: hull name matched on part of a word","if (n === idx[i].n || n.indexOf(idx[i].n + ' ') === 0) return idx[i].usd;","if (n === idx[i].n || n.indexOf(idx[i].n) === 0) return idx[i].usd;"],
+    ["profit: hull names not tried longest first","out.sort(function (a, b) { return b.n.length - a.n.length || (a.n < b.n ? -1 : a.n > b.n ? 1 : 0); });\n        return out;\n    }\n    function msrpOf","return out;\n    }\n    function msrpOf"],
+    ["profit: zero, negative and text prices kept","if (n && fin(o[k]) && o[k] > 0) out.push({ n: n, usd: o[k] });","if (n) out.push({ n: n, usd: o[k] });"],
+    ["profit: junk resource prices kept","var b = fin(v[0]) && v[0] > 0 ? v[0] : null, a = fin(v[1]) && v[1] > 0 ? v[1] : null;","var b = v[0], a = v[1];"],
+    ["profit: empty rows sorted among the rest","if (xn !== yn) return xn ? 1 : -1;",""],
+    ["profit: the order ignores the direction","if (!xn && x !== y) return (x < y ? -1 : 1) * d;","if (!xn && x !== y) return (x < y ? -1 : 1);"],
+    ["profit: a press does not reverse the same column","d: profitSort.k === pk ? -profitSort.d : profitFirstDir(pk) };","d: profitFirstDir(pk) };"],
+    ["profit: a value column opens smallest first","return k === 'name' || k === 'payBid' || k === 'payAsk' ? 1 : -1;","return 1;"],
+    ["profit: any column name accepted","if (PROFIT_COLS.indexOf(k) >= 0 && (d === 1 || d === -1)) profitSort","if (true) profitSort"],
+    ["profit: model name not escaped","</i>' + E(r.label) + ' <em class=\"c4an-n\">","</i>' + r.label + ' <em class=\"c4an-n\">"],
+    ["profit: hover text not escaped","'<tr title=\"' + E(tip) + '\">","'<tr title=\"' + tip + '\">"],
+    ["profit: no note on a read without prices","if (P.state !== 'ok') return card('Profitability against origination price', chart('', note('Marketplace and origination prices have not been read in this copy of the data. Refresh to read them.'), base + ' read.'));","if (P.state !== 'ok') return '';"],
+    ["profit: the sort mark is on every header","var on = profitSort.k === h[0];","var on = true;"],
     ["stat: any value accepted","if (v === 'med' || v === 'day') stat = v;","stat = v;"],
     ["stat: the press does nothing","stat = sv;","void sv;"],
     ["stat: daily bars still measure the median","var val = function (r) { return day ? r.day : r.v; };","var val = function (r) { return r.v; };"],

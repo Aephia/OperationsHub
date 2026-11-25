@@ -103,7 +103,7 @@
     function loadCollector() {
         return S.collectorP || (S.collectorP = new Promise((resolve, reject) => {
             const s = document.createElement('script');
-            s.src = 'c4-collect.js?v=14e366a4fa';
+            s.src = 'c4-collect.js?v=a17eb036e2';
             s.onload = resolve;
             s.onerror = () => { S.collectorP = null; reject(new Error('c4-collect.js failed to load')); };
             document.head.append(s);

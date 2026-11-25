@@ -707,6 +707,20 @@ Added 2026-11-22: `node Test/c4-stake-view-check.js` (stake model and the view i
 Check: `node Test/c4-cache-check.js` (stamps equal the hashes, no unstamped script, the header rules cover only what
 may be kept); the shared read is covered in `node Test/c4-collector-check.js` (section [share], with mutants).
 
+**Profitability against origination price** (2026-11-25): a sortable table in the Ships against claim stakes section.
+One row per ship model (mining fleets made only of that model, per ship) and per claim stake tier (per stake): what it
+earns in a day at the Galactic Marketplace's best bids, what it costs to run (a stake's own consumption; a mining fleet's
+food and ammunition, from the fleet's stat row), the net, and the days of net output it takes to equal the origination
+price (the USDC price the marketplace lists for the item's first sale), at bids and at asks. "never" = the net is not
+above zero. Every header orders the rows; press again for the other way. Not in the costs: a ship's fuel for travel and
+hauling, crew, rent, repairs, a stake's buildings. Prices are MAINNET prices set against output on the z.ink test chain:
+a reference, not a forecast. Data: `latest.ref.px` (resource -> [bid, ask] in ATLAS), `latest.ref.msrp` (item -> USDC),
+`latest.ref.atlasUsd` (CoinGecko), all taken from the price book the local collector builds (`refPrices`,
+`atlasUsdOf` in `Tools/c4-live/collector.mjs`). **The public page uses the price file shipped with the site**
+(`C4Live/prices.json`, refreshed by `node C4Live/collect-src/build.mjs` after a local pass): pressing Refresh re-reads
+the chain, not the marketplace, because the public mainnet endpoint refuses browser requests. The table states the
+time of its prices.
+
 **Median | Daily total on the section banners** (2026-11-25): the pair in the bar above the Analytics sections is
 repeated on the banner of the three sections that have a chart with a total (Mining rate per ship, Council rank, Ships
 against claim stakes). It is one setting: a press on any of them switches all three charts.

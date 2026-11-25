@@ -233,6 +233,34 @@ export const ATLAS_MINT = 'ATLASXmbPQxBUYbxPsV97usA3fPQYEqzQBUHgiFCUsXx';
 export const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 const PRICE_SCALE = { [ATLAS_MINT]: 1e8, [USDC_MINT]: 1e6 };
 const NFTS_URL = 'https://galaxy.staratlas.com/nfts';
+// The ATLAS price in US dollars (2026-11-25), for setting marketplace values in ATLAS against origination prices in
+// USDC. Public endpoint, no key; read only with the price book (at most once per 55 min) and never from the browser.
+const ATLAS_USD_URL = 'https://api.coingecko.com/api/v3/simple/price?ids=star-atlas&vs_currencies=usd&include_last_updated_at=true';
+// -> { usd, at, source } or null. Pure: the parsed answer in, the record out (a missing, zero or text price = null).
+export function atlasUsdOf(j, nowSec) {
+  const e = j && typeof j === 'object' ? j['star-atlas'] : null;
+  if (!e || !Number.isFinite(e.usd) || !(e.usd > 0)) return null;   // Number.isFinite is false for text
+  const at = Number.isFinite(e.last_updated_at) && e.last_updated_at > 0 && e.last_updated_at <= nowSec + 3600 ? e.last_updated_at : nowSec;
+  return { usd: e.usd, at, source: 'coingecko' };
+}
+// Reference prices for the page, from the price book: resources as name -> [best bid, best ask] in ATLAS (null where
+// that side of the book is empty), origination prices, and the ATLAS price in dollars. Pure.
+export function refPrices(prices) {
+  const out = {};
+  if (!prices || typeof prices !== 'object') return out;
+  const px = {};
+  for (const it of Array.isArray(prices.items) ? prices.items : []) {
+    if (!it || it.itemType !== 'resource' || typeof it.name !== 'string' || !it.atlas) continue;
+    const side = (v) => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null);
+    const b = side(it.atlas.bestBid), a = side(it.atlas.bestAsk);
+    if (b !== null || a !== null) Object.defineProperty(px, it.name, { value: [b, a], enumerable: true, writable: true, configurable: true });
+  }
+  if (Object.keys(px).length) out.px = px;
+  if (prices.msrp && typeof prices.msrp === 'object' && !Array.isArray(prices.msrp) && Object.keys(prices.msrp).length) out.msrp = prices.msrp;
+  const r = prices.atlasUsd;
+  if (r && typeof r.usd === 'number' && Number.isFinite(r.usd) && r.usd > 0) { out.atlasUsd = r.usd; out.atlasUsdAt = Number.isFinite(r.at) ? r.at : null; }
+  return out;
+}
 const PRICES_MIN_AGE_SEC = 55 * 60;   // the public mainnet RPC is rate-limited: at most one book read per 55 min
 const PRICES_STALE_SEC = 26 * 3600;   // older than this the page should say "stale"
 export const ORDER_SIZE = 201;
@@ -251,6 +279,14 @@ export function buildPriceBook(orders, nfts, fetchedAt) {
   const meta = new Map();
   for (const n of nfts) if (n && typeof n.mint === 'string' && typeof n.name === 'string') {
     meta.set(n.mint, { name: n.name, symbol: n.symbol ?? null, itemType: n.attributes?.itemType ?? null });
+  }
+  // Origination price (2026-11-25): the price in USDC the marketplace list states for the item's first sale
+  // (tradeSettings.msrp). Kept for ships and claim stake tiers only, by item name, whether or not an order is open.
+  const msrp = new Map();
+  for (const n of nfts) {
+    const v = n?.tradeSettings?.msrp;
+    if (!n || typeof n.name !== 'string' || !v || v.currencySymbol !== 'USDC' || !Number.isFinite(v.value) || !(v.value > 0)) continue;   // Number.isFinite is false for text
+    if (n.attributes?.itemType === 'ship' || /^Claim Stake Tier [1-9]$/.test(n.name)) msrp.set(n.name, v.value);
   }
   const book = new Map();
   let used = 0, unknownMint = 0, otherCurrency = 0;
@@ -276,6 +312,7 @@ export function buildPriceBook(orders, nfts, fetchedAt) {
     currencies: { atlas: { mint: ATLAS_MINT, priceDecimals: 8 }, usdc: { mint: USDC_MINT, priceDecimals: 6 } },
     counts: { orders: orders.length, used, unknownMint, otherCurrency, items: items.length },
     items,
+    msrp: Object.fromEntries([...msrp].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))),
   };
 }
 async function rpcPost(url, method, params, signal, timeoutMs) {
@@ -322,6 +359,15 @@ export async function refreshPrices(pass, nowSec) {
     const orders = accs.map((a) => decodeOrder(b64(a.account.data)));
     const prices = buildPriceBook(orders, nfts, nowSec);
     if (!prices.items.length) throw new Error('no priced items after decoding');
+    // the ATLAS price: a failed read keeps the one already in the saved book (its own date stays with it)
+    let rate = null;
+    try {
+      const rr = await fetch(ATLAS_USD_URL, { signal: AbortSignal.any([signal, AbortSignal.timeout(20_000)].filter(Boolean)) });
+      if (!rr.ok) throw new Error('HTTP ' + rr.status);
+      rate = atlasUsdOf(await rr.json(), nowSec);
+      if (!rate) throw new Error('no price in the answer');
+    } catch (e) { res.notes.push('ATLAS price read failed (' + String(e.message).slice(0, 60) + ')' + (res.prices?.atlasUsd ? ' - keeping the saved one' : '')); }
+    prices.atlasUsd = rate || res.prices?.atlasUsd || null;
     if (pass.aborted) throw new Error('pass timed out');
     writeJson('prices.json', prices);
     writeJson('prices.attempt.json', { at: nowSec, ok: true });
@@ -877,6 +923,9 @@ export async function collect(pass, deps = {}) {
     const ref = prices ? {
       pricesAt: prices.fetchedAt, source: prices.source, fetchedThisPass: pr.fetched,
       stale: nowSec - prices.fetchedAt > PRICES_STALE_SEC,
+      // msrp: origination prices in USDC by item name (ships, claim stake tiers); px: resources, [bid, ask] in ATLAS;
+      // atlasUsd: the ATLAS price in dollars. Each is absent when the price book does not hold it (books before 2026-11-25).
+      ...refPrices(prices),
       match: {
         hulls: { matched: [...hullNames].filter((n) => matchHull(n, idx)).length, total: hullNames.size },
         cargo: { matched: [...cargoNames].filter((n) => matchCargo(n, idx)).length, total: cargoNames.size },

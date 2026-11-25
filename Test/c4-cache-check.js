@@ -97,6 +97,16 @@ const bundle = fs.readFileSync(path.join(PAGE, 'c4-collect.js'), 'utf8'), readSr
 check('the browser collector was built from the sources as they are now', bundleProblem(bundle, readSrc) === null, bundleProblem(bundle, readSrc));
 check('negative: a changed source is reported as a stale bundle', /older than its sources/.test(bundleProblem(bundle, f => readSrc(f) + (f === 'Tools/c4-live/collector.mjs' ? '\n// x' : '')) || '') && /no source line/.test(bundleProblem('/* other */', readSrc)));
 
+// the price file the site ships must carry the origination prices (a build from an old local price book drops them)
+{
+    let book = null; try { book = JSON.parse(fs.readFileSync(path.join(PAGE, 'prices.json'), 'utf8')); } catch (e) { /* reported below */ }
+    const mp = book && book.msrp && typeof book.msrp === 'object' ? book.msrp : {};
+    const tiers = [1, 2, 3, 4, 5].filter(t => typeof mp['Claim Stake Tier ' + t] === 'number' && mp['Claim Stake Tier ' + t] > 0).length;
+    const rate = book && book.atlasUsd, resBids = book && Array.isArray(book.items) ? book.items.filter(i => i && i.itemType === 'resource' && i.atlas && (i.atlas.bestBid > 0 || i.atlas.bestAsk > 0)).length : 0;
+    check('C4Live/prices.json carries the ATLAS price in dollars and resource prices (the profitability table needs both)', !!rate && typeof rate.usd === 'number' && rate.usd > 0 && rate.usd < 10 && resBids >= 20, JSON.stringify(rate) + ', ' + resBids + ' resources');
+    check('C4Live/prices.json carries origination prices: all five claim stake tiers and at least 50 items', tiers === 5 && Object.keys(mp).length >= 50, tiers + ' tiers, ' + Object.keys(mp).length + ' items (run a collector pass, then node C4Live/collect-src/build.mjs)');
+}
+
 console.log('[2] _headers');
 check('the file exists at the site root and has rules', parseHeaders(headers).length >= 2);
 const hp = headerProblems(headers, loaded);

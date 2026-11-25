@@ -76,6 +76,7 @@
             gov: buildGov(L.gov, arr(L.systems).filter(obj), ownerName)
         };
         model.compare = buildCompare(fleets, owners, stakes, ownerFac, model.mining.rows, model.stakes, ownerName);
+        model.compare.profit = buildProfit(model.mining.rows, stakes, obj(L.ref), fleets, L.statKeys);
         model.economy = buildEconomy(arr(L.systems).filter(obj), model.mining.rows, stakes, ownerName);
         return model;
     }
@@ -437,6 +438,140 @@
         R.rows.forEach(function (r, i) { r.k = 'r' + i; });
         Object.keys(tiers).forEach(function (k) { tiers[k].forEach(function (e) { if (e.ext === 0) R.noExtractor++; }); });
         return R;
+    }
+
+    // ---------------------------------------------------------------- profitability against origination price (latest.ref)
+    // What one ship of a model, or one stake of a tier, produces in a day, valued at the marketplace's best bid and best ask,
+    // set against the price it was first sold at. ref.px = resource name -> [bid, ask] in ATLAS; ref.msrp = item name -> USDC
+    // at first sale; ref.atlasUsd = dollars per ATLAS. A ship in any configuration is priced as its hull: the longest
+    // listed name its config name starts with, on a whole word.
+    function normName(s) { return String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); }
+    function msrpIndex(m) {
+        var o = obj(m), out = [];
+        if (!o) return out;
+        Object.keys(o).forEach(function (k) { var n = normName(k); if (n && fin(o[k]) && o[k] > 0) out.push({ n: n, usd: o[k] }); });
+        out.sort(function (a, b) { return b.n.length - a.n.length || (a.n < b.n ? -1 : a.n > b.n ? 1 : 0); });
+        return out;
+    }
+    function msrpOf(idx, name) {
+        var n = normName(name);
+        if (!n) return null;
+        for (var i = 0; i < idx.length; i++) if (n === idx[i].n || n.indexOf(idx[i].n + ' ') === 0) return idx[i].usd;
+        return null;
+    }
+    // state: 'unread' (this copy of the data has no prices), 'ok'. rows: one per ship model with a mining fleet made only of
+    // it, one per stake tier with production. Per row: usd (origination price, null when not listed); bid / ask = ATLAS a
+    // day per ship or per stake at best bids / best asks (the MEDIAN over the fleets or stakes); cover = share of the units
+    // produced that had a price; usdBid / usdAsk = the same in dollars (null without an ATLAS price); payBid / payAsk = days
+    // of that output to equal the origination price.
+    function buildProfit(mrows, stakes, ref, fleets, statKeys) {
+        var P = { state: 'unread', rows: [], rate: null, rateAt: null, pricesAt: null, pricedRes: 0, shipCosts: false, unpricedCost: [] };
+        var pxo = obj(ref && ref.px), idx = msrpIndex(ref && ref.msrp);
+        if (!pxo || !idx.length) return P;
+        var px = dict();
+        Object.keys(pxo).forEach(function (k) {
+            var v = pxo[k], n = normName(k);
+            if (!n || !Array.isArray(v)) return;
+            var b = fin(v[0]) && v[0] > 0 ? v[0] : null, a = fin(v[1]) && v[1] > 0 ? v[1] : null;
+            if (b !== null || a !== null) { px[n] = [b, a]; P.pricedRes++; }
+        });
+        if (!P.pricedRes) return P;
+        P.state = 'ok';
+        P.rate = fin(ref.atlasUsd) && ref.atlasUsd > 0 ? ref.atlasUsd : null;
+        P.rateAt = fin(ref.atlasUsdAt) ? ref.atlasUsdAt : null;
+        P.pricesAt = fin(ref.pricesAt) ? ref.pricesAt : null;
+        // list = [{r, u}] units a second; -> ATLAS a second at bids and at asks, and the units with and without a price
+        function value(list) {
+            var o = { bid: 0, ask: 0, priced: 0, total: 0 };
+            list.forEach(function (x) {
+                if (!(x.u > 0)) return;
+                o.total += x.u;
+                var p = px[normName(x.r)];
+                if (!p) return;
+                o.priced += x.u;
+                if (p[0] !== null) o.bid += x.u * p[0];
+                if (p[1] !== null) o.ask += x.u * p[1];
+            });
+            return o;
+        }
+        // what it burns, in ATLAS a second: bought at the best ask (the best bid when nothing is offered). A burned
+        // resource with no price costs nothing here and is named in P.unpricedCost.
+        var noCost = dict();
+        function cost(list) {
+            var c = 0;
+            list.forEach(function (x) {
+                if (!(x.u > 0)) return;
+                var p = px[normName(x.r)], at = p ? (p[1] !== null ? p[1] : p[0]) : null;
+                if (at === null) { noCost[x.r] = 1; return; }
+                c += x.u * at;
+            });
+            return c;
+        }
+        // a mining fleet's food and ammunition a second: the fleet's own stat row (latest.statKeys / fleets[].st). Without
+        // those (a copy of the data read before the stats were collected) ship costs are unknown: P.shipCosts stays false.
+        var iFood = Array.isArray(statKeys) ? statKeys.indexOf('cargo.foodConsumptionRate') : -1, iAmmo = Array.isArray(statKeys) ? statKeys.indexOf('cargo.ammoConsumptionRate') : -1;
+        var burn = dict();
+        if (iFood >= 0 && iAmmo >= 0) arr(fleets).forEach(function (f) {
+            if (!obj(f) || !str(f.a) || !Array.isArray(f.st) || f.st.length !== statKeys.length) return;
+            var fo = f.st[iFood], am = f.st[iAmmo];
+            if (fin(fo) && fo >= 0 && fin(am) && am >= 0) burn[f.a] = [{ r: 'Food', u: fo }, { r: 'Ammunition', u: am }];
+        });
+        // vals: per ship or per stake, ATLAS a second { bid, ask, cost (null = unknown), priced, total }
+        function row(kind, label, name, vals, usd) {
+            var priced = 0, total = 0, known = vals.every(function (v) { return v.cost !== null; });
+            vals.forEach(function (v) { priced += v.priced; total += v.total; });
+            var med = function (f) { return median(vals.map(f)) * DAY; };
+            var r = { kind: kind, label: label, name: name, n: vals.length, usd: usd, cover: total > 0 ? priced / total : null,
+                bid: med(function (v) { return v.bid; }), ask: med(function (v) { return v.ask; }),
+                cost: known ? med(function (v) { return v.cost; }) : null,
+                netBid: null, netAsk: null };
+            // net = the earns column minus the costs column (each a median), so the three figures of a row add up
+            if (r.cost !== null) { r.netBid = r.bid - r.cost; r.netAsk = r.ask - r.cost; }
+            var usdOf = function (v) { return v !== null && P.rate !== null ? v * P.rate : null; };
+            r.usdBid = usdOf(r.bid); r.usdAsk = usdOf(r.ask); r.usdCost = usdOf(r.cost); r.usdNetBid = usdOf(r.netBid); r.usdNetAsk = usdOf(r.netAsk);
+            // days of NET output to equal the origination price; Infinity = the net is zero or negative (it never pays back)
+            var pay = function (net) { return !usd || net === null ? null : net > 0 ? usd / net : Infinity; };
+            r.payBid = pay(r.usdNetBid); r.payAsk = pay(r.usdNetAsk);
+            return r;
+        }
+        var byModel = dict();
+        mrows.forEach(function (m) {
+            if (!m.pure) return;
+            var v = value(arr(m.out).map(function (x) { return { r: x.r, u: x.ups }; }));
+            if (!(v.total > 0)) return;
+            v.cost = burn[m.a] ? cost(burn[m.a]) : null;
+            if (v.cost !== null) P.shipCosts = true;
+            ['bid', 'ask', 'priced', 'total', 'cost'].forEach(function (k) { if (v[k] !== null) v[k] = v[k] / m.ships; });   // per ship
+            (byModel[m.pure] = byModel[m.pure] || []).push(v);
+        });
+        Object.keys(byModel).forEach(function (k) { P.rows.push(row('model', shortModel(k), k, byModel[k], msrpOf(idx, k))); });
+        var byTier = dict();
+        stakes.forEach(function (s) {
+            if (!Array.isArray(s.out) || !fin(s.tier)) return;
+            var v = value(s.out.filter(function (o) { return obj(o) && str(o.r) && fin(o.ps); }).map(function (o) { return { r: o.r, u: o.ps }; }));
+            if (!(v.total > 0)) return;
+            // what the stake consumes; a stake whose consumption was not read (an older copy) has an unknown cost
+            v.cost = Array.isArray(s.use) ? cost(s.use.filter(function (o) { return obj(o) && str(o.r) && fin(o.ps); }).map(function (o) { return { r: o.r, u: o.ps }; })) : null;
+            (byTier[s.tier] = byTier[s.tier] || []).push(v);
+        });
+        Object.keys(byTier).forEach(function (k) { P.rows.push(row('tier', 'Claim stake tier ' + k, 'Claim Stake Tier ' + k, byTier[k], msrpOf(idx, 'Claim Stake Tier ' + k))); });
+        P.unpricedCost = Object.keys(noCost).sort();
+        return P;
+    }
+    // the table's order: any column, either way; a row with nothing in that column always stands last
+    var PROFIT_COLS = ['name', 'usd', 'usdBid', 'usdCost', 'usdNetBid', 'payBid', 'payAsk'];
+    var profitSort = { k: 'payBid', d: 1 };   // d: 1 = smallest first, -1 = largest first
+    function setProfitSort(k, d) { if (PROFIT_COLS.indexOf(k) >= 0 && (d === 1 || d === -1)) profitSort = { k: k, d: d }; }
+    function getProfitSort() { return { k: profitSort.k, d: profitSort.d }; }
+    function profitFirstDir(k) { return k === 'name' || k === 'payBid' || k === 'payAsk' ? 1 : -1; }   // fastest payback, largest value, A to Z
+    function profitRows(P) {
+        var k = profitSort.k, d = profitSort.d, val = function (r) { return k === 'name' ? r.label.toLowerCase() : r[k]; };
+        return P.rows.slice().sort(function (a, b) {
+            var x = val(a), y = val(b), xn = x == null, yn = y == null;
+            if (xn !== yn) return xn ? 1 : -1;
+            if (!xn && x !== y) return (x < y ? -1 : 1) * d;
+            return a.label < b.label ? -1 : a.label > b.label ? 1 : 0;
+        });
     }
 
     // ---------------------------------------------------------------- governance (latest.gov; null when the read did not carry it)
@@ -899,6 +1034,41 @@
         };
         return '<span class="c4an-tg" role="group" aria-label="Sort rows by">' + one('day', 'Sort: total', 'Largest daily total first') + one('med', 'Sort: median', 'Largest median per ship or per stake first') + '</span>';
     }
+    function utcText(sec) { return fin(sec) && sec > 0 ? new Date(sec * 1000).toISOString().slice(0, 16).replace('T', ' ') + ' UTC' : 'an unknown time'; }
+    function money(v) { return v == null || !fin(v) ? '-' : '$' + (Math.abs(v) >= 100 ? kfmt(Math.round(v)) : Math.abs(v) >= 1 ? v.toFixed(2) : String(Number(v.toPrecision(2)))); }
+    function daysText(v) { return v == null || !fin(v) ? '-' : v >= 100 ? kfmt(Math.round(v)) : v >= 10 ? v.toFixed(0) : v.toFixed(1); }
+    // the profitability table. Every header is a button that orders the rows by its column (press again: the other way).
+    function paybackText(v) { return v === Infinity ? 'never' : daysText(v); }
+    function profitCard(ctx, P, base) {
+        var E = ctx.esc;
+        if (P.state !== 'ok') return card('Profitability against origination price', chart('', note('Marketplace and origination prices have not been read in this copy of the data. Refresh to read them.'), base + ' read.'));
+        if (!P.rows.length) return card('Profitability against origination price', chart('', note('No mining fleet made of one ship model and no claim stake with production in this read.'), base + ' read.'));
+        // [column, short heading, what it is (the button's hover text)]
+        var heads = [['name', 'Model or tier', 'Ship model or claim stake tier'], ['usd', 'Price', 'Origination price in USDC'], ['usdBid', 'Earns $/day', 'Output of a day at best bids, in dollars'], ['usdCost', 'Costs $/day', 'What it burns in a day, bought at best asks, in dollars'],
+            ['usdNetBid', 'Net $/day', 'Earns minus costs, at best bids'], ['payBid', 'Payback days, bids', 'Days of net output to equal the origination price, output sold at best bids'], ['payAsk', 'Payback days, asks', 'Days of net output to equal the origination price, output valued at best asks']];
+        var th = heads.map(function (h) {
+            var on = profitSort.k === h[0];
+            return '<th scope="col"' + (on ? ' aria-sort="' + (profitSort.d === 1 ? 'ascending' : 'descending') + '"' : '') + '><button type="button" class="c4an-sortb" data-an-psort="' + h[0] + '" title="' + h[2] + '. Press to order the rows by it">' + h[1] + (on ? '<i aria-hidden="true">' + (profitSort.d === 1 ? ' &#9650;' : ' &#9660;') + '</i>' : '') + '</button></th>';
+        }).join('');
+        var body = profitRows(P).map(function (r) {
+            var what = r.kind === 'model' ? 'ship' : 'stake';
+            var tip = (r.kind === 'model' ? r.name : r.label) + ': earns ' + fnum(r.bid) + ' ATLAS a day at best bids, ' + fnum(r.ask) + ' at best asks' + (r.cost !== null ? '; burns ' + fnum(r.cost) + ' ATLAS a day' : '; costs not read') + ', per ' + what + ' (median of ' + plural(r.n, r.kind === 'model' ? 'fleet' : 'stake') + ')' +
+                (r.cover == null ? '' : '; ' + pctTxt(r.cover * 100) + ' of its output has a market price');
+            return '<tr title="' + E(tip) + '"><th scope="row"><i class="c4an-sw ' + (r.kind === 'model' ? 'f-s1' : 'f-s2') + '"></i>' + E(r.label) + ' <em class="c4an-n">n=' + r.n + '</em></th><td>' + (r.usd ? money(r.usd) : '-') + '</td><td>' + money(r.usdBid) + '</td><td>' + money(r.usdCost) + '</td><td>' + money(r.usdNetBid) + '</td><td>' + paybackText(r.payBid) + '</td><td>' + paybackText(r.payAsk) + '</td></tr>';
+        }).join('');
+        var noUsd = P.rows.filter(function (r) { return !r.usd; }).length, noCostRows = P.rows.filter(function (r) { return r.cost === null; }).length;
+        var cap = 'One ship of the model, or one stake of the tier. Earns = what it produces in a day at the best bid on the Galactic Marketplace (sell now): units a second x price in ATLAS x 86,400, the median over the mining fleets made only of that model (per ship) or over the stakes of the tier with production. ' +
+            'Costs = what the chain says it burns, bought at the best ask: for a stake everything it consumes (fuel and the rest); for a ship the food and ammunition its fleet uses while mining. ' +
+            'A ship\'s fuel for travelling and hauling is NOT in the costs (a snapshot does not show trips), nor are crew, rent, repairs or a stake\'s buildings. ' +
+            (noCostRows ? plural(noCostRows, 'row') + ' ' + (noCostRows === 1 ? 'has' : 'have') + ' no cost figure in this copy of the data (refresh to read it), so no net and no payback. ' : '') +
+            (P.unpricedCost.length ? 'Burned with no market price, counted as free: ' + P.unpricedCost.map(E).join(', ') + '. ' : '') +
+            'Payback = origination price / net dollars a day, with the output sold at best bids or valued at best asks; "never" = the net is zero or less. ' +
+            plural(P.pricedRes, 'resource') + ' had a price, from ' + utcText(P.pricesAt) + '; output with no market price earns nothing here (hover a row for its priced share). ' +
+            (P.rate !== null ? 'ATLAS at $' + String(Number(P.rate.toPrecision(3))) + ' (CoinGecko, ' + utcText(P.rateAt) + '). ' : 'The ATLAS price in dollars was not read, so the dollar and payback columns are empty. ') +
+            'Origination price = the price in USDC the marketplace lists for the first sale of the hull or the stake tier, not what it trades for now; a ship in any configuration is priced as its hull' + (noUsd ? '; ' + plural(noUsd, 'row') + ' ' + (noUsd === 1 ? 'has' : 'have') + ' none listed' : '') + '. ' +
+            'These are mainnet prices set against output on the z.ink test chain: a reference, not a forecast. A day is the rate in this read times 86,400 seconds, uninterrupted. ' + base + ' read.';
+        return card('Profitability against origination price', chart('', '<div class="c4an-tw"><table class="c4an-tbl c4an-fit c4an-profit"><thead><tr>' + th + '</tr></thead><tbody>' + body + '</tbody></table></div>', cap));
+    }
     var DAYCW = 7.1;   // px kept per character of a daily row's text ("92.2M med 536K, n=164"), the width the font draws at
     var DAYNOTE = 'a day is the rate in this read times 86,400 seconds, not a measured day';
     // a count chart that can be a share chart. rows as for barList; o = barList options; pctOn = this card is in percent mode;
@@ -1179,6 +1349,7 @@
                 like + tail + extNote + ' ' + base + ' read.');
         }
         cards.push(card('Ship models against stake tiers', rc, null, R.rows.length && isDay() ? sortToggle() : ''));
+        cards.push(profitCard(ctx, c.profit || { state: 'unread', rows: [] }, base));
         // per resource
         var PR = isPct('compare-res');
         cards.push(card('Units per hour by resource', noOut ? chart('', note(why), base + ' read.') :
@@ -1430,6 +1601,17 @@
                 if (nsb && typeof nsb.focus === 'function') nsb.focus();
                 return;
             }
+            var ps = t.closest('[data-an-psort]');
+            if (ps) {
+                closePop(false);
+                var pk = ps.getAttribute('data-an-psort'), p0 = el._c4an;
+                if (PROFIT_COLS.indexOf(pk) < 0) return;
+                profitSort = { k: pk, d: profitSort.k === pk ? -profitSort.d : profitFirstDir(pk) };   // the same column again: the other way
+                if (p0) { var o5 = {}; Object.keys(p0.opts || {}).forEach(function (k) { o5[k] = p0.opts[k]; }); o5.reducedMotion = true; render(el, p0.model, o5); }
+                var nps = typeof el.querySelector === 'function' ? el.querySelector('[data-an-psort="' + pk + '"]') : null;
+                if (nps && typeof nps.focus === 'function') nps.focus();
+                return;
+            }
             var rs = t.closest('[data-an-rsort]');
             if (rs) {
                 closePop(false);
@@ -1469,7 +1651,7 @@
         }
     }
 
-    var api = { version: '1', kfmt: kfmt, setFolded: setFolded, isFolded: isFolded, build: build, render: render, sections: SECTIONS.slice(), setMode: setMode, getMode: getMode, setStat: setStat, getStat: getStat, setRateSort: setRateSort, getRateSort: getRateSort, shareCards: SHARE_CARDS.slice(), card: cardHtml, shortModel: shortModel, close: function () { closePop(false); } };
+    var api = { version: '1', kfmt: kfmt, setFolded: setFolded, isFolded: isFolded, build: build, render: render, sections: SECTIONS.slice(), setMode: setMode, getMode: getMode, setStat: setStat, getStat: getStat, setRateSort: setRateSort, getRateSort: getRateSort, setProfitSort: setProfitSort, getProfitSort: getProfitSort, msrpIndex: msrpIndex, msrpOf: msrpOf, shareCards: SHARE_CARDS.slice(), card: cardHtml, shortModel: shortModel, close: function () { closePop(false); } };
     if (typeof window === 'undefined' && typeof module !== 'undefined' && module.exports) module.exports = api;
     else root.C4Analytics = api;
 })(typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this));

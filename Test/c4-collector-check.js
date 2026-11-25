@@ -147,6 +147,7 @@ async function main() {
   await craftingChecks(C);
   await fleetStatChecks();
   await shareChecks();
+  await msrpChecks();
 
   if (OFFLINE) return;
 
@@ -888,6 +889,89 @@ async function shareChecks() {
     const mf = path.join(KIT_DIR, `.mutant-share-${process.pid}.mjs`);
     fs.writeFileSync(mf, src.slice(0, at) + to + src.slice(at + from.length));
     try { mutantFails(label, await shareSuite(mf)); } finally { fs.unlinkSync(mf); }
+  }
+}
+// ---- origination prices: buildPriceBook().msrp and latest.ref.msrp ---------------------------------------------------
+const MSRP_NFTS = [
+  { mint: 'M1', name: 'Pearce X4', attributes: { itemType: 'ship' }, tradeSettings: { msrp: { value: 20, currencySymbol: 'USDC' } } },
+  { mint: 'M2', name: 'Paid In Atlas', attributes: { itemType: 'ship' }, tradeSettings: { msrp: { value: 900, currencySymbol: 'ATLAS' } } },
+  { mint: 'M3', name: 'Free Ship', attributes: { itemType: 'ship' }, tradeSettings: { msrp: { value: 0, currencySymbol: 'USDC' } } },
+  { mint: 'M4', name: 'Text Price', attributes: { itemType: 'ship' }, tradeSettings: { msrp: { value: '20', currencySymbol: 'USDC' } } },
+  { mint: 'M5', name: 'No Settings', attributes: { itemType: 'ship' } },
+  { mint: 'M6', name: 'Hydrogen', attributes: { itemType: 'resource' }, tradeSettings: { msrp: { value: 3, currencySymbol: 'USDC' } } },
+  { mint: 'M7', name: 'Claim Stake Tier 3', attributes: { itemType: 'structure' }, tradeSettings: { msrp: { value: 1024, currencySymbol: 'USDC' } } },
+  { mint: 'M8', name: 'Claim Stake Tier 3 Bundle', attributes: { itemType: 'structure' }, tradeSettings: { msrp: { value: 5, currencySymbol: 'USDC' } } },
+  { mint: 'M9', name: '__proto__', attributes: { itemType: 'ship' }, tradeSettings: { msrp: { value: 7, currencySymbol: 'USDC' } } },
+  { mint: 'M10', name: 'Armstrong IMP', attributes: { itemType: 'ship' }, tradeSettings: { msrp: { value: 27500, currencySymbol: 'USDC' } } },
+  null,
+];
+const MSRP_CASES = [
+  ['a ship and a claim stake tier with a USDC list price are kept by name, with no order open for them', (r) => r.m['Pearce X4'] === 20 && r.m['Claim Stake Tier 3'] === 1024 && r.m['Armstrong IMP'] === 27500 && r.items === 0],
+  ['a price in another currency is not kept', (r) => !('Paid In Atlas' in r.m)],
+  ['a zero, text or missing price is not kept', (r) => !('Free Ship' in r.m) && !('Text Price' in r.m) && !('No Settings' in r.m)],
+  ['only ships and claim stake tiers are kept (no resource, no other item that starts like a stake tier)', (r) => !('Hydrogen' in r.m) && !('Claim Stake Tier 3 Bundle' in r.m)],
+  ['a ship named __proto__ is a plain entry and changes nothing else', (r) => Object.prototype.hasOwnProperty.call(r.m, '__proto__') && r.m['__proto__'] === 7 && ({}).x === undefined && Object.keys(r.m).length === 4],
+  ['names come out sorted', (r) => Object.keys(r.m).filter((k) => k !== '__proto__').join('|') === 'Armstrong IMP|Claim Stake Tier 3|Pearce X4'],
+  ['the snapshot takes origination prices, resource bids and asks in ATLAS and the ATLAS price from the price book', (r) => r.ref.msrp['Pearce X4'] === 20 && JSON.stringify(r.ref.px) === JSON.stringify({ Hydrogen: [0.5, 0.75], Biomass: [null, 2] }) && r.ref.atlasUsd === 0.0001 && r.ref.atlasUsdAt === 77],
+  ['a resource with no order on either side, an item that is not a resource and a junk price are left out of ref.px', (r) => !('Empty' in r.ref.px) && !('Pearce X4' in r.ref.px) && !('Junk' in r.ref.px)],
+  ['a price book without these fields adds nothing (an old book, null, text)', (r) => JSON.stringify(r.refOld) === '{}' && JSON.stringify(r.refNull) === '{}' && JSON.stringify(r.refBadRate) === '{}'],
+  ['the pass spreads those fields into latest.ref', (r) => r.refSpread === true],
+  ['the ATLAS price is taken only as a positive number, with its own time (now when the source gives none or one from the future)', (r) => JSON.stringify(r.rate) === JSON.stringify([{ usd: 0.00009, at: 500, source: 'coingecko' }, { usd: 0.00009, at: 1000, source: 'coingecko' }, { usd: 0.00009, at: 1000, source: 'coingecko' }, null, null, null, null, null])],
+];
+const MSRP_MUTANTS = [
+  ['msrp: any currency kept', "v.currencySymbol !== 'USDC' || ", ''],
+  ['msrp: zero prices kept', ' || !(v.value > 0)) continue;   // Number', ') continue;   // Number'],
+  ['msrp: text prices kept', '!Number.isFinite(v.value) || ', ''],
+  ['msrp: every item kept', "if (n.attributes?.itemType === 'ship' || /^Claim Stake Tier [1-9]$/.test(n.name)) msrp.set(n.name, v.value);", 'msrp.set(n.name, v.value);'],
+  ['msrp: anything that starts like a stake tier kept', '/^Claim Stake Tier [1-9]$/.test(n.name)', '/^Claim Stake Tier [1-9]/.test(n.name)'],
+  ['msrp: not in the price book', "    msrp: Object.fromEntries([...msrp].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))),\n", ''],
+  ['msrp: names left in list order', '[...msrp].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))', '[...msrp]'],
+  ['ref: origination prices not carried', "Object.keys(prices.msrp).length) out.msrp = prices.msrp;", 'Object.keys(prices.msrp).length) void 0;'],
+  ['ref: every item priced as a resource', "if (!it || it.itemType !== 'resource' || typeof it.name", "if (!it || typeof it.name"],
+  ['ref: a resource with no order kept', 'if (b !== null || a !== null) Object.defineProperty(px,', 'if (true) Object.defineProperty(px,'],
+  ['ref: junk prices kept', "const side = (v) => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null);", 'const side = (v) => v;'],
+  ['ref: the ATLAS price not carried', '{ out.atlasUsd = r.usd; out.atlasUsdAt = Number.isFinite(r.at) ? r.at : null; }', '{ }'],
+  ['ref: not spread into the snapshot', '      ...refPrices(prices),\n', ''],
+  ['rate: zero or negative taken', ' || !(e.usd > 0)) return null;   // Number', ') return null;   // Number'],
+  ['rate: text taken', 'if (!e || !Number.isFinite(e.usd) || ', 'if (!e || '],
+  ['rate: a time from the future kept', ' && e.last_updated_at <= nowSec + 3600 ? e.last_updated_at : nowSec;', ' ? e.last_updated_at : nowSec;'],
+];
+let msrpImport = 0;
+async function msrpSuite(file) {
+  let r = {};
+  try {
+    const M = await import(pathToFileURL(file).href + '?msrp=' + (++msrpImport));
+    const P = M.buildPriceBook([], MSRP_NFTS, 5);
+    r = { m: P.msrp || {}, items: P.items.length };
+    const book = { msrp: { 'Pearce X4': 20 }, atlasUsd: { usd: 0.0001, at: 77, source: 'coingecko' }, items: [
+      { name: 'Hydrogen', itemType: 'resource', atlas: { bestBid: 0.5, bestAsk: 0.75 } }, { name: 'Biomass', itemType: 'resource', atlas: { bestBid: null, bestAsk: 2 } },
+      { name: 'Empty', itemType: 'resource', atlas: { bestBid: null, bestAsk: null } }, { name: 'Pearce X4', itemType: 'ship', atlas: { bestBid: 9, bestAsk: 10 } },
+      { name: 'Junk', itemType: 'resource', atlas: { bestBid: 'x', bestAsk: -1 } }, { name: 'UsdcOnly', itemType: 'resource', usdc: { bestBid: 1, bestAsk: 2 } }, null] };
+    r.ref = M.refPrices(book);
+    r.refOld = M.refPrices({ items: [{ name: 'Pearce X4', itemType: 'ship', atlas: { bestBid: 9, bestAsk: 10 } }] });
+    r.refNull = M.refPrices(null);
+    r.refBadRate = M.refPrices({ items: [], msrp: {}, atlasUsd: { usd: 'x' } });
+    r.rate = [M.atlasUsdOf({ 'star-atlas': { usd: 0.00009, last_updated_at: 500 } }, 1000), M.atlasUsdOf({ 'star-atlas': { usd: 0.00009 } }, 1000), M.atlasUsdOf({ 'star-atlas': { usd: 0.00009, last_updated_at: 99999999 } }, 1000),
+      M.atlasUsdOf({ 'star-atlas': { usd: 0 } }, 1000), M.atlasUsdOf({ 'star-atlas': { usd: '0.1' } }, 1000), M.atlasUsdOf({}, 1000), M.atlasUsdOf(null, 1000), M.atlasUsdOf({ 'star-atlas': { usd: -1 } }, 1000)];
+    // read from the source: the pass itself needs the network (a real pass on 2026-11-25 wrote px 56, msrp 65 and the rate into latest.ref)
+    r.refSpread = /\n      \.\.\.refPrices\(prices\),\n/.test(fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n'));
+  } catch (e) { return ['threw: ' + e.message]; }
+  const failed = [];
+  for (const [n, pred] of MSRP_CASES) { let good; try { good = pred(r); } catch { good = false; } if (!good) failed.push(n); }
+  return failed;
+}
+async function msrpChecks() {
+  console.log('\n[msrp] origination prices from the marketplace list');
+  const realFailed = await msrpSuite(COLLECTOR);
+  for (const [n] of MSRP_CASES) ok(!realFailed.includes(n), 'msrp: ' + n);
+  for (const n of realFailed) if (!MSRP_CASES.some(([c]) => c === n)) ok(false, 'msrp: ' + n);
+  const src = fs.readFileSync(COLLECTOR, 'utf8');
+  for (const [label, from, to] of MSRP_MUTANTS) {
+    const at = src.indexOf(from);
+    if (at < 0 || src.indexOf(from, at + 1) >= 0) { ok(false, 'mutant "' + label + '": target text not found exactly once in the collector'); continue; }
+    const mf = path.join(KIT_DIR, '.mutant-msrp-' + process.pid + '.mjs');
+    fs.writeFileSync(mf, src.slice(0, at) + to + src.slice(at + from.length));
+    try { mutantFails(label, await msrpSuite(mf)); } finally { fs.unlinkSync(mf); }
   }
 }
 async function fleetStatChecks() {

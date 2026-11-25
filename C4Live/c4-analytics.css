@@ -128,6 +128,14 @@
 .c4an-hero .c4an-h { margin: 0 0 2px; font-size: 1.12rem; }
 .c4an-hero .c4an-intro { margin: 0; }
 .c4an-kpis { display: flex; flex: none; gap: 8px; margin: 0; }
+/* the profitability table: every header is a button that orders the rows */
+.c4an-sortb { appearance: none; margin: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; font-weight: 600; text-align: inherit; cursor: pointer; white-space: normal; }
+.c4an-sortb:hover { color: #fff; } .c4an-sortb:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.c4an-sortb i { font-style: normal; color: var(--an-acc, #6fb1ff); }
+.c4an-tbl th[aria-sort] { color: var(--an-ink); }
+.c4an-tbl.c4an-profit { font-size: 0.82rem; } .c4an-tbl.c4an-profit th, .c4an-tbl.c4an-profit td { padding: 4px 4px; }
+.c4an-profit th[scope="row"] { white-space: normal; min-width: 6.5em; } .c4an-profit .c4an-n { font-style: normal; font-weight: 400; color: var(--an-ink3); font-size: 0.86em; }
+.c4an-profit .c4an-sw { margin-right: 6px; }
 .c4an-hc { flex: none; display: inline-flex; cursor: default; }   /* the Median / Daily total pair on a section banner */
 .c4an-narrow .c4an-hc { margin-left: auto; }
 .c4an-kpi { min-width: 92px; padding: 6px 12px; border-radius: 10px; background: rgba(6, 12, 28, 0.55); border: 1px solid var(--an-line); text-align: right; }
