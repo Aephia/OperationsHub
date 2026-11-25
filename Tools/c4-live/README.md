@@ -157,7 +157,15 @@ The chain keeps **no combat log and no mining history**, so the collector derive
              x, y, hp, hpMax, sp, spMax, ships, size{xxSmall..}, types{shipConfigName:n}, crew,
              flag (flagship config name = largest size class), flagSize (xx-small..titan),
              mineRate, cargo, cargoCap, lc lastCombat(unix s, 0 = never), lu lastUpdate,
-             mine?:{ ups (sum of out = yield, richness applied), baseUps (fleet stat), out:[{r resource, ups}], since } }],
+             mine?:{ ups (sum of out = yield, richness applied), baseUps (fleet stat), out:[{r resource, ups}], since },
+             // added 2026-11-25; optional (a saved copy from before it has none)
+             st:[number] (the fleet's stat totals, aligned to statKeys), ap, fuel (units), ammo (units),
+             hold:[{ n item name (cargo#id when nameless), q }] (cargo hold, largest first, zero quantities dropped),
+             stance? (ammoUsage: light|...), pend? (pendingHp, only when > 0), rent? (rentedCrew, only when > 0) }],
+  statKeys: ["group.key"] (sorted union of every stat with a finite value this pass, over all fleets' and ships' stats;
+             group = cargo|combat|misc|movement; *Raw keys skipped),
+  shipDefs: { shipConfigName (as in fleets[].types): { sz sizeClass, seq definitionSequenceId (the higher wins on a clash),
+             st:[number] (ONE ship's stats, aligned to statKeys) } },
   owners: [{ p profile, fa, fleets, ships, mining, ups, destroyed, atlas, rank,
              xp:{pilot,dataRunner,mining,building,crafting,combat:{xp,lvl}}, stakes, habs, stakesLive?, lastCombat,
              name (sanitised display name | null), nameAt (unix s it was read | null), nameLen? (raw length, only when cut),
@@ -190,6 +198,11 @@ the one cargo read the bodies use (a resource not in it is named from the produc
 name is "building #id").
 `inv[].q` is an item count while `cap` is in storage units (item count x storageCost / 256, rounded up) - they are only equal today because
 every stored item costs 256; do not draw an inventory sum against `cap`. `cap.used` can exceed `cap.total` (the chain models over capacity).
+`st` arrays (fleets and `shipDefs`): a chain stat is a number, a numeric string or `{ raw, value }` (the `value` is used); each entry
+is rounded to 6 decimals, a stat missing on that fleet or ship is 0, and every array has `statKeys.length` entries. `hpMax`, `spMax`,
+`mineRate` and `cargoCap` equal their `st` entries (combat.hp, combat.sp, cargo.miningRate, cargo.cargoCapacity). Fleet `st` is the
+chain's fleet total; on the 2026-11-25 pass a one-model fleet's total equalled that model's `st` x quantity on hp and cargoCapacity.
+Cost: ~75 keys, ~440 KB more `latest.json` for ~1,100 fleets.
 
 Sum of `owners[].ups` plus NPC fleets' `mine.ups` equals `kpis.galaxyUps`, and so does the sum of `byFaction[].ups`.
 

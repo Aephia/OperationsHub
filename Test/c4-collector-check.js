@@ -145,6 +145,7 @@ async function main() {
   await epochChecks(C, kit);
   await bundleChecks();
   await craftingChecks(C);
+  await fleetStatChecks();
 
   if (OFFLINE) return;
 
@@ -709,6 +710,120 @@ async function epochChecks(C, kit) {
     try { mutantFails(label, await epochSuite(mf)); } finally { fs.unlinkSync(mf); }
   }
   skipPathChecks();
+}
+
+// ---- fleet + ship-model stats (latest.statKeys / latest.shipDefs / fleet.st and extras) ----------------
+// Two invented fleets in the chain's three value shapes (number, numeric string, { raw, value }); the cases run on
+// the collector's exported helpers and on one offline collect() pass, then once per mutant (a copy of the collector
+// with one guard changed) - every mutant must fail at least one case.
+const statFleets = () => [
+  { address: 'SF1', name: 'Stat fleet one', state: { kind: 'idle' }, location: { x: 1, y: 2 },
+    stats: { cargo: { cargoCapacity: '2764', miningRate: { raw: '2404', value: 0.146728515625 } },
+      combat: { hp: 400, sp: '283', hitChance: { raw: '64', value: 1 } },
+      misc: { recoveryFeeAtlas: 5.5, recoveryFeeRaw: '550000000', junk: 'abc', empty: '', inf: 'Infinity' },
+      movement: { warpSpeed: { raw: '2163', value: 0.0330047607421875 } } },
+    ap: 41, fuel: { name: 'Fuel', amount: '4767' }, ammo: { name: 'Ammunition', amount: '13760' },
+    cargoHold: { items: [{ name: 'Food', id: 1, amount: '1382' }, { name: 'Hydrogen', id: 3, amount: '0' }, { id: 7, amount: '9000' }, { name: 'Ore', id: 2, amount: '50' }] },
+    stance: { ammoUsage: 'light' }, pendingHp: 0, rentedCrew: 0,
+    ships: [{ name: 'Testship Alpha', sizeClass: 'small', quantity: 1, definitionSequenceId: 5, stats: { combat: { hp: 400 }, cargo: { cargoCapacity: '2764' }, movement: { maxWarpDistance: { raw: '1', value: 1.5 } } } },
+      { name: '__proto__', sizeClass: 'xx-small', quantity: 1, definitionSequenceId: 1, stats: { combat: { hp: 7 } } }] },
+  { address: 'SF2', name: 'Stat fleet two', state: { kind: 'idle' }, location: { x: 0, y: 0 },
+    stats: { combat: { hp: 100 } }, ap: 12n, pendingHp: 25, rentedCrew: '3', cargoHold: { items: [] },
+    ships: [{ name: 'Testship Alpha', sizeClass: 'small', quantity: 2, definitionSequenceId: 9, stats: { combat: { hp: 450 } } },
+      { name: 'Testship Alpha', sizeClass: 'small', quantity: 1, definitionSequenceId: 2, stats: { combat: { hp: 1 } } },
+      { name: 'constructor', sizeClass: 'medium', quantity: 1, definitionSequenceId: 1, stats: { combat: { hp: 3 } } }] },
+];
+const STAT_KEYS_WANT = ['cargo.cargoCapacity', 'cargo.miningRate', 'combat.hitChance', 'combat.hp', 'combat.sp', 'misc.recoveryFeeAtlas', 'movement.maxWarpDistance', 'movement.warpSpeed'];
+const STAT_CASES = [
+  ['statKeys = sorted union of fleet + ship stats; no *Raw, no junk / empty / infinite value', (r) => JSON.stringify(r.keys) === JSON.stringify(STAT_KEYS_WANT)],
+  ['a key seen only on a ship is in statKeys', (r) => r.keys.includes('movement.maxWarpDistance')],
+  ['{ raw, value } converts to value', (r) => r.at(r.rows[0], 'combat.hitChance') === 1 && r.at(r.rows[0], 'movement.warpSpeed') === 0.033005],
+  ['numeric string and number convert', (r) => r.at(r.rows[0], 'combat.sp') === 283 && r.at(r.rows[0], 'cargo.cargoCapacity') === 2764 && r.at(r.rows[0], 'combat.hp') === 400],
+  ['values rounded to 6 decimals', (r) => r.at(r.rows[0], 'cargo.miningRate') === 0.146729],
+  ['a stat missing on the fleet = 0', (r) => r.at(r.rows[1], 'cargo.cargoCapacity') === 0 && r.at(r.rows[1], 'misc.recoveryFeeAtlas') === 0],
+  ['every row has statKeys.length numbers', (r) => [...r.rows, ...Object.values(r.defs).map((d) => d.st)].every((a) => Array.isArray(a) && a.length === r.keys.length && a.every((v) => typeof v === 'number' && Number.isFinite(v)))],
+  ['shipDefs: the higher definitionSequenceId wins, in either order', (r) => r.defs['Testship Alpha']?.seq === 9 && r.at(r.defs['Testship Alpha'].st, 'combat.hp') === 450 && r.defs['Testship Alpha'].sz === 'small'],
+  ['shipDefs: "__proto__" / "constructor" are plain own keys, nothing polluted', (r) => Object.keys(r.defs).sort().join('|') === 'Testship Alpha|__proto__|constructor'
+    && r.at(r.defs.__proto__.st, 'combat.hp') === 7 && r.at(r.defs.constructor.st, 'combat.hp') === 3 && ({}).sz === undefined && ({}).seq === undefined
+    && Object.keys(JSON.parse(JSON.stringify(r.defs))).includes('__proto__')],
+  ['types: ship models named like built-in properties are counted as plain names, and an unknown size class never outranks a real one',
+    (r) => { const t = JSON.parse(JSON.stringify(r.odd.types)); return Object.keys(r.odd.types).sort().join() === '__proto__,constructor,toString' && r.odd.types.constructor === 2 && r.odd.types.__proto__ === 3 && r.odd.types.toString === 1 && Object.keys(t).length === 2 + (Object.prototype.hasOwnProperty.call(t, '__proto__') ? 1 : 0) && r.odd.flag === '__proto__' && r.odd.flagSize === 'small'; }],
+  ['hold: largest first, zero quantity dropped, nameless item = cargo#<id>', (r) => JSON.stringify(r.slim[0].hold) === JSON.stringify([{ n: 'cargo#7', q: 9000 }, { n: 'Food', q: 1382 }, { n: 'Ore', q: 50 }]) && JSON.stringify(r.slim[1].hold) === '[]'],
+  ['ap / fuel / ammo are numbers (bigint and missing included)', (r) => r.slim[0].ap === 41 && r.slim[0].fuel === 4767 && r.slim[0].ammo === 13760 && r.slim[1].ap === 12 && r.slim[1].fuel === 0 && r.slim[1].ammo === 0],
+  ['stance only when present', (r) => r.slim[0].stance === 'light' && !('stance' in r.slim[1])],
+  ['pend / rent only when > 0', (r) => !('pend' in r.slim[0]) && !('rent' in r.slim[0]) && r.slim[1].pend === 25 && r.slim[1].rent === 3],
+  ['hpMax / spMax / mineRate / cargoCap equal their st entries', (r) => r.slim.every((f, i) => f.hpMax === r.at(r.rows[i], 'combat.hp') && f.spMax === r.at(r.rows[i], 'combat.sp')
+    && f.mineRate === r.at(r.rows[i], 'cargo.miningRate') && f.cargoCap === r.at(r.rows[i], 'cargo.cargoCapacity'))],
+  ['collect(): latest has statKeys + shipDefs and every fleet an aligned st', (r) => Array.isArray(r.latest?.statKeys) && r.latest.statKeys.includes('combat.hp')
+    && r.latest.shipDefs?.['Testship Alpha']?.seq === 9 && r.latest.fleets.length === 40 && r.latest.fleets.every((f) => Array.isArray(f.st) && f.st.length === r.latest.statKeys.length)],
+  ['collect(): fleet st / extras written (hpMax = st[combat.hp], hold, ap)', (r) => {
+    const f = r.latest?.fleets?.find((x) => x.a === 'AF0'), i = r.latest?.statKeys?.indexOf('combat.hp');
+    return !!f && f.st[i] === 400 && f.hpMax === 400 && f.ap === 41 && f.hold?.[0]?.n === 'cargo#7' && f.stance === 'light';
+  }],
+];
+const STAT_MUTANTS = [
+  ['*Raw keys kept', "!k.endsWith('Raw') && ", ''],
+  ['ship stats not scanned for keys', 'for (const sh of f?.ships || []) take(sh?.stats);', ''],
+  ['statKeys unsorted', 'return [...keys].sort();', 'return [...keys];'],
+  ['{ raw, value } not unwrapped', "if (v !== null && typeof v === 'object') v = v.value;", ''],
+  ['numeric strings not converted', "else if (typeof v === 'string') v = v.trim() === '' ? NaN : Number(v);", ''],
+  ['an empty string counts as 0', "v.trim() === '' ? NaN : Number(v)", 'Number(v)'],
+  ['infinite values accepted', 'Number.isFinite(v) ? v : null', '!Number.isNaN(v) ? v : null'],
+  ['bigint not converted', "if (typeof v === 'bigint') v = Number(v);", 'if (0);'],
+  ['missing stat is null, not 0', 'return v === null ? 0 : round(v, 6);', 'return v === null ? null : round(v, 6);'],
+  ['no rounding', 'return v === null ? 0 : round(v, 6);', 'return v === null ? 0 : v;'],
+  ['shipDefs: the last definition wins', 'if (cur && cur.seq >= seq) continue;', ''],
+  ['fleet ship names kept in a plain object', 'const shipNames = Object.create(null);', 'const shipNames = {};'],
+  ['size rank read through the prototype', "const r = Object.hasOwn(SIZE_RANK, sh.sizeClass) ? SIZE_RANK[sh.sizeClass] : -1,", "const r = SIZE_RANK[sh.sizeClass] ?? -1,"],
+  ['shipDefs is a plain object', 'const defs = Object.create(null);', 'const defs = {};'],
+  ['hold keeps zero quantities', 'if (q === null || q <= 0) continue;', 'if (q === null) continue;'],
+  ['hold unsorted', 'return out.sort((a, b) => b.q - a.q);', 'return out;'],
+  ['hold has no fallback name', '`cargo#${it?.id}`', 'null'],
+  ['stance always written', "if (typeof f.stance?.ammoUsage === 'string' && f.stance.ammoUsage) x.stance = f.stance.ammoUsage;", 'x.stance = f.stance?.ammoUsage ?? null;'],
+  ['pend always written', 'if (pend !== null && pend > 0) x.pend = pend;', 'x.pend = pend ?? 0;'],
+  ['rent always written', 'if (rent !== null && rent > 0) x.rent = rent;', 'x.rent = rent ?? 0;'],
+  ['extras not on the slim fleet', '...fleetExtras(f),', ''],
+  ['collect() sets no fleet st', 'fleets.forEach((f, i) => { f.st = statRow(fleetsRaw[i].stats, statKeys); });', ''],
+  ['latest lacks statKeys / shipDefs', 'ref, statKeys, shipDefs,', 'ref,'],
+];
+let statImport = 0;
+async function fleetStatSuite(file) {
+  const failed = [];
+  const udir = fs.mkdtempSync(path.join(os.tmpdir(), 'c4-check-stat-u-'));
+  process.env.C4_OUT_DIR = udir;
+  let r;
+  try {
+    const M = await import(pathToFileURL(file).href + `?stat=${++statImport}`);
+    const raw = statFleets();
+    const keys = M.statUnion(raw);
+    r = { keys, rows: raw.map((f) => M.statRow(f.stats, keys)), defs: M.shipDefsOf(raw, keys), slim: raw.map(M.slimFleet) };
+    r.odd = M.slimFleet({ ...raw[0], ships: [{ name: 'constructor', quantity: 2, sizeClass: 'toString' }, { name: '__proto__', quantity: 3, sizeClass: 'small' }, { name: 'toString', quantity: 1, sizeClass: 'valueOf' }] });
+    r.at = (row, k) => row[keys.indexOf(k)];
+    // one offline collect() pass: the 40-fleet fake world, fleet F0 given stat fleet one's stats and extras
+    const world = A40(), fl = await world.getFleets(), sf = statFleets();
+    const { address, name, state, location, ...rich } = sf[0];
+    Object.assign(fl[0], rich);
+    fl[1].ships = sf[1].ships;
+    const [pass] = await epochScenario(file, [{ world, epoch: E1 }]);
+    r.latest = pass.latest;
+  } catch (e) { fs.rmSync(udir, { recursive: true, force: true }); return ['threw: ' + e.message]; }
+  fs.rmSync(udir, { recursive: true, force: true });
+  for (const [n, pred] of STAT_CASES) { let good; try { good = pred(r); } catch { good = false; } if (!good) failed.push(n); }
+  return failed;
+}
+async function fleetStatChecks() {
+  console.log('\n[stats] fleet + ship-model stats (statKeys, shipDefs, st, hold, extras)');
+  const realFailed = await fleetStatSuite(COLLECTOR);
+  for (const [n] of STAT_CASES) ok(!realFailed.includes(n), 'stats: ' + n);
+  for (const n of realFailed) if (!STAT_CASES.some(([c]) => c === n)) ok(false, 'stats: ' + n);
+  const src = fs.readFileSync(COLLECTOR, 'utf8');
+  for (const [label, from, to] of STAT_MUTANTS) {
+    const at = src.indexOf(from);
+    if (at < 0 || src.indexOf(from, at + 1) >= 0) { ok(false, `mutant "${label}": target text not found exactly once in the collector`); continue; }
+    const mf = path.join(KIT_DIR, `.mutant-stat-${process.pid}.mjs`);
+    fs.writeFileSync(mf, src.slice(0, at) + to + src.slice(at + from.length));
+    try { mutantFails(label, await fleetStatSuite(mf)); } finally { fs.unlinkSync(mf); }
+  }
 }
 
 // The live stake checks on fake results: a fresh / reset galaxy (0 or 3 stakes) must SKIP the population checks with a named

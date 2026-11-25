@@ -618,6 +618,11 @@ function suite(A, quiet) {
         const el = fakeEl(); A.render(el, m, { width: 900 });
         const h0 = el.innerHTML, on = (h, v) => new RegExp('data-an-stat="' + v + '" aria-pressed="true"').test(h);
         ok('stat: default is median (pair in the top bar, Median pressed)', A.getStat() === 'med' && on(h0, 'med') && !on(h0, 'day') && h0.indexOf('data-an-stat') < h0.indexOf('<section'));
+        // the same pair sits on the banner of each section that has a chart with a total, and nowhere else
+        const pairIn = (h, id) => { const i = h.indexOf('<section class="c4an-sec" id="c4an-' + id + '"'), j = h.indexOf('<div class="c4an-grid"', i); return i < 0 ? null : [...h.slice(i, j).matchAll(/data-an-stat="(med|day)" aria-pressed="(true|false)"[^>]*data-an-at="([a-z]+)"/g)].map(x => x[1] + ':' + x[2] + ':' + x[3]).join(); };
+        ok('stat: the pair is also on the Mining, Council rank and Ships against claim stakes banners, Median pressed', ['mining', 'council', 'compare'].every(id => pairIn(h0, id) === 'med:true:' + id + ',day:false:' + id), ['mining', 'council', 'compare'].map(id => pairIn(h0, id)).join(' | '));
+        ok('stat: sections without a chart that has a total carry no pair', A.sections.filter(id => !['mining', 'council', 'compare'].includes(id)).every(id => pairIn(h0, id) === '') && A.sections.length === 7, A.sections.map(id => id + '=' + pairIn(h0, id)).join(' | '));
+        ok('stat: the banner pair stands before the fold button, inside the banner', /<span class="c4an-hc"><span class="c4an-tg"[^>]*>(<button[^>]*data-an-at="mining">[^<]*<\/button>){2}<\/span><\/span><button type="button" class="c4an-fb" data-an-fold="mining"/.test(h0));
         ok('stat: median mode draws the median charts and no total chart', h0.includes('Median per player') && h0.includes('Units per second per ship') && !h0.includes('Total per rank') && !h0.includes('Units per day, all fleets of the size') && h0.includes('>Units per second per ship</h5>'));
         // the council chart on its own: headings and the text on every bar, against this file's own sums and medians
         const councilOf = (h, title) => { const i = h.indexOf('<h5 class="c4an-ch">' + title + '</h5>'); return i < 0 ? '' : h.slice(i, h.indexOf('</figure>', i)); };
@@ -632,6 +637,7 @@ function suite(A, quiet) {
         press(el, 'day');
         const h1 = el.innerHTML;
         ok('stat: a press on Daily total redraws with it pressed', A.getStat() === 'day' && on(h1, 'day') && !on(h1, 'med'));
+        ok('stat: after the press every banner pair shows Daily total pressed too', ['mining', 'council', 'compare'].every(id => pairIn(h1, id) === 'med:false:' + id + ',day:true:' + id), ['mining', 'council', 'compare'].map(id => pairIn(h1, id)).join(' | '));
         ok('stat: daily mode draws the totals in place of the medians', h1.includes('Total per rank') && h1.includes('Units per day, all fleets of the size') && h1.includes('Total units per day: ship models and claim stake tiers') && !h1.includes('Median per player') && !h1.includes('>Units per second per ship</h5>'));
         const c1 = councilOf(h1, 'Total per rank');
         ok('stat: daily council headings: only mining is per day', h5Of(c1).join('|') === 'Total per rank|Fleets|Ships|Claim stakes|Mining units per day|ATLAS held', h5Of(c1).join('|'));
@@ -1162,6 +1168,9 @@ const MUTANTS = [
     ["sort: the order switch is ignored","if (day && rateSort !== 'med') {","if (day) {"],
     ["sort: the press does nothing","rateSort = rv;","void rv;"],
     ["sort: any value accepted","if (v === 'med' || v === 'day') rateSort = v;","rateSort = v;"],
+    ["stat: no pair on the section banners","var ctrl = STAT_SECTIONS.indexOf(id) >= 0 ?","var ctrl = false ?"],
+    ["stat: the pair on every section banner","var ctrl = STAT_SECTIONS.indexOf(id) >= 0 ?","var ctrl = true ?"],
+    ["stat: a banner pair is not marked with its section","(at ? ' data-an-at=\"' + at + '\"' : '') + '>' + text","'>' + text"],
     ["stat: any value accepted","if (v === 'med' || v === 'day') stat = v;","stat = v;"],
     ["stat: the press does nothing","stat = sv;","void sv;"],
     ["stat: daily bars still measure the median","var val = function (r) { return day ? r.day : r.v; };","var val = function (r) { return r.v; };"],

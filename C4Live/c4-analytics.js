@@ -882,11 +882,13 @@
         };
         return '<span class="c4an-tg" role="group" aria-label="Show ' + what + ' as">' + one('num', '#', 'Show counts') + one('pct', '%', 'Show percent of the total') + '</span>';
     }
-    // the Median / Daily total pair in the bar above the sections: one press redraws the three charts that have a total
-    // (yield by flagship size, what each rank holds, ship models against stake tiers); the other medians stay medians
-    function statToggle() {
+    // the Median / Daily total pair: in the bar above the sections, and again on the banner of each section that has a
+    // chart with a total (at = that section's id). One press anywhere redraws the three charts that have a total (yield by
+    // flagship size, what each rank holds, ship models against stake tiers); the other medians stay medians
+    var STAT_SECTIONS = ['mining', 'council', 'compare'];
+    function statToggle(at) {
         var one = function (v, text, name) {
-            return '<button type="button" class="c4an-tgb" data-an-stat="' + v + '" aria-pressed="' + (stat === v ? 'true' : 'false') + '" title="' + name + '">' + text + '</button>';
+            return '<button type="button" class="c4an-tgb" data-an-stat="' + v + '" aria-pressed="' + (stat === v ? 'true' : 'false') + '" title="' + name + '"' + (at ? ' data-an-at="' + at + '"' : '') + '>' + text + '</button>';
         };
         return '<span class="c4an-tg" role="group" aria-label="Median or daily total">' + one('med', 'Median', 'Every chart shows the median of each group') + one('day', 'Daily total', 'Three charts show totals instead: yield by flagship size, what each rank holds, ship models against stake tiers') + '</span>';
     }
@@ -911,12 +913,13 @@
     // kpis: [[value text, label], ...] - the section's headline numbers, drawn as tiles beside the title. The emblem is a
     // decorative background image chosen by the section id in the stylesheet (Images/c4an/<id>.webp, rendered in Blender).
     function section(id, title, intro, cards, kpis) {
+        var ctrl = STAT_SECTIONS.indexOf(id) >= 0 ? '<span class="c4an-hc">' + statToggle(id) + '</span>' : '';
         var k = arr(kpis).filter(function (x) { return Array.isArray(x) && x[0] != null && x[0] !== '-'; });
         var f = isFolded(id);
         return '<section class="c4an-sec' + (f ? ' c4an-fold' : '') + '" id="c4an-' + id + '"><div class="c4an-hero" data-an-fold="' + id + '"><i class="c4an-emb emb-' + id + '" aria-hidden="true"></i>' +
             '<div class="c4an-hb"><h3 class="c4an-h">' + title + '</h3>' + (intro ? '<p class="c4an-intro">' + intro + '</p>' : '') + '</div>' +
             (k.length ? '<dl class="c4an-kpis">' + k.map(function (x) { return '<div class="c4an-kpi"><dd>' + esc(x[0]) + '</dd><dt>' + esc(x[1]) + '</dt></div>'; }).join('') + '</dl>' : '') +
-            '<button type="button" class="c4an-fb" data-an-fold="' + id + '" aria-expanded="' + (f ? 'false' : 'true') + '" aria-controls="c4an-grid-' + id + '" aria-label="' + esc(title) + ': show or hide the charts" title="' + (f ? 'Expand' : 'Collapse') + ' this section"><i aria-hidden="true"></i></button>' +
+            ctrl + '<button type="button" class="c4an-fb" data-an-fold="' + id + '" aria-expanded="' + (f ? 'false' : 'true') + '" aria-controls="c4an-grid-' + id + '" aria-label="' + esc(title) + ': show or hide the charts" title="' + (f ? 'Expand' : 'Collapse') + ' this section"><i aria-hidden="true"></i></button>' +
             '</div><div class="c4an-grid" id="c4an-grid-' + id + '"' + (f ? ' hidden' : '') + '>' + cards.join('') + '</div></section>';
     }
 
@@ -1418,11 +1421,12 @@
             var sb = t.closest('[data-an-stat]');
             if (sb) {
                 closePop(false);
-                var sv = sb.getAttribute('data-an-stat'), s0 = el._c4an;
+                var sv = sb.getAttribute('data-an-stat'), s0 = el._c4an, at = sb.getAttribute('data-an-at');
                 if ((sv !== 'med' && sv !== 'day') || sv === stat) return;
                 stat = sv;
                 if (s0) { var o3 = {}; Object.keys(s0.opts || {}).forEach(function (k) { o3[k] = s0.opts[k]; }); o3.reducedMotion = true; render(el, s0.model, o3); }
-                var nsb = typeof el.querySelector === 'function' ? el.querySelector('[data-an-stat="' + sv + '"]') : null;
+                // focus goes back to the pair that was pressed (the top bar's, or that section's)
+                var nsb = typeof el.querySelector === 'function' ? el.querySelector('[data-an-stat="' + sv + '"]' + (STAT_SECTIONS.indexOf(at) >= 0 ? '[data-an-at="' + at + '"]' : ':not([data-an-at])')) : null;
                 if (nsb && typeof nsb.focus === 'function') nsb.focus();
                 return;
             }

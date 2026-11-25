@@ -77,7 +77,8 @@ function suite(M, label, real, synth) {
         r.owner = check(label + 'owner drawer lines: voting power in Izar and contribution to Izar (exact)',
             ow.length === 2 && ow[0] === 'Voting power: 40,000 in Izar' && ow[1] === 'Governance module: contributed 5,100 units to Izar', JSON.stringify(ow));
         r.ownerNone = check(label + 'an owner with no voting power or contribution gets no lines; null / unknown p gets none',
-            M.governanceForOwner(L, (L.owners.find(o => o.p && o.p !== OWNER) || {}).p).length === 0 && M.governanceForOwner(L, null).length === 0 && M.governanceForOwner(L, 'nope').length === 0);
+            M.governanceForOwner(L, (L.owners.find(o => o.p && o.p !== OWNER && ![...(L.gov.contributors || []), ...((L.gov.voters || {}).top || [])].some(g => g && g.p === o.p)) || {}).p).length === 0 &&   // an owner the governance read does not name (the first owner of a real read may be a contributor)
+             M.governanceForOwner(L, null).length === 0 && M.governanceForOwner(L, 'nope').length === 0);
         const L2 = clone(L); L2.gov.contributors.push({ p: OWNER, sys: 'UNKNOWN-ADDRESS-0000000000000000', units: 1, lp: 1, rows: 1 });
         const ow2 = M.governanceForOwner(L2, OWNER).map(x => x.text);
         r.ownerUnknown = check(label + 'an unknown system address shows a short address, never "undefined"', ow2.length === 3 && /^Governance module: contributed 1 unit to UNKN.*0000$/.test(ow2[2]) && !BAD.test(ow2[2]), ow2[2]);

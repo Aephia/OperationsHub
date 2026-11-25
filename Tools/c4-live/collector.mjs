@@ -390,7 +390,77 @@ export function refValue(h, idx, pricesAt) {
     pricesAt, top: lines.slice(0, 8) };
 }
 
-function slimFleet(f) {
+// ==== ship stats (latest.statKeys / latest.shipDefs / fleet.st) =======================================
+// A chain stat value is a number (hp: 400), a numeric string (cargoCapacity: "2764") or a fixed-point pair
+// { raw, value } (use .value). Anything else (missing, empty string, junk) is not a number: null here.
+export function statNum(v) {
+  if (v !== null && typeof v === 'object') v = v.value;
+  if (typeof v === 'bigint') v = Number(v);
+  else if (typeof v === 'string') v = v.trim() === '' ? NaN : Number(v);
+  return typeof v === 'number' && Number.isFinite(v) ? v : null;
+}
+const STAT_GROUPS = ['cargo', 'combat', 'misc', 'movement'];
+// "group.key" for every stat with a finite value somewhere (fleet totals or any ship), sorted. *Raw keys
+// duplicate a converted sibling (recoveryFeeRaw = recoveryFeeAtlas in base units) and are skipped.
+export function statUnion(fleetsRaw) {
+  const keys = new Set();
+  const take = (stats) => {
+    if (!stats || typeof stats !== 'object') return;
+    for (const g of STAT_GROUPS) {
+      const grp = stats[g];
+      if (!grp || typeof grp !== 'object') continue;
+      for (const k of Object.keys(grp)) if (!k.endsWith('Raw') && statNum(grp[k]) !== null) keys.add(`${g}.${k}`);
+    }
+  };
+  for (const f of fleetsRaw || []) {
+    take(f?.stats);
+    for (const sh of f?.ships || []) take(sh?.stats);
+  }
+  return [...keys].sort();
+}
+// One number per key (rounded to 6 decimals); a stat missing here = 0. Always keys.length entries.
+export function statRow(stats, keys) {
+  return keys.map((key) => {
+    const i = key.indexOf('.'), grp = stats?.[key.slice(0, i)];
+    const v = grp && typeof grp === 'object' && Object.hasOwn(grp, key.slice(i + 1)) ? statNum(grp[key.slice(i + 1)]) : null;
+    return v === null ? 0 : round(v, 6);
+  });
+}
+// Ship config name (as in fleet.types) -> { sz, seq, st }. Null-prototype map: names come from the chain, so
+// "__proto__" / "constructor" stay plain keys. Same name on two definitions: the higher definitionSequenceId wins.
+export function shipDefsOf(fleetsRaw, keys) {
+  const defs = Object.create(null);
+  for (const f of fleetsRaw || []) {
+    for (const sh of f?.ships || []) {
+      if (typeof sh?.name !== 'string' || !sh.name) continue;
+      const seq = statNum(sh.definitionSequenceId) ?? 0, cur = defs[sh.name];
+      if (cur && cur.seq >= seq) continue;
+      defs[sh.name] = { sz: typeof sh.sizeClass === 'string' ? sh.sizeClass : null, seq, st: statRow(sh.stats, keys) };
+    }
+  }
+  return defs;
+}
+// Cargo hold items with a quantity, largest first: [{ n, q }]. A nameless item is "cargo#<id>".
+export function holdOf(cargoHold) {
+  const out = [];
+  for (const it of cargoHold?.items || []) {
+    const q = statNum(it?.amount);
+    if (q === null || q <= 0) continue;
+    out.push({ n: typeof it.name === 'string' && it.name ? it.name : `cargo#${it?.id}`, q });
+  }
+  return out.sort((a, b) => b.q - a.q);
+}
+// The per-fleet extras besides st: ap, fuel, ammo, hold always; stance/pend/rent only when present.
+export function fleetExtras(f) {
+  const x = { ap: statNum(f.ap) ?? 0, fuel: statNum(f.fuel?.amount) ?? 0, ammo: statNum(f.ammo?.amount) ?? 0, hold: holdOf(f.cargoHold) };
+  if (typeof f.stance?.ammoUsage === 'string' && f.stance.ammoUsage) x.stance = f.stance.ammoUsage;
+  const pend = statNum(f.pendingHp), rent = statNum(f.rentedCrew);
+  if (pend !== null && pend > 0) x.pend = pend;
+  if (rent !== null && rent > 0) x.rent = rent;
+  return x;
+}
+
+export function slimFleet(f) {
   const s = f.state || {};
   const st = { kind: s.kind };
   if (s.kind === 'warp' || s.kind === 'subwarp') {
@@ -405,13 +475,13 @@ function slimFleet(f) {
   } else if (s.kind === 'respawn') {
     st.recovers = num(s.recoversAtUnixSeconds);
   }
-  const shipNames = {};
+  const shipNames = Object.create(null);   // keyed by chain text: a model named "constructor" or "__proto__" is a plain key
   for (const sh of f.ships || []) shipNames[sh.name] = (shipNames[sh.name] || 0) + num(sh.quantity ?? 1);
   // Flagship = the largest size class in the fleet (ties: the most numerous), drawn as the fleet's silhouette.
   const SIZE_RANK = { 'xx-small': 0, 'x-small': 1, small: 2, medium: 3, large: 4, capital: 5, commander: 6, titan: 7 };
   let flag = null;
   for (const sh of f.ships || []) {
-    const r = SIZE_RANK[sh.sizeClass] ?? -1, q = num(sh.quantity ?? 1);
+    const r = Object.hasOwn(SIZE_RANK, sh.sizeClass) ? SIZE_RANK[sh.sizeClass] : -1, q = num(sh.quantity ?? 1);
     if (!flag || r > flag.r || (r === flag.r && q > flag.q)) flag = { r, q, name: sh.name, size: sh.sizeClass };
   }
   return {
@@ -432,6 +502,7 @@ function slimFleet(f) {
     cargo: num(f.cargoHold?.storageCost), cargoCap: num(f.stats?.cargo?.cargoCapacity),
     lc: num(f.lastCombatUpdate),
     lu: num(f.lastUpdateAt),
+    ...fleetExtras(f),
   };
 }
 
@@ -609,6 +680,10 @@ export async function collect(pass, deps = {}) {
 
     const stakesRaw = await K.getAllClaimStakes(ctx);
     const fleets = fleetsRaw.map(slimFleet);
+    // stats as arrays aligned to one key list (size: latest.json is kept in the visitor's IndexedDB)
+    const statKeys = statUnion(fleetsRaw);
+    fleets.forEach((f, i) => { f.st = statRow(fleetsRaw[i].stats, statKeys); });
+    const shipDefs = shipDefsOf(fleetsRaw, statKeys);
 
     const miningFleets = fleets.filter((f) => f.s.kind === 'mining');
     const { out: miningStates, failed: mineFailed } = await pool(miningFleets, CONCURRENCY, (f) => K.getFleetMiningState(ctx, f.a));
@@ -1102,7 +1177,7 @@ export async function collect(pass, deps = {}) {
     const latest = {
       v: 1, generatedAt: nowSec, rpc: RPC_LABEL, intervalMin: INTERVAL_MIN, quality,
       tookMs: Date.now() - t0, kpis, fleets, owners: Object.values(owners), systems,
-      asteroids: Object.values(asteroids), stakes, ref,
+      asteroids: Object.values(asteroids), stakes, ref, statKeys, shipDefs,
       // the chain version this snapshot belongs to; changed = this pass started it (history began again here).
       // null only when no version was ever read (the read failed and nothing was stored).
       epoch: epoch ? { genesis: epoch.genesis, sage: epoch.sage ?? null, since: epoch.since, changed: epochChanged } : null,

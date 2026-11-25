@@ -128,6 +128,8 @@
 .c4an-hero .c4an-h { margin: 0 0 2px; font-size: 1.12rem; }
 .c4an-hero .c4an-intro { margin: 0; }
 .c4an-kpis { display: flex; flex: none; gap: 8px; margin: 0; }
+.c4an-hc { flex: none; display: inline-flex; cursor: default; }   /* the Median / Daily total pair on a section banner */
+.c4an-narrow .c4an-hc { margin-left: auto; }
 .c4an-kpi { min-width: 92px; padding: 6px 12px; border-radius: 10px; background: rgba(6, 12, 28, 0.55); border: 1px solid var(--an-line); text-align: right; }
 .c4an-kpi dd { margin: 0; font-family: 'Orbitron', sans-serif; font-size: 1.35rem; font-weight: 700; line-height: 1.15; color: #fff; font-variant-numeric: tabular-nums; text-shadow: 0 0 14px color-mix(in srgb, var(--an-acc, #6fb1ff) 60%, transparent); }
 .c4an-kpi dt { margin: 0; font-size: 0.78rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--an-ink3); white-space: nowrap; }

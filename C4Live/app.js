@@ -24,6 +24,7 @@
 (function () {
     'use strict';
     const M = window.C4Model;
+    const FV = window.C4FleetView || null;   // fleet view (c4-fleet-view.js); the page works without it
     const DATA = '../Data/c4-live/';
     // A local copy reads the collector's folder. The public site has no such folder: each visitor's browser reads z.ink
     // itself (c4-collect.js) and keeps the result on their PC (c4-store.js). ?chain=1 forces that mode on localhost.
@@ -102,7 +103,7 @@
     function loadCollector() {
         return S.collectorP || (S.collectorP = new Promise((resolve, reject) => {
             const s = document.createElement('script');
-            s.src = 'c4-collect.js?v=20261125b';
+            s.src = 'c4-collect.js?v=20261125c';
             s.onload = resolve;
             s.onerror = () => { S.collectorP = null; reject(new Error('c4-collect.js failed to load')); };
             document.head.append(s);
@@ -256,6 +257,7 @@
         renderTab(S.tab, !isReload);
         if (S.drawer) reopenDrawer();
         reopenStake();
+        if (FV) FV.refresh(fvCtx());
     }
     const evKey = e => e.t + ':' + e.k + ':' + (e.f || e.sys);
 
@@ -1246,6 +1248,22 @@
         clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('show'), 1800);
     }
 
+    // fleet view: one owner's fleets full screen, then one fleet's hero screen (c4-fleet-view.js draws both)
+    const fvCtx = () => ({ latest: S.latest, ownerName: p => ownerPlain(p), reducedMotion: RM.matches, artBase: '../Images/ships/', canFly: !!S.scene,
+        flyTo: (x, y, f) => { if (SHEET_MQ.matches) closeDrawer(); flyToFleet(x, y, f); } });
+    // "Fly to fleet": right in on the fleet, close enough to see its ships. The fleet is drawn where the scene places it NOW (a docked fleet sits beside its starbase, a travelling one
+    // has moved since the read), so the aim is the scene's own position for it, read again once the flight has landed
+    // because a travelling fleet moves on meanwhile; a fleet in flight gets a wider frame so it stays in view.
+    // zoom 1600 = camera at 0.08 map units, where a medium hull is about 15 px tall (the scene check flies this close)
+    const fleetZoom = f => (f && f.kind === 'warp' ? 160 : f && f.kind === 'subwarp' ? 800 : 1600);
+    function flyToFleet(x, y, f) {
+        const z = fleetZoom(f), now = () => { let p = null; sceneCall(s => { p = s.fleetScreen(f.a); }); return p && Number.isFinite(p.x) && Number.isFinite(p.y) ? p : null; };
+        const p0 = f && f.a ? now() : null;
+        focusXY(p0 ? p0.x : x, p0 ? p0.y : y, z);
+        clearTimeout(flyToFleet.h);
+        if (p0) flyToFleet.h = setTimeout(() => { const p1 = now(); if (p1 && !FV.isOpen() && !S.stake) focusXY(p1.x, p1.y, z); }, RM.matches ? 50 : 1750);
+    }
+    function openFleetView(p, fleet) { if (FV && S.latest) FV.open($('#c4FleetView'), fvCtx(), p, fleet); }
     function openOwner(p) {
         // the drawer always shows the whole owner, whatever the faction filter
         const o = S.all.owners.find(x => x.p === p);
@@ -1274,7 +1292,7 @@
             <p class="c4-verdict">${verdict}</p>
             <div class="c4-dstats c4-anim-in">${stat('Fleets', o.fleets)}${stat('Ships', M.fmt(o.ships, 0))}${stat('Mining u/s', o.ups ? M.fmt(o.ups) : '0')}${stat('ATLAS', o.atlas != null ? M.fmt(o.atlas, 0) : '-')}${stat('Council rank', o.rank != null ? o.rank : '-')}${stat('Claim stakes', stakes)}</div>
             ${o.npc ? '' : wealthSection(rec)}${o.npc ? '' : M.governanceOwnerHtml(M.governanceForOwner(S.latest, p))}
-            <div class="c4-dsec"><span>Fleets</span><button class="c4-act" data-focus-owner="${esc(p)}"${S.scene ? '' : ' disabled title="3D map not loaded"'}>Fly to fleets</button></div><div class="c4-anim-in">${fleets}</div>
+            <div class="c4-dsec"><span>Fleets</span><span class="c4-acts">${FV ? `<button class="c4-act" data-fleet-view="${esc(p)}" title="Every fleet of this owner with its ships and stats">Fleet view</button>` : ''}<button class="c4-act" data-focus-owner="${esc(p)}"${S.scene ? '' : ' disabled title="3D map not loaded"'}>Fly to fleets</button></span></div><div class="c4-anim-in">${fleets}</div>
             ${stakeList}
             <div class="c4-dsec"><span>Mining by resource</span></div><div class="c4-anim-in">${mining}</div>
             <div class="c4-dsec"><span>Careers (XP)</span></div><div class="c4-anim-in">${xp}</div>
@@ -1754,6 +1772,8 @@
     function wire() {
         document.addEventListener('click', e => {
             const t = e.target;
+            if (FV && FV.onClick(e)) return;
+            const fvb = t.closest('[data-fleet-view]'); if (fvb) { openFleetView(fvb.dataset.fleetView); return; }
             const cp = t.closest('[data-copy]');
             if (cp) {
                 const text = cp.dataset.copy, what = cp.dataset.copyWhat || 'Address';
@@ -1825,6 +1845,7 @@
         });
         $('#c4Find').addEventListener('keydown', e => { if (e.key === 'Enter') find(e.target.value); });
         document.addEventListener('keydown', e => {
+            if (FV && FV.onKey(e)) return;   // the fleet view is modal while open: Escape steps back, Tab stays inside
             if (e.key === 'Escape' && S.stake) { closeStake(); return; }
             if (S.stake) { if (e.key === 'Tab') svTrap(e); return; }   // modal: Tab stays inside the view, the page's single-key shortcuts (D) are off
             if (e.key === 'Escape' && S.drawer) { closeDrawer(); return; }

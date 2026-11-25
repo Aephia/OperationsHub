@@ -687,6 +687,25 @@ Added 2026-11-22: `node Test/c4-stake-view-check.js` (stake model and the view i
 `node Test/c4-collector-check.js` (collector; `--offline` for the unit part) and
 `node Test/c4-config-snapshot-check.js` (the config snapshot below).
 
+**Median | Daily total on the section banners** (2026-11-25): the pair in the bar above the Analytics sections is
+repeated on the banner of the three sections that have a chart with a total (Mining rate per ship, Council rank, Ships
+against claim stakes). It is one setting: a press on any of them switches all three charts.
+
+**Fleet view** (added 2026-11-25): the owner drawer has a **Fleet view** button next to "Fly to fleets". It opens
+every fleet of that owner full screen, one card per fleet (flagship picture, state, ship models, hull / shield / cargo
+bars, where it is), largest fleet first, with totals on top and a chip per state. A card opens that fleet's **hero
+screen**: the flagship on a turntable (drag to rotate; a still picture where no turntable exists), gauges for hull,
+shield, action points, cargo, fuel and ammunition, every stat the chain states for the whole fleet (combat, damage,
+countermeasures, repair, movement, cargo and mining, scanning, crew and recovery), the cargo hold, and the same stat
+sheet for one ship of each model in the fleet. "Fly to fleet" closes the view and flies the map right in on the fleet, close enough to see its ships (a fleet in flight gets a wider frame so it stays in view). Escape steps
+back (hero screen, list, closed), the arrow keys step through the fleets. The stats are read from the fleet accounts
+(`latest.statKeys`, `latest.shipDefs`, `fleets[].st`; see `Tools/c4-live/README.md`); a saved copy of the data from
+before they were collected shows the cards and says to refresh for the stat sheets. A stat named `...Seconds` is shown
+in seconds; every other value is printed as the chain gives it, with no unit added. Pictures come from
+`Images/ships/manifest.json`. Files: `C4Live/c4-fleet-view.js` (model + HTML, pure and escaped; the open / close /
+keyboard part), `C4Live/c4-fleet-view.css`. Check: `node Test/c4-fleet-view-check.js` (model and HTML with mutants,
+the real local read against the collector's own owner roll-up, the page wiring).
+
 **Territory on the map** (changed 2026-11-23): the territory layer is a soft glow spread by every faction-owned
 starbase (`territoryField` in `C4Live/scene-src/model.js`). A region in which no faction holds a starbase is neutral
 ground: its starbases push the glow back, so the border runs midway between the nearest owned and neutral starbase
