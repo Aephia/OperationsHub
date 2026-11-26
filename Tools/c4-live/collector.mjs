@@ -37,6 +37,9 @@ import { getStarSystems, getAllCelestialBodies } from '@aephia/atlas-kit/world';
 import { listCargoDefinitions } from '@aephia/atlas-kit/cargo';
 import { listRecipes } from '@aephia/atlas-kit/crafting';
 import { readGovernance, GOV_CALLS, GOV_SHAPE } from './governance.mjs';
+// COMPAT (temporary, 2026-11-26): two account forms the kit cannot read yet are rewritten into forms it can, before
+// the kit sees them. Remove with compat.mjs once a kit release reads them; its header says when and how.
+import { compatTransport, newCompat } from './compat.mjs';
 // The governance read's own limit inside the pass (a hung getProgramAccounts must not cost the whole pass).
 const GOV_LIMIT_MS = 60_000;
 import { mkdirSync, readFileSync, writeFileSync, appendFileSync, renameSync, existsSync, statSync, unlinkSync, openSync, closeSync } from 'node:fs';
@@ -663,7 +666,8 @@ export async function discoverReadable(discover, ctl, max = MAX_UNREAD) {
   } finally { ctl.hold = null; }
 }
 // The pass's and the crafting read's RPC: the kit's default transport behind the share (and, for a pass, the skip list).
-const sharedRpc = (ctl) => { const t = createDefaultRpcTransport({ url: RPC_URL }); return createSolanaRpcFromTransport(shareTransport(ctl ? skipTransport(t, ctl) : t)); };
+// COMPAT: a pass also gets compatTransport() innermost, so the skip list and the share only ever see translated accounts.
+const sharedRpc = (ctl, compat) => { const t0 = createDefaultRpcTransport({ url: RPC_URL }), t = compat ? compatTransport(t0, compat) : t0; return createSolanaRpcFromTransport(shareTransport(ctl ? skipTransport(t, ctl) : t)); };
 // A plain RPC with NO sharing, for C4Collect.epoch() in the browser (main.js cannot import the kit itself) and the
 // config snapshot: the chain-version probe must read the chain every time, never an answer kept from a minute ago.
 export const openRpc = () => createSolanaRpcFromTransport(createDefaultRpcTransport({ url: RPC_URL }));
@@ -744,7 +748,8 @@ export async function collect(pass, deps = {}) {
     SHARED.clear(); // a pass shares account reads only with itself
     const unread = { skip: new Set(), hold: null }; // fleets whose account the bindings cannot decode
     pass.unread = unread.skip; // (offline tests: a fake discovery reads this set)
-    const rpc = sharedRpc(unread);
+    const compat = newCompat(); // COMPAT (temporary, see compat.mjs)
+    const rpc = sharedRpc(unread, compat);
     pass.abort ??= new AbortController();
     ctx = K.createSageContext({ cluster: 'zink-ptr', rpc });
     pass.ctx = ctx;
@@ -827,6 +832,14 @@ export async function collect(pass, deps = {}) {
     // Fleets left out because their account could not be decoded: the page says so; counts are that much lower.
     if (unreadFleetN) quality.unreadFleets = unreadFleetN;
     if (unreadStakeN) quality.unreadStakes = unreadStakeN;
+    // COMPAT: how many accounts were rewritten for the kit (temporary, see compat.mjs). compatLossy = fleets whose new
+    // state fields are no longer all zero, or stakes whose block changed version: something the game now records is
+    // not carried over, time to look again.
+    if (compat.fleets.size) quality.compatFleets = compat.fleets.size;
+    if (compat.stakes.size) quality.compatStakes = compat.stakes.size;
+    if (compat.lossy.size) quality.compatLossy = compat.lossy.size;
+    if (compat.fleets.size || compat.stakes.size) log(`compat: ${compat.fleets.size} fleets in the new mining state and ${compat.stakes.size} claim stakes with the trailing block were rewritten for the kit (temporary, compat.mjs)`);
+    if (compat.lossy.size) log(`WARN compat: ${compat.lossy.size} rewritten accounts carry new fields that are no longer all zero - they are not carried over; read compat.mjs`);
     if (quality.partial) log(`WARN PARTIAL pass (mining ${mineFailed}/${miningFleets.length}, characters ${charFailed}/${ownerIds.length} failed) - latest.json is marked partial and no history/owner points are added`);
     // nowSec: taken at the pass start (top of collect), before the epoch read and every other read
 

@@ -161,7 +161,7 @@ server.listen(0, '127.0.0.1', async () => {
         await rendered(d);
         const keep = await idb(d, 'latest.json');
         await d.click('[data-c4-refresh]');
-        await d.waitForFunction(() => /Could not reach z\.ink/.test(document.querySelector('#c4Age').innerText), null, { timeout: READ_TIMEOUT }).catch(e => check('failed refresh: says so', false, String(e.message)));
+        await d.waitForFunction(() => /The read from the z\.ink chain failed/.test(document.querySelector('#c4Age').innerText), null, { timeout: READ_TIMEOUT }).catch(e => check('failed refresh: says so', false, String(e.message)));
         check('failed refresh: says it is still saved data', /still your saved data/.test(await d.innerText('#c4Age')));
         check('failed refresh: saved copy byte-identical', (await idb(d, 'latest.json')) === keep);
         const b3 = await button(d);
@@ -228,9 +228,9 @@ server.listen(0, '127.0.0.1', async () => {
         const down = await ctx2.newPage();
         await down.route('https://testnet-rpc.z.ink/**', x => x.abort());
         await down.goto(prod, { waitUntil: 'load' });
-        await down.waitForFunction(() => /Could not reach/.test(document.querySelector('#c4Empty').innerText), null, { timeout: READ_TIMEOUT }).catch(e => check('down: finished', false, String(e.message)));
+        await down.waitForFunction(() => /Could not read the game/.test(document.querySelector('#c4Empty').innerText), null, { timeout: READ_TIMEOUT }).catch(e => check('down: finished', false, String(e.message)));
         const failed = await emptyState(down);
-        check('first visit, chain down: clear message with a retry', !failed.hidden && /Could not reach z\.ink/.test(failed.text) && !!(await down.$('[data-c4-retry]')), failed);
+        check('first visit, chain down: clear message with a retry', !failed.hidden && /Could not read the game/.test(failed.text) && /read from the z\.ink chain failed/.test(failed.text) && !!(await down.$('[data-c4-retry]')), failed);
         check('first visit, chain down: no collector instructions', !/No C4 Live data|npm run|collector/i.test(failed.text), failed);
         check('first visit, chain down: nothing saved', (await idbKeys(down)).length === 0);
         await ctx2.close();

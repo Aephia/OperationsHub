@@ -718,6 +718,17 @@ that cannot be decoded is not logged as gone; its last saved entry is kept. The 
 while many accounts are skipped. Remove nothing when new bindings arrive: with none undecodable the path does nothing.
 Check: `node Test/c4-collector-check.js --offline`, section [unread].
 
+**Temporary: two new account forms are rewritten for the kit** (2026-11-26). Leaving accounts out hid more every
+hour: by 2026-11-26 the kit refused 208 of 1,152 fleets (every fleet that started mining since the update: the game
+added a new mining state) and 139 of 270 claim stakes (a 24-byte block the game now appends). No kit or bindings
+release reads them yet. `Tools/c4-live/compat.mjs` rewrites those two forms into the forms the kit knows before the
+kit sees them, so the page shows every fleet and stake again and still reads everything through the kit. **This is a
+stopgap: it is removed as soon as a kit release reads these accounts, and the page then uses the kit alone.**
+`node Tools/c4-live/probe-compat.mjs` says whether it is still needed; `Tools/c4-live/README.md` ("The compat step")
+has what it does, what it does not carry over, and the removal steps. The leave-out path above stays behind it for
+anything that does not fit. Check: `node Test/c4-collector-check.js --offline`, section [compat] (real accounts as a
+fixture, every rule with a mutant); the live part reads z.ink through the step and expects nothing refused.
+
 **Profitability against origination price** (2026-11-25): a sortable table in the Ships against claim stakes section.
 One row per ship model (mining fleets made only of that model, per ship) and per claim stake tier (per stake): what it
 earns in a day at the Galactic Marketplace's best bids, what it costs to run (a stake's own consumption; a mining fleet's
