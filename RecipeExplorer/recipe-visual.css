@@ -151,3 +151,32 @@
 /* the plan's research box beside the raw bill: one column of nodes, scrolls like the bill (wide row when it wraps) */
 .rp-research .rx-ings { grid-template-columns: 1fr; max-height: 520px; overflow: auto; }
 @media (max-width: 1400px) { .rp-research .rx-ings { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); } }
+
+/* ---- My C4 resources (2026-11-26): the plan counted against what the visitor holds in C4 ---- */
+.rp-c4 { margin: 0; padding: 0.6rem 0.85rem; border: 1px solid var(--line); border-left: 3px solid var(--line-strong); border-radius: 10px; background: var(--card); font-size: 0.88rem; color: var(--text-secondary); line-height: 1.45; }
+.rp-c4.on { border-left-color: #3fd08a; }
+.rp-c4.idle { border-left-color: #ffd36b; }
+.rp-c4 h4 { margin: 0 0 0.3rem; font-family: 'Orbitron', sans-serif; font-size: 0.62rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--cyan); }
+.rp-c4 b { color: #fff; }
+.rp-c4-use { display: inline-flex; align-items: center; gap: 0.4rem; margin-right: 0.8rem; color: #fff; font-weight: 600; cursor: pointer; }
+.rp-c4-use input { width: 16px; height: 16px; accent-color: #3fd08a; }
+.rp-c4-sum { display: flex; align-items: center; gap: 0.7rem; margin-top: 0.45rem; flex-wrap: wrap; }
+.rp-c4-meter { position: relative; flex: 0 0 160px; height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+.rp-c4-meter i { position: absolute; left: 0; top: 0; height: 100%; background: #3fd08a; }
+.rp-c4-used { display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: center; margin-top: 0.45rem; }
+.rp-c4-used .k { font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-right: 0.2rem; }
+.rp-c4-chip { padding: 0.08rem 0.45rem; border: 1px solid rgba(63, 208, 138, 0.45); border-radius: 999px; background: rgba(63, 208, 138, 0.1); font-size: 0.78rem; color: #c9f5de; white-space: nowrap; }
+.rp-c4-none, .rp-c4-foot { margin: 0.4rem 0 0; font-size: 0.78rem; color: var(--text-muted); }
+.rp-empty .rp-c4 { margin-top: 1rem; }
+/* rows of the raw bill and the craft list: covered, part covered */
+.ch-bar b .rp-have { position: absolute; left: 0; top: 0; height: 100%; background: #3fd08a; border-radius: inherit; }
+.ch-val.rp-left small { display: block; font-family: 'Rajdhani', sans-serif; font-size: 0.66rem; font-weight: 500; color: var(--text-muted); }
+.ch-row.rp-done .ch-val, .rp-craft.rp-done .n:first-of-type { color: #3fd08a; }
+.ch-row.rp-done .ch-lbl, .rp-craft.rp-done .nm { opacity: 0.6; }
+.rp-craft.rp-done .bar b { background: transparent; }
+
+/* a box of the tree: its progress bar (ChainGraph opts.progress) - how much of that item is already covered */
+.cg-svg .cg-pg-t { fill: rgba(255, 255, 255, 0.12); stroke: none; }
+.cg-svg .cg-pg { fill: #3fd08a; stroke: none; }
+.cg-svg .nd.pg-done > .in > rect:first-of-type { stroke: #3fd08a; }
+.cg-svg .nd.pg-done .nm { fill: #c9f5de; }

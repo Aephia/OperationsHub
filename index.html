@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css?v=20261001">
-    <link rel="stylesheet" href="landing.css">
+    <link rel="stylesheet" href="landing.css?v=20261126a">
     <link rel="preload" as="image" href="Images/landing/hero_planet_1920.webp" media="(min-width: 901px)">
     <link rel="preload" as="image" href="Images/landing/hero_Pearce_X4.webp">
     <link rel="icon" type="image/jpeg" href="Images/channels4_profile.jpg">
@@ -29,6 +29,7 @@
             <span><b>Aephia Industries</b><small>Star Atlas operations</small></span>
         </a>
         <nav class="topnav" aria-label="Sections">
+            <a href="#profile">Profile</a>
             <a href="#modules">Modules</a>
             <a href="#fleet">Fleet</a>
             <a href="#status">Data</a>
@@ -93,6 +94,24 @@
 
     <!-- Modules -->
     <main class="main-content" id="modules">
+        <!-- Your profile: set once here, used by the Crew Explorer, C4 Live and the Recipe Explorer (Utils/HubProfile.js) -->
+        <section class="profile" id="profile" aria-labelledby="hpTitle">
+            <div class="profile-head">
+                <h2 id="hpTitle">Your profile</h2>
+                <p>Set it once and every module knows what is yours. It stays in this browser and is never sent anywhere by this page.</p>
+            </div>
+            <form class="profile-form" id="hpForm" autocomplete="off" novalidate>
+                <label class="profile-field"><span>Wallet</span>
+                    <input id="hpWallet" type="text" spellcheck="false" maxlength="64" placeholder="your wallet address"></label>
+                <label class="profile-field"><span>SAGE player profile</span>
+                    <input id="hpProfile" type="text" spellcheck="false" maxlength="64" placeholder="your SAGE player profile address"></label>
+                <button class="btn btn-primary" type="submit">Save profile</button>
+                <button class="btn btn-ghost" type="button" id="hpClear" hidden>Forget</button>
+            </form>
+            <p class="profile-msg" id="hpMsg" role="status" hidden></p>
+            <div class="profile-uses" id="hpUses"></div>
+        </section>
+
         <div class="deck-head">
             <h2>Modules</h2>
             <p>Every module runs in the browser off the local JSON data set. No account, no wallet.</p>
@@ -354,6 +373,8 @@
     <!-- Scripts -->
     <script src="Documentation/module-help-content.js?v=20261120a"></script>
     <script src="Utils/JsonManager.js"></script>
+    <script src="Utils/HubProfile.js?v=20261126a"></script>
+    <script src="landing-profile.js?v=20261126a"></script>
     <script>
     (function () {
         'use strict';

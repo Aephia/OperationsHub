@@ -19,6 +19,8 @@
         //         groups: [{ members: [names] }] - disjoint "one of these" sets: members with no children of their own
         //           move to the deepest member's layer, sit side by side, and get a dashed frame with "or" between them;
         //         nodeClass(node) / edgeClass(edge) -> extra class names; title(node) -> the hover title text;
+        //         progress(node) -> a share 0..1, or null for none: a bar along the pill's lower edge filled to that
+        //           share (class cg-pg; the pill gets pg-done at 1). The Recipe Explorer's "what I hold" view.
         //         onSub(name) -> a click on a pill's second line (text.tr; the page's CSS must give it pointer-events)
         //           calls it instead of onOpen unless it returns false
         //         hitTest - accepted and ignored: the clicked node is ALWAYS found under the pointer (document.elementFromPoint);
@@ -83,7 +85,14 @@
                 // form icon (Utils/ResourceIcons.js) at the pill's left; the text centres in what is left
                 const icon = window.ResourceIcons && CAT_LABEL[cat] ? `<image class="ic" href="${window.ResourceIcons.url(shown, cat)}" x="${(-n.w / 2 + 4).toFixed(1)}" y="${-ICON / 2 + 1}" width="${ICON}" height="${ICON}"/>` : '';
                 const tx = icon ? (ICON / 2).toFixed(1) : 0;
-                return `<g class="nd cat-${cat}${n.layer === 0 ? ' root' : ''}${this.opts.nodeClass ? ' ' + this.opts.nodeClass(n) : ''}" data-name="${esc(n.name)}" transform="translate(${n.x.toFixed(1)},${n.y.toFixed(1)})"><g class="in" style="animation-delay:${Math.min(1200, n.layer * 70)}ms"><rect x="${(-n.w / 2).toFixed(1)}" y="${-H / 2}" width="${n.w.toFixed(1)}" height="${H}" rx="9"/>${icon}<text class="nm" x="${tx}" y="${sub ? -2 : 5}">${esc(text)}</text>${sub ? `<text class="tr" x="${tx}" y="13">${esc(sub)}</text>` : ''}<title>${esc(this.opts.title ? this.opts.title(n) : n.name)}</title></g></g>`;
+                // optional progress bar: a track along the lower edge and its filled part
+                let share = this.opts.progress ? this.opts.progress(n) : null, bar = '';
+                if (typeof share === 'number' && isFinite(share)) {
+                    share = Math.max(0, Math.min(1, share));
+                    const bw = n.w - 14, bx = (-n.w / 2 + 7).toFixed(1), by = (H / 2 - 6.5).toFixed(1);
+                    bar = `<rect class="cg-pg-t" x="${bx}" y="${by}" width="${bw.toFixed(1)}" height="3.5" rx="1.75"/><rect class="cg-pg" x="${bx}" y="${by}" width="${(bw * share).toFixed(1)}" height="3.5" rx="1.75"/>`;
+                } else share = null;
+                return `<g class="nd cat-${cat}${n.layer === 0 ? ' root' : ''}${this.opts.nodeClass ? ' ' + this.opts.nodeClass(n) : ''}${share === 1 ? ' pg-done' : ''}" data-name="${esc(n.name)}" transform="translate(${n.x.toFixed(1)},${n.y.toFixed(1)})"><g class="in" style="animation-delay:${Math.min(1200, n.layer * 70)}ms"><rect x="${(-n.w / 2).toFixed(1)}" y="${-H / 2}" width="${n.w.toFixed(1)}" height="${H}" rx="9"/>${icon}<text class="nm" x="${tx}" y="${sub ? -2 : 5}">${esc(text)}</text>${sub ? `<text class="tr" x="${tx}" y="${bar ? 11 : 13}">${esc(sub)}</text>` : ''}${bar}<title>${esc(this.opts.title ? this.opts.title(n) : n.name)}</title></g></g>`;
             }).join('');
             // optional "one of these" frames: one per group and row, with "or" in each gap between two members
             const frames = L.groups ? L.groups.map(g => {

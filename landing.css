@@ -260,3 +260,29 @@ body.paused *, body.paused *::before, body.paused *::after { animation-play-stat
     .module-card { transform: none; opacity: 1; transition: none; }
     .sky-planet { transform: none; }
 }
+
+/* ------------------------------------------------------------ PROFILE ---- */
+/* Your profile (2026-11-26): one wallet + player profile for every module. */
+.profile { margin: 0 0 2.4rem; padding: 1.3rem 1.5rem 1.4rem; background: var(--card-2); border: 1px solid var(--line); border-left: 3px solid var(--amber); border-radius: 14px; scroll-margin-top: 90px; }
+.profile.set { border-left-color: #3fd08a; }
+.profile-head { display: flex; align-items: baseline; gap: 1.2rem; flex-wrap: wrap; margin-bottom: 0.9rem; }
+.profile-head h2 { font-family: 'Orbitron', sans-serif; font-size: clamp(1rem, 1.8vw, 1.3rem); font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+.profile-head p { font-size: 0.95rem; letter-spacing: 0.04em; color: var(--text-muted); }
+.profile-form { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr) auto auto; gap: 0.8rem; align-items: end; }
+.profile-field { display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; }
+.profile-field span { font-family: 'Orbitron', sans-serif; font-size: 0.6rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--cyan); }
+.profile-field input { width: 100%; padding: 0.6rem 0.75rem; background: rgba(4, 6, 15, 0.7); border: 1px solid var(--line-strong); border-radius: 8px; color: #fff; font-family: 'Exo 2', monospace; font-size: 0.9rem; }
+.profile-field input:focus { outline: 2px solid var(--cyan); outline-offset: 1px; }
+.profile-form .btn { white-space: nowrap; }
+.profile-msg { margin-top: 0.7rem; font-family: 'Exo 2', sans-serif; font-size: 0.9rem; color: var(--text-secondary); }
+.profile-msg.bad { color: #ff8f7a; }
+.profile-msg.ok { color: #7ee8a4; }
+.profile-uses { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.8rem; margin-top: 1rem; }
+.profile-use { display: block; padding: 0.8rem 1rem; background: rgba(4, 6, 15, 0.55); border: 1px solid var(--line); border-radius: 10px; color: inherit; text-decoration: none; transition: border-color 0.2s; }
+.profile-use:hover { border-color: var(--line-strong); }
+.profile-use h3 { font-family: 'Orbitron', sans-serif; font-size: 0.64rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--cyan); margin-bottom: 0.35rem; }
+.profile-use p { font-family: 'Exo 2', sans-serif; font-size: 0.88rem; color: var(--text-secondary); line-height: 1.5; }
+.profile-use p b { color: #fff; }
+.profile-use .mine { color: #ffd36b; }
+@media (max-width: 900px) { .profile-form { grid-template-columns: 1fr; } }
+.profile [hidden] { display: none !important; }   /* .btn sets display, which would beat the hidden attribute */

@@ -16,7 +16,7 @@ const ROOT = path.join(__dirname, '..');
 const BUNDLE = path.join(ROOT, 'C4Live/c4-scene.js');
 const LAYERS = ['systems', 'fleets', 'mining', 'routes', 'gates', 'combat', 'territory', 'labels'];
 const HOME_DIST = 128; // the scene's home camera distance: focusPoint(x, y, zoom) puts the camera at HOME_DIST / zoom
-const API = ['setData', 'setFilter', 'focusOwner', 'focusPoint', 'pulseEvent', 'on', 'setLayer', 'dispose', 'focusSystem'];
+const API = ['setData', 'setFilter', 'focusOwner', 'focusPoint', 'pulseEvent', 'on', 'setLayer', 'dispose', 'focusSystem', 'setMine'];
 let pass = 0, fail = 0;
 const check = (name, ok, detail) => { if (ok) pass++; else fail++; console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail !== undefined ? ': ' + JSON.stringify(detail) : ''}`); };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

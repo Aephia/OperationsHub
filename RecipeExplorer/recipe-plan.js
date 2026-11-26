@@ -11,7 +11,8 @@
     const fmtTime = sec => { if (!sec) return '0 s'; if (sec < 60) return Math.round(sec) + ' s'; const m = Math.round(sec / 60); if (m < 60) return m + ' min'; const h = Math.floor(m / 60), mm = m % 60; if (h < 48) return h + ' h' + (mm ? ' ' + mm + ' min' : ''); return (h / 24).toFixed(1) + ' days'; };
     const num = v => (v || 0).toLocaleString();
     const TRACK_COLOR = { CouncilRank: '#e8e3d3', Pilot: '#2fa985', Mining: '#dd7429', Building: '#a8842a', Crafting: '#9476db', DataRunner: '#2a9fcf', Combat: '#d9517c' };   // as on the Command Deck
-    const PAGE = 100, KEY = 'recipeExplorer.plan.v1', FKEY = 'recipeExplorer.faction.v1';
+    const PAGE = 100, KEY = 'recipeExplorer.plan.v1', FKEY = 'recipeExplorer.faction.v1', UKEY = 'recipeExplorer.useC4.v1';
+    const agoText = sec => { const s = Math.max(0, Math.round(Date.now() / 1000 - sec)); if (s < 90) return 'just now'; if (s < 5400) return Math.round(s / 60) + ' min ago'; if (s < 172800) return Math.round(s / 3600) + ' h ago'; return Math.round(s / 86400) + ' days ago'; };
     const FACTIONS = ['MUD', 'ONI', 'USTUR'];
     const FAC_COLOR = { MUD: '#ff6040', ONI: '#3ec8ff', USTUR: '#ffcc33' };   // as on the Analytics tab
     // Addendum 3 G3: the sheet's "ONE OF" frames and dashed ores of intermediate recipes (addendum 2) are OFF - the sheet
@@ -28,7 +29,53 @@
             this.items = this.load();
             this.faction = this.loadFaction();   // null = None: every step uses its recipe as named (the plan from before the ways work)
             this.history = [];
+            // what you hold in C4 (2026-11-26): the shared profile (Utils/HubProfile.js) picks your fleets and claim
+            // stakes out of the C4 Live read; the plan can then be netted against their cargo
+            this.c4 = { use: this.loadUseC4(), ready: false, latest: null, mine: null, why: '', profile: null };
             this.renderFinder(); this.bind(); this.applyFinder(); this.renderPlan();
+            this.initC4();
+        }
+
+        loadUseC4() { try { return localStorage.getItem(UKEY) !== '0'; } catch (e) { return true; } }
+        initC4() {
+            const H = window.HubProfile; if (!H) return;
+            const apply = () => { this.c4.profile = H.get(); this.c4.mine = this.c4.latest ? H.assets(this.c4.latest, this.c4.profile) : null; this.renderPlan(); };
+            H.onChange(apply);
+            H.loadC4('../').then(r => { this.c4.latest = r.latest; this.c4.why = r.why || ''; }, () => { this.c4.why = 'The C4 Live data could not be read.'; }).then(() => { this.c4.ready = true; apply(); });
+        }
+        // what the plan may draw on: whole units per name; null when the switch is off or nothing of yours is known
+        c4Stock() {
+            const m = this.c4.mine; if (!this.c4.use || !m) return null;
+            const st = new Map(m.stock.map(s => [s.name, Math.floor(s.units)]).filter(x => x[1] > 0));
+            return st.size ? st : null;
+        }
+        // the "what I hold in C4" strip above the plan: says what is missing (a profile, the C4 read, a match) or what
+        // was found and whether the plan uses it; pl = the plan netted against it, when it is in use
+        c4Panel(p, pl) {
+            const H = window.HubProfile; if (!H) return '';
+            const c = this.c4, prof = c.profile || H.get(), m = c.mine;
+            const home = '<a class="rx-link" href="../index.html#profile">the Operations Hub front page</a>', live = '<a class="rx-link" href="../C4Live/index.html">C4 Live</a>';
+            let state = 'off', body;
+            if (!c.ready) body = 'Looking for what you hold in C4...';
+            else if (!H.isSet(prof)) body = `Set your profile on ${home} and this plan can count what you already hold in C4.`;
+            else if (!c.latest) body = `${esc(c.why)} Open ${live}.`;
+            else if (!m.owners.length) body = `No C4 player in the read of ${esc(agoText(m.at))} matches your profile. Open ${live}, click your name and press <b>This is me</b>.`;
+            else {
+                state = c.use ? 'on' : 'idle';
+                const who = m.owners.map(o => esc(o.name || (o.p.slice(0, 4) + '...' + o.p.slice(-4)))).join(', ');
+                const n = (v, one, many) => `${num(v)} ${v === 1 ? one : many}`;
+                body = `<label class="rp-c4-use"><input type="checkbox" data-use-c4${c.use ? ' checked' : ''}> Count what I hold in C4</label>
+                    <span class="rp-c4-who"><b>${who}</b> · ${n(m.fleets.length, 'fleet', 'fleets')}, ${n(m.stakes.length, 'claim stake', 'claim stakes')} · ${m.stock.length ? n(m.stock.length, 'kind of cargo', 'kinds of cargo') : 'no cargo in them right now'} · read ${esc(agoText(m.at))}</span>`;
+                if (pl && p) {
+                    const rawDone = p.totals.rawUnits - pl.totals.rawUnits, pct = p.totals.rawUnits ? Math.floor(100 * rawDone / p.totals.rawUnits) : 100;
+                    const used = Array.from(pl.held.entries()).sort((a, b) => b[1] - a[1]);
+                    body += `<div class="rp-c4-sum"><span class="rp-c4-meter" title="${num(rawDone)} of ${num(p.totals.rawUnits)} raw units are covered"><i style="width:${pct}%"></i></span>
+                        <span><b>${pct}%</b> of the raw bill covered · <b>${num(pl.totals.rawUnits)}</b> raw units left to gather · <b>${num(pl.totals.crafts)}</b> of ${num(p.totals.crafts)} crafts left · ${fmtTime(pl.time.sequential)} of crafting left</span></div>
+                        ${used.length ? `<div class="rp-c4-used"><span class="k">Used from your cargo</span>${used.map(([name, u]) => `<span class="rp-c4-chip" title="${esc(name)}: ${num(u)} used by this plan">${esc(this.disp(name))} <b>${num(u)}</b></span>`).join('')}</div>` : `<p class="rp-c4-none">Nothing you hold is used by this plan.</p>`}`;
+                }
+                body += `<p class="rp-c4-foot">Counted: the cargo holds of your fleets and the inventory of your claim stakes. Not counted: what is stored in a starbase (the C4 Live read does not include it).</p>`;
+            }
+            return `<section class="rp-c4 ${state}"><h4>My C4 resources</h4>${body}</section>`;
         }
 
         snd(n) { if (window.spaceSounds && window.spaceSounds[n]) window.spaceSounds[n](); }
@@ -193,6 +240,7 @@
                 const go = e.target.closest('[data-go]'); if (go) { this.snd('click'); this.openByName(go.dataset.go); return; }
                 const fit = e.target.closest('[data-fit]'); if (fit && this.graph) { this.graph.fit(); return; }
             });
+            main.addEventListener('change', e => { if (e.target.matches('[data-use-c4]')) { this.c4.use = e.target.checked; try { localStorage.setItem(UKEY, this.c4.use ? '1' : '0'); } catch (x) { /* storage unavailable */ } this.snd(this.c4.use ? 'select' : 'deselect'); this.renderPlan(); } });
             main.addEventListener('change', e => { if (e.target.matches('[data-faction]')) { this.faction = FACTIONS.includes(e.target.value) ? e.target.value : null; this.snd('select'); this.save(); this.renderPlan(); return; } });
             main.addEventListener('change', e => { const q = e.target.closest('[data-qty]'); if (q) { const it = this.items.find(i => this.keyOf(i) === q.dataset.qty); if (it) { it.qty = window.RecipeModel.qty(q.value); q.value = it.qty; this.save(); this.renderPlan(); } } });
         }
@@ -254,7 +302,7 @@
         renderPlan() {
             const main = document.getElementById('rpMain'); if (!main) return;
             if (!this.items.length) {
-                main.innerHTML = `<div class="rp-empty"><h3>Production plan</h3><p>Add recipes from the finder with <b>+</b> and set quantities. The sheet shows every raw to gather, every intermediate to craft in build order, how long it takes, where it can be crafted, and the whole chain in one graph.</p><p class="sb-muted">Try: search <b>Mining Rig</b>, add one, then add a <b>Power Regulation Module</b>.</p></div>`;
+                main.innerHTML = `<div class="rp-empty"><h3>Production plan</h3><p>Add recipes from the finder with <b>+</b> and set quantities. The sheet shows every raw to gather, every intermediate to craft in build order, how long it takes, where it can be crafted, and the whole chain in one graph.</p><p class="sb-muted">Try: search <b>Mining Rig</b>, add one, then add a <b>Power Regulation Module</b>.</p>${this.c4Panel(null, null)}</div>`;
                 return;
             }
             // the numbers, the raw bill and the craft list always total EVERY recipe in the plan (owner, 2026-10-01);
@@ -266,6 +314,14 @@
             const p = this.plan = this.m.plan(this.m.planInputs(this.items, this.faction), opts);
             const pg = this.focus ? this.m.plan(this.m.planInputs(this.items.filter(i => this.keyOf(i) === this.focus), this.faction), opts) : p;
             const rivalOf = new Map(p.rival.map(r => [r.name, r]));
+            // counted against what you hold in C4 (when found and switched on): pl = what is LEFT to gather and craft.
+            // The sheet keeps every row of the whole plan and marks each one covered, part covered or left.
+            const stock = this.c4Stock();
+            const pl = this.planLeft = stock ? this.m.plan(this.m.planInputs(this.items, this.faction), Object.assign({ stock }, opts)) : null;
+            const leftRaw = pl ? new Map(pl.raws.map(r => [r.name, r.qty])) : null;
+            const leftStep = pl ? new Map(pl.crafts.map(c => [c.name + '\u0000' + c.rec.outputId, c])) : null;
+            const rawLeft = r => (leftRaw ? leftRaw.get(r.name) || 0 : r.qty);
+            const stepLeft = c => (leftStep ? leftStep.get(c.name + '\u0000' + c.rec.outputId) || null : c);
             const own = rec => this.m.own(rec);
             const maxRaw = Math.max(1, ...p.raws.map(r => r.qty)), maxCraft = Math.max(1, ...p.crafts.map(c => c.time));
             const fe = this.focus ? this.items.find(i => this.keyOf(i) === this.focus) : null, focused = fe ? this.m.byId.get(fe.id) : null;
@@ -286,6 +342,7 @@
                         <div class="an-stat ${p.totals.stakeless ? 'warn' : ''}"><b>${num(p.totals.stakeless)}</b><span>raws no claim stake can mine</span></div>
                     </div>
                     ${this.routeLine(p)}
+                    ${this.c4Panel(p, pl)}
                     <section class="rx-graph-wrap">
                         <div class="rx-panel-head"><h3>${focused ? esc(focused.baseName) + ' chain' : 'The whole chain'}</h3><span>${num(pg.nodes.size)} resources, ${num(pg.edges.length)} links · quantities on the links are totals${focused ? ' for this recipe at its quantity' : ' for this plan'} · drag to pan, wheel to zoom, hover to trace, click to open</span><button type="button" class="sb-btn ghost" data-fit>Fit</button></div>
                         <div class="rx-graph" id="rpGraph"></div>
@@ -293,25 +350,42 @@
                     <div class="rp-sheet">
                         <section class="rx-panel">
                             <div class="rx-panel-head"><h3>Raw bill</h3><span>${num(p.totals.rawKinds)} deposits to gather${p.totals.stakeless ? ` · <em class="warn">${p.totals.stakeless} no claim stake can mine</em>` : ''}</span></div>
-                            <div class="ch">${p.raws.map(r => { const rv = rivalOf.get(r.name); return `<div class="ch-row${rv ? ' rp-rival' : ''}"><button type="button" class="ch-lbl rx-link" data-go="${esc(r.name)}" title="${esc(r.name)}${rv ? ` - ${rv.owner} exclusive raw` : ''}">${r.res ? `<i class="t t${r.res.tier}">T${r.res.tier}</i>` : ''}${esc(r.name)}${rv ? `<em>${rv.owner}</em>` : ''}</button><div class="ch-bar"><b style="width:${(100 * r.qty / maxRaw).toFixed(1)}%;background:${r.fleet ? '#ffd36b' : '#dd7429'}"><span class="ct">${esc(r.name)}: ${num(r.qty)} units · ${r.stake ? 'claim-stake extractor' : r.beltOnly ? 'belts only, fleet mining' : r.fleet ? 'no extractor kit, fleet mining' : 'not a mapped deposit'}${rv ? ` · ${rv.owner} exclusive` : ''}</span></b></div><span class="ch-val">${num(r.qty)}</span></div>`; }).join('')}</div>
-                            <div class="ch-key" style="margin-top:0.6rem"><span><i style="background:#dd7429"></i>claim-stake extractor</span><span><i style="background:#ffd36b"></i>fleet mining only</span></div>
+                            <div class="ch">${p.raws.map(r => { const rv = rivalOf.get(r.name); if (pl) return this.rawRowLeft(r, rv, rawLeft(r), stock.get(r.name) || 0, pl.held.get(r.name) || 0, maxRaw); return `<div class="ch-row${rv ? ' rp-rival' : ''}"><button type="button" class="ch-lbl rx-link" data-go="${esc(r.name)}" title="${esc(r.name)}${rv ? ` - ${rv.owner} exclusive raw` : ''}">${r.res ? `<i class="t t${r.res.tier}">T${r.res.tier}</i>` : ''}${esc(r.name)}${rv ? `<em>${rv.owner}</em>` : ''}</button><div class="ch-bar"><b style="width:${(100 * r.qty / maxRaw).toFixed(1)}%;background:${r.fleet ? '#ffd36b' : '#dd7429'}"><span class="ct">${esc(r.name)}: ${num(r.qty)} units · ${r.stake ? 'claim-stake extractor' : r.beltOnly ? 'belts only, fleet mining' : r.fleet ? 'no extractor kit, fleet mining' : 'not a mapped deposit'}${rv ? ` · ${rv.owner} exclusive` : ''}</span></b></div><span class="ch-val">${num(r.qty)}</span></div>`; }).join('')}</div>
+                            <div class="ch-key" style="margin-top:0.6rem"><span><i style="background:#dd7429"></i>claim-stake extractor</span><span><i style="background:#ffd36b"></i>fleet mining only</span>${pl ? '<span><i style="background:#3fd08a"></i>covered by what you hold</span>' : ''}</div>
                         </section>
                         <section class="rx-panel">
                             <div class="rx-panel-head"><h3>Craft list · build order</h3><span>deepest first; crafts = units ÷ output per craft, rounded up; time = crafts × build time</span></div>
-                            <div class="rp-crafts">${p.crafts.map(c => { const o = own(c.rec), lbl = this.m.wayLabel(o); return `<div class="rp-craft${c.switched ? ' alt' : ''}"><span class="d">${c.depth}</span><button type="button" class="nm rx-link" data-open="${esc(c.rec.outputId)}" title="${esc(o.outputName)}${c.switched ? ` - the ${esc(lbl)} way, used instead of the standard one` : ''}${c.split ? ' - this plan makes this item more than one way: one row per way' : ''}${c.foreign ? ` - only ${esc(o.fac.join('/'))} may craft this step` : ''}">${(c.res || this.m.resOf(c.name)) ? `<i class="t t${(c.res || this.m.resOf(c.name)).tier}">T${(c.res || this.m.resOf(c.name)).tier}</i>` : ''}${esc(this.disp(c.name))}${o.isAlternative ? tagChips(o) : (lbl !== 'Standard' || c.split) ? this.wayChip(o) : ''}${c.foreign ? `<em class="rp-foreign">${esc(own(c.rec).fac.join('/'))} only</em>` : ''}</button><span class="n">&times;${num(c.crafts)}<small>${num(c.units)} units</small></span><span class="bar"><b style="width:${(100 * c.time / maxCraft).toFixed(1)}%"></b></span><span class="n">${fmtTime(c.time)}<small>${fmtTime(c.each)} each</small></span></div>`; }).join('')}</div>
+                            <div class="rp-crafts">${p.crafts.map(c => { const o = own(c.rec), lbl = this.m.wayLabel(o); const L = stepLeft(c), inHand = pl ? pl.held.get(c.name) || 0 : 0; if (pl) c = Object.assign({}, c, { leftCrafts: L ? L.crafts : 0, leftTime: L ? L.time : 0, inHand }); return `<div class="rp-craft${c.switched ? ' alt' : ''}${pl ? (c.leftCrafts ? (c.leftCrafts < c.crafts ? ' rp-part' : '') : ' rp-done') : ''}"><span class="d">${c.depth}</span><button type="button" class="nm rx-link" data-open="${esc(c.rec.outputId)}" title="${esc(o.outputName)}${c.switched ? ` - the ${esc(lbl)} way, used instead of the standard one` : ''}${c.split ? ' - this plan makes this item more than one way: one row per way' : ''}${c.foreign ? ` - only ${esc(o.fac.join('/'))} may craft this step` : ''}">${(c.res || this.m.resOf(c.name)) ? `<i class="t t${(c.res || this.m.resOf(c.name)).tier}">T${(c.res || this.m.resOf(c.name)).tier}</i>` : ''}${esc(this.disp(c.name))}${o.isAlternative ? tagChips(o) : (lbl !== 'Standard' || c.split) ? this.wayChip(o) : ''}${c.foreign ? `<em class="rp-foreign">${esc(own(c.rec).fac.join('/'))} only</em>` : ''}</button>${pl ? `<span class="n" title="${c.leftCrafts ? `${num(c.leftCrafts)} of ${num(c.crafts)} crafts left` : 'Nothing left to craft: covered by what you hold'}${c.inHand ? ` - ${num(c.inHand)} units of it taken from your cargo` : ''}">${c.leftCrafts ? `&times;${num(c.leftCrafts)}` : '✓'}<small>${c.leftCrafts ? `of ${num(c.crafts)} left` : 'covered'}${c.inHand ? ` · ${num(c.inHand)} held` : ''}</small></span>` : `<span class="n">&times;${num(c.crafts)}<small>${num(c.units)} units</small></span>`}<span class="bar"><b style="width:${(100 * (pl ? c.leftTime : c.time) / maxCraft).toFixed(1)}%"></b></span><span class="n">${fmtTime(pl ? c.leftTime : c.time)}<small>${fmtTime(c.each)} each</small></span></div>`; }).join('')}</div>
                             <p class="sb-foot">Build times are the export's <i>constructionTime</i> read as seconds. Critical path = the longest chain of build times from a raw to an output with every craft running in parallel; the sequential figure adds every craft up.</p>
                         </section>
                         ${this.planResearchPanel(this.m.planInputs(this.items, this.faction))}
                     </div>
                 </div>`;
+            // the tree's boxes when the plan is counted against what you hold: each box carries a bar filled to the
+            // share of that item the plan no longer has to gather or craft (plg = the plan the graph shows, netted)
+            const plg = pl ? (this.focus ? this.m.plan(this.m.planInputs(this.items.filter(i => this.keyOf(i) === this.focus), this.faction), Object.assign({ stock }, opts)) : pl) : null;
+            const unitsOf = (plan, name) => { const cs = plan.crafts.filter(c => c.name === name); if (cs.length) return cs.reduce((a, c) => a + c.units, 0); const r = plan.raws.find(x => x.name === name); return r ? r.qty : 0; };
+            const shareOf = name => { if (!plg) return null; const need = unitsOf(pg, name); return need > 0 ? 1 - Math.min(need, unitsOf(plg, name)) / need : null; };
+            this.shareOf = shareOf;
             const host = document.getElementById('rpGraph');
             this.graph = new ChainGraph(host, {
+                progress: plg ? n => (n.data && n.data.cat === 'plan' ? null : shareOf(n.name)) : null,
+                title: plg ? n => { const s = shareOf(n.name); return s == null ? n.name : `${n.name}: ${Math.floor(s * 100)}% covered by what you hold${plg.held.get(n.name) ? ` (${num(plg.held.get(n.name))} taken from your cargo)` : ''}`; } : null,
                 onOpen: name => this.openByName(name), sound: n => this.snd(n), hitTest: true,   // without hitTest no node click arrives (pointer capture)
                 label: n => { const us = pg.crafts.filter(c => c.name === n.name), u = us.length ? { crafts: us.reduce((a, c) => a + c.crafts, 0), units: us.reduce((a, c) => a + c.units, 0) } : null; const units = pg.raws.find(r => r.name === n.name); return n.data && n.data.cat === 'plan' ? `${pg.items.length} recipes` : (u ? `×${num(u.crafts)} crafts · ${num(u.units)} units` : units ? `${num(units.qty)} units · raw` : (n.res ? `T${n.res.tier} · ${CAT[n.res.category] ? CAT[n.res.category].label : ''}` : '')); },
                 display: name => this.disp(name),   // a tagged node shows its item's name; the key (and hover title) keeps the tag
                 edgeLabel: e => `${e.from} needs ${e.to}: ${num(e.quantity)} units (${e.per} per craft)`
             });
             this.graph.draw(this.displayDag(this.m.planDag(pg)));
+        }
+
+        // one raw-bill row when the plan is counted against what you hold: the bar's green part is the share that no
+        // longer has to be gathered (held as that raw, or not needed because an item made from it is held)
+        rawRowLeft(r, rv, left, have, used, maxRaw) {
+            const done = r.qty - left, share = r.qty ? 100 * done / r.qty : 100;
+            const how = `${r.stake ? 'claim-stake extractor' : r.beltOnly ? 'belts only, fleet mining' : r.fleet ? 'no extractor kit, fleet mining' : 'not a mapped deposit'}${rv ? ` · ${rv.owner} exclusive` : ''}`;
+            const tip = `${esc(r.name)}: the plan needs ${num(r.qty)} units · ${num(left)} left to gather${used ? ` · ${num(used)} taken from the ${num(have)} you hold` : have ? ` · you hold ${num(have)}` : ''}${done - used > 0 ? ` · ${num(done - used)} not needed because you hold items made from it` : ''} · ${how}`;
+            return `<div class="ch-row${rv ? ' rp-rival' : ''}${left ? (done ? ' rp-part' : '') : ' rp-done'}"><button type="button" class="ch-lbl rx-link" data-go="${esc(r.name)}" title="${esc(r.name)}${rv ? ` - ${rv.owner} exclusive raw` : ''}">${r.res ? `<i class="t t${r.res.tier}">T${r.res.tier}</i>` : ''}${esc(r.name)}${rv ? `<em>${rv.owner}</em>` : ''}</button><div class="ch-bar"><b style="width:${(100 * r.qty / maxRaw).toFixed(1)}%;background:${r.fleet ? '#ffd36b' : '#dd7429'}"><i class="rp-have" style="width:${share.toFixed(1)}%"></i><span class="ct">${tip}</span></b></div><span class="ch-val rp-left" title="${tip}">${left ? num(left) : '✓'}<small>${left ? `of ${num(r.qty)}` : 'covered'}</small></span></div>`;
         }
 
         // a copy of a DAG whose tagged nodes carry their base item's resource (colour, tier, icon); the model's
