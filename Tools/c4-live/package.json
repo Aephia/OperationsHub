@@ -4,12 +4,14 @@
   "type": "module",
   "description": "Hourly z.ink (SAGE C4) collector for the OperationsHub C4 Live tab. Own lockfile; install with npm ci --ignore-scripts.",
   "//override": "7-day age rule overridden for @aephia/atlas-kit 0.6.1 by owner on 2026-11-06: vetted (Apache-2.0, Aephia/atlas-kit repo, publisher also maintains @staratlas/dev-sage, no install scripts). Every >=7-day-old version is a 'next' prerelease. Overridden again for 0.7.0 (published 2026-11-18) by owner on 2026-11-21: same licence, repo and dependencies, no install scripts, lockfile integrity matches the registry. 0.7.0 still pins @staratlas/dev-sage 0.55.0, which cannot read the game deployed 2026-11-21 (zero fleets, INVALID_DISCRIMINATOR on the game account); forcing dev-sage 0.56.0 under it fails fleet decoding (ACCOUNT_DECODE_FAILED), so no override is set - wait for a kit release built on newer bindings. SUPERSEDED 2026-11-22 (owner approved): the kit is now a vendored build of the UNRELEASED draft PR Aephia/atlas-kit#1156 (feat/sage-3.2-support, commit 6011d71fb2b0e33cbd1fd47e5fbd0ff113fb1eb9, SAGE C4 3.2 on @staratlas/dev-sage 0.56.0, published 2026-11-16, 7-day rule overridden). Built locally from that commit: pnpm install --frozen-lockfile --ignore-scripts, tsc -p tsconfig.json --types node, pnpm pack; sha256 a0bcfacb3149829a1820ceafd62226332c9c52f708b0a3c770ffc007100e601a. Only reads are used. Go back to a registry version as soon as a kit release ships the 0.56 bindings, and delete vendor/.",
+  "//compat": "TEMPORARY (2026-11-26): compat.mjs rewrites two account forms the kit cannot read yet (fleet state 8, claim stake SAGEMXP block). After ANY kit update run `npm run probe:compat`; when it prints NOT NEEDED ANY MORE, remove compat.mjs as its header says and use the kit alone.",
   "scripts": {
     "collect": "node collector.mjs",
     "collect:once": "node collector.mjs --once",
     "check": "node ../../Test/c4-collector-check.js",
     "check:offline": "node ../../Test/c4-collector-check.js --offline",
     "probe:holdings": "node probe-holdings.mjs",
+    "probe:compat": "node probe-compat.mjs",
     "config-snapshot": "node config-snapshot.mjs",
     "config-summary": "node config-summary.mjs"
   },

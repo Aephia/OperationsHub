@@ -149,8 +149,10 @@ async function main() {
   await shareChecks();
   await msrpChecks();
   await unreadChecks();
+  await compatChecks();
 
   if (OFFLINE) return;
+  await compatLiveChecks();
 
   // ---- 5. live decoders vs independent decoders -------------------------------------------------
   console.log('\n[5] live: PlayerName + Profile decode vs the official decoders');
@@ -870,7 +872,7 @@ async function shareSuite(file) {
     a = mk(); await a.tx(q('a', 'ADDR', { encoding: 'base64' })); a.t = 1599; await a.tx(q('b', 'ADDR', { encoding: 'base64' })); r.ttlInside = a.calls; a.t = 1600; await a.tx(q('c', 'ADDR', { encoding: 'base64' })); r.ttlAfter = a.calls;
     // collect() empties the share before it opens its RPC (read from the source: the pass itself needs the network)
     const body = src.slice(src.indexOf('export async function collect('));
-    const iClear = body.indexOf('SHARED.clear()'), iRpc = body.indexOf('const rpc = sharedRpc(unread);');
+    const iClear = body.indexOf('SHARED.clear()'), iRpc = body.indexOf('const rpc = sharedRpc(unread, compat);');
     // the chain-version probe's RPC is built without the share
     r.probePlain = /export const openRpc = \(\) => createSolanaRpcFromTransport\(createDefaultRpcTransport\(\{ url: RPC_URL \}\)\);/.test(src);
     r.clearsFirst = iClear >= 0 && iRpc > iClear && iRpc - iClear < 400;
@@ -1001,6 +1003,179 @@ async function unreadChecks() {
   const UI = require(path.join(path.dirname(COLLECTOR), '..', '..', 'C4Live', 'c4-ui-model.js'));
   const notes = UI.qualityNotes({ unreadFleets: 115, unreadStakes: 1 });
   ok(notes.length === 2 && /^115 fleets are in a state/.test(notes[0]) && /^1 claim stake is in a form/.test(notes[1]) && UI.qualityNotes({}).length === 0, 'the page states how many fleets and stakes are left out, and nothing when none are');
+}
+// ---- [compat] TEMPORARY, goes with Tools/c4-live/compat.mjs: two account forms rewritten for the kit ----------------
+// Remove this section, compatLiveChecks() and Test/fixtures/c4-compat-accounts.json when compat.mjs is removed.
+// The fixture holds six REAL accounts read from z.ink. The expectations are read from the raw bytes here, with this
+// file's own offsets, and compared with what the game bindings decode from the rewritten account.
+const COMPAT_FILE = path.join(KIT_DIR, 'compat.mjs');
+const COMPAT_CASES = [
+  ['positive control: the bindings refuse both fleets in the new mining state as the chain sends them, and read the other fixtures', (r) => r.rawRefused === 2 && r.rawRead === 4],
+  ['a fleet in the new mining state with 1 resource is read by the bindings as a mining fleet after the rewrite', (r) => r.one.kind === 'MineAsteroid' && r.one.n === 1 && r.one.end === true],
+  ['its asteroid, four numbers and resource id are the ones in the raw bytes', (r) => r.one.same === true && r.one.ids.join() === '306'],
+  ['a fleet with 8 resources: same asteroid, numbers and all 8 ids in order', (r) => r.many.kind === 'MineAsteroid' && r.many.n === 8 && r.many.same === true && r.many.end === true && r.many.ids.join() === '301,303,309,319,362,363,369,380'],
+  ['everything before the state is byte for byte the same, and the rewritten account is exactly as long as the old state needs', (r) => r.one.prefixSame && r.many.prefixSame && r.one.len === r.one.at + 69 + 2 && r.many.len === r.many.at + 69 + 16],
+  ['a fleet in the old mining state, an idle fleet and a claim stake without the block are handed on untouched', (r) => r.untouched === 3],
+  ['a claim stake with the block loses exactly its last 24 bytes and the bindings read the rest to its end', (r) => r.stake.cut === 24 && r.stake.headSame && r.stake.end === true],
+  ['all three account reads are translated: list, several accounts, one account', (r) => r.methods.list === 3 && r.methods.multi === 2 && r.methods.one === 1],
+  ['the list answer with a context wrapper is translated too', (r) => r.methods.wrapped === 3],
+  ['the pass counts each translated account once, under its own address', (r) => r.seen.fleets === 'A1,F1,FM,L1,M1' && r.seen.stakes === 'MS,S1'],
+  ['a fleet whose new fields are not zero is counted as flagged, and only that one', (r) => r.lossySeen === true && r.seen.lossy === 'L1'],
+  ['an account missing from a several-accounts answer stays missing, and the answer keeps its other fields', (r) => r.multiNull === true && r.keeps === true],
+  ['the answer handed in is not changed', (r) => r.inputIntact === true],
+  ['the size field follows the rewritten data', (r) => r.space === true],
+  ['a read of a slice of an account is not touched', (r) => r.slice === true],
+  ['an error answer, another method and another encoding are not touched', (r) => r.others === 3],
+  ['the request starts in the caller\'s own tick', (r) => r.syncCalls === 1],
+  ['not exact, not translated: a resource count that disagrees with the account length', (r) => r.badCount === true],
+  ['not exact, not translated: a look-alike the bindings refuse even after the rewrite', (r) => r.badPrefix === true],
+  ['not exact, not translated: a claim stake whose last bytes are not the block', (r) => r.badMark === true],
+  ['not exact, not translated: a block that does not start where the known layout ends', (r) => r.badGap === true],
+  ['not exact, not translated: an account that ends in the block but is not a claim stake', (r) => r.badDisc === true],
+  ['a fleet whose new state fields are not all zero is translated and flagged', (r) => r.lossyExtra === true && r.lossyRes === true],
+  ['a claim stake block with a number in it is not flagged; one with another version is', (r) => r.stakeNumber === false && r.stakeVersion === true],
+];
+const COMPAT_MUTANTS = [
+  ['compat: the old state tag is not written', 'out[at] = OLD_MINING_STATE;', ''],
+  ['compat: resource ids are read two bytes late', 'dv.getUint16(p, true), true);', 'dv.getUint16(p + 2, true), true);'],
+  ['compat: the resource count is written one byte early', 'ov.setUint32(at + 1 + STATE_HEAD, n, true);', 'ov.setUint32(at + STATE_HEAD, n, true);'],
+  ['compat: the rewritten fleet is not checked against the bindings', "if (!back || back[1] !== out.length || back[0].state?.__kind !== 'MineAsteroid') continue;", ''],
+  ['compat: the resource count is not compared', '|| dv.getUint32(at + fixed - 4, true) !== n) continue;', ') continue;'],
+  ['compat: any last 24 bytes are cut off a claim stake', '|| !startsWith(d, STAKE_MARK, at)) return null;', ') return null;'],
+  ['compat: the block need not start where the layout ends', 'if (!read || read[1] !== at) return null;', 'if (!read) return null;'],
+  ['compat: the block is cut one byte short', 'return { data: d.subarray(0, at), lossy:', 'return { data: d.subarray(0, at + 1), lossy:'],
+  ['compat: a slice read is translated', "|| (p[1] && typeof p[1] === 'object' && p[1].dataSlice)) return v;", ') return v;'],
+  ['compat: a several-accounts answer is not translated', "if (m === 'getMultipleAccounts' &&", "if (m === 'getMultipleAccountsX' &&"],
+  ['compat: a one-account answer is not translated', "if (m === 'getAccountInfo' &&", "if (m === 'getAccountInfoX' &&"],
+  ['compat: a list answer is not translated', "if (m === 'getProgramAccounts') {", "if (m === 'getProgramAccountsX') {"],
+  ['compat: non-zero new state fields are not flagged', 'let lossy = !allZero(d, at + 1 + STATE_HEAD, at + fixed - 4);', 'let lossy = false;'],
+  ['compat: non-zero per-resource fields are not flagged', 'if (!allZero(d, p + 2, p + RES_NEW)) lossy = true;', ''],
+  ['compat: a changed block version is not flagged', 'lossy: d[at + STAKE_MARK.length] !== 1 };', 'lossy: false };'],
+  ['compat: the request starts a tick late', 'const v = await inner(req); //', 'await null; const v = await inner(req); //'],
+  ['compat: the size field keeps the old length', "if (typeof acc.space === 'bigint') out.space = BigInt(got.data.length);", "if (typeof acc.space === 'bigint') out.space = acc.space;"],
+  ['compat: translated accounts are not counted', "if (typeof address === 'string') {", 'if (false) {'],
+  ['compat: a flagged account is not counted as flagged', 'if (got.lossy) seen.lossy.add(address);', ''],
+  ['compat: every account of a several-accounts answer is counted under the first address', 'translateAccount(a, keys[i], seen)', 'translateAccount(a, keys[0], seen)'],
+  ['compat: the claim stake check is skipped', '!startsWith(d, CLAIM_STAKE_INSTANCE_DISCRIMINATOR) || ', ''],
+  ['compat: only fleets are looked at', 'if (head !== FLEET_HEAD && head !== STAKE_HEAD) return acc;', 'if (head !== FLEET_HEAD) return acc;'],
+  ['compat: an encoding other than base64 is translated', "|| acc.data[1] !== 'base64' ||", '||'],
+];
+let compatImport = 0;
+async function compatSuite(file) {
+  const failed = [];
+  const r = {};
+  try {
+    const M = await import(pathToFileURL(file).href + '?compat=' + (++compatImport));
+    const S = await import(pathToFileURL(path.join(KIT_DIR, 'node_modules', '@staratlas', 'dev-sage', 'dist', 'dist.es.js')).href);
+    const kit = await import(pathToFileURL(path.join(KIT_DIR, 'node_modules', '@solana', 'kit', 'dist', 'index.node.mjs')).href);
+    const FX = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'c4-compat-accounts.json'), 'utf8'));
+    const raw = (kind) => Buffer.from(FX.accounts.find((a) => a.kind === kind).data, 'base64');
+    const fd = S.getFleetDecoder(), sd = S.getClaimStakeInstanceDecoder(), ad = kit.getAddressDecoder();
+    const reads = (dec, d) => { try { return dec.read(d, 0); } catch { return null; } };
+    const KINDS = ['fleet-new-mining-1', 'fleet-new-mining-many', 'fleet-old-mining', 'fleet-idle', 'stake-with-block', 'stake-plain'];
+    r.rawRefused = ['fleet-new-mining-1', 'fleet-new-mining-many'].filter((k) => !reads(fd, raw(k))).length;
+    r.rawRead = ['fleet-old-mining', 'fleet-idle'].filter((k) => reads(fd, raw(k))).length + ['stake-with-block', 'stake-plain'].filter((k) => reads(sd, raw(k))).length;
+    // this file's own reading of the new state, from the END of the account: tag, 64 bytes, 16 bytes, count, n x 18
+    const stateAt = (d, n) => d.length - (85 + 18 * n);
+    const fleetCase = (kind, n) => {
+      const d = raw(kind), at = stateAt(d, n), t = M.translateFleet(d);
+      if (!t) return { kind: 'not translated' };
+      const out = Buffer.from(t.data), back = reads(fd, out), st = back && back[0].state.fields[0];
+      const ids = Array.from({ length: n }, (_, i) => d.readUInt16LE(at + 85 + 18 * i));
+      const same = !!st && d[at] === 8 && d.readUInt32LE(at + 81) === n && st.asteroid === ad.decode(d.subarray(at + 1, at + 33))
+        && st.minedStorageUnits === d.readBigUInt64LE(at + 37) && st.exitFuelCeiling === d.readBigUInt64LE(at + 45) && st.cargoCapacity === d.readBigUInt64LE(at + 53)
+        && st.progressionGainPpb === d.readUInt32LE(at + 61) && st.resources.map(Number).join() === ids.join() && ids.every((x, i) => x > 0 && (i === 0 || x > ids[i - 1]));
+      return { kind: back ? back[0].state.__kind : 'refused', n: st ? st.resources.length : -1, end: !!back && back[1] === out.length, same, ids, at, len: out.length, prefixSame: out.subarray(0, at).equals(d.subarray(0, at)), lossy: t.lossy };
+    };
+    r.one = fleetCase('fleet-new-mining-1', 1);
+    r.many = fleetCase('fleet-new-mining-many', 8);
+    r.untouched = [M.translateFleet(raw('fleet-old-mining')), M.translateFleet(raw('fleet-idle')), M.translateStake(raw('stake-plain'))].filter((x) => x === null).length;
+    { const d = raw('stake-with-block'), t = M.translateStake(d), out = t ? Buffer.from(t.data) : Buffer.alloc(0), back = reads(sd, out);
+      r.stake = { cut: d.length - out.length, headSame: out.equals(d.subarray(0, out.length)), end: !!back && back[1] === out.length }; }
+    // through the transport
+    // whole numbers are bigint here, as @solana/kit's transport hands them over (lamports, space, slot)
+    const acc = (kind, extra) => ({ data: [raw(kind).toString('base64'), 'base64'], executable: false, lamports: 5n, owner: SAGE_PROGRAM, space: BigInt(raw(kind).length), ...extra });
+    const text = (v) => JSON.stringify(v, (k, x) => (typeof x === 'bigint' ? `${x}n` : x));
+    const lossyFleet = () => { const d = raw('fleet-new-mining-1'); d[stateAt(d, 1) + 70] = 1; return acc('fleet-new-mining-1', { data: [d.toString('base64'), 'base64'] }); };
+    const ADDR = { 'fleet-new-mining-1': 'F1', 'fleet-new-mining-many': 'FM', 'fleet-old-mining': 'FO', 'fleet-idle': 'FI', 'stake-with-block': 'S1', 'stake-plain': 'SP' };
+    const listOf = () => KINDS.map((k) => ({ pubkey: ADDR[k], account: acc(k) }));
+    const changed = (a, kind) => a.data[0] !== raw(kind).toString('base64');
+    const seen = M.newCompat(); let calls = 0;
+    const answers = {
+      getProgramAccounts: () => listOf(),
+      getMultipleAccounts: () => ({ context: { slot: 9n }, value: [acc('fleet-new-mining-1'), null, acc('stake-with-block'), acc('fleet-idle')] }),
+      getAccountInfo: (p) => ({ context: { slot: 9n }, value: p[0] === 'L1' ? lossyFleet() : acc('fleet-new-mining-many') }),
+    };
+    const inner = async (req) => { calls++; return { jsonrpc: '2.0', id: req.payload.id, result: answers[req.payload.method](req.payload.params) }; };
+    const tx = M.compatTransport(inner, seen);
+    const q = (method, params) => ({ payload: { jsonrpc: '2.0', id: 'q1', method, params } });
+    { const pending = tx(q('getProgramAccounts', ['PROG', { encoding: 'base64' }])); r.syncCalls = calls; const v = await pending;
+      r.methods = { list: v.result.filter((a, i) => changed(a.account, KINDS[i])).length };
+      r.keeps = v.id === 'q1' && v.jsonrpc === '2.0' && v.result.length === 6 && v.result[0].pubkey === 'F1' && v.result[0].account.lamports === 5n && v.result[0].account.owner === SAGE_PROGRAM;
+      r.space = v.result[0].account.space === BigInt(Buffer.from(v.result[0].account.data[0], 'base64').length) && v.result[0].account.space < BigInt(raw('fleet-new-mining-1').length) && v.result[3].account.space === BigInt(raw('fleet-idle').length); }
+    // each read uses its own addresses, so a count under the wrong address shows
+    { const v = await tx(q('getMultipleAccounts', [['M1', 'GONE', 'MS', 'MI'], { encoding: 'base64' }]));
+      r.methods.multi = [changed(v.result.value[0], 'fleet-new-mining-1'), changed(v.result.value[2], 'stake-with-block')].filter(Boolean).length;
+      r.multiNull = v.result.value[1] === null && v.result.value.length === 4 && !changed(v.result.value[3], 'fleet-idle') && v.result.context.slot === 9n; }
+    { const v = await tx(q('getAccountInfo', ['A1', { encoding: 'base64' }])); r.methods.one = changed(v.result.value, 'fleet-new-mining-many') ? 1 : 0; }
+    { const v = await tx(q('getAccountInfo', ['L1', { encoding: 'base64' }])); r.lossySeen = changed(v.result.value, 'fleet-new-mining-1'); }
+    { const given = { jsonrpc: '2.0', id: 'x', result: { context: { slot: 9n }, value: listOf() } }, before = text(given);
+      const v = await M.compatTransport(async () => given, seen)(q('getProgramAccounts', ['PROG', { encoding: 'base64', withContext: true }]));
+      r.methods.wrapped = v.result.value.filter((a, i) => changed(a.account, KINDS[i])).length; r.inputIntact = text(given) === before && v !== given; }
+    r.seen = { fleets: [...seen.fleets].sort().join(), stakes: [...seen.stakes].sort().join(), lossy: [...seen.lossy].sort().join() };
+    { const v = await tx(q('getAccountInfo', ['FM', { encoding: 'base64', dataSlice: { offset: 0, length: 2000 } }])); r.slice = !changed(v.result.value, 'fleet-new-mining-many'); }
+    { const err = { jsonrpc: '2.0', id: 'e', error: { code: -32005, message: 'rate limited' } };
+      const a = await M.compatTransport(async () => err, M.newCompat())(q('getAccountInfo', ['FM', { encoding: 'base64' }]));
+      const slot = { jsonrpc: '2.0', id: 's', result: { context: { slot: 9n }, value: acc('fleet-new-mining-many') } };
+      const b = await M.compatTransport(async () => slot, M.newCompat())(q('getBalance', ['FM']));
+      const z = { jsonrpc: '2.0', id: 'z', result: { context: { slot: 9n }, value: acc('fleet-new-mining-many', { data: [raw('fleet-new-mining-many').toString('base64'), 'base64+zstd'] }) } };
+      const c = await M.compatTransport(async () => z, M.newCompat())(q('getAccountInfo', ['FM', { encoding: 'base64+zstd' }]));
+      r.others = [a === err, b === slot, !changed(c.result.value, 'fleet-new-mining-many')].filter(Boolean).length; }
+    // not exact -> not translated
+    { const d = raw('fleet-new-mining-1'), at = stateAt(d, 1); d.writeUInt32LE(2, at + 81); r.badCount = M.translateFleet(d) === null; }
+    { const d = raw('fleet-new-mining-1'); d[138] = 250; r.badPrefix = reads(fd, raw('fleet-idle')) !== null && (() => { const i = raw('fleet-idle'); i[138] = 250; return reads(fd, i) === null; })() && M.translateFleet(d) === null; }
+    { const d = raw('stake-with-block'); d[d.length - 18] = 0x51; r.badMark = M.translateStake(d) === null; }
+    { const d = raw('stake-with-block'); d[0] ^= 1; r.badDisc = reads(sd, d) !== null && M.translateStake(d) === null; }
+    { const d = raw('stake-with-block'), g = Buffer.concat([d.subarray(0, d.length - 24), Buffer.from([0]), d.subarray(d.length - 24)]); r.badGap = reads(sd, g) !== null && M.translateStake(g) === null; }
+    // flagged
+    { const d = raw('fleet-new-mining-1'), at = stateAt(d, 1); d[at + 70] = 1; const t = M.translateFleet(d); r.lossyExtra = !!t && t.lossy === true && r.one.lossy === false; }
+    { const d = raw('fleet-new-mining-many'), at = stateAt(d, 8); d[at + 85 + 18 * 7 + 9] = 1; const t = M.translateFleet(d); r.lossyRes = !!t && t.lossy === true && r.many.lossy === false; }
+    { const d = raw('stake-with-block'); d[d.length - 9] = 21; const t = M.translateStake(d); r.stakeNumber = t ? t.lossy : null;
+      const e = raw('stake-with-block'); e[e.length - 17] = 2; const u = M.translateStake(e); r.stakeVersion = u ? u.lossy : null; }
+  } catch (e) { return ['threw: ' + e.message]; }
+  for (const [n, pred] of COMPAT_CASES) { let good; try { good = pred(r); } catch { good = false; } if (!good) failed.push(n); }
+  return failed;
+}
+async function compatChecks() {
+  console.log('\n[compat] TEMPORARY: accounts the kit cannot read yet are rewritten for it (Tools/c4-live/compat.mjs)');
+  const realFailed = await compatSuite(COMPAT_FILE);
+  for (const [n] of COMPAT_CASES) ok(!realFailed.includes(n), 'compat: ' + n);
+  for (const n of realFailed) if (!COMPAT_CASES.some(([c]) => c === n)) ok(false, 'compat: ' + n);
+  const src = fs.readFileSync(COMPAT_FILE, 'utf8');
+  for (const [label, from, to] of COMPAT_MUTANTS) {
+    const at = src.indexOf(from);
+    if (at < 0 || src.indexOf(from, at + 1) >= 0) { ok(false, `mutant "${label}": target text ${at < 0 ? 'not found' : 'found more than once'} in compat.mjs`); continue; }
+    const mf = path.join(KIT_DIR, `.mutant-compat-${process.pid}.mjs`);
+    fs.writeFileSync(mf, src.slice(0, at) + to + src.slice(at + from.length));
+    try { mutantFails(label, await compatSuite(mf)); } finally { fs.unlinkSync(mf); }
+  }
+  // the pass is wired to it, and says in its output how many accounts were rewritten
+  const csrc = fs.readFileSync(COLLECTOR, 'utf8');
+  ok(/const t0 = createDefaultRpcTransport\(\{ url: RPC_URL \}\), t = compat \? compatTransport\(t0, compat\) : t0;/.test(csrc) && csrc.includes('const rpc = sharedRpc(unread, compat);'), 'the pass reads through the compat step, innermost (under the skip list and the share)');
+  ok(csrc.includes('quality.compatFleets = compat.fleets.size') && csrc.includes('quality.compatStakes = compat.stakes.size') && csrc.includes('quality.compatLossy = compat.lossy.size'), 'the pass records how many accounts were rewritten (quality.compatFleets / compatStakes / compatLossy)');
+}
+// Live: the installed kit, reading z.ink through the step, refuses nothing. (How many it refuses WITHOUT the step,
+// which is the question "can compat.mjs go yet?", is what node Tools/c4-live/probe-compat.mjs prints.)
+async function compatLiveChecks() {
+  console.log('\n[compat-live] TEMPORARY: the kit reads every fleet and claim stake on z.ink through the compat step');
+  const P = await import(pathToFileURL(path.join(KIT_DIR, 'probe-compat.mjs')).href);
+  let r = null, err = null;
+  try { r = await P.probeCompat({ baseline: false }); } catch (e) { err = e; }
+  ok(!err && r.with.fleets > 100 && r.with.stakes > 20, 'positive control: fleets and claim stakes were read' + (err ? ' (' + (err.code || '') + ' ' + String(err.message).slice(0, 120) + ')' : ` (${r.with.fleets} fleets, ${r.with.stakes} claim stakes)`));
+  if (err) return;
+  ok(r.with.fleetsRefused === 0 && r.with.stakesRefused === 0, `no account is refused (${r.with.fleetsRefused} fleets, ${r.with.stakesRefused} claim stakes)`);
+  ok(r.translated.fleets <= r.with.fleets && r.translated.stakes <= r.with.stakes, `rewritten for the kit: ${r.translated.fleets} fleets, ${r.translated.stakes} claim stakes (0 and 0 = the step can go: run node Tools/c4-live/probe-compat.mjs)`);
+  ok(r.translated.lossy === 0, `no rewritten account carries new fields this step drops unseen (${r.translated.lossy})`);
 }
 async function msrpChecks() {
   console.log('\n[msrp] origination prices from the marketplace list');

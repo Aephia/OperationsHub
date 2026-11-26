@@ -44,6 +44,34 @@ cd packages/sage && corepack pnpm exec tsc -p tsconfig.json --types node && core
 **Go back to a registry version** as soon as a kit release ships the 0.56 bindings: pin it in `package.json`,
 delete `vendor/`, `npm install --ignore-scripts`, rebuild `C4Live/c4-collect.js`, rerun both checks.
 
+## The compat step (2026-11-26, temporary - remove when the kit reads these accounts)
+
+**We read the game through the kit and will go back to only the kit.** `compat.mjs` is a stopgap, not a second
+reader. On 2026-11-25 the game added a fleet state (variant 8, a new mining state) and a 24-byte block
+(`SAGEMXP`) at the end of claim stakes. No release knows them yet (checked 2026-11-25: `@staratlas/dev-sage`
+latest 0.56.0; `@aephia/atlas-kit` up to 0.8.0-next.7 is built on it and refuses the same accounts), and the
+kit's readers are all-or-nothing. On 2026-11-26 the kit refused 208 of 1,152 fleets, exactly the fleets mining
+since the update, and 139 of 270 claim stakes.
+
+`compatTransport()` sits innermost in the pass's RPC and rewrites those two forms into the forms the kit knows
+before the kit sees the bytes: the new mining state becomes the known `MineAsteroid` state with the same
+asteroid, numbers and resource ids; the claim stake loses the trailing block. Everything shown still comes out
+of the kit. An account that does not fit exactly is passed on untouched and is then left out as before
+(`skipTransport` / `discoverReadable`). What is not carried over, and how the layouts were established, is in
+the header of `compat.mjs`. `quality.compatFleets` / `compatStakes` in `latest.json` say how many accounts a pass
+rewrote; `quality.compatLossy` appears when a rewritten account carries new fields that are no longer zero.
+
+**Is it still needed?** `node Tools/c4-live/probe-compat.mjs` reads the chain through the installed kit with and
+without the step (about 3 minutes while many accounts are refused) and ends with `STILL NEEDED` or
+`NOT NEEDED ANY MORE`. Run it after every kit update.
+
+**To remove it** (the header of `compat.mjs` has the same list): update the kit, delete `compat.mjs`,
+`probe-compat.mjs` and the lines marked `COMPAT` in `collector.mjs`, delete the `[compat]` sections of
+`Test/c4-collector-check.js` and `Test/fixtures/c4-compat-accounts.json`, then build, stamp and run the checks.
+
+Measured with the step, 2026-11-26: 1,155 fleets read (209 rewritten), 277 mining states of 277, 270 claim
+stakes (139 rewritten), none left out, pass 41 s.
+
 Measured on the vendored build, 2026-11-22: 217 fleets, 63 owners, 945 systems, 16 claim stakes, 10 stake
 definitions, 3,901 bodies; a pass took 13 s. The pre-reset local copy (2026-11-08, 1,614 fleets) is kept in
 `Data/c4-live/pre-reset-2026-11-08/`.
