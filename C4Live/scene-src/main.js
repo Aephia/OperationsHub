@@ -31,6 +31,8 @@
 //     'pick' {type:'system', id, source:'callout'} since #38); setInsets({left, right, top, bottom, avoid?}) -> effective
 //     insets + avoid. Insets = CSS px covered by docked UI (they move the framing); avoid = [{left, top, right, bottom}]
 //     canvas-relative boxes of floating HUD (no framing change; callouts never overlap them; covered() true inside, #38)
+//   2026-11-26 my profile: setMine([profile, ...]) -> count; those players' fleets and claim stakes are drawn in
+//     MINE_COLOR (model.js) instead of their faction colour, with or without the conquest lens. [] clears it.
 //   2026-11-13 Resource tab: setStatResource(name) -> true picks the resource the 'resource' stat layer draws: one flat
 //     RING on the plane per system holding it (no column), radius + brightness from the sum of its bodies' richness
 //     (M.resourceSystems -> M.resourceRing); colour M.RES_HEX. Needs the bodies (setData's 3rd argument): until they
@@ -80,6 +82,7 @@ const GL_FLEET_COMMON = REL_GLSL + /* glsl */`
 uniform float uNow; uniform float uAnim; uniform float uZoom;
 attribute vec4 iA; attribute vec2 iT; attribute vec3 iC; attribute vec4 iM;
 attribute vec2 iX; // (ship silhouette atlas cell or -1, size-class scale)
+attribute float iY; // 1 = the visitor's own fleet (api.setMine): a larger ringed dot, a ring round the hull
 attribute vec4 iO; // member placement: (orbit r, a0, w, mode); mode 0 = outside any system (iA = from, to)
 int kindOf() { return int(iM.y + 0.5); }
 int modeOf() { return int(iO.w + 0.5); }
@@ -120,7 +123,7 @@ void place(out vec2 c, out vec2 loc, out vec2 hd) {
 
 const FLEET_VS = GL_FLEET_COMMON + /* glsl */`
 uniform float uSil; uniform float uHasAtlas; uniform float uShipBase;
-varying vec2 vP; varying vec3 vCol; varying float vKind; varying float vVis; varying float vSeed; varying float vSil; varying float vCell; varying float vFade;
+varying vec2 vP; varying vec3 vCol; varying float vKind; varying float vVis; varying float vSeed; varying float vSil; varying float vCell; varying float vFade; varying float vMine;
 void main() {
   if (iM.z < 0.001) COLLAPSE
   int k = kindOf(), mode = modeOf();
@@ -142,7 +145,7 @@ void main() {
   if (px < ${M.HULL_PX.collapse.toFixed(2)}) COLLAPSE
   vFade = smoothstep(${M.HULL_PX.collapse.toFixed(2)}, ${M.HULL_PX.full.toFixed(2)}, px); // fades out below HULL_PX.full instead of a floor
   vec2 w = (side * position.x + dir * position.y) * size * 2.0;
-  vP = position.xy * 2.0; vCol = iC; vVis = iM.z; vSeed = iM.w; vSil = sil; vCell = iX.x;
+  vP = position.xy * 2.0; vCol = iC; vVis = iM.z; vSeed = iM.w; vSil = sil; vCell = iX.x; vMine = iY;
   vKind = mode == 2 || mode == 3 ? 4.0 : (mode == 0 && transit(k) && !flying) ? 0.0 : float(k);
   gl_Position = clipOf(viewOf(relOf(c, loc + w)));
 }`;
@@ -150,10 +153,10 @@ void main() {
 // Owner 2026-11-08 (refines c4-ships-world-scale): at true scale a hull needs about 47 wheel notches to appear, so every
 // fleet is also a small faction dot of fixed screen size, handing over to its real hull as the hull grows. Same placement
 // code as FLEET_VS, so a dot is always exactly where its hull is. Dots are not pickable: the overview picks systems.
-const DOT_PX = 3.2, DOT_GONE_PX = [1.5, 4.0];
+const DOT_PX = 3.2, DOT_GONE_PX = [1.5, 4.0], MINE_DOT = 2.6;   // MINE_DOT: how much larger the visitor's own dot is drawn
 const DOT_VS = GL_FLEET_COMMON + /* glsl */`
 uniform float uSil; uniform float uHasAtlas; uniform float uShipBase; uniform float uDots;
-varying vec2 vP; varying vec3 vCol; varying float vA;
+varying vec2 vP; varying vec3 vCol; varying float vA; varying float vMine;
 void main() {
   if (uDots < 0.5 || iM.z < 0.5) COLLAPSE   // filtered-out fleets: a dimmed dot stacks back to full brightness in a pile
   int k = kindOf();
@@ -163,19 +166,22 @@ void main() {
   float ppu = ppuOf(viewOf(relOf(c, loc)));
   vA = min(iM.z, 1.0) * (1.0 - smoothstep(${DOT_GONE_PX[0].toFixed(2)}, ${DOT_GONE_PX[1].toFixed(2)}, size * 2.0 * ppu));
   if (vA < 0.004) COLLAPSE
-  vP = position.xy * 2.0; vCol = iC;
-  gl_Position = clipOf(viewOf(relOf(c, loc + position.xy * ${DOT_PX.toFixed(2)} / ppu)));
+  vP = position.xy * 2.0; vCol = iC; vMine = iY;
+  gl_Position = clipOf(viewOf(relOf(c, loc + position.xy * ${DOT_PX.toFixed(2)} * (iY > 0.5 ? ${MINE_DOT.toFixed(1)} : 1.0) / ppu)));
 }`;
 const DOT_FS = /* glsl */`
-varying vec2 vP; varying vec3 vCol; varying float vA;
+varying vec2 vP; varying vec3 vCol; varying float vA; varying float vMine;
 void main() {
-  float a = smoothstep(1.0, 0.7, length(vP)) * vA;
+  float r = length(vP);
+  // the visitor's own fleet: a full-bright core inside a ring, on a dot MINE_DOT times the size
+  if (vMine > 0.5) { float m = max(smoothstep(0.5, 0.36, r), smoothstep(0.14, 0.02, abs(r - 0.8))) * vA; gl_FragColor = vec4(vCol * m, m); return; }
+  float a = smoothstep(1.0, 0.7, r) * vA;
   gl_FragColor = vec4(vCol * 0.8 * a, a);   // under 1.0 so the bloom pass keeps the faction hue on such a small mark
 }`;
 
 const FLEET_FS = /* glsl */`
 uniform float uAnim; uniform sampler2D uAtlas; uniform float uCols; uniform float uRows;
-varying vec2 vP; varying vec3 vCol; varying float vKind; varying float vVis; varying float vSeed; varying float vSil; varying float vCell; varying float vFade;
+varying vec2 vP; varying vec3 vCol; varying float vKind; varying float vVis; varying float vSeed; varying float vSil; varying float vCell; varying float vFade; varying float vMine;
 void main() {
   vec2 p = vP; float r = length(p); int k = int(vKind + 0.5);
   float d; float gain = 1.0; vec3 col = vCol; float hot = 0.0;
@@ -214,6 +220,8 @@ void main() {
     float ring = smoothstep(0.03, 0.0, abs(r - 0.62)) * (0.55 + 0.45 * sin(uAnim * 4.0));
     c += vec3(0.85, 1.0, 1.0) * ring * 0.55 + col * fill * 0.3;
   }
+  // the visitor's own fleet: a steady ring in its colour (the focus ring above is white and pulses)
+  if (vMine > 0.5) c += vCol * smoothstep(0.04, 0.0, abs(r - 0.76)) * 1.1;
   float v = min(vVis, 1.0) * smoothstep(1.0, 0.82, r);
   // premultiplied 'over': the body (alpha = fill) occludes what is under it, the halo and rings (alpha 0) add light.
   gl_FragColor = vec4(c * v, alpha * v) * vFade;
@@ -947,7 +955,7 @@ function stub(container, reason) {
   msg.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#7fa;font:13px system-ui;opacity:.7';
   container.appendChild(msg);
   const noop = () => {};
-  return {ok: false, reason, setData: () => false, setFilter: noop, focusOwner: () => 0, focusPoint: noop, pulseEvent: noop,
+  return {ok: false, reason, setData: () => false, setMine: () => 0, setFilter: noop, focusOwner: () => 0, focusPoint: noop, pulseEvent: noop,
     focusSystem: () => false, bodyScreen: () => null, setStatLayer: () => false, setStatResource: () => false, setInsets: () => ({left: 0, right: 0, top: 0, bottom: 0}),
     fleetScreen: () => null, fleetPixelSize: () => null, fleetCell: () => null,
     on: () => noop, setLayer: () => false, screenOf: () => null, getStats: () => ({ok: false, reason}), dispose: () => msg.remove()};
@@ -1065,7 +1073,7 @@ function mount(container, opts = {}) {
 
   // instanced layers
   const fleetGeo = quadGeometry(), sysGeo = quadGeometry(), hotGeo = quadGeometry(), pulseGeo = quadGeometry();
-  const FLEET_SPEC = [['iA', 4], ['iT', 2], ['iC', 3], ['iM', 4], ['iX', 2], ['iO', 4]];
+  const FLEET_SPEC = [['iA', 4], ['iT', 2], ['iC', 3], ['iM', 4], ['iX', 2], ['iO', 4], ['iY', 1]];
   // one fleet instancing for every fleet (v10): fleets, dots, trails, routes and mining beams are five draws of it
   const fU = {uNow: U.uNow, uAnim: U.uAnim, uZoom: U.uZoom, uBeamGain: {value: 2.6},
     uSil: U.uSil, uHasAtlas: U.uHasAtlas, uAtlas: U.uAtlas, uCols: U.uCols, uRows: U.uRows, uShipBase: {value: M.SHIP_BASE.galaxy}, uViewH: U.uViewH, uDots: {value: 1}};
@@ -1155,6 +1163,9 @@ function mount(container, opts = {}) {
   const NEUTRAL = M.hexToLinear(CONQ_NEUTRAL);
   // the faction tint, or the neutral grey-blue while the conquest lens is on (fleets, systems, mining rings, pulses)
   const tint = (fa) => (dacState.lens.on ? NEUTRAL : rgb(fa));
+  // the visitor's own player fleets keep their own colour, lens or not (api.setMine)
+  const mine = new Set();
+  const fleetTint = (f) => (!f.npc && mine.has(f.o) ? M.MINE_COLOR : tint(f.fa));
   const tintHex = (fa) => (dacState.lens.on ? CONQ_NEUTRAL : M.FACTION_HEX[M.factionKey(fa)]);
   // the column top's world height: the SAME formula as STATCOL_VS (min on-screen height, then the rise)
   const statTopH = (c) => Math.max(c.h * statU.uStatH.value, statU.uMinH.value) * statU.uGrow.value;
@@ -1298,9 +1309,9 @@ function mount(container, opts = {}) {
   // ------------------------------------------------------------ data
   function writeFleets() {
     const fl = D.fleets, n = fl.length, A = instanceAttrs(fleetGeo, FLEET_SPEC, n);
-    const a = A.iA.array, t = A.iT.array, c = A.iC.array, m = A.iM.array, x = A.iX.array, o = A.iO.array;
+    const a = A.iA.array, t = A.iT.array, c = A.iC.array, m = A.iM.array, x = A.iX.array, o = A.iO.array, y = A.iY.array;
     for (let i = 0; i < n; i++) {
-      const f = fl[i], p = D.paths[i], col = tint(f.fa), anc = D.anchors[i], pl = D.place[i];
+      const f = fl[i], p = D.paths[i], col = fleetTint(f), anc = D.anchors[i], pl = D.place[i];
       if (pl) { a.set(pl.A, i * 4); o.set(pl.O, i * 4); t[i * 2] = pl.T[0]; t[i * 2 + 1] = pl.T[1]; } // placed in its system (v10)
       else {
         o[i * 4] = o[i * 4 + 1] = o[i * 4 + 2] = o[i * 4 + 3] = 0;
@@ -1310,6 +1321,7 @@ function mount(container, opts = {}) {
       c[i * 3] = col[0]; c[i * 3 + 1] = col[1]; c[i * 3 + 2] = col[2];
       m[i * 4] = M.fleetSize(f.ships); m[i * 4 + 1] = D.kinds[i]; m[i * 4 + 2] = shownVis(i); m[i * 4 + 3] = D.seeds[i];
       x[i * 2] = M.atlasCell(shipAtlas, f.flag, f.flagSize); x[i * 2 + 1] = M.sizeScale(f.flagSize);
+      y[i] = !f.npc && mine.has(f.o) ? 1 : 0;
     }
     for (const k in A) A[k].needsUpdate = true;
   }
@@ -1357,7 +1369,7 @@ function mount(container, opts = {}) {
     conquest.visible = !!dacState.conq;
     if (D) {
       const fc = fleetGeo.getAttribute('iC'), sc = sysGeo.getAttribute('iC');
-      if (fc) { D.fleets.forEach((f, i) => fc.array.set(tint(f.fa), i * 3)); fc.needsUpdate = true; }
+      if (fc) { D.fleets.forEach((f, i) => fc.array.set(fleetTint(f), i * 3)); fc.needsUpdate = true; }
       if (sc) { D.systems.forEach((s, i) => sc.array.set(tint(s.f), i * 3)); sc.needsUpdate = true; }
       buildLabels(); lastCam[0] = NaN;
     }
@@ -1404,6 +1416,7 @@ function mount(container, opts = {}) {
     D.sysByAddr = new Map(D.systems.map((s) => [s.a, s]));
     D.ownerFa = new Map((latest.owners || []).map((o) => [o.p, o.fa]));
     D.stakes = (latest.stakes || []).filter((s) => s && s.body);
+    D.mine = mine;
     D.place = world.build(D).place;
     // fleets that share one point OUTSIDE any system: a sunflower disc (model.js stackOffset) so each stays readable
     for (const list of M.stacks(fleets, settledBy).values()) {
@@ -2192,6 +2205,13 @@ function mount(container, opts = {}) {
   const api = {
     ok: true,
     setData,
+    // the player profiles that are the visitor's own: their fleets and claim stakes are drawn in MINE_COLOR -> count
+    setMine(list) {
+      mine.clear();
+      for (const p of Array.isArray(list) ? list : []) if (typeof p === 'string' && p) mine.add(p);
+      if (D) { writeFleets(); world.paintStakes(mine); lastCam[0] = NaN; }   // colour + the per-fleet flag; redraw
+      return mine.size;
+    },
     setFilter(f = {}) {
       if ('faction' in f) filter.faction = M.FILTER_FACTIONS.includes(f.faction) ? f.faction : null;
       if ('states' in f) filter.states = Array.isArray(f.states) && f.states.length ? f.states.slice() : null;

@@ -51,6 +51,7 @@
     const S = {
         latest: null, events: [], history: [], ownersSeries: {}, D: null, all: null,
         filter: 'all', states: null, ownerFocus: null, tab: 'mining', scene: null, sceneState: 'loading',
+        mine: new Set(),   // player profiles that are the visitor's own (Utils/HubProfile.js), set in rebuild()
         layers: Object.fromEntries(LAYERS.map(l => [l[0], true])),
         fleetQ: '', fleetSort: ['ups', -1], fleetLimit: 30, ownerSort: ['ups', -1], ownerLimit: 50,
         seenEvents: null, drawer: null, stake: null, rendered: {},
@@ -80,8 +81,19 @@
     // v5 (2026-11-07): an owner shows its on-chain NAME (user-typed text: esc only, never raw HTML), falling back to the
     // short profile address; the tooltip always carries the full profile address (names are not unique), and a name
     // the collector cut at 32 characters ends in an ellipsis
-    const ownerLabel = p => { const d = M.displayName(S.ident && S.ident.get(p), p);
-        return `<span class="c4-on${d.named ? '' : ' unnamed'}" title="${esc((d.truncated ? 'Name cut at 32 characters. ' : '') + 'Profile ' + (p || ''))}">${esc(d.text)}</span>`; };
+    // a profile that is the visitor's own gets the c4-me class and a "You" tag wherever its name is written
+    const ownerLabel = p => { const d = M.displayName(S.ident && S.ident.get(p), p), me = !!p && S.mine.has(p);
+        return `<span class="c4-on${d.named ? '' : ' unnamed'}${me ? ' c4-me' : ''}" title="${esc((me ? 'You (your profile). ' : '') + (d.truncated ? 'Name cut at 32 characters. ' : '') + 'Profile ' + (p || ''))}">${esc(d.text)}${me ? '<i class="c4-me-tag">You</i>' : ''}</span>`; };
+    // ---- my profile (2026-11-26): the hub profile (Utils/HubProfile.js) picks out what is the visitor's own in this read
+    const HP = window.HubProfile || null;
+    const pushMine = () => { if (S.scene && typeof S.scene.setMine === 'function') sceneCall(s => s.setMine([...S.mine])); };
+    // the "is this you" line of an owner drawer: why it counts as yours, and the button that marks / unmarks it
+    const meRow = p => {
+        if (!HP) return '';
+        const rec = (S.ident && S.ident.get(p)) || null, why = HP.whyMine({ p, wallet: rec && rec.wallet }, HP.get());
+        const text = why === 'marked' ? 'Marked as you in this browser.' : why === 'wallet' ? 'Its wallet is the wallet in your profile.' : why === 'profile' ? 'It is the player profile in your profile.' : 'Mark it and your fleets and claim stakes get their own colour on the map and a tag in every list.';
+        return `<p class="c4-merow${why ? ' on' : ''}">${why ? '<i class="c4-me-tag">You</i>' : ''}<span>${text}</span>${why && why !== 'marked' ? '' : `<button class="c4-act" data-me="${esc(p)}" data-on="${why ? '0' : '1'}">${why ? 'Not me' : 'This is me'}</button>`}</p>`;
+    };
     const ownerPlain = p => M.ownerText(S.ident, p);
     const nameLc = p => M.cleanName(((S.ident && S.ident.get(p)) || {}).name).toLowerCase();
     // relative time from the WALL CLOCK (not the snapshot); refreshAgo() keeps every [data-ago] current
@@ -250,6 +262,8 @@
         S.D = M.build(S.latest, S.events, S.history, S.ownersSeries, { faction: S.filter });
         S.all = S.filter === 'all' ? S.D : M.build(S.latest, S.events, S.history, S.ownersSeries, { faction: 'all' });
         S.ident = S.all.ident;
+        S.mine = HP ? HP.mineSet(S.latest, HP.get()) : new Set();
+        pushMine();
         S.seenEvents = new Set(S.events.map(evKey));
         S.fresh = isReload && prevSeen ? new Set(S.events.map(evKey).filter(k => !prevSeen.has(k))) : new Set();
         renderKpis(); renderControls(); renderAge();
@@ -397,6 +411,14 @@
         // where the bar is narrow the sub-line is hidden (CSS); its text stays readable as the tooltip
         el.querySelectorAll('.c4-kpi').forEach(x => { const s = x.querySelector('small'); x.title = x.querySelector('span').textContent + (s && s.textContent ? ': ' + s.textContent : ''); });
     }
+    // the "You" box of the map controls: the colour the map uses for the visitor, one chip per own player (opens it)
+    function mineBox() {
+        if (!HP || !S.mine.size || !S.all) return '';
+        const mine = S.all.owners.filter(o => S.mine.has(o.p) && !o.npc);
+        const stakes = (S.latest.stakes || []).filter(k => S.mine.has(k.o)).length;
+        const chips = mine.map(o => `<button class="c4-chip c4-mechip" data-owner="${esc(o.p)}" title="Open your player">${esc(ownerPlain(o.p))} · ${o.fleets} fleet${o.fleets === 1 ? '' : 's'}</button>`).join('');
+        return `<div class="c4-glass c4-box c4-mebox"><h4><span class="dot" style="background:var(--me)"></span>You</h4><div class="c4-chips">${chips || '<span class="c4-menone">No fleet of yours in this read.</span>'}</div>${stakes ? `<p class="c4-menote">${stakes} claim stake${stakes === 1 ? '' : 's'} of yours, in this colour too.</p>` : ''}</div>`;
+    }
     function renderControls() {
         const el = $('#c4Controls');
         // v7: when DACs are loaded the Faction box also carries the conquest lens switch (Colour by Faction | DAC)
@@ -407,6 +429,7 @@
             `<button class="c4-chip${S.filter === v ? ' on' : ''}" data-filter="${v}">${v !== 'all' ? `<span class="dot fc-${v}" style="background:var(--fc)"></span>` : ''}${l}</button>`).join('')}</div>${lensRow}</div>
             <div class="c4-glass c4-box"${S.sceneState !== 'ready' ? ' hidden' : ''}><h4>Layers</h4>${LAYERS.map(([v, l]) =>
             `<label class="c4-layer"><input type="checkbox" data-layer="${v}"${S.layers[v] ? ' checked' : ''}>${l}</label>`).join('')}</div>
+            ${mineBox()}
             ${S.states || S.ownerFocus ? `<div class="c4-glass c4-box"><h4>Map focus</h4><div class="c4-chips">${S.states ? `<button class="c4-chip on" data-clear="states">${esc(M.STATE_LABEL[S.states[0]])} only &times;</button>` : ''}${S.ownerFocus ? `<button class="c4-chip on" data-clear="owner">${ownerLabel(S.ownerFocus)} &times;</button>` : ''}</div></div>` : ''}`;
         queueInsets();
     }
@@ -1267,7 +1290,7 @@
     function openOwner(p) {
         // the drawer always shows the whole owner, whatever the faction filter
         const o = S.all.owners.find(x => x.p === p);
-        if (!o) { const r0 = (S.ident && S.ident.get(p)) || null; openDrawer('owner', p, `<div class="kind">Owner</div><h2><span class="c4-dname">${ownerLabel(p)}</span></h2>${identRows(p, r0, false)}${dacRow(p)}<p class="c4-verdict">This profile owns no fleet in the latest snapshot.</p>${r0 ? wealthSection(r0) : ''}`); return; }
+        if (!o) { const r0 = (S.ident && S.ident.get(p)) || null; openDrawer('owner', p, `<div class="kind">Owner</div><h2><span class="c4-dname">${ownerLabel(p)}</span></h2>${identRows(p, r0, false)}${meRow(p)}${dacRow(p)}<p class="c4-verdict">This profile owns no fleet in the latest snapshot.</p>${r0 ? wealthSection(r0) : ''}`); return; }
         const t0 = S.latest.generatedAt;
         const minerRank = S.all.mining.owners.findIndex(x => x.p === p) + 1;
         o.minerCount = S.all.mining.miningOwners;
@@ -1288,7 +1311,7 @@
         const rec = (S.ident && S.ident.get(p)) || null;
         openDrawer('owner', p, `<div class="kind">${o.npc ? 'NPC (all NPC fleets share one profile)' : 'Player'}</div>
             <h2><span class="c4-dname">${o.npc ? 'NPC' : ownerLabel(p)}</span>${fa(o.group)}</h2>
-            ${identRows(p, rec, o.npc)}${o.npc ? '' : dacRow(p)}
+            ${identRows(p, rec, o.npc)}${o.npc ? '' : meRow(p)}${o.npc ? '' : dacRow(p)}
             <p class="c4-verdict">${verdict}</p>
             <div class="c4-dstats c4-anim-in">${stat('Fleets', o.fleets)}${stat('Ships', M.fmt(o.ships, 0))}${stat('Mining u/s', o.ups ? M.fmt(o.ups) : '0')}${stat('ATLAS', o.atlas != null ? M.fmt(o.atlas, 0) : '-')}${stat('Council rank', o.rank != null ? o.rank : '-')}${stat('Claim stakes', stakes)}</div>
             ${o.npc ? '' : wealthSection(rec)}${o.npc ? '' : M.governanceOwnerHtml(M.governanceForOwner(S.latest, p))}
@@ -1692,12 +1715,14 @@
     // ================================================================== scene
     function loadScene() {
         const s = document.createElement('script');
-        s.src = 'c4-scene.js?v=a49033cec7';   // the stamp is the file's hash, written by Tools/c4-live/stamp.mjs (it was the clock: a fresh 190 KB download every half hour)
+        s.src = 'c4-scene.js?v=fe4cb31661';   // the stamp is the file's hash, written by Tools/c4-live/stamp.mjs (it was the clock: a fresh 190 KB download every half hour)
         s.onload = () => mountScene();
         s.onerror = () => noMap('The 3D map is not built yet (<b>C4Live/c4-scene.js</b> is missing). Everything below still works.');
         document.body.appendChild(s);
     }
     function noMap(html) { S.sceneState = 'none'; const n = $('#c4NoMap'); n.innerHTML = `<div>${html}</div>`; n.hidden = false; if (S.D) renderControls(); }
+    // the profile changed (here, on the front page or in another tab): mark again and redraw what is open
+    if (HP) HP.onChange(() => { if (!S.latest || !S.D) return; rebuild(true); if (S.drawer) reopenDrawer(); });
     function mountScene() {
         if (!window.C4Scene || typeof window.C4Scene.mount !== 'function') { noMap('The 3D map script loaded but did not register <b>C4Scene</b>.'); return; }
         try { S.scene = window.C4Scene.mount($('#c4Map'), { reducedMotion: RM.matches }); }
@@ -1705,6 +1730,7 @@
         S.sceneState = 'ready';
         S.scene.on('pick', onPick);
         S.scene.on('hover', onHover);
+        pushMine();
         if (S.latest) { sceneCall(s => s.setData(S.latest, S.events, S.bodies || undefined)); }
         if (typeof S.scene.on === 'function') { try { S.scene.on('systemView', v => { if (v && v.sys) openSystemPanel(v.sys, true); else closeSystemPanel(true); }); } catch (e) { console.warn('C4 Live: systemView hook failed', e); } }
         for (const [k, on] of Object.entries(S.layers)) if (!on) sceneCall(s => s.setLayer(k, false));
@@ -1811,6 +1837,7 @@
             const fil = t.closest('[data-filter]'); if (fil) { setFilter(fil.dataset.filter); return; }
             const clr = t.closest('[data-clear]'); if (clr) { if (clr.dataset.clear === 'states') S.states = null; else { S.ownerFocus = null; } pushFilter(); renderControls(); S.rendered.fleets = false; if (S.tab === 'fleets') renderTab('fleets', false); return; }
             const stt = t.closest('[data-state]'); if (stt) { const k = stt.dataset.state; S.states = S.states && S.states[0] === k ? null : [k]; pushFilter(); renderControls(); S.rendered.fleets = false; renderTab('fleets', false); return; }
+            const me = t.closest('[data-me]'); if (me) { if (HP) HP.markC4(me.dataset.me, me.dataset.on === '1'); return; }   // HP.onChange redraws
             const fo = t.closest('[data-focus-owner]'); if (fo) { S.ownerFocus = fo.dataset.focusOwner; pushFilter(); sceneCall(s => s.focusOwner(S.ownerFocus)); renderControls(); closeDrawer(); return; }
             const more = t.closest('[data-more]'); if (more) { if (more.dataset.more === 'fleets') { S.fleetLimit += 100; renderFleetTable(); } else { S.ownerLimit += 100; renderOwnerTable(); } return; }
             const srt = t.closest('th[data-sort]');

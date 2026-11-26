@@ -99,8 +99,10 @@
             this.listLimit = 60;
             this.sequence = null;
             StakeData.init();
+            this.mine = { ready: false, latest: null, bodies: null, stakes: [], why: '', profile: null };   // the visitor's own C4 claim stakes
             this.renderShell();
             this.bind();
+            this.renderMine(); this.initMine();
             this.renderPlanetList();
             this.restore();
             this.renderAll();
@@ -112,6 +114,7 @@
             this.root.innerHTML = `
             <div class="sb">
                 <aside class="sb-side">
+                    <div class="sb-mine" id="sbMine"></div>
                     <div class="sb-side-head"><h3>Planet</h3><span class="sb-count" id="sbPlanetCount"></span></div>
                     <input type="text" id="sbSearch" class="sb-input" placeholder="System or planet name" autocomplete="off">
                     <div class="chips" id="sbFactions">${FACTION.map(f => `<button type="button" class="chip f-${f}" data-f="${f}">${FACTION_LABEL[f]}</button>`).join('')}</div>
@@ -171,6 +174,7 @@
                 const row = e.target.closest('[data-key]'); if (!row || row.classList.contains('belt')) return;
                 snd('click'); this.selectPlanet(row.dataset.key);
             });
+            this.$('sbMine').addEventListener('click', e => { const r = e.target.closest('[data-stake]'); if (!r || r.disabled) return; snd('click'); this.loadStake(r.dataset.stake); });
             this.$('sbStake').addEventListener('click', e => {
                 const t = e.target.closest('[data-tier]'); if (t) { snd('select'); this.setTier(+t.dataset.tier); return; }
                 const k = e.target.closest('[data-kind]'); if (k) { snd('select'); this.setKind(k.dataset.kind); }
@@ -242,7 +246,7 @@
             this.plan = { key, system: p.system, planet: p.planet, index: p.index, tier, kind, items: [] };
             this.addStakeBuildings();
             this.hideTip(); this.stopSequence();
-            this.renderPlanetList();
+            this.renderPlanetList(); this.renderMine();
             this.renderAll();
             this.save();
         }
@@ -250,7 +254,7 @@
         setTier(tier) {
             if (!this.plan || this.plan.tier === tier) return;
             const old = this.plan.items.filter(i => !i.b.comesWithStake).map(i => i.b.id.replace(/-t\d$/, '-t' + tier));
-            this.plan.tier = tier; this.plan.items = [];
+            this.plan.tier = tier; this.plan.items = []; delete this.plan.onChain; this.renderMine();
             this.addStakeBuildings();
             let kept = 0;
             old.forEach(id => { const b = this.byId(id); if (b && this.catalogue().includes(b) && this.addBuilding(id, false)) kept++; });
@@ -260,7 +264,7 @@
 
         setKind(kind) {
             if (!this.plan || this.plan.kind === kind) return;
-            this.plan.kind = kind; this.plan.items = [];
+            this.plan.kind = kind; this.plan.items = []; delete this.plan.onChain; this.renderMine();
             this.addStakeBuildings();
             this.toast(kind === 'cultivation' ? 'Cultivation stake: the cultivation hub replaces the central hub and farms unlock.' : 'Standard stake.');
             this.renderAll(); this.save();
@@ -271,6 +275,99 @@
             const want = p.kind === 'cultivation' ? 'cultivation_hub' : 'central_hub';
             const hub = StakeData.buildings.find(b => b.comesWithStake && b.tier === p.tier && kindOf(b) === want && this.planetOK(b));
             if (hub) p.items.push({ uid: ++this.uid, b: hub, cell: [0, 0] });
+        }
+
+
+        // ------------------------------------------------- my claim stakes (2026-11-26)
+        // The hub profile (Utils/HubProfile.js) picks the visitor's own claim stakes out of the C4 Live read; a click
+        // puts one on the pad as it stands on chain. From there it is a plan like any other: edits change the plan only.
+        initMine() {
+            const H = window.HubProfile; if (!H) return;
+            const apply = () => {
+                const m = this.mine;
+                m.profile = H.get();
+                m.stakes = m.latest ? H.assets(m.latest, m.profile).stakes.slice().sort((a, b) => (b.tier || 0) - (a.tier || 0) || String(a.sysName).localeCompare(String(b.sysName))) : [];
+                this.renderMine();
+            };
+            H.onChange(apply);
+            H.loadC4('../', { bodies: true }).then(r => { this.mine.latest = r.latest; this.mine.why = r.why || ''; this.mine.bodies = new Map((r.bodies || []).map(b => [b.a, b])); }, () => { this.mine.why = 'The C4 Live data could not be read.'; })
+                .then(() => { this.mine.ready = true; apply(); });
+        }
+        // the Stake Builder's planet for a stake: its system by name, then the planet by the name C4 gives the body;
+        // without the planets file, the one planet of that system whose type the stake's hub names
+        planetOfStake(st) {
+            const inSys = StakeData.planets.filter(p => p.system.name === st.sysName && p.cat !== 3);
+            const body = this.mine.bodies && this.mine.bodies.get(st.body);
+            if (body && body.n) { const hit = inSys.find(p => p.planet.name === body.n); if (hit) return hit; }
+            const hub = (st.bl || []).find(x => x.k === 'central_hub' || x.k === 'cultivation_hub');
+            const same = hub ? inSys.filter(p => String(hub.n).startsWith(CAT_NAME[p.cat] + ' ')) : [];
+            return same.length === 1 ? same[0] : null;
+        }
+        stakeLabel(st) {
+            const body = this.mine.bodies && this.mine.bodies.get(st.body);
+            return { planet: (body && body.n) || 'Planet in ' + (st.sysName || 'an unknown system'), n: (st.bl || []).reduce((a, x) => a + (x.q > 0 ? x.q : 0), 0), cult: /^Cultivation/i.test(st.defName || '') };
+        }
+        renderMine() {
+            const el = this.$('sbMine'); if (!el) return;
+            const H = window.HubProfile, m = this.mine;
+            const head = n => '<div class="sb-side-head"><h3>My claim stakes</h3><span class="sb-count">' + (n == null ? '' : n) + '</span></div>';
+            const note = html => { el.innerHTML = head(null) + '<p class="sb-mine-note">' + html + '</p>'; };
+            if (!H) { el.innerHTML = ''; return; }
+            if (!m.ready) return note('Looking for your claim stakes...');
+            if (!H.isSet(m.profile)) return note('Set your profile on <a href="../index.html#profile">the front page</a> and your C4 claim stakes are listed here.');
+            if (!m.latest) return note(esc(m.why) + ' Open <a href="../C4Live/index.html">C4 Live</a>.');
+            if (!m.stakes.length) return note('No claim stake of yours in the last C4 Live read. If your C4 player is not matched, open <a href="../C4Live/index.html">C4 Live</a>, click your name and press <b>This is me</b>.');
+            const cur = this.plan && this.plan.onChain && this.plan.onChain.a;
+            el.innerHTML = head(m.stakes.length) + '<div class="sb-mine-list">' + m.stakes.map(st => {
+                const L = this.stakeLabel(st), ok = !!this.planetOfStake(st);
+                return '<button type="button" class="sb-prow sb-mrow' + (st.a === cur ? ' on' : '') + '" data-stake="' + esc(st.a) + '"' + (ok ? ' title="Put this stake on the pad as it stands on chain"' : ' disabled title="Its planet could not be matched to the planet data"') + '>' +
+                    '<i class="pdot me"></i><span class="pn">' + esc(L.planet) + '</span><span class="ps">' + esc(st.sysName || '') + '</span>' +
+                    '<span class="pb"><em>T' + esc(st.tier) + '</em><em>' + (L.cult ? 'Cultivation' : 'Standard') + '</em><em>' + L.n + ' building' + (L.n === 1 ? '' : 's') + '</em>' + (st.st && st.st !== 'active' ? '<em class="no">' + esc(st.st) + '</em>' : '') + '</span></button>';
+            }).join('') + '</div>';
+        }
+        // one of the visitor's stakes -> the pad, building by building. Returns { placed, total, missing, overflow, offTier }
+        // or null when the planet is not known. Buildings are placed as they are on chain: no rule of the builder is
+        // applied to them (a real stake may hold what the builder's rules would refuse).
+        loadStake(addr) {
+            const st = this.mine.stakes.find(x => x.a === addr); if (!st) return null;
+            const p = this.planetOfStake(st);
+            if (!p) { this.toast('The planet of this stake could not be matched to the planet data.', 'bad'); return null; }
+            const kind = /^Cultivation/i.test(st.defName || '') ? 'cultivation' : 'standard', tier = [1, 2, 3, 4, 5].includes(st.tier) ? st.tier : 1;
+            this.stopSequence(); this.hideTip();
+            this.plan = { key: p.key, system: p.system, planet: p.planet, index: p.index, tier, kind, items: [] };
+            const res = { a: st.a, at: this.mine.latest.generatedAt || 0, state: st.st || '', placed: 0, total: 0, missing: 0, overflow: 0, offTier: 0 };
+            const want = [];
+            for (const x of st.bl || []) {
+                const q = x && x.q > 0 ? Math.floor(x.q) : 0; if (!q) continue;
+                res.total += q;
+                const cands = StakeData.buildings.filter(b => b.name + ' Tier ' + b.tier === x.n);
+                const b = cands.find(c => this.planetOK(c)) || cands[0];
+                if (!b) { res.missing += q; continue; }
+                if (b.tier !== tier) res.offTier += q;
+                want.push({ b, q });
+            }
+            const rank = b => (b.comesWithStake ? -1 : BUILD_RANK[kindOf(b)] != null ? BUILD_RANK[kindOf(b)] : 3);
+            want.sort((a, b) => rank(a.b) - rank(b.b) || a.b.name.localeCompare(b.b.name));
+            for (const w of want) for (let i = 0; i < w.q; i++) {
+                const item = { uid: ++this.uid, b: w.b, cell: null };
+                item.cell = w.b.comesWithStake && !this.plan.items.length ? [0, 0] : this.findCell(item);
+                if (!item.cell) { res.overflow++; continue; }
+                this.plan.items.push(item); res.placed++;
+            }
+            if (!this.plan.items.some(i => i.b.comesWithStake)) this.addStakeBuildings();   // the read named no hub: the stake's own
+            this.plan.onChain = res;
+            this.renderPlanetList(); this.renderMine(); this.renderAll(); this.save();
+            if (window.spaceSounds && window.spaceSounds.success) window.spaceSounds.success();
+            return res;
+        }
+        onChainNote() {
+            const c = this.plan && this.plan.onChain; if (!c) return '';
+            const s = Math.max(0, Math.round(Date.now() / 1000 - c.at)), ago = s < 5400 ? Math.max(1, Math.round(s / 60)) + ' min ago' : s < 172800 ? Math.round(s / 3600) + ' h ago' : Math.round(s / 86400) + ' days ago';
+            const parts = [];
+            if (c.overflow) parts.push(c.overflow + ' more do not fit on the pad, so the gauges below leave them out');
+            if (c.missing) parts.push(c.missing + ' are not in the building data');
+            if (c.offTier) parts.push(c.offTier + ' are of another tier than the stake');
+            return '<div class="sb-onchain"><b>Your claim stake</b> as read from the chain ' + ago + (c.state && c.state !== 'active' ? ' (' + esc(c.state) + ')' : '') + ': ' + c.placed + ' of ' + c.total + ' buildings on the pad' + (parts.length ? '; ' + parts.join('; ') : '') + '. Anything you change here is a plan, not the chain.</div>';
         }
 
         // ------------------------------------------------------------- rules
@@ -487,7 +584,7 @@
             el.innerHTML = `
                 <div class="sb-kind">${['standard', 'cultivation'].map(k => `<button type="button" class="chip${p.kind === k ? ' on' : ''}" data-kind="${k}">${k === 'standard' ? 'Standard stake' : 'Cultivation stake'}</button>`).join('')}</div>
                 <div class="sb-tiers">${[1, 2, 3, 4, 5].map(t => `<button type="button" class="sb-tier${p.tier === t ? ' on' : ''}" data-tier="${t}"><b>T${t}</b><span>${StakeData.slots[p.kind][t].toLocaleString()}</span><small>slots</small></button>`).join('')}</div>
-                <div class="sb-rule">A stake is bought per tier and holds tier ${p.tier} buildings. The ${p.kind === 'cultivation' ? 'cultivation' : 'central'} hub comes with it.</div>`;
+                <div class="sb-rule">A stake is bought per tier and holds tier ${p.tier} buildings. The ${p.kind === 'cultivation' ? 'cultivation' : 'central'} hub comes with it.</div>${this.onChainNote()}`;
         }
 
         gauge(label, used, max, ok, unit, hint) {

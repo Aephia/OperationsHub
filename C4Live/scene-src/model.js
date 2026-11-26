@@ -14,6 +14,9 @@ export const hexToLinear = (h) => [1, 3, 5].map((i) => srgbToLinear(parseInt(h.s
 // Territory-fill gain per faction [mud, oni, ustur]: equalises perceived fill brightness (measured, task #18).
 export const TERR_GAIN = [1.8, 1.0, 0.6]; // measured: fill luminance 26.2 / 29.2 / 27.5 (was 16 / 29 / 41 at 1,1,1)
 export const FACTION_COLOR = Object.fromEntries(Object.entries(FACTION_HEX).map(([k, h]) => [k, hexToLinear(h)]));
+// the visitor's own fleets and claim stakes (api.setMine, 2026-11-26): a colour no faction uses; --me in c4.css
+export const MINE_HEX = '#ff5cf0';
+export const MINE_COLOR = hexToLinear(MINE_HEX);
 export const factionKey = (fa) => (FACTION_COLOR[fa] ? fa : 'unaligned');
 
 // state kind -> code used in the shaders (must match GLSL in main.js)

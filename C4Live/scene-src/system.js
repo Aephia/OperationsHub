@@ -354,7 +354,7 @@ export function createWorld(ctx) {
       const b = bodyAt[e.bi], s = infos[b.si].s, k = infos[b.si].k;
       K.iP.array.set([s.x, s.y, b.r, b.a0], i * 4);
       K.iQ.array.set([b.w, e.k * 1.1 + 0.6, b.R * 1.35, 0.024 * k], i * 4);
-      K.iC.array.set(M.FACTION_COLOR[M.factionKey(e.fa)], i * 3);
+      K.iC.array.set(D.mine && D.mine.has(e.st.o) ? M.MINE_COLOR : M.FACTION_COLOR[M.factionKey(e.fa)], i * 3);
     });
     for (const k in K) K[k].needsUpdate = true;
     W = {infos, bodyAt, byAddr, bodyIdx, place, nb, stakeList};
@@ -427,6 +427,13 @@ export function createWorld(ctx) {
     for (const m of [bodies, rings, stations, stakes]) { scene.remove(m); m.geometry.dispose(); m.material.dispose(); }
     artTex.dispose(); W = null;
   }
-  return {build, lod, bodyPos, requestArt, flushArt, setLayers, setVisible, setHover, dispose,
+  // the visitor's own claim stakes change colour without a rebuild (main.js setMine)
+  function paintStakes(mine) {
+    const a = W && W.stakeList && stakeGeo.getAttribute('iC');
+    if (!a) return;
+    W.stakeList.forEach((e, i) => a.array.set(mine && mine.has(e.st.o) ? M.MINE_COLOR : M.FACTION_COLOR[M.factionKey(e.fa)], i * 3));
+    a.needsUpdate = true;
+  }
+  return {build, paintStakes, lod, bodyPos, requestArt, flushArt, setLayers, setVisible, setHover, dispose,
     get world() { return W; }, texStats: () => ({texRequested, texLoaded, texFailed, atlasCells: ART_FILES.length}), artFiles: ART_FILES};
 }

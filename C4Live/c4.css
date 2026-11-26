@@ -649,3 +649,17 @@ p.c4-dac-legend.none { display: block; margin: 0.2rem 0 0; font-size: 0.78rem; c
 .c4-gov .c4-gov-sub { margin: 0.55rem 0 0.1rem; font-family: 'Orbitron', sans-serif; font-size: 0.5rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-muted); }
 .c4-gov .c4-gov-sub em, .c4-gov .c4-gov-chg { font-style: normal; text-transform: none; letter-spacing: 0; color: var(--cyan); font-family: 'Exo 2', sans-serif; }
 .c4-gov .c4-gov-parts { margin: 0.2rem 0 0.2rem 0.8rem; }
+
+/* ---- my profile (2026-11-26): what is the visitor's own. --me is the colour the map draws it in (scene-src/model.js MINE_HEX) ---- */
+:root { --me: #ff5cf0; }
+.c4-on.c4-me { color: var(--me); font-weight: 700; }
+.c4-me-tag { display: inline-block; margin-left: 0.35em; padding: 0 0.35em; border: 1px solid var(--me); border-radius: 4px; background: rgba(255, 92, 240, 0.14); color: var(--me); font: 700 0.6rem/1.5 'Orbitron', sans-serif; letter-spacing: 0.1em; text-transform: uppercase; font-style: normal; vertical-align: 0.1em; }
+tr:has(.c4-me) > td, li:has(.c4-me) { background: rgba(255, 92, 240, 0.07); }
+tr:has(.c4-me) > td:first-child { box-shadow: inset 3px 0 0 var(--me); }
+.c4-merow { display: flex; align-items: center; gap: 0.6rem; margin: 0.5rem 0; font-size: 0.82rem; color: var(--text-secondary); }
+.c4-merow.on { color: #fff; }
+.c4-merow .c4-me-tag { margin-left: 0; }
+.c4-merow span { flex: 1; }
+.c4-mebox h4 .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 0.4em; }
+.c4-chip.c4-mechip { border-color: var(--me); color: #fff; background: rgba(255, 92, 240, 0.12); text-transform: none; }
+.c4-menote, .c4-menone { margin: 0.35rem 0 0; font-size: 0.74rem; color: var(--text-secondary); }

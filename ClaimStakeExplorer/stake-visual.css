@@ -445,3 +445,17 @@ main { padding: 1.2rem clamp(0.8rem, 2vw, 2rem); }
     .an-pl { grid-template-columns: 12px 1fr auto; }
     .an-pl span:not(.rv), .an-pl .rbar { display: none; }
 }
+
+/* ---- my claim stakes (2026-11-26): the visitor's own C4 stakes, picked by the hub profile ---- */
+.sb-mine { display: flex; flex-direction: column; gap: 0.4rem; padding-bottom: 0.6rem; margin-bottom: 0.2rem; border-bottom: 1px solid var(--line); }
+.sb-mine:empty { display: none; }
+.sb-mine-list { display: flex; flex-direction: column; gap: 0.3rem; max-height: 232px; overflow: auto; padding-right: 2px; }
+.sb-mine-note { margin: 0; font-size: 0.78rem; line-height: 1.45; color: var(--text-muted); }
+.sb-mine-note a { color: var(--cyan); }
+.sb-mine-note b { color: #fff; }
+.sb-prow.sb-mrow { border-color: rgba(255, 92, 240, 0.28); }
+.sb-prow.sb-mrow.on { border-color: #ff5cf0; background: rgba(255, 92, 240, 0.1); }
+.sb-prow.sb-mrow:disabled { opacity: 0.5; cursor: default; }
+.sb-prow .pdot.me { background: #ff5cf0; box-shadow: 0 0 6px rgba(255, 92, 240, 0.7); }
+.sb-onchain { margin-top: 0.4rem; padding: 0.35rem 0.6rem; border-left: 3px solid #ff5cf0; border-radius: 6px; background: rgba(255, 92, 240, 0.08); font-size: 0.76rem; line-height: 1.4; color: var(--text-secondary); max-width: 460px; }
+.sb-onchain b { color: #fff; }

@@ -518,15 +518,21 @@
                 ? (name, via, pinned) => { const d = via || this.own(this.rm.recipeByName.get(name)), r = via && (pin || pinned) ? via : this.route(name, f, via); swap = !!(r && r !== d && this.wayLabel(r) !== 'Standard'); if (swap) swapped.add(name); return r; }
                 : (name, via) => via || this.rm.recipeByName.get(name);
             const addNode = (name, cat, recipe) => { if (!nodes.has(name)) nodes.set(name, { name, res: this.rm.byName.get(name) || null, cat, recipe: recipe || null, leaf: !recipe }); };
+            // opts.stock (2026-11-26): Map(name -> whole units already held). A need is met from what is held first, in
+            // walk order, and only the rest is crafted or gathered: an item held is neither crafted nor are its
+            // ingredients asked for. `held` = units taken per name. No stock = the walk exactly as before.
+            const left = opts && opts.stock ? new Map(opts.stock) : null, held = new Map();
             const walk = (name, qty, trail, viaRecipe, pinned) => {
                 const res = this.rm.byName.get(name);
                 swap = false;
                 const rec = choose(name, viaRecipe, pinned), swappedHere = swap;
                 const isRaw = res && res.category === 'raw';
                 const craftable = !isRaw && rec && rec.ingredients && rec.ingredients.length && !trail.has(name);
+                if (left) { const have = left.get(name) || 0, take = Math.min(have, qty); if (take > 0) { left.set(name, have - take); held.set(name, (held.get(name) || 0) + take); qty -= take; } }
                 units.set(name, (units.get(name) || 0) + qty);
-                if (!craftable) { addNode(name, isRaw ? 'raw' : (res ? res.category : 'processed'), null); if (isRaw || !rec || !rec.ingredients || !rec.ingredients.length) raws.set(name, (raws.get(name) || 0) + qty); return; }
+                if (!craftable) { addNode(name, isRaw ? 'raw' : (res ? res.category : 'processed'), null); if (qty > 0 && (isRaw || !rec || !rec.ingredients || !rec.ingredients.length)) raws.set(name, (raws.get(name) || 0) + qty); return; }
                 addNode(name, res ? res.category : 'processed', rec);
+                if (qty <= 0) return;   // all of it is held: nothing to craft, nothing asked of its ingredients
                 const n = Math.ceil(qty / (rec.outputQuantity || 1));
                 crafts.set(name, (crafts.get(name) || 0) + n);
                 const sk = name + '\u0000' + rec.outputId, st = steps.get(sk) || { name, rec, crafts: 0, units: 0, switched: false };
@@ -551,7 +557,7 @@
             // depth inside THIS expansion (a routed step can have a different chain than the name's default one)
             const dmemo = new Map();
             const depth = n => { if (dmemo.has(n)) return dmemo.get(n); dmemo.set(n, 0); const below = (kids.get(n) || []).map(depth); const v = below.length ? 1 + Math.max(...below) : 0; dmemo.set(n, v); return v; };
-            return { units, crafts, steps, raws, nodes, edges: Array.from(edges.values()), time: { critical, sequential }, roots, faction: f, depth, swapped };
+            return { units, crafts, steps, raws, nodes, edges: Array.from(edges.values()), time: { critical, sequential }, roots, faction: f, depth, swapped, held };
         }
 
         // --------------------------------------------------------------- plan sheet
@@ -581,7 +587,7 @@
             });
             const byDepth = new Map(); craftList.forEach(c => { const d = byDepth.get(c.depth) || { depth: c.depth, crafts: 0, time: 0, names: [] }; d.crafts += c.crafts; d.time += c.time; if (!d.names.includes(c.name)) d.names.push(c.name); byDepth.set(c.depth, d); });
             return {
-                items, raws: rawList, crafts: craftList, time: x.time, nodes: x.nodes, edges: x.edges, roots: x.roots,
+                items, raws: rawList, crafts: craftList, time: x.time, nodes: x.nodes, edges: x.edges, roots: x.roots, held: x.held,
                 faction: f, rival, switched: f ? craftList.filter(c => c.switched).length : 0,
                 where: where === null ? ['All types'] : Array.from(where).sort(), starbase, factions: factions === null ? [] : Array.from(factions),
                 stages: Array.from(byDepth.values()).sort((a, b) => a.depth - b.depth),

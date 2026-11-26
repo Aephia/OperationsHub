@@ -3,6 +3,7 @@
 (function () {
     'use strict';
     const M = window.CrewModel, F = window.CrewFetch, S = window.CrewStore;
+    const H = window.HubProfile || null;   // the profile shared by every module (Utils/HubProfile.js), set here or on the front page
     const $ = id => document.getElementById(id);
     const PER_PAGE = 36;
     const CHIP_DIMS = ['rarity', 'faction', 'species', 'aptitude'];
@@ -61,6 +62,8 @@
             return;
         }
         adopt(rec, true);
+        // a roster that loaded names real addresses: they become the hub profile (the C4 marks made on C4 Live are kept)
+        if (H) H.update(rec.inputs);
         if (window.UiSfx) window.UiSfx.play(res.partial ? 'tap' : 'done');   // a whole roster arrived: one soft chime
         try { await S.put(rec); st.saved = { partial: rec.partial, count: rec.cards.length }; }
         catch (x) { st.kept = false; st.notes = st.notes.concat('This roster could not be saved on this device, so it will need loading again next time.'); renderSources(); }
@@ -312,6 +315,9 @@
         $('crQ').addEventListener('input', () => { clearTimeout(qTimer); qTimer = setTimeout(() => { st.f.q = $('crQ').value; st.page = 0; refresh(); }, 150); });
         $('crClear').addEventListener('click', () => { st.f = M.emptyFilter(); $('crQ').value = ''; st.page = 0; refresh(); });
         try { const rec = M.cleanRecord(await S.get()); if (rec) { adopt(rec, true); st.saved = { partial: rec.partial, count: rec.cards.length }; } } catch (x) { /* no saved roster: start empty */ }
+        // no roster on screen: offer the hub profile's addresses, ready for Load crew (also when it is set in another tab)
+        const offer = () => { if (!H || st.all.length || st.ctrl) return; const p = H.get(); if (!$('crWallet').value) $('crWallet').value = p.wallet; if (!$('crProfile').value) $('crProfile').value = p.profile; };
+        offer(); if (H) H.onChange(offer);
     }
     init();
 })();

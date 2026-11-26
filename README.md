@@ -87,6 +87,48 @@ now tests the identifier and the file also assigns it to `window`.
 `styles.css` still owns the JSON Manager and Module Guide modals; `landing.css` owns everything else on
 the page and is loaded after it.
 
+## 👤 Your profile (`Utils/HubProfile.js`, added 2026-11-26)
+
+One profile for the whole hub: a **wallet** and a **SAGE player profile**, set once in the "Your profile" section of
+the landing page (`landing-profile.js`) or in the Crew Explorer, and read by every module that can use it. It is kept
+in this browser only (`localStorage` key `hub.profile.v1`); no page sends it anywhere except the Crew Explorer's own
+call to the public crew feed. Only values that are valid addresses are ever stored.
+
+| Module | What the profile does |
+|---|---|
+| Landing page | The form, a Forget button, and three cards saying what each module does with it. With C4 Live data in reach it names your C4 player and counts your fleets and claim stakes. |
+| Crew Explorer | Its two fields arrive filled from the profile; a roster that loads writes its addresses back to the profile. |
+| C4 Live | Your fleets are drawn in their own colour (`--me`, `#ff5cf0`) as larger ringed dots and ringed hulls, your claim stakes in the same colour, your name carries a **You** tag in every list, and a **You** box in the map controls opens your player. |
+| Recipe Explorer | The planner counts what you hold in C4 against the plan (below). |
+| ClaimStake Explorer | The Stake Builder lists **My claim stakes** (your C4 stakes: planet, system, tier, buildings). A click puts one on the pad as it stands on chain; from there it is a plan like any other. |
+
+**Who is "you" in C4.** The C4 game runs on another chain (z.ink), so its player profile address is not the SAGE one.
+A player in the C4 Live read is yours when its wallet equals the profile's wallet, when its address equals the
+profile's player profile, or when you marked it: open the player on C4 Live and press **This is me** (stored as `c4`
+in the profile; **Not me** removes it). A wallet or address match cannot be unmarked there: change the profile.
+
+**Planning against what you hold** (Recipe Explorer, Planner tab, "My C4 resources"). With the box ticked, the plan is
+counted against the cargo holds of your C4 fleets and the inventory of your C4 claim stakes:
+
+- a need is met from what you hold first; an item you hold is neither crafted nor are its ingredients asked for
+  (`RecipeModel.expand`, `opts.stock`);
+- the strip states the share of the raw bill covered, the raw units and crafts left, and what was taken from your cargo;
+- the raw bill and the craft list keep every row of the whole plan and mark each one covered, part covered or left;
+- every box of the chain tree carries a progress bar filled to the share of that item the plan no longer has to gather
+  or craft (`ChainGraph` option `progress`); it fills as you mine more of a raw or hold the component;
+- **not counted:** what is stored in a starbase. The C4 Live read does not include starbase stores.
+
+The planner reads the C4 Live data this browser can see: on the local server the collector's
+`Data/c4-live/latest.json`, on the public site the copy the C4 Live page saved in the browser (open C4 Live once first).
+
+**Your stakes in the Stake Builder.** A stake is matched to the builder's planet by its system name and the planet name C4 gives the body
+(`bodies.json`), and each building by its name and tier. Buildings are placed as they are on chain: none of the builder's
+placement rules is applied to them, and a real stake can hold buildings of another tier than the stake (39 of 270 did on
+2026-11-26). The pad has 37 cells: a larger stake shows 37 and the note says how many are left out of the gauges.
+
+Check: `node Test/hub-profile-check.js` (the stored profile, what counts as yours in a C4 read, and the stock maths
+against other plans of the unchanged model).
+
 ## 📂 Explorer Applications
 
 ### 1. 🪐 **Planet Explorer**
@@ -1049,6 +1091,9 @@ node Test/command-deck-check.js
 
 # Crew Explorer model and feed walk (no network; every rule also has mutants that must fail)
 node Test/crew-explorer-check.js
+
+# The shared profile and the planner's "count what I hold" maths
+node Test/hub-profile-check.js
 ```
 
 **Coverage:**
