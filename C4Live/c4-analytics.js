@@ -628,12 +628,12 @@
         // ONE definition of allocated voting power: what counts in systems now (sum of system power), for tile, bars and sentence
         var allocated = sum(rows.map(function (r) { return r.power; }));
         var top = arr(V.top).filter(obj).filter(function (t) { return fin(t.power) && t.power > 0; }).map(function (t) {
-            return { player: plName(t.p), system: sysName(str(t.sys)), power: t.power, crew: fin(t.crew) && t.crew > 0 ? t.crew : 0 };
+            return { player: plName(t.p), p: str(t.p), system: sysName(str(t.sys)), power: t.power, crew: fin(t.crew) && t.crew > 0 ? t.crew : 0 };
         }).sort(function (x, y) { return y.power - x.power || (x.player < y.player ? -1 : x.player > y.player ? 1 : 0); });
         var con = arr(G.contributors).filter(obj).filter(function (c) { return fin(c.units) && c.units > 0; }).map(function (c) {
             // res: the same units by resource (absent in a copy read before 2026-11-25: the row then shows the total only)
             var res = arr(c.res).filter(function (r) { return obj(r) && fin(r.q) && r.q > 0; }).map(function (r) { return { n: str(r.n) || (fin(r.id) && r.id ? 'resource ' + r.id : 'unknown resource'), q: r.q }; });
-            return { player: plName(c.p), system: sysName(str(c.sys)), units: c.units, res: res };
+            return { player: plName(c.p), p: str(c.p), system: sysName(str(c.sys)), units: c.units, res: res };
         }).sort(function (x, y) { return y.units - x.units || (x.player < y.player ? -1 : x.player > y.player ? 1 : 0); });
         var mod = obj(G.module) || {};
         var bill = arr(mod.bill).filter(function (b) { return obj(b) && fin(b.q) && b.q > 0; }).map(function (b) { return { n: str(b.n) || ('resource ' + b.id), q: b.q }; });
@@ -775,7 +775,7 @@
         rows.forEach(function (r, i) {
             var y = 2 + i * rowH, len = max > 0 ? shr(r) / max * plotW : 0;
             var tip = r.tip || (r.label + ': ' + fmt(r.v));
-            b += tx(labW - 8, y + 14, clip(r.label, labW - 8), 'an-lab', 'end', ctx);
+            b += tx(labW - 8, y + 14, r.mine ? clip(r.label, labW - 8 - 6 * 7.2) + ' (You)' : clip(r.label, labW - 8), r.mine ? 'an-lab an-me' : 'an-lab', 'end', ctx);   // the name is cut first, so " (You)" is never what gets cut
             b += '<rect class="an-track" x="' + r1(labW) + '" y="' + (y + 3) + '" width="' + r1(plotW) + '" height="14" rx="4"/>';
             b += hbar(labW, y + 3, Math.max(len, r.v > 0 ? 2 : 0), 14, 1, r.cls || cls, pt ? tip + ' (' + pctTxt(shr(r)) + ' of the total ' + fnum(pt) + ')' : tip, ctx);
             b += tx(labW + Math.max(len, 0) + 6, y + 14, vtx(r) + (r.tag ? ' ' + r.tag : ''), 'an-val', 'start', ctx);
@@ -937,6 +937,9 @@
 
     // ---------------------------------------------------------------- detail cards (pure: model + key -> html or null)
     function shortAddr(a) { a = String(a); return a.length > 12 ? a.slice(0, 4) + '...' + a.slice(-4) : a; }
+    // what is the visitor's own: o.isMine(profile) is a plain callback from the page (no hub profile code in this file)
+    function mineOf(o, p) { return !!(p && o && typeof o.isMine === 'function' && o.isMine(p)); }
+    function youTag(o, p) { return mineOf(o, p) ? '<i class="c4-me-tag">You</i>' : ''; }
     function pickBtn(o, kind, id, text) {
         if (!o.canPick || !id) return o.esc(text);
         return '<button type="button" class="c4an-pk" data-an-pick="' + kind + '" data-an-id="' + o.esc(id) + '">' + o.esc(text) + '</button>';
@@ -954,7 +957,7 @@
         list.slice(0, BLD_MAX).forEach(function (e) { bump(seen, sameKey(e), 1); });
         var li = list.slice(0, BLD_MAX).map(function (e) {
             var who = e.owner || (e.o ? shortAddr(e.o) : 'owner not read'), where = (e.name || 'stake ' + shortAddr(e.id)) + (e.tier != null ? ' tier ' + e.tier : '') + (e.name && seen[sameKey(e)] > 1 ? ' ' + shortAddr(e.id) : '');
-            return '<li>' + pickBtn(o, 'stake', e.id, who) + ' <span class="c4an-cdw">' + E(where) + '</span> <span class="c4an-cdv">x ' + fnum(e.v) + '</span></li>';
+            return '<li' + (mineOf(o, e.o) ? ' class="c4-me"' : '') + '>' + pickBtn(o, 'stake', e.id, who) + youTag(o, e.o) + ' <span class="c4an-cdw">' + E(where) + '</span> <span class="c4an-cdv">x ' + fnum(e.v) + '</span></li>';
         }).join('');
         var head = isKind ? plural(row.n, 'building') + ' of this kind on ' + plural(list.length, 'stake') + '.' : plural(list.length, 'stake') + ' with ' + label + ' each.';
         var shown = list.length > BLD_MAX ? ' Showing ' + BLD_MAX + ' of ' + list.length + (isKind ? ', most of this kind first.' : '.') : (isKind && list.length > 1 ? ' Most of this kind first.' : '');
@@ -971,8 +974,8 @@
             var r = arr(model.mining.rows)[idx];
             if (!r) return null;
             var mines = r.mines.slice(0, MINES_MAX).map(E).join(', ') + (r.mines.length > MINES_MAX ? ' and ' + (r.mines.length - MINES_MAX) + ' more' : '');
-            return '<div class="c4an-cdh">' + pickBtn(o, 'fleet', r.a, r.n || 'fleet') + ' ' + chip(r.fa) + '</div><dl class="c4an-cdl">' +
-                '<dt>Owner</dt><dd>' + (r.o ? pickBtn(o, 'owner', r.o, r.owner || shortAddr(r.o)) : 'not read') + '</dd>' +
+            return '<div class="c4an-cdh' + (mineOf(o, r.o) ? ' c4-me' : '') + '">' + pickBtn(o, 'fleet', r.a, r.n || 'fleet') + youTag(o, r.o) + ' ' + chip(r.fa) + '</div><dl class="c4an-cdl">' +
+                '<dt>Owner</dt><dd>' + (r.o ? pickBtn(o, 'owner', r.o, r.owner || shortAddr(r.o)) + youTag(o, r.o) : 'not read') + '</dd>' +
                 '<dt>Ships</dt><dd>' + r.ships + '</dd><dt>Crew</dt><dd>' + (r.crew > 0 ? r.crew : 'not read') + '</dd>' +
                 '<dt>Mines</dt><dd>' + (mines || 'nothing listed') + '</dd>' +
                 '<dt>Yield</dt><dd>' + fnum(r.ups) + ' per second (' + fnum(r.yps) + ' per ship); base ' + (r.base > 0 ? fnum(r.base) : 'not read') + '</dd></dl>' +
@@ -984,7 +987,7 @@
         var isShip = row.kind === 'model', list = row.list.slice().sort(function (a, b) { return b.v - a.v || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0); });
         var li = list.slice(0, LIST_MAX).map(function (e) {
             var who = e.owner || (e.o ? shortAddr(e.o) : '');
-            return '<li>' + pickBtn(o, e.kind, e.id, e.name || shortAddr(e.id)) + (e.kind === 'stake' ? ' tier ' + e.tier : '') + (who ? ' <span class="c4an-cdw">' + E(who) + '</span>' : '') + ' <span class="c4an-cdv">' + fnum(e.v) + '</span></li>';
+            return '<li' + (mineOf(o, e.o) ? ' class="c4-me"' : '') + '>' + pickBtn(o, e.kind, e.id, e.name || shortAddr(e.id)) + youTag(o, e.o) + (e.kind === 'stake' ? ' tier ' + e.tier : '') + (who ? ' <span class="c4an-cdw">' + E(who) + '</span>' : '') + ' <span class="c4an-cdv">' + fnum(e.v) + '</span></li>';
         }).join('');
         return '<div class="c4an-cdh"><b' + (isShip ? ' title="' + E(row.model) + '"' : '') + '>' + E(row.label) + '</b></div>' +
             '<p class="c4an-cdn">Median ' + fnum(row.v) + ' units per second per ' + (isShip ? 'ship over ' + plural(row.n, 'fleet') + ' of this model only' : 'stake over ' + plural(row.n, 'stake') + ' with production') + '. ' +
@@ -1174,7 +1177,7 @@
         var W = ctx.W, labW = Math.min(Math.max(maxLabelPx(rows, W, 0.4), 56), 130), valW = 50, plotW = Math.max(40, W - labW - valW), rowH = 38, b = '';
         rows.forEach(function (r, i) {
             var y = 2 + i * rowH, len = r.pct / 100 * plotW;
-            b += tx(labW - 8, y + 14, clip(r.label, labW - 8), 'an-lab', 'end', ctx);
+            b += tx(labW - 8, y + 14, r.mine ? clip(r.label, labW - 8 - 6 * 7.2) + ' (You)' : clip(r.label, labW - 8), r.mine ? 'an-lab an-me' : 'an-lab', 'end', ctx);   // the name is cut first, so " (You)" is never what gets cut
             b += '<rect class="an-track" x="' + r1(labW) + '" y="' + (y + 3) + '" width="' + r1(plotW) + '" height="14" rx="4"/>';
             b += hbar(labW, y + 3, Math.max(len, r.pct > 0 ? 2 : 0), 14, 1, r.cls, r.tip, ctx);
             b += tx(labW + plotW + 6, y + 14, pctTxt(r.pct), 'an-val', 'start', ctx);
@@ -1243,7 +1246,7 @@
             var CSHOW = 20, noRes = g.contrib.some(function (c) { return !c.res.length; });
             cons = '<div class="c4an-tw"><table class="c4an-tbl c4an-fit c4an-who"><thead><tr><th scope="col">Player</th><th scope="col">System</th><th scope="col">Resources put in</th><th scope="col">Units</th></tr></thead><tbody>' +
                 g.contrib.slice(0, CSHOW).map(function (c) {
-                    return '<tr><th scope="row">' + E(c.player) + '</th><td class="c4an-l">' + E(c.system) + '</td><td class="c4an-l">' + (c.res.length ? c.res.map(function (r) { return E(r.n) + ' ' + E(fnum(r.q)); }).join(', ') : '-') + '</td><td>' + E(fnum(c.units)) + '</td></tr>';
+                    return '<tr><th scope="row"' + (mineOf(ctx, c.p) ? ' class="c4-me"' : '') + '>' + E(c.player) + youTag(ctx, c.p) + '</th><td class="c4an-l">' + E(c.system) + '</td><td class="c4an-l">' + (c.res.length ? c.res.map(function (r) { return E(r.n) + ' ' + E(fnum(r.q)); }).join(', ') : '-') + '</td><td>' + E(fnum(c.units)) + '</td></tr>';
                 }).join('') + '</tbody></table></div>';
         }
         cards.push(card('Governance modules', mc + chart('What a module costs', bl, tier || 'The full bill, once per system.') +
@@ -1258,7 +1261,7 @@
             // who committed voting power to which system: one row per allocation, most voting power first
             else al = '<h5 class="c4an-ch">Who committed voting power where</h5><div class="c4an-tw"><table class="c4an-tbl c4an-fit c4an-who"><thead><tr><th scope="col">Player</th><th scope="col">System</th><th scope="col">Voting power</th><th scope="col">Crew</th></tr></thead><tbody>' +
                 v.top.slice(0, 20).map(function (t) {
-                    return '<tr><th scope="row">' + E(t.player) + '</th><td class="c4an-l">' + E(t.system) + '</td><td>' + E(fnum(t.power)) + '</td><td>' + (t.crew ? E(fnum(t.crew)) : '-') + '</td></tr>';
+                    return '<tr><th scope="row"' + (mineOf(ctx, t.p) ? ' class="c4-me"' : '') + '>' + E(t.player) + youTag(ctx, t.p) + '</th><td class="c4an-l">' + E(t.system) + '</td><td>' + E(fnum(t.power)) + '</td><td>' + (t.crew ? E(fnum(t.crew)) : '-') + '</td></tr>';
                 }).join('') + '</tbody></table></div>';
             vc = chart('', head + al, 'Voting power a player commits to a system counts for the votes there, with the crew backing it; ' + (v.top.length > 20 ? 'first 20 of ' : '') + plural(v.top.length, 'allocation') + ', most voting power first.');
         }
@@ -1430,7 +1433,7 @@
             if (e.mean != null) rows.push({ label: 'average producer', v: e.mean, cls: 'f-s3', tip: 'Total divided by ' + plural(e.producers, 'producer') + ': ' + fnum(e.mean) + ' a day' });
             var c2 = rows.length ? chart('Units per day per producer', barList(ctx, rows, { label: 'Units per day per producing player' }),
                 'A producer is a player with a mining fleet that has a yield or a claim stake with output; ' + plural(e.producers, 'producer') + '.' + rate) : chart('', note('No producing player in this read.'), base + '.');
-            var hd = e.head.map(function (p, i) { return { label: p.owner || shortAddr(p.o), v: p.day, cls: 'f-s7', tip: (p.owner || shortAddr(p.o)) + ': ' + fnum(p.day) + ' a day' }; });
+            var hd = e.head.map(function (p, i) { return { label: p.owner || shortAddr(p.o), mine: mineOf(ctx, p.o), v: p.day, cls: 'f-s7', tip: (p.owner || shortAddr(p.o)) + ': ' + fnum(p.day) + ' a day' }; });
             if (e.restDay > 0) hd.push({ label: 'everyone else', v: e.restDay, cls: 'f-npc', tip: plural(e.producers - e.head.length, 'other producer') + ': ' + fnum(e.restDay) + ' a day' });
             var c2b = hd.length ? chart('Who produces it', barList(ctx, hd, { label: 'Share of emission by producer', pct: e.namedDay }),
                 'Share of the daily emission from the ' + e.head.length + ' largest producers and from all the others together; the largest ' + e.head.length + ' make ' + pctTxt(e.headDay / e.namedDay * 100) + '.') : '';
@@ -1469,7 +1472,7 @@
         var width = fin(opts.width) && opts.width > 0 ? opts.width : 360;
         var wide = width >= 640, cols = width >= 2700 ? 5 : width >= 1900 ? 4 : width >= 1100 ? 3 : wide ? 2 : 1;
         var colW = (width - 12 * (cols - 1)) / cols;
-        var ctx = { W: Math.max(240, Math.floor(colW - 28)), esc: typeof opts.esc === 'function' ? opts.esc : esc };
+        var ctx = { W: Math.max(240, Math.floor(colW - 28)), esc: typeof opts.esc === 'function' ? opts.esc : esc, isMine: opts.isMine };
         var html;
         if (!model || typeof model !== 'object' || !model.mining) {
             html = '<p class="c4an-empty">No data to chart yet.</p>';
@@ -1553,7 +1556,7 @@
         var st = el._c4an, pop = typeof el.querySelector === 'function' ? el.querySelector('.c4an-pop') : null;
         if (!st || !pop || !st.model) return false;
         var key = mark.getAttribute('data-an-k');
-        var html = cardHtml(st.model, key, { esc: typeof st.opts.esc === 'function' ? st.opts.esc : esc, canPick: typeof st.opts.onPick === 'function' });
+        var html = cardHtml(st.model, key, { esc: typeof st.opts.esc === 'function' ? st.opts.esc : esc, canPick: typeof st.opts.onPick === 'function', isMine: st.opts.isMine });
         if (!html) return false;
         if (openEl && openEl !== el) closePop(false);
         pop.innerHTML = html; pop.hidden = false; pop.className = 'c4an-pop' + (pinned ? ' c4an-pop-pin' : '');

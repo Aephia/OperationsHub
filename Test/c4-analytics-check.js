@@ -496,6 +496,14 @@ function suite(A, quiet) {
         const draw = L => { const e = { innerHTML: '', addEventListener() {} }; A.render(e, A.build(L, F.B), { width: 900 }); return e.innerHTML; };
         const part = (h, id) => { const a = h.indexOf('id="c4an-' + id + '"'), b = h.indexOf('<section', a + 1); return h.slice(h.lastIndexOf('<section', a), b < 0 ? h.length : b); };
         const clean = s => !/NaN|undefined|Infinity|\[object/.test(s);
+        // the visitor's own (2026-11-26): PL1 is mine -> its rows in both player tables carry c4-me and the You tag, PL2's do not
+        {
+            const Lm = mkL(), drawM = opts => { const e = { innerHTML: '', addEventListener() {} }; A.render(e, A.build(Lm, F.B), Object.assign({ width: 900 }, opts)); return part(e.innerHTML, 'governance'); };
+            const hMine = drawM({ isMine: p => p === 'PL1' }), hNone = drawM({ isMine: () => false }), hNoCb = drawM({});
+            const rowsMine = hMine.match(/<tr><th scope="row" class="c4-me">/g) || [], tags = hMine.match(/<i class="c4-me-tag">You<\/i><\/th>/g) || [];
+            ok('mine: the governance player tables mark the visitor\'s own rows (PL1 is in both: 2 rows, 2 tags) and not the others', rowsMine.length === 2 && tags.length === 2 && /Two<\/th>/.test(hMine) && !/Two<i/.test(hMine), rowsMine.length + ' rows, ' + tags.length + ' tags');
+            ok('mine: nobody marked when no row is the visitor\'s or the page gives no callback', !/c4-me/.test(hNone) && !/c4-me/.test(hNoCb) && hNone.length > 500);
+        }
         const L0 = mkL(), m0 = A.build(L0, F.B), g0 = m0.gov, h0 = part(draw(L0), 'governance');
         // exact numbers
         ok('gov: 36 systems, 3 modules installed, 3 voting enabled, 1 where votes set the fees (only one has power)', g0 && g0.n === 36 && g0.mods === 3 && g0.on === 3 && g0.votesSet === 1, JSON.stringify(g0 && [g0.n, g0.mods, g0.on, g0.votesSet]));
@@ -1078,6 +1086,13 @@ function suite(A, quiet) {
             ok('hover opens the card with the fleet detail', el1.pop.hidden === false && unesc(el1.pop.innerHTML).includes('<img src=x onerror=1>'));
             el1.fire('mouseout', { target: mk1, relatedTarget: null });
             ok('mouse leaving an unpinned card closes it', el1.pop.hidden === true);
+            // the visitor's own (2026-11-26): the page hands a plain callback; a mine fleet's card carries c4-me and the You tag, a not-mine one neither
+            const elY = mount({ isMine: p => !!p }), elN = mount({ isMine: () => false }), elU = mount({});
+            elY.fire('mouseover', { target: mk1 }); const hY = elY.pop.innerHTML; elY.fire('mouseout', { target: mk1, relatedTarget: null });
+            elN.fire('mouseover', { target: mk1 }); const hN = elN.pop.innerHTML; elN.fire('mouseout', { target: mk1, relatedTarget: null });
+            elU.fire('mouseover', { target: mk1 }); const hU = elU.pop.innerHTML; elU.fire('mouseout', { target: mk1, relatedTarget: null });
+            ok('mine: a fleet card marks the fleet and its owner (class c4-me + You tag, twice); a not-mine and a callback-less card carry none', hY.includes('class="c4an-cdh c4-me"') && (hY.match(/<i class="c4-me-tag">You<\/i>/g) || []).length === 2 &&
+                !/c4-me/.test(hN) && !/c4-me/.test(hU) && hN.length > 100 && hU.length > 100, hY.slice(0, 200));
             el1.fire('focusin', { target: mk1 });
             ok('keyboard focus opens the card', el1.pop.hidden === false);
             el1.fire('keydown', { target: mk1, key: 'Enter', preventDefault() {} });
@@ -1181,7 +1196,7 @@ const MUTANTS = [
     ["stakes: extractor rows not in count order","sort(function (a, b) { return a - b; }).forEach(function (n) {","sort(function (a, b) { return b - a; }).forEach(function (n) {"],
     ["buildings card: shows six, not five","MINES_MAX = 6, BLD_MAX = 5;","MINES_MAX = 6, BLD_MAX = 6;"],
     ["buildings card: fewest first","var byCount = function (a, b) { return b.v - a.v ||","var byCount = function (a, b) { return a.v - b.v ||"],
-    ["buildings card: the button opens the owner, not the stake","return '<li>' + pickBtn(o, 'stake', e.id, who)","return '<li>' + pickBtn(o, 'owner', e.o, who)"],
+    ["buildings card: the button opens the owner, not the stake","'>' + pickBtn(o, 'stake', e.id, who) + youTag(o, e.o)","'>' + pickBtn(o, 'owner', e.o, who) + youTag(o, e.o)"],
     ["buildings card: owner name unescaped in the where text","<span class=\"c4an-cdw\">' + E(where) + '</span> <span class=\"c4an-cdv\">x ' + fnum(e.v)","<span class=\"c4an-cdw\">' + where + '</span> <span class=\"c4an-cdv\">x ' + fnum(e.v)"],
     ["buildings chart: bars are not clickable","if (r.k) b += '<rect class=\"an-hit\"","if (false) b += '<rect class=\"an-hit\""],
     ["buildings card: a stake's kinds counted once per building line","bump(kq, str(b.k) || 'unknown', q);","bump(kq, str(b.k) || 'unknown', 1);"],
@@ -1196,6 +1211,9 @@ const MUTANTS = [
     ["card: Enter does nothing","(ev.key !== 'Enter' && ev.key !== ' ')","(ev.key !== 'Enter' && ev.key !== ' ') || true"],
     ["card: dots not focusable"," tabindex=\"0\" role=\"button\" aria-label=\"' + ctx.esc(p.tip)"," role=\"button\" aria-label=\"' + ctx.esc(p.tip)"],
     ["card: model name keeps its Default Config suffix","Default Config$/, '')","Default Config$Q/, '')"],
+    ["mine: the voting rows are never marked","'<tr><th scope=\"row\"' + (mineOf(ctx, t.p) ? ' class=\"c4-me\"' : '') + '>' + E(t.player) + youTag(ctx, t.p)","'<tr><th scope=\"row\">' + E(t.player)"],
+    ["mine: every owner counts as the visitor's","function mineOf(o, p) { return !!(p && o && typeof o.isMine === 'function' && o.isMine(p)); }","function mineOf(o, p) { return !!p; }"],
+    ["mine: the card callback is dropped","canPick: typeof st.opts.onPick === 'function', isMine: st.opts.isMine }","canPick: typeof st.opts.onPick === 'function' }"],
     ["card: pick buttons drawn without onPick","if (!o.canPick || !id) return o.esc(text);","if (!id) return o.esc(text);"],
     ["card: hover does not open","if (mk && !pinnedOn(el)) showPop(el, mk, false); });\n            el.addEventListener('mouseout'","if (false) showPop(el, mk, false); });\n            el.addEventListener('mouseout'"],
     ['quartile index off by one', 'var p = (sorted.length - 1) * q,', 'var p = sorted.length * q,'],
@@ -1335,13 +1353,13 @@ const MUTANTS = [
     ["gov: absent gov throws instead of a note","if (!g) return section('governance',","if (false) return section('governance',"],
     ["gov: bill name not escaped","'<li><b>' + E(b.n) + '</b>","'<li><b>' + b.n + '</b>"],
     ["gov: system name not escaped in the fees table","\"></i> ' + E(r.name) + '</th>","\"></i> ' + r.name + '</th>"],
-    ["gov: contributor name not escaped","return '<tr><th scope=\"row\">' + E(c.player) + '</th>","return '<tr><th scope=\"row\">' + c.player + '</th>"],
+    ["gov: contributor name not escaped","'>' + E(c.player) + youTag(ctx, c.p) + '</th>","'>' + c.player + youTag(ctx, c.p) + '</th>"],
     ["gov: contributed resource name not escaped","return E(r.n) + ' ' + E(fnum(r.q)); }).join(', ')","return r.n + ' ' + E(fnum(r.q)); }).join(', ')"],
     ["gov: contributed resources dropped","units: c.units, res: res };","units: c.units, res: [] };"],
     ["gov: zero-quantity resource rows kept","return obj(r) && fin(r.q) && r.q > 0; }).map(function (r) { return { n: str(r.n) ||","return obj(r); }).map(function (r) { return { n: str(r.n) ||"],
     ["gov: allocation system not escaped","E(t.system) + '</td><td>' + E(fnum(t.power))","t.system + '</td><td>' + E(fnum(t.power))"],
     ["gov: allocations listed in the order read","}).sort(function (x, y) { return y.power - x.power || (x.player < y.player ? -1 : x.player > y.player ? 1 : 0); });\n        var con","}).sort(function (x, y) { return 0; });\n        var con"],
-    ["gov: contributors ranked by name","return { player: plName(c.p), system: sysName(str(c.sys)), units: c.units, res: res };\n        }).sort(function (x, y) { return y.units - x.units ||","return { player: plName(c.p), system: sysName(str(c.sys)), units: c.units, res: res };\n        }).sort(function (x, y) { return 0 ||"],
+    ["gov: contributors ranked by name","return { player: plName(c.p), p: str(c.p), system: sysName(str(c.sys)), units: c.units, res: res };\n        }).sort(function (x, y) { return y.units - x.units ||","return { player: plName(c.p), p: str(c.p), system: sysName(str(c.sys)), units: c.units, res: res };\n        }).sort(function (x, y) { return 0 ||"],
     ["gov: loyalty points shown without confirmation","<th scope=\"col\">Units</th></tr></thead><tbody>' +","<th scope=\"col\">Units</th><th scope=\"col\">Loyalty points</th></tr></thead><tbody>' +"],
     ["gov: junk system rows not skipped","            var s = obj(S[a]);\n            if (!s) return;\n            var fa = Object","            var s = S[a];\n            var fa = Object"],
     ['script tag in output', "return '<div class=\"c4an-chart\">'", "return '<script></script><div class=\"c4an-chart\">'"]

@@ -206,6 +206,8 @@
         if (g.p == null) return '';
         return '<span class="fv-meter m-' + g.id + '"><span class="fv-meter-l"><em>' + esc(g.label) + '</em><b>' + esc(fmtN(g.v)) + ' / ' + esc(fmtN(g.max)) + '</b></span><span class="fv-meter-t"><i style="width:' + g.p.toFixed(1) + '%"></i></span></span>';
     }
+    // "You" mark: the view gets a plain boolean (ctx.isMine(owner)), so this file knows nothing of the hub profile
+    function meTag(on) { return on ? '<i class="c4-me-tag">You</i>' : ''; }
     function count(v, text) { return '<b data-count="' + esc(v) + '">' + esc(text == null ? fmtN(v) : text) + '</b>'; }
 
     function htmlOwner(model, o) {
@@ -230,8 +232,8 @@
         var more = list.length > limit ? '<button type="button" class="fv-more" data-fv-more>Show ' + Math.min(CARD_LIMIT, list.length - limit) + ' more of ' + (list.length - limit) + '</button>' : '';
         var none = list.length ? '' : '<p class="fv-note">' + (model.fleets.length ? 'No fleet of this owner is in that state.' : 'This profile owns no fleet in the latest read.') + '</p>';
         var stale = model.fleets.length && !model.hasStats ? '<p class="fv-note warn">Ship stats have not been read in this copy of the data. Refresh to read them.</p>' : '';
-        return '<div class="fv-page fv-owner" data-fa="' + esc(model.fa) + '">' +
-            '<div class="fv-head"><div class="fv-head-t"><div class="fv-kind">Fleet view</div><h2 class="fv-h" id="c4FvTitle">' + esc(who) + '</h2></div>' +
+        return '<div class="fv-page fv-owner' + (o.mine ? ' fv-mine' : '') + '" data-fa="' + esc(model.fa) + '">' +
+            '<div class="fv-head"><div class="fv-head-t"><div class="fv-kind">Fleet view</div><h2 class="fv-h' + (o.mine ? ' c4-me' : '') + '" id="c4FvTitle">' + esc(who) + meTag(o.mine) + '</h2></div>' +
             '<button type="button" class="fv-x" data-fv-close aria-label="Close the fleet view">&times;</button></div>' +
             '<div class="fv-tots">' + totals + '</div>' + chips + stale + none +
             '<div class="fv-grid">' + cards + '</div>' + more + '</div>';
@@ -271,13 +273,13 @@
         var stats = f.hasStats ? '<div class="fv-secs">' + sectionsHtml(f.sections) + hold + '</div>'
             : '<p class="fv-note warn">Ship stats have not been read in this copy of the data. Refresh to read them.</p>';
         var canFly = f.x != null && f.y != null && o.canFly !== false;
-        return '<div class="fv-page fv-hero" data-fa="' + esc(f.fa) + '" data-fv-a="' + esc(f.a) + '">' +
+        return '<div class="fv-page fv-hero' + (o.mine ? ' fv-mine' : '') + '" data-fa="' + esc(f.fa) + '" data-fv-a="' + esc(f.a) + '">' +
             '<div class="fv-head"><button type="button" class="fv-back" data-fv-back><i aria-hidden="true"></i>All fleets</button>' +
             (of > 1 ? '<div class="fv-nav"><button type="button" data-fv-nav="-1" aria-label="Previous fleet">&lsaquo;</button><span>' + (idx + 1) + ' / ' + of + '</span><button type="button" data-fv-nav="1" aria-label="Next fleet">&rsaquo;</button></div>' : '') +
             '<button type="button" class="fv-x" data-fv-close aria-label="Close the fleet view">&times;</button></div>' +
             '<div class="fv-stage s-' + esc(f.kind) + '"><i class="fv-floor" aria-hidden="true"></i><i class="fv-halo" aria-hidden="true"></i><i class="fv-orbit" aria-hidden="true"></i>' +
             '<div class="fv-stage-art">' + stage + '</div><i class="fv-scan" aria-hidden="true"></i>' +
-            '<div class="fv-title"><div class="fv-kind">Fleet of ' + esc(who) + '</div><h2 class="fv-h" id="c4FvTitle">' + esc(f.name) + '</h2>' +
+            '<div class="fv-title"><div class="fv-kind' + (o.mine ? ' c4-me' : '') + '">Fleet of ' + esc(who) + meTag(o.mine) + '</div><h2 class="fv-h" id="c4FvTitle">' + esc(f.name) + '</h2>' +
             '<div class="fv-title-r"><span class="c4-st st-' + esc(f.kind) + '">' + esc(f.stateLabel) + '</span><span class="fv-flag">' + esc(f.flagName.base) + (f.flagName.variant ? ' <em>' + esc(f.flagName.variant) + '</em>' : '') + '</span></div>' +
             '<p class="fv-where">' + esc(f.where) + '</p><p class="fv-facts">' + facts.map(esc).join(' &middot; ') + '</p>' +
             '<button type="button" class="fv-fly" data-fv-fly' + (canFly ? '' : ' disabled title="3D map not loaded"') + '>Fly to fleet</button>' +
@@ -305,7 +307,7 @@
     function model() { return buildOwner(V.ctx.latest, V.p, V.art); }
     function shown(m) { return V.state && V.state !== 'all' ? m.fleets.filter(function (f) { return f.kind === V.state; }) : m.fleets; }
     function draw(animate) {
-        var el = V.el, m = model(), name = V.ctx.ownerName ? V.ctx.ownerName(V.p) : '';
+        var el = V.el, m = model(), name = V.ctx.ownerName ? V.ctx.ownerName(V.p) : '', mine = !!(V.ctx.isMine && V.ctx.isMine(V.p));
         stopTurn();
         var top = el.scrollTop, html, keep = focusKey();
         // a redraw of the same fleet keeps its opened stat sheets open
@@ -313,8 +315,8 @@
         if (V.state && V.state !== 'all' && !m.states.some(function (s) { return s.kind === V.state; })) V.state = 'all';
         var f = V.fleet ? m.fleets.filter(function (x) { return x.a === V.fleet; })[0] : null;
         if (V.fleet && !f) V.fleet = null;   // the fleet is gone from this read: back to the list
-        if (f) { var list = shown(m).some(function (x) { return x.a === f.a; }) ? shown(m) : m.fleets; html = htmlFleet(f, { artBase: V.ctx.artBase, ownerName: name, index: list.indexOf(f), count: list.length, canFly: V.ctx.canFly !== false }); }
-        else html = htmlOwner(m, { artBase: V.ctx.artBase, ownerName: name, state: V.state, limit: V.limit });
+        if (f) { var list = shown(m).some(function (x) { return x.a === f.a; }) ? shown(m) : m.fleets; html = htmlFleet(f, { artBase: V.ctx.artBase, ownerName: name, mine: mine, index: list.indexOf(f), count: list.length, canFly: V.ctx.canFly !== false }); }
+        else html = htmlOwner(m, { artBase: V.ctx.artBase, ownerName: name, mine: mine, state: V.state, limit: V.limit });
         el.innerHTML = html;
         if (opened && V.fleet) [].forEach.call(el.querySelectorAll('details.fv-ship-d'), function (d, i) { if (opened[i]) d.open = true; });
         el.classList.toggle('fv-still', !animate || reduced());

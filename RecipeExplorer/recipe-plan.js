@@ -364,13 +364,16 @@
             // the tree's boxes when the plan is counted against what you hold: each box carries a bar filled to the
             // share of that item the plan no longer has to gather or craft (plg = the plan the graph shows, netted)
             const plg = pl ? (this.focus ? this.m.plan(this.m.planInputs(this.items.filter(i => this.keyOf(i) === this.focus), this.faction), Object.assign({ stock }, opts)) : pl) : null;
-            const unitsOf = (plan, name) => { const cs = plan.crafts.filter(c => c.name === name); if (cs.length) return cs.reduce((a, c) => a + c.units, 0); const r = plan.raws.find(x => x.name === name); return r ? r.qty : 0; };
-            const shareOf = name => { if (!plg) return null; const need = unitsOf(pg, name); return need > 0 ? 1 - Math.min(need, unitsOf(plg, name)) / need : null; };
+            // a box's share = what is held of it PLUS the part still to craft, by the average cover of its ingredients
+            // (RecipeModel.cover). Before this a crafted box counted only units held as that very item, so holding every
+            // ore of a chain left all its crafted boxes empty.
+            const cov = plg ? this.m.cover(pg, plg) : null;
+            const shareOf = name => (cov ? cov.share(name) : null), heldShare = name => (cov && cov.held(name)) || 0;
             this.shareOf = shareOf;
             const host = document.getElementById('rpGraph');
             this.graph = new ChainGraph(host, {
                 progress: plg ? n => (n.data && n.data.cat === 'plan' ? null : shareOf(n.name)) : null,
-                title: plg ? n => { const s = shareOf(n.name); return s == null ? n.name : `${n.name}: ${Math.floor(s * 100)}% covered by what you hold${plg.held.get(n.name) ? ` (${num(plg.held.get(n.name))} taken from your cargo)` : ''}`; } : null,
+                title: plg ? n => { const s = shareOf(n.name); if (s == null) return n.name; const mk = s - heldShare(n.name); return `${n.name}: ${Math.floor(s * 100 + 1e-9)}% covered by what you hold${plg.held.get(n.name) ? ` (${num(plg.held.get(n.name))} taken from your cargo)` : ''}${mk > 1e-9 ? ` - ${Math.floor(mk * 100 + 1e-9)}% of it still to craft, from inputs you hold` : ''}`; } : null,
                 onOpen: name => this.openByName(name), sound: n => this.snd(n), hitTest: true,   // without hitTest no node click arrives (pointer capture)
                 label: n => { const us = pg.crafts.filter(c => c.name === n.name), u = us.length ? { crafts: us.reduce((a, c) => a + c.crafts, 0), units: us.reduce((a, c) => a + c.units, 0) } : null; const units = pg.raws.find(r => r.name === n.name); return n.data && n.data.cat === 'plan' ? `${pg.items.length} recipes` : (u ? `×${num(u.crafts)} crafts · ${num(u.units)} units` : units ? `${num(units.qty)} units · raw` : (n.res ? `T${n.res.tier} · ${CAT[n.res.category] ? CAT[n.res.category].label : ''}` : '')); },
                 display: name => this.disp(name),   // a tagged node shows its item's name; the key (and hover title) keeps the tag

@@ -573,8 +573,38 @@ async function runBrowser() {
         }
     } finally { await browser.close(); server.close(); }
 }
+// ------------------------------------------------------------------ the link to the Stake Builder (2026-11-26, node only)
+// The contract with the Stake Builder page: ?stake=<claim stake ACCOUNT address>, any stake in the read, the same tab family
+// (../ClaimStakeExplorer/index.html), a new tab with noopener. The two source lines (esc and stakeBuilderLink) are cut out of
+// app.js and run here; each guard also has a mutant that must FAIL.
+function runLinkPart() {
+    console.log('\n[L] the Stake Builder link in the stake view (node, source of app.js cut out and run)');
+    const APP = fs.readFileSync(path.join(ROOT, 'C4Live', 'app.js'), 'utf8');
+    const grab = re => { const m = APP.match(re); if (!m) throw new Error('not found in app.js: ' + re); return m[0]; };
+    const escSrc = grab(/const esc = s => .*\n/), linkSrc = grab(/const stakeBuilderLink = a => .*\n/);
+    const make = (mut) => { let l = linkSrc; if (mut) { if (l.split(mut[0]).length !== 2) throw new Error('mutant anchor: ' + mut[0]); l = l.replace(mut[0], () => mut[1]); } return new Function(escSrc + l + '; return stakeBuilderLink;')(); };
+    const run = (fn) => {
+        const plain = 'StakeAcct1111111111111111111111111111111111', evil = 'A"><img src=x onerror=1>&b c/d?e#f';
+        return {
+            href: fn(plain).includes('href="../ClaimStakeExplorer/index.html?stake=' + plain + '"'),
+            attrs: /target="_blank" rel="noopener"/.test(fn(plain)) && /class="sv-link"/.test(fn(plain)) && />Open in the Stake Builder<\/a>/.test(fn(plain)),
+            enc: fn(evil).includes('?stake=' + encodeURIComponent(evil) + '"') && !/[<>]/.test(fn(evil).replace(/<\/?(span|a)\b[^>]*>/g, '')) && !fn(evil).includes('<img'),
+            none: fn('') === '' && fn(null) === '' && fn(undefined) === '',
+        };
+    };
+    const real = run(make());
+    check('[L] the href is ../ClaimStakeExplorer/index.html?stake=<address> for an address that needs no escaping', real.href);
+    check('[L] opens in a new tab with noopener, styled as sv-link, labelled "Open in the Stake Builder"', real.attrs);
+    check('[L] a hostile address is percent-encoded into the query and cannot break out of the attribute', real.enc);
+    check('[L] no link for a stake with no account address', real.none);
+    check('[L] the stake view puts the link into the page for every stake (svHtml calls stakeBuilderLink(v.k.a), not only the visitor\'s)', /\$\{stakeBuilderLink\(v\.k\.a\)\}/.test(APP) && !/HP\.|S\.mine/.test(linkSrc));
+    // negative: with each guard compiled out the matching probe must fail; positive control = the unbroken run passed above
+    const muts = [['encodeURIComponent dropped', ['encodeURIComponent(a)', 'a'], 'enc'], ['wrong query name', ['?stake=', '?s='], 'href'], ['noopener dropped', [' rel="noopener"', ''], 'attrs'], ['a missing address still gets a link', ['a ? `', 'true ? `'], 'none']];
+    for (const [name, mut, key] of muts) { const r = run(make(mut)); check('[L] negative "' + name + '": passes unbroken, FAILS with the guard removed', real[key] === true && r[key] === false, 'unbroken ' + real[key] + ', broken ' + r[key]); }
+}
 (async () => {
     runModelPart();
+    runLinkPart();
     await runBrowser();
     console.log('\n' + pass + ' passed, ' + fail + ' failed');
     process.exit(fail ? 1 : 0);

@@ -46,19 +46,30 @@
     const R = 54, RINGS = 3, SQRT3 = Math.sqrt(3);
     const SQ = T.squash();
     const STAGE_W = 700, STAGE_H = 420, CX = STAGE_W / 2, CY = 250;
-    const toScreen = (q, r) => [CX + R * SQRT3 * (q + r / 2), CY + R * 1.5 * r * SQ];
-    const SPIRAL = (() => {
+    // k = the drawing scale of the pad: 1 for the 37-cell pad (RINGS rings), smaller for a pad grown by whole rings so
+    // that it still fits the same stage (a pad of n rings is 2n+1 cells across)
+    const toScreen = (q, r, k) => { k = k || 1; return [CX + k * R * SQRT3 * (q + r / 2), CY + k * R * 1.5 * r * SQ]; };
+    const MAX_RINGS = 40;
+    const cellsOf = n => 3 * n * (n + 1) + 1;                           // 37 for 3 rings, 61 for 4, 91 for 5
+    const ringsFor = count => { let n = RINGS; while (n < MAX_RINGS && cellsOf(n) < count) n++; return n; };
+    const padScale = n => (n <= RINGS ? 1 : (2 * RINGS + 1) / (2 * n + 1));
+    const ringsOf = plan => { const n = plan && plan.rings; return Number.isInteger(n) && n >= RINGS && n <= MAX_RINGS ? n : RINGS; };
+    const spiralCache = new Map();
+    const spiralOf = rings => {
+        if (spiralCache.has(rings)) return spiralCache.get(rings);
         const cells = [[0, 0]];
         const dirs = [[1, 0], [0, 1], [-1, 1], [-1, 0], [0, -1], [1, -1]];
-        for (let n = 1; n <= RINGS; n++) {
+        for (let n = 1; n <= rings; n++) {
             let q = 0, r = -n;
             for (let side = 0; side < 6; side++) {
                 for (let i = 0; i < n; i++) { cells.push([q, r]); q += dirs[side][0]; r += dirs[side][1]; }
             }
         }
+        spiralCache.set(rings, cells);
         return cells;
-    })();
-    const hexPoints = (cx, cy) => { const pts = []; for (let i = 0; i < 6; i++) { const a = Math.PI / 180 * (60 * i - 30); pts.push((cx + R * Math.cos(a)).toFixed(1) + ',' + (cy + R * Math.sin(a) * SQ).toFixed(1)); } return pts.join(' '); };
+    };
+    const hexPoints = (cx, cy, k) => { k = k || 1; const pts = []; for (let i = 0; i < 6; i++) { const a = Math.PI / 180 * (60 * i - 30); pts.push((cx + k * R * Math.cos(a)).toFixed(1) + ',' + (cy + k * R * Math.sin(a) * SQ).toFixed(1)); } return pts.join(' '); };
+    const gridHTML = rings => { const k = padScale(rings); return spiralOf(rings).map(([q, r]) => { const [x, y] = toScreen(q, r, k); return `<polygon class="cell" data-q="${q}" data-r="${r}" points="${hexPoints(x, y, k)}"/>`; }).join(''); };
 
     // ---- data
     const StakeData = {
@@ -100,6 +111,8 @@
             this.sequence = null;
             StakeData.init();
             this.mine = { ready: false, latest: null, bodies: null, stakes: [], why: '', profile: null };   // the visitor's own C4 claim stakes
+            this.gridRings = RINGS;        // the rings the drawn grid has (renderPad redraws it when a plan needs another count)
+            this.pendingStake = null;      // ?stake= waiting for the C4 read
             this.renderShell();
             this.bind();
             this.renderMine(); this.initMine();
@@ -138,7 +151,7 @@
                         </div>
                         <div class="sb-stage-box" id="sbStageBox">
                             <div class="sb-stage" id="sbStage" style="width:${STAGE_W}px;height:${STAGE_H}px">
-                                <svg class="sb-grid" viewBox="0 0 ${STAGE_W} ${STAGE_H}" width="${STAGE_W}" height="${STAGE_H}" aria-hidden="true">${SPIRAL.map(([q, r]) => { const [x, y] = toScreen(q, r); return `<polygon class="cell" data-q="${q}" data-r="${r}" points="${hexPoints(x, y)}"/>`; }).join('')}</svg>
+                                <svg class="sb-grid" viewBox="0 0 ${STAGE_W} ${STAGE_H}" width="${STAGE_W}" height="${STAGE_H}" aria-hidden="true">${gridHTML(RINGS)}</svg>
                                 <svg class="sb-flow" viewBox="0 0 ${STAGE_W} ${STAGE_H}" width="${STAGE_W}" height="${STAGE_H}" aria-hidden="true"></svg>
                                 <div class="sb-tiles" id="sbTiles"></div>
                                 <div class="sb-empty" id="sbEmpty"><b>Pick a planet</b><span>The pad opens on any planet that can hold a claim stake.</span></div>
@@ -240,6 +253,7 @@
         }
 
         selectPlanet(key) {
+            this.pendingStake = null;   // the visitor chose something while a ?stake= link waited for the C4 read: their choice stands
             const p = StakeData.planets.find(x => x.key === key);
             if (!p || p.cat === 3) return;
             const tier = this.plan ? this.plan.tier : 1, kind = this.plan ? this.plan.kind : 'standard';
@@ -254,7 +268,7 @@
         setTier(tier) {
             if (!this.plan || this.plan.tier === tier) return;
             const old = this.plan.items.filter(i => !i.b.comesWithStake).map(i => i.b.id.replace(/-t\d$/, '-t' + tier));
-            this.plan.tier = tier; this.plan.items = []; delete this.plan.onChain; this.renderMine();
+            this.plan.tier = tier; this.plan.items = []; delete this.plan.onChain; delete this.plan.rings; this.renderMine();
             this.addStakeBuildings();
             let kept = 0;
             old.forEach(id => { const b = this.byId(id); if (b && this.catalogue().includes(b) && this.addBuilding(id, false)) kept++; });
@@ -264,7 +278,7 @@
 
         setKind(kind) {
             if (!this.plan || this.plan.kind === kind) return;
-            this.plan.kind = kind; this.plan.items = []; delete this.plan.onChain; this.renderMine();
+            this.plan.kind = kind; this.plan.items = []; delete this.plan.onChain; delete this.plan.rings; this.renderMine();
             this.addStakeBuildings();
             this.toast(kind === 'cultivation' ? 'Cultivation stake: the cultivation hub replaces the central hub and farms unlock.' : 'Standard stake.');
             this.renderAll(); this.save();
@@ -291,7 +305,32 @@
             };
             H.onChange(apply);
             H.loadC4('../', { bodies: true }).then(r => { this.mine.latest = r.latest; this.mine.why = r.why || ''; this.mine.bodies = new Map((r.bodies || []).map(b => [b.a, b])); }, () => { this.mine.why = 'The C4 Live data could not be read.'; })
-                .then(() => { this.mine.ready = true; apply(); });
+                .then(() => { this.mine.ready = true; apply(); if (this.pendingStake) { const a = this.pendingStake; this.pendingStake = null; this.openStake(a); } });
+        }
+        // ?stake=<claim stake account address> (C4 Live links here): any stake of the last read, not only the visitor's.
+        // The value is untrusted: it must be a base58 address and is only ever compared with the read, never put in markup.
+        // Waits for the C4 read when it is not in yet. Returns the load result, or null (with a toast saying why).
+        openStake(raw) {
+            const H = window.HubProfile;
+            const addr = typeof raw === 'string' ? raw.trim() : '';
+            if (!H || !H.isAddress(addr)) { this.toast('The stake in the link is not a claim stake address.', 'bad'); return null; }
+            if (!this.mine.ready) { this.pendingStake = addr; this.toast('Reading the C4 Live data for the stake in the link...'); return null; }
+            if (!this.mine.latest) { this.toast('The stake in the link cannot be shown: ' + (this.mine.why || 'the C4 Live data could not be read.'), 'bad'); return null; }
+            if (!this.stakeInRead(addr)) { this.toast('That claim stake is not in the last C4 Live read.', 'bad'); return null; }
+            return this.loadStake(addr, { link: true });
+        }
+        stakeInRead(addr) {
+            const list = this.mine.latest && Array.isArray(this.mine.latest.stakes) ? this.mine.latest.stakes : [];
+            return list.find(x => x && x.a === addr) || null;
+        }
+        // who holds a stake of the read: { mine, name } (name from the read's owners, else the shortened profile address)
+        ownerOf(st) {
+            const m = this.mine;
+            const mine =!!(m.stakes && m.stakes.some(x => x.a === st.a));
+            const o = (m.latest && Array.isArray(m.latest.owners) ? m.latest.owners : []).find(x => x && x.p === st.o);
+            const p = typeof st.o === 'string' ? st.o : '';
+            const name = (o && typeof o.name === 'string' && o.name.trim()) ? o.name.trim().slice(0, 40) : (p.length > 10 ? p.slice(0, 4) + '...' + p.slice(-4) : (p || 'an unknown owner'));
+            return { mine, name };
         }
         // the Stake Builder's planet for a stake: its system by name, then the planet by the name C4 gives the body;
         // without the planets file, the one planet of that system whose type the stake's hub names
@@ -328,14 +367,18 @@
         // one of the visitor's stakes -> the pad, building by building. Returns { placed, total, missing, overflow, offTier }
         // or null when the planet is not known. Buildings are placed as they are on chain: no rule of the builder is
         // applied to them (a real stake may hold what the builder's rules would refuse).
-        loadStake(addr) {
-            const st = this.mine.stakes.find(x => x.a === addr); if (!st) return null;
+        // opts.link: opened from a ?stake= link - shown, but NOT saved over the visitor's own saved plan; the first change
+        // they make to it saves it as theirs (review finding 2026-11-26: a link silently replaced the saved plan)
+        loadStake(addr, opts) {
+            this.pendingStake = null;
+            const st = this.stakeInRead(addr); if (!st) return null;
             const p = this.planetOfStake(st);
             if (!p) { this.toast('The planet of this stake could not be matched to the planet data.', 'bad'); return null; }
             const kind = /^Cultivation/i.test(st.defName || '') ? 'cultivation' : 'standard', tier = [1, 2, 3, 4, 5].includes(st.tier) ? st.tier : 1;
             this.stopSequence(); this.hideTip();
             this.plan = { key: p.key, system: p.system, planet: p.planet, index: p.index, tier, kind, items: [] };
-            const res = { a: st.a, at: this.mine.latest.generatedAt || 0, state: st.st || '', placed: 0, total: 0, missing: 0, overflow: 0, offTier: 0 };
+            const who = this.ownerOf(st);
+            const res = { a: st.a, at: this.mine.latest.generatedAt || 0, state: st.st || '', placed: 0, total: 0, missing: 0, overflow: 0, offTier: 0, mine: who.mine, owner: who.name, rings: RINGS };
             const want = [];
             for (const x of st.bl || []) {
                 const q = x && x.q > 0 ? Math.floor(x.q) : 0; if (!q) continue;
@@ -346,6 +389,9 @@
                 if (b.tier !== tier) res.offTier += q;
                 want.push({ b, q });
             }
+            // the pad grows by whole rings until what the stake holds fits (the stake's own hub counts once if the read names none)
+            const count = want.reduce((a, w) => a + w.q, 0) + (want.some(w => w.b.comesWithStake) ? 0 : 1);
+            this.plan.rings = res.rings = ringsFor(count);
             const rank = b => (b.comesWithStake ? -1 : BUILD_RANK[kindOf(b)] != null ? BUILD_RANK[kindOf(b)] : 3);
             want.sort((a, b) => rank(a.b) - rank(b.b) || a.b.name.localeCompare(b.b.name));
             for (const w of want) for (let i = 0; i < w.q; i++) {
@@ -356,7 +402,7 @@
             }
             if (!this.plan.items.some(i => i.b.comesWithStake)) this.addStakeBuildings();   // the read named no hub: the stake's own
             this.plan.onChain = res;
-            this.renderPlanetList(); this.renderMine(); this.renderAll(); this.save();
+            this.renderPlanetList(); this.renderMine(); this.renderAll(); if (!(opts && opts.link)) this.save();
             if (window.spaceSounds && window.spaceSounds.success) window.spaceSounds.success();
             return res;
         }
@@ -365,9 +411,11 @@
             const s = Math.max(0, Math.round(Date.now() / 1000 - c.at)), ago = s < 5400 ? Math.max(1, Math.round(s / 60)) + ' min ago' : s < 172800 ? Math.round(s / 3600) + ' h ago' : Math.round(s / 86400) + ' days ago';
             const parts = [];
             if (c.overflow) parts.push(c.overflow + ' more do not fit on the pad, so the gauges below leave them out');
+            else if (c.rings > RINGS) parts.push('the pad is drawn ' + c.rings + ' rings wide (' + cellsOf(c.rings) + ' cells) to hold them all');
             if (c.missing) parts.push(c.missing + ' are not in the building data');
             if (c.offTier) parts.push(c.offTier + ' are of another tier than the stake');
-            return '<div class="sb-onchain"><b>Your claim stake</b> as read from the chain ' + ago + (c.state && c.state !== 'active' ? ' (' + esc(c.state) + ')' : '') + ': ' + c.placed + ' of ' + c.total + ' buildings on the pad' + (parts.length ? '; ' + parts.join('; ') : '') + '. Anything you change here is a plan, not the chain.</div>';
+            const whose = c.mine || c.owner == null ? 'Your claim stake' : 'Claim stake of ' + esc(c.owner);
+            return '<div class="sb-onchain"><b>' + whose + '</b> as read from the chain ' + ago + (c.state && c.state !== 'active' ? ' (' + esc(c.state) + ')' : '') + ': ' + c.placed + ' of ' + c.total + ' buildings on the pad' + (parts.length ? '; ' + parts.join('; ') : '') + '. Anything you change here is a plan, not the chain.</div>';
         }
 
         // ------------------------------------------------------------- rules
@@ -469,6 +517,7 @@
 
         // ------------------------------------------------------------ mutate
         addBuilding(id, announce) {
+            if (announce) this.pendingStake = null;   // a click by the visitor (not a restore): a waiting ?stake= link gives way
             if (!this.plan) { this.toast('Pick a planet first.'); return false; }
             const b = this.byId(id); if (!b) return false;
             const st = this.status(b, this.ctx());
@@ -512,7 +561,7 @@
             if (parent) anchor = parent.cell; else if (HUB_CELL[parentKind]) anchor = HUB_CELL[parentKind];
             const [ax, ay] = toScreen(anchor[0], anchor[1]);
             let best = null, bestD = Infinity;
-            SPIRAL.forEach(c => {
+            spiralOf(ringsOf(this.plan)).forEach(c => {
                 if (!free(c)) return;
                 if (c[0] === 0 && c[1] === 0) return;
                 const [x, y] = toScreen(c[0], c[1]);
@@ -543,7 +592,7 @@
         save() {
             try {
                 if (!this.plan) return;
-                localStorage.setItem(STORE_KEY, JSON.stringify({ key: this.plan.key, tier: this.plan.tier, kind: this.plan.kind, ids: this.plan.items.filter(i => !i.b.comesWithStake).map(i => i.b.id) }));
+                localStorage.setItem(STORE_KEY, JSON.stringify({ key: this.plan.key, tier: this.plan.tier, kind: this.plan.kind, rings: ringsOf(this.plan), ids: this.plan.items.filter(i => !i.b.comesWithStake).map(i => i.b.id) }));
             } catch (e) { /* storage is a convenience only */ }
         }
         restore() {
@@ -553,6 +602,7 @@
                 const p = StakeData.planets.find(x => x.key === s.key);
                 if (!p || p.cat === 3) return;
                 this.plan = { key: s.key, system: p.system, planet: p.planet, index: p.index, tier: s.tier || 1, kind: s.kind || 'standard', items: [] };
+                if (ringsOf(s) > RINGS) this.plan.rings = ringsOf(s);   // a saved plan keeps the pad it had; an old save has none
                 this.addStakeBuildings();
                 (s.ids || []).forEach(id => { if (this.byId(id)) this.addBuilding(id, false); });
                 this.renderPlanetList();
@@ -617,13 +667,16 @@
             stage.style.setProperty('--pad-tint', CAT_COLOR[cat]);
             this.$('sbPadTitle').textContent = `${p.planet.name || 'Planet'} · tier ${p.tier} ${p.kind === 'cultivation' ? 'cultivation' : 'claim'} stake`;
             this.$('sbPadSub').textContent = `${p.items.length} building${p.items.length === 1 ? '' : 's'}`;
-            const unit = T.unit(), [ax, ay] = T.anchor(), s = R / unit;
+            const rings = ringsOf(p), k = padScale(rings);
+            if (this.gridRings !== rings) { const g = this.root.querySelector('.sb-grid'); if (g) g.innerHTML = gridHTML(rings); this.gridRings = rings; }
+            stage.classList.toggle('big', rings > RINGS);
+            const unit = T.unit(), [ax, ay] = T.anchor(), s = R * k / unit;
             const seen = new Set(this.plan.items.map(i => i.uid));
             // keep existing tile nodes (so the drop animation only plays for new ones), remove the gone, add the new
             tiles.querySelectorAll('[data-uid]').forEach(n => { if (!seen.has(+n.dataset.uid)) n.remove(); });
             p.items.forEach(it => {
                 if (!it.cell) return;
-                const [x, y] = toScreen(it.cell[0], it.cell[1]);
+                const [x, y] = toScreen(it.cell[0], it.cell[1], k);
                 const kind = kindOf(it.b), [w, h] = T.size(kind);
                 let n = tiles.querySelector(`[data-uid="${it.uid}"]`);
                 if (!n) {
@@ -638,7 +691,7 @@
             });
             this.lastAdded = null;
             // resource chains: producer -> consumer; hubs -> central hub (faint)
-            const pos = new Map(p.items.filter(i => i.cell).map(i => [i.uid, toScreen(i.cell[0], i.cell[1])]));
+            const pos = new Map(p.items.filter(i => i.cell).map(i => [i.uid, toScreen(i.cell[0], i.cell[1], k)]));
             const paths = [];
             const centre = p.items.find(i => i.b.comesWithStake);
             p.items.forEach(i => {
@@ -865,9 +918,10 @@
             // the pad
             const ox = (W - STAGE_W) / 2, oy = 130;
             g.strokeStyle = 'rgba(120,200,255,0.18)'; g.lineWidth = 1;
-            SPIRAL.forEach(([q, r]) => { const [x, y] = toScreen(q, r); g.beginPath(); for (let i = 0; i < 6; i++) { const a = Math.PI / 180 * (60 * i - 30); const px = ox + x + R * Math.cos(a), py = oy + y + R * Math.sin(a) * SQ; i ? g.lineTo(px, py) : g.moveTo(px, py); } g.closePath(); g.stroke(); });
-            const unit = T.unit(), [ax, ay] = T.anchor(), s = R / unit;
-            const items = p.items.filter(i => i.cell).map(i => ({ i, xy: toScreen(i.cell[0], i.cell[1]) })).sort((a, b) => a.xy[1] - b.xy[1]);
+            const pk = padScale(ringsOf(p));
+            spiralOf(ringsOf(p)).forEach(([q, r]) => { const [x, y] = toScreen(q, r, pk); g.beginPath(); for (let i = 0; i < 6; i++) { const a = Math.PI / 180 * (60 * i - 30); const px = ox + x + pk * R * Math.cos(a), py = oy + y + pk * R * Math.sin(a) * SQ; i ? g.lineTo(px, py) : g.moveTo(px, py); } g.closePath(); g.stroke(); });
+            const unit = T.unit(), [ax, ay] = T.anchor(), s = pk * R / unit;
+            const items = p.items.filter(i => i.cell).map(i => ({ i, xy: toScreen(i.cell[0], i.cell[1], pk) })).sort((a, b) => a.xy[1] - b.xy[1]);
             await Promise.all(items.map(({ i, xy }) => new Promise(res => {
                 const kind = kindOf(i.b), [w, h] = T.size(kind), im = new Image();
                 im.onload = () => { g.drawImage(im, ox + xy[0] - ax * s, oy + xy[1] - ay * s, w * s, h * s); res(); }; im.onerror = res; im.src = T.url(kind);
@@ -901,4 +955,29 @@
         if (!root) return;
         window.constructionManager = new StakeBuilder(root);
     };
+
+    // ---- ?stake=<claim stake account address>: open the Stake Builder on that stake (C4 Live links here, 2026-11-26)
+    // The page's own app (app.js) is built after DOMContentLoaded and loads its data first, so wait for it, then open
+    // the tab, then let the builder check the value and read the stake from the C4 data (openStake).
+    window.stakeFromQuery = function (search) {
+        try { return new URLSearchParams(search == null ? (window.location && window.location.search) || '' : search).get('stake'); } catch (e) { return null; }
+    };
+    window.openStakeFromQuery = async function (raw) {
+        const app = window.claimStakeApp;
+        try {
+            if (app && typeof app.switchTab === 'function') await app.switchTab('construction'); else window.initializeConstructionTab();
+            if (window.constructionManager) window.constructionManager.openStake(raw);
+        } catch (e) { console.error('The stake in the link could not be opened', e); }
+    };
+    (function () {
+        const raw = window.stakeFromQuery();
+        if (raw == null || typeof document === 'undefined' || !document.addEventListener) return;
+        let tries = 0;
+        const go = () => {
+            const app = window.claimStakeApp;
+            if ((app && app.data) || ++tries > 100) window.openStakeFromQuery(raw);
+            else setTimeout(go, 200);
+        };
+        document.addEventListener('DOMContentLoaded', () => setTimeout(go, 0));
+    })();
 })();
