@@ -176,7 +176,9 @@
 .rp-craft.rp-done .bar b { background: transparent; }
 
 /* a box of the tree: its progress bar (ChainGraph opts.progress) - how much of that item is already covered */
-.cg-svg .cg-pg-t { fill: rgba(255, 255, 255, 0.12); stroke: none; }
-.cg-svg .cg-pg { fill: #3fd08a; stroke: none; }
+/* "rect" in the selector on purpose: without it `.cg-svg .nd rect` (resource-visual.css, the pill's own fill and
+   stroke) outranks these and the bar is painted in the pill's background colour, i.e. not seen (fixed 2026-11-26) */
+.cg-svg .nd rect.cg-pg-t { fill: rgba(255, 255, 255, 0.16); stroke: none; }
+.cg-svg .nd rect.cg-pg { fill: #3fd08a; stroke: none; }
 .cg-svg .nd.pg-done > .in > rect:first-of-type { stroke: #3fd08a; }
 .cg-svg .nd.pg-done .nm { fill: #c9f5de; }

@@ -116,8 +116,18 @@ function suite(F, tag) {
         hhF.includes('class="fv-flag">Pearce X4 <em>' + X + '</em>') && hhF.includes('flagship class ' + X + ' &middot; ammunition use ' + X) && hhF.includes('<span>Z' + X + '</span><b>7</b>') && /aria-label="Pearce X4, drag to rotate"/.test(hhF),
         (hhO + hhF).match(/.{50}<img src=x.{20}/) || [fh.comp[0].variant]);
     ok('missile', 'a missile fire rate is a combat stat; only damage figures scale the damage bars', F.sectionOf('combat.missileFireRate') === 'combat' && F.sectionOf('combat.missileDamage') === 'damage' && F.sectionOf('combat.damageBomb') === 'damage');
+    // ---- the visitor's own (2026-11-26): the view gets a plain boolean, a mine fleet and its owner get the "You" tag and c4-me
+    {
+        const YOU = '<i class="c4-me-tag">You</i>';
+        const oY = F.htmlOwner(m, { artBase: 'art/', ownerName: 'Pat', mine: true }), oN = F.htmlOwner(m, { artBase: 'art/', ownerName: 'Pat', mine: false }), oU = F.htmlOwner(m, { artBase: 'art/', ownerName: 'Pat' });
+        const hY = F.htmlFleet(f1, { artBase: 'art/', ownerName: 'Pat', mine: true }), hN = F.htmlFleet(f1, { artBase: 'art/', ownerName: 'Pat', mine: false });
+        ok('mineOwner', 'a mine owner page carries the You tag, c4-me on the title and fv-mine; a not-mine and an unset one carry none', oY.includes('class="fv-h c4-me" id="c4FvTitle">Pat' + YOU + '</h2>') && /class="fv-page fv-owner fv-mine"/.test(oY) &&
+            !/c4-me|fv-mine|You/.test(oN) && !/c4-me|fv-mine|You/.test(oU), oY.match(/.{40}c4FvTitle.{50}/) || 'no title');
+        ok('mineFleet', 'a mine fleet screen says so beside the owner name; a not-mine fleet screen does not', hY.includes('class="fv-kind c4-me">Fleet of Pat' + YOU + '</div>') && /class="fv-page fv-hero fv-mine"/.test(hY) && !/c4-me|fv-mine|You/.test(hN));
+        ok('mineEsc', 'the owner name next to the tag is still escaped', F.htmlFleet(f1, { ownerName: EVIL, mine: true }).includes('Fleet of ' + '&lt;img src=x onerror=1&gt;' + YOU) && !F.htmlFleet(f1, { ownerName: EVIL, mine: true }).includes('<img src=x'));
+    }
     // ---- owner html
-    const hO = F.htmlOwner(m, { artBase: 'art/', ownerName: 'Player ' + EVIL });
+    const hO =F.htmlOwner(m, { artBase: 'art/', ownerName: 'Player ' + EVIL });
     const cards = [...hO.matchAll(/data-fv-fleet="([^"]*)"/g)].map(x => x[1]);
     ok('cards', 'one card per fleet, in model order', cards.join() === 'F2,F3,F1', cards.join());
     ok('escOwner', 'the list escapes every chain string (fleet name, ship name, place, owner name)', !hO.includes('<img src=x') && hO.includes('Big &lt;img src=x onerror=1&gt;') && hO.includes('Player &lt;img') && hO.includes('in Belt &lt;img') && hO.includes('Evil &lt;img'), (hO.match(/.{30}<img src=x.{20}/) || [''])[0]);
@@ -157,7 +167,10 @@ const NEG = [
     ['card fleet name not escaped', ["<b class=\"fv-card-n\">' + esc(f.name)", "<b class=\"fv-card-n\">' + f.name"], ['escOwner']],
     ['card ship name not escaped', ["'x</b> ' + esc(c.base)", "'x</b> ' + c.base"], ['escOwner']],
     ['card place not escaped', ["'<span class=\"fv-card-foot\"><span>' + esc(f.where)", "'<span class=\"fv-card-foot\"><span>' + f.where"], ['escOwner']],
-    ['owner name not escaped in the list', ["id=\"c4FvTitle\">' + esc(who) + '</h2></div>'", "id=\"c4FvTitle\">' + who + '</h2></div>'"], ['escOwner']],
+    ['owner name not escaped in the list', ["id=\"c4FvTitle\">' + esc(who) + meTag(o.mine) + '</h2></div>'", "id=\"c4FvTitle\">' + who + meTag(o.mine) + '</h2></div>'"], ['escOwner']],
+    ['the owner page never says You', ["esc(who) + meTag(o.mine) + '</h2></div>'", "esc(who) + '</h2></div>'"], ['mineOwner']],
+    ['the fleet screen never says You', ["'\">Fleet of ' + esc(who) + meTag(o.mine) + '</div>", "'\">Fleet of ' + esc(who) + '</div>"], ['mineFleet', 'mineEsc']],
+    ['every owner is marked as mine', ["function meTag(on) { return on ?", "function meTag(on) { return true ?"], ['mineOwner', 'mineFleet']],
     ['hero fleet name not escaped', ["id=\"c4FvTitle\">' + esc(f.name)", "id=\"c4FvTitle\">' + f.name"], ['escHero']],
     ['hero place not escaped', ["'<p class=\"fv-where\">' + esc(f.where)", "'<p class=\"fv-where\">' + f.where"], ['escHero']],
     ['cargo name not escaped', ["return '<div class=\"fv-row\"><span>' + esc(h.n)", "return '<div class=\"fv-row\"><span>' + h.n"], ['escHero']],
@@ -244,6 +257,7 @@ console.log('[4] page wiring');
     check('[4] the owner drawer has the Fleet view button and the page routes its click', /data-fleet-view="\$\{esc\(p\)\}"/.test(app) && /t\.closest\('\[data-fleet-view\]'\)/.test(app));
     check('[4] keys reach the fleet view before the stake view and the drawer', app.indexOf('if (FV && FV.onKey(e)) return;') > 0 && app.indexOf('if (FV && FV.onKey(e)) return;') < app.indexOf("if (e.key === 'Escape' && S.stake)"));
     check('[4] Fly to fleet aims at where the scene draws the fleet now and zooms right in (closer than the zoom 3 of the owner list)', /flyTo: \(x, y, f\) => \{[^}]*flyToFleet\(x, y, f\)/.test(app) && /s\.fleetScreen\(f\.a\)/.test(app) && (() => { const m = /const fleetZoom = f => \(f && f\.kind === 'warp' \? (\d+) : f && f\.kind === 'subwarp' \? (\d+) : (\d+)\);/.exec(app); return !!m && +m[1] > 3 && +m[2] > +m[1] && +m[3] >= +m[2]; })());
+    check('[4] the fleet view and the analytics tab are handed the visitor\'s own as a callback on the live S.mine set (a profile change redraws both through rebuild)', /isMine: p => !!p && S\.mine\.has\(p\), reducedMotion/.test(app) && /onPick: anPick, isMine: p => !!p && S\.mine\.has\(p\) \}/.test(app) && /HP\.onChange\(\(\) => \{[^}]*rebuild\(true\)/.test(app) && !/HubProfile|HP\b/.test(SRC.replace(/\/\*[^]*?\*\//g, '').replace(/\/\/.*$/gm, '')));
     check('[4] fresh data redraws an open fleet view', /if \(FV\) FV\.refresh\(fvCtx\(\)\);/.test(app));
     check('[4] no inline handler or script in the generated HTML', !/ on[a-z]+=|<script|javascript:/i.test(SRC.replace(/\/\*[^]*?\*\//g, '').replace(/\/\/.*$/gm, '')));
 }

@@ -712,7 +712,7 @@
         // the pane may be hidden (clientWidth 0) while another tab fades out: use the width the dock is heading for
         const w = m.clientWidth > 0 ? m.clientWidth : Math.max(240, (S.dock.collapsed ? S.dock.w : dockW()) - 2 * 13 - 2);
         const main = $('#c4Main'), top = main ? main.scrollTop : 0;
-        try { A.render(m, A.build(S.latest, S.bodies ? { bodies: S.bodies } : null, S.an.craft || null), { width: w, reducedMotion: RM.matches, esc, onPick: anPick }); S.an.w = m.clientWidth > 0 ? m.clientWidth : w; }
+        try { A.render(m, A.build(S.latest, S.bodies ? { bodies: S.bodies } : null, S.an.craft || null), { width: w, reducedMotion: RM.matches, esc, onPick: anPick, isMine: p => !!p && S.mine.has(p) }); S.an.w = m.clientWidth > 0 ? m.clientWidth : w; }
         catch (e) { console.warn('C4 Live: analytics failed', e); m.innerHTML = note('The analytics charts could not be drawn from this data.'); }
         if (main) main.scrollTop = top;
     }
@@ -1272,7 +1272,7 @@
     }
 
     // fleet view: one owner's fleets full screen, then one fleet's hero screen (c4-fleet-view.js draws both)
-    const fvCtx = () => ({ latest: S.latest, ownerName: p => ownerPlain(p), reducedMotion: RM.matches, artBase: '../Images/ships/', canFly: !!S.scene,
+    const fvCtx = () => ({ latest: S.latest, ownerName: p => ownerPlain(p), isMine: p => !!p && S.mine.has(p), reducedMotion: RM.matches, artBase: '../Images/ships/', canFly: !!S.scene,
         flyTo: (x, y, f) => { if (SHEET_MQ.matches) closeDrawer(); flyToFleet(x, y, f); } });
     // "Fly to fleet": right in on the fleet, close enough to see its ships. The fleet is drawn where the scene places it NOW (a docked fleet sits beside its starbase, a travelling one
     // has moved since the read), so the aim is the scene's own position for it, read again once the flight has landed
@@ -1603,12 +1603,15 @@
             <div class="sv-sec"><h3>Production per hour</h3>${prod}${use ? `<h3>Consumption per hour</h3>${use}` : ''}<h3>Inventory</h3>${inv}</div>
             <div class="sv-sec"><h3>Buildings</h3>${blds}</div></div>`;
     }
+    // link to the Stake Builder (ClaimStakeExplorer) with this claim stake loaded: ?stake=<claim stake ACCOUNT address>, works for any stake in the read
+    const stakeBuilderLink = a => a ? `<span><a class="sv-link" href="../ClaimStakeExplorer/index.html?stake=${esc(encodeURIComponent(a))}" target="_blank" rel="noopener">Open in the Stake Builder</a></span>` : '';
     function svHtml(v) {
         const lay = M.stakeLayout(v.buildings ? v.buildings.list : [], { clear: SV.ground.clear });
         const o = v.owner, b = v.body, sy = v.system;
         const links = `<span>Owner <button type="button" class="sv-link" data-sv-go="owner" data-id="${esc(v.k.o)}">${ownerLabel(v.k.o)}</button>${o && o.fa ? ' ' + fa(o.fa) : ''}</span>
             ${b ? `<span>Planet <button type="button" class="sv-link" data-sv-go="body" data-id="${esc(b.a)}">${esc(b.n)}</button></span>` : `<span>Planet ${svDash} <em>${S.bodiesUnread || !S.bodyIdx ? 'not read' : 'not in the planet list'}</em></span>`}
-            ${sy ? `<span>System <button type="button" class="sv-link" data-sv-go="system" data-id="${esc(sy.a)}">${esc(sy.n)}</button></span>` : (v.k.sysName ? `<span>System ${esc(v.k.sysName)}</span>` : '')}`;
+            ${sy ? `<span>System <button type="button" class="sv-link" data-sv-go="system" data-id="${esc(sy.a)}">${esc(sy.n)}</button></span>` : (v.k.sysName ? `<span>System ${esc(v.k.sysName)}</span>` : '')}
+            ${stakeBuilderLink(v.k.a)}`;
         return `<button type="button" class="sv-x" data-sv-close aria-label="Close the claim stake view">&times;</button>
             <div class="sv-card" id="c4StakeCard"><div class="sv-head"><div class="kind">Claim stake${v.tier != null ? ' / tier ' + esc(v.tier) : ''}</div>
             <h2 id="c4StakeTitle">${esc(v.label)}<span class="c4-st">${esc(v.st)}</span></h2><div class="sv-where">${links}</div></div>

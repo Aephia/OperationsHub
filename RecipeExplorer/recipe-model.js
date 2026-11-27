@@ -595,6 +595,29 @@
             };
         }
 
+        // How far each box of a plan's tree is covered by what is held (2026-11-26). p = the plan with no stock,
+        // pl = the same plan counted against stock. -> { share(name), held(name) }, each 0..1 or null when the plan
+        // does not need the name. held = the part met from stock as that very item (or not needed any more because
+        // an item made from it is held). share = held + the part still to craft x the average share of its
+        // ingredients: holding every input of a step fills its box, though the craft itself is still to do.
+        cover(p, pl) {
+            const unitsOf = (plan, name) => { const cs = plan.crafts.filter(c => c.name === name); if (cs.length) return cs.reduce((a, c) => a + c.units, 0); const r = plan.raws.find(x => x.name === name); return r ? r.qty : 0; };
+            const kidsOf = new Map(); pl.edges.forEach(e => (kidsOf.get(e.from) || kidsOf.set(e.from, []).get(e.from)).push(e.to));
+            const leftOf = name => { const need = unitsOf(p, name); return need > 0 ? Math.min(need, unitsOf(pl, name)) / need : null; };
+            const held = name => { const l = leftOf(name); return l == null ? null : 1 - l; };
+            const memo = new Map();
+            const share = name => {
+                if (memo.has(name)) return memo.get(name);
+                const left = leftOf(name); if (left == null) return null;
+                memo.set(name, 1 - left);   // a name met again below itself counts as it stands (no loop)
+                const kids = kidsOf.get(name) || [];
+                const below = left > 0 && kids.length ? kids.reduce((a, k) => { const s = share(k); return a + (s == null ? 1 : s); }, 0) / kids.length : 0;
+                const v = Math.min(1, 1 - left + left * below);
+                memo.set(name, v); return v;
+            };
+            return { share, held };
+        }
+
         // the DAG for ChainGraph: a plan with one root draws that recipe's chain; several get a virtual "Plan" root
         planDag(p) {
             const nodes = new Map(p.nodes);

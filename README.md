@@ -97,8 +97,8 @@ call to the public crew feed. Only values that are valid addresses are ever stor
 | Module | What the profile does |
 |---|---|
 | Landing page | The form, a Forget button, and three cards saying what each module does with it. With C4 Live data in reach it names your C4 player and counts your fleets and claim stakes. |
-| Crew Explorer | Its two fields arrive filled from the profile; a roster that loads writes its addresses back to the profile. |
-| C4 Live | Your fleets are drawn in their own colour (`--me`, `#ff5cf0`) as larger ringed dots and ringed hulls, your claim stakes in the same colour, your name carries a **You** tag in every list, and a **You** box in the map controls opens your player. |
+| Crew Explorer | Its two fields arrive filled from the profile; a roster that loads writes its addresses back to the profile. **SAGE crew on Solana only, for now** (said above the form): C4 crew on z.ink is not read. |
+| C4 Live | Your fleets are drawn in their own colour (`--me`, `#ff5cf0`) as larger ringed dots and ringed hulls, your claim stakes in the same colour, your name carries a **You** tag in every list, and a **You** box in the map controls opens your player. The fleet view (owner page and single fleet) and the Analytics tab (governance player tables, producer bars, drill-down cards) carry the same mark. Every claim stake's view has **Open in the Stake Builder**. |
 | Recipe Explorer | The planner counts what you hold in C4 against the plan (below). |
 | ClaimStake Explorer | The Stake Builder lists **My claim stakes** (your C4 stakes: planet, system, tier, buildings). A click puts one on the pad as it stands on chain; from there it is a plan like any other. |
 
@@ -114,8 +114,10 @@ counted against the cargo holds of your C4 fleets and the inventory of your C4 c
   (`RecipeModel.expand`, `opts.stock`);
 - the strip states the share of the raw bill covered, the raw units and crafts left, and what was taken from your cargo;
 - the raw bill and the craft list keep every row of the whole plan and mark each one covered, part covered or left;
-- every box of the chain tree carries a progress bar filled to the share of that item the plan no longer has to gather
-  or craft (`ChainGraph` option `progress`); it fills as you mine more of a raw or hold the component;
+- every box of the chain tree carries a progress bar (`ChainGraph` option `progress`, `RecipeModel.cover`): the part
+  of that item you hold, plus the part still to craft counted by the average cover of its ingredients. Holding every
+  input of a step fills its box though the craft is still to do; a box is full (green outline) only when all of it is
+  covered. The bar's CSS rule names `rect` so it outranks the pill's own fill (without that it is painted invisible);
 - **not counted:** what is stored in a starbase. The C4 Live read does not include starbase stores.
 
 The planner reads the C4 Live data this browser can see: on the local server the collector's
@@ -124,10 +126,18 @@ The planner reads the C4 Live data this browser can see: on the local server the
 **Your stakes in the Stake Builder.** A stake is matched to the builder's planet by its system name and the planet name C4 gives the body
 (`bodies.json`), and each building by its name and tier. Buildings are placed as they are on chain: none of the builder's
 placement rules is applied to them, and a real stake can hold buildings of another tier than the stake (39 of 270 did on
-2026-11-26). The pad has 37 cells: a larger stake shows 37 and the note says how many are left out of the gauges.
+2026-11-26). The pad has 37 cells; a stake with more buildings (6 of 270, up to 122) grows it by whole rings (61, 91,
+127 cells) drawn smaller in the same box, and the ring count is saved with the plan.
 
-Check: `node Test/hub-profile-check.js` (the stored profile, what counts as yours in a C4 read, and the stock maths
-against other plans of the unchanged model).
+**A link to any stake.** `ClaimStakeExplorer/index.html?stake=<claim stake account address>` opens the Stake Builder
+with that stake on the pad, yours or not (C4 Live's stake view links here). The value must be an address in the last
+C4 Live read, else a toast says why. A stake opened from a link is shown but not saved over your own saved plan until
+you change it, and picking a planet while the link is still loading cancels the link.
+
+Checks: `node Test/hub-profile-check.js` (the stored profile, what counts as yours in a C4 read, the stock maths
+against other plans of the unchanged model, the tree's bars) and `node Test/stake-builder-onchain-check.js` (every
+stake of the read loads with nothing left over, the link, bad values, save and restore; skipped in words when
+`Data/c4-live/latest.json` is not there).
 
 ## 📂 Explorer Applications
 

@@ -150,6 +150,35 @@ console.log('\n[HS] the plan counted against what is held (real recipe rows)');
             for (const q of f.raws) { const left = lr.get(q.name) || 0, took = l.held.get(q.name) || 0; if (left + took !== q.qty || took > stock.get(q.name) || left < 0) bad++; }
         }
         ok(tried >= 10 && bad === 0, `across ${tried} other recipes: for every raw, left + taken = needed and taken never exceeds what is held`, bad);
+
+        // ---- the tree's progress bars (RecipeModel.cover): expected values from the plans, not from cover()
+        console.log('\n[HB] the bar on each box of the tree');
+        const names = [...full.nodes.keys()], crafted = full.crafts.map(c => c.name);
+        const cAll = m.cover(full, allRaws), cNone = m.cover(full, m.plan(item, { stock: new Map([['no such item', 5]]) }));
+        ok(crafted.length > 0 && names.every(n => cAll.share(n) === 1), `holding every raw fills every box (${names.length} boxes, ${crafted.length} crafted)`, names.filter(n => cAll.share(n) !== 1).join());
+        ok(crafted.every(n => cAll.held(n) === 0), 'and none of the crafted boxes counts as held: the crafts are still to do');
+        ok(names.every(n => cNone.share(n) === 0), 'positive control: holding nothing of the plan leaves every box empty');
+        // every raw but one: that raw is empty, its users are part filled, the root is strictly between 0 and 1
+        const butOne = new Map(full.raws.filter(r => r.name !== first.name).map(r => [r.name, r.qty]));
+        if (butOne.size) {
+            const plB = m.plan(item, { stock: butOne }), cB = m.cover(full, plB), root = full.roots[0];
+            const users = full.edges.filter(e => e.to === first.name).map(e => e.from);
+            ok(cB.share(first.name) === 0 && full.raws.every(r => r.name === first.name || cB.share(r.name) === 1), `every raw held but ${first.name}: that box is empty, every other raw box is full`);
+            ok(users.length > 0 && users.every(u => cB.share(u) > 0 && cB.share(u) < 1) && cB.share(root) > 0 && cB.share(root) < 1, `the boxes made from ${first.name} and the plan's root are part filled`, users.map(u => u + ' ' + cB.share(u)).join());
+            // one box by hand: a step whose ingredients are all raws = the mean of its raws' shares
+            const flat = full.crafts.find(c => c.ingredients.every(i => full.raws.some(r => r.name === i.name)) && c.ingredients.some(i => i.name === first.name));
+            if (flat) { const want = flat.ingredients.filter(i => i.name !== first.name).length / flat.ingredients.length; ok(Math.abs(cB.share(flat.name) - want) < 1e-9, `${flat.name} (made from raws only): ${flat.ingredients.length - 1} of ${flat.ingredients.length} inputs held = ${want.toFixed(3)}`, cB.share(flat.name)); }
+        }
+        ok(m.cover(full, allRaws).share('not in the plan') === null, 'a name the plan does not need has no bar');
+        // the bar is PAINTED: its style must outrank the pill's own `.cg-svg .nd rect` (it did not, 2026-11-26: the fill
+        // was drawn in the pill's background colour)
+        const css = require('fs').readFileSync(path.join(ROOT, 'RecipeExplorer', 'recipe-visual.css'), 'utf8');
+        const pill = require('fs').readFileSync(path.join(ROOT, 'ResourcesExplorer', 'resource-visual.css'), 'utf8');
+        const spec = sel => { const ids = (sel.match(/#[\w-]+/g) || []).length, cls = (sel.match(/\.[\w-]+|\[[^\]]+\]|:(?!:)[\w-]+/g) || []).length, el = (sel.replace(/[#.][\w-]+|\[[^\]]+\]|:[\w-]+(\([^)]*\))?/g, ' ').match(/[a-z][\w-]*/gi) || []).length; return ids * 10000 + cls * 100 + el; };
+        const rule = (text, re) => { const mm = text.match(re); return mm ? mm[1].trim() : ''; };
+        const fillSel = rule(css, /([^{}\/]*\.cg-pg\b[^{}]*)\{[^}]*fill:\s*#3fd08a/), pillSel = rule(pill, /(\.cg-svg \.nd rect)\s*\{/);
+        ok(spec('.cg-svg .nd rect') === 201 && spec('.cg-svg .cg-pg') === 200, 'positive control: the selector weigher ranks the old bar rule (200) under the pill rule (201)');
+        ok(!!fillSel && !!pillSel && spec(fillSel) > spec(pillSel), `the bar's fill rule outranks the pill's rect rule`, `${fillSel} = ${fillSel && spec(fillSel)} vs ${pillSel} = ${pillSel && spec(pillSel)}`);
     }
 }
 

@@ -14,7 +14,7 @@
     <link rel="icon" type="image/jpeg" href="../Images/channels4_profile.jpg">
     <link rel="stylesheet" href="../ResourcesExplorer/styles.css?v=20261001">
     <link rel="stylesheet" href="../ResourcesExplorer/resource-visual.css?v=20261023">
-    <link rel="stylesheet" href="crew.css?v=20261110e">
+    <link rel="stylesheet" href="crew.css?v=20261126a">
 </head>
 <body class="cr-app">
     <div class="cr-bay" aria-hidden="true"></div>
@@ -29,9 +29,10 @@
 
         <!-- entry: a wallet, a SAGE player profile, or both -->
         <section class="cr-entry cr-glass" id="crEntry">
+            <p class="cr-chain" id="crChain"><b>SAGE crew on Solana only, for now.</b> Crew of the C4 game on the z.ink chain is not read yet: a z.ink wallet or C4 player profile will show no crew here.</p>
             <form id="crForm" autocomplete="off" novalidate>
-                <label class="cr-field"><span>Wallet <i>crew held in the wallet</i></span>
-                    <input id="crWallet" type="text" spellcheck="false" maxlength="64" placeholder="your wallet address"></label>
+                <label class="cr-field"><span>Solana wallet <i>crew held in the wallet</i></span>
+                    <input id="crWallet" type="text" spellcheck="false" maxlength="64" placeholder="your Solana wallet address"></label>
                 <label class="cr-field"><span>SAGE player profile <i>crew deposited into SAGE</i></span>
                     <input id="crProfile" type="text" spellcheck="false" maxlength="64" placeholder="your SAGE player profile address"></label>
                 <button class="cr-go" id="crGo" type="submit">Load crew</button>

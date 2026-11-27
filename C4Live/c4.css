@@ -565,7 +565,15 @@ p.c4-dac-legend.none { display: block; margin: 0.2rem 0 0; font-size: 0.78rem; c
 .sv-head h2 { margin: 0.15rem 0 0.2rem; font-family: 'Orbitron', sans-serif; font-size: 1.3rem; color: #fff; letter-spacing: 0.04em; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
 .sv-where { font-size: 1.02rem; color: var(--text-secondary); display: flex; flex-wrap: wrap; gap: 0.2rem 0.9rem; }
 .sv-where button.sv-link { color: var(--cyan); background: none; border: 0; padding: 0; font: inherit; cursor: pointer; text-decoration: underline; text-decoration-color: rgba(79, 216, 255, 0.4); text-underline-offset: 2px; }
-.sv-where button.sv-link:hover { color: #fff; }
+.sv-where a.sv-link { color: var(--cyan); text-decoration: underline; text-decoration-color: rgba(79, 216, 255, 0.4); text-underline-offset: 2px; }
+.sv-where button.sv-link:hover, .sv-where a.sv-link:hover { color: #fff; }
+/* the visitor's own, in the fleet view and the analytics tables/lists (the "You" tag and --me come from the rules above) */
+/* these must outrank c4-analytics.css, which loads AFTER this file: `.c4an-tbl th[scope="row"]` (0,2,1) and
+   `.c4an-tx.an-lab` (0,2,0) beat a plain th.c4-me / .c4an-tx.an-me, and the mark then shows no colour (review 2026-11-27) */
+.fv-h.c4-me, .fv-kind.c4-me, .c4an-cdh.c4-me .c4an-pk, .c4an-tbl th[scope="row"].c4-me, .c4an-cdu li.c4-me .c4an-pk { color: var(--me); }
+.c4an-cdu li.c4-me { background: rgba(255, 92, 240, 0.07); }
+.fv-mine .fv-h { text-shadow: 0 0 18px rgba(255, 92, 240, 0.35); }
+.c4an-svg .c4an-tx.an-lab.an-me { fill: var(--me); font-weight: 700; }
 .sv-x { position: absolute; z-index: 500; top: 0.8rem; right: 0.9rem; background: rgba(6, 9, 20, 0.9); border: 1px solid var(--line); color: var(--text-secondary); width: 34px; height: 34px; border-radius: 8px; cursor: pointer; font-size: 1.1rem; line-height: 1; }
 .sv-x:hover { color: #fff; border-color: var(--cyan); }
 .sv-note { margin: 0.3rem 0 0.6rem; padding: 0.4rem 0.7rem; border: 1px dashed var(--warn); border-radius: 8px; background: #281804; color: #fff; font-size: 0.98rem; line-height: 1.4; }
@@ -655,7 +663,7 @@ p.c4-dac-legend.none { display: block; margin: 0.2rem 0 0; font-size: 0.78rem; c
 .c4-on.c4-me { color: var(--me); font-weight: 700; }
 .c4-me-tag { display: inline-block; margin-left: 0.35em; padding: 0 0.35em; border: 1px solid var(--me); border-radius: 4px; background: rgba(255, 92, 240, 0.14); color: var(--me); font: 700 0.6rem/1.5 'Orbitron', sans-serif; letter-spacing: 0.1em; text-transform: uppercase; font-style: normal; vertical-align: 0.1em; }
 tr:has(.c4-me) > td, li:has(.c4-me) { background: rgba(255, 92, 240, 0.07); }
-tr:has(.c4-me) > td:first-child { box-shadow: inset 3px 0 0 var(--me); }
+tr:has(.c4-me) > :first-child { box-shadow: inset 3px 0 0 var(--me); }
 .c4-merow { display: flex; align-items: center; gap: 0.6rem; margin: 0.5rem 0; font-size: 0.82rem; color: var(--text-secondary); }
 .c4-merow.on { color: #fff; }
 .c4-merow .c4-me-tag { margin-left: 0; }

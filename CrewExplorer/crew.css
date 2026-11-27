@@ -49,6 +49,9 @@ select, input { font: inherit; }
 .cr-go:hover { background: rgba(79, 216, 255, 0.26); box-shadow: 0 0 24px rgba(79, 216, 255, 0.25); }
 .cr-go:disabled { opacity: 0.5; cursor: default; }
 .cr-entry-msg { margin: 0.6rem 0 0; color: var(--bad); }
+/* which chain the explorer reads: said first, above the form (2026-11-26) */
+.cr-chain { margin: 0 0 0.7rem; padding: 0.45rem 0.7rem; border: 1px solid rgba(255, 211, 107, 0.45); border-left-width: 3px; border-radius: 6px; background: rgba(255, 211, 107, 0.08); color: #f3e3b5; font-size: 0.86rem; max-width: 100ch; }
+.cr-chain b { color: #ffd36b; }
 .cr-entry-note { margin: 0.6rem 0 0; color: var(--text-muted); font-size: 0.8rem; max-width: 100ch; }
 .cr-sources { margin-top: 0.6rem; font-size: 0.82rem; }
 .cr-sources ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.3rem 1.4rem; }
