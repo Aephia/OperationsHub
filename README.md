@@ -786,7 +786,9 @@ One row per ship model (mining fleets made only of that model, per ship) and per
 earns in a day at the Galactic Marketplace's best bids, what it costs to run (a stake's own consumption; a mining fleet's
 food and ammunition, from the fleet's stat row), the net, and the days of net output it takes to equal the origination
 price (the USDC price the marketplace lists for the item's first sale), at bids and at asks. "never" = the net is not
-above zero. Every header orders the rows; press again for the other way. Not in the costs: a ship's fuel for travel and
+above zero. **Net/day ÷ price** (2026-11-27) = net dollars a day at best bids / origination price, as a percentage: what
+a day returns on the price paid, negative when it burns more than it earns; values under 1 % print with two significant
+digits (real rows sit near 0.008 % a day). Every header orders the rows; press again for the other way. Not in the costs: a ship's fuel for travel and
 hauling, crew, rent, repairs, a stake's buildings. Prices are MAINNET prices set against output on the z.ink test chain:
 a reference, not a forecast. Data: `latest.ref.px` (resource -> [bid, ask] in ATLAS), `latest.ref.msrp` (item -> USDC),
 `latest.ref.atlasUsd` (CoinGecko), all taken from the price book the local collector builds (`refPrices`,
