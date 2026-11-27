@@ -532,6 +532,9 @@
             // days of NET output to equal the origination price; Infinity = the net is zero or negative (it never pays back)
             var pay = function (net) { return !usd || net === null ? null : net > 0 ? usd / net : Infinity; };
             r.payBid = pay(r.usdNetBid); r.payAsk = pay(r.usdNetAsk);
+            // net dollars a day as a share of the origination price (0.004 = 0.4 % a day), at best bids; below zero
+            // when it burns more than it earns; null without a listed price or a net
+            r.roiBid = usd && r.usdNetBid !== null ? r.usdNetBid / usd : null;
             return r;
         }
         var byModel = dict();
@@ -559,7 +562,7 @@
         return P;
     }
     // the table's order: any column, either way; a row with nothing in that column always stands last
-    var PROFIT_COLS = ['name', 'usd', 'usdBid', 'usdCost', 'usdNetBid', 'payBid', 'payAsk'];
+    var PROFIT_COLS = ['name', 'usd', 'usdBid', 'usdCost', 'usdNetBid', 'roiBid', 'payBid', 'payAsk'];
     var profitSort = { k: 'payBid', d: 1 };   // d: 1 = smallest first, -1 = largest first
     function setProfitSort(k, d) { if (PROFIT_COLS.indexOf(k) >= 0 && (d === 1 || d === -1)) profitSort = { k: k, d: d }; }
     function getProfitSort() { return { k: profitSort.k, d: profitSort.d }; }
@@ -1042,13 +1045,16 @@
     function daysText(v) { return v == null || !fin(v) ? '-' : v >= 100 ? kfmt(Math.round(v)) : v >= 10 ? v.toFixed(0) : v.toFixed(1); }
     // the profitability table. Every header is a button that orders the rows by its column (press again: the other way).
     function paybackText(v) { return v === Infinity ? 'never' : daysText(v); }
+    // a share as a percentage a day: no decimals from 10 %, one from 1 %, below that two significant digits (real
+    // rows return about 0.008 % a day: two fixed decimals printed most of them as 0.01% or 0.00%)
+    function roiText(v) { if (v == null || !fin(v)) return '-'; var p = v * 100, a = Math.abs(p); return (a >= 10 ? p.toFixed(0) : a >= 1 ? p.toFixed(1) : String(Number(p.toPrecision(2)))) + '%'; }
     function profitCard(ctx, P, base) {
         var E = ctx.esc;
         if (P.state !== 'ok') return card('Profitability against origination price', chart('', note('Marketplace and origination prices have not been read in this copy of the data. Refresh to read them.'), base + ' read.'));
         if (!P.rows.length) return card('Profitability against origination price', chart('', note('No mining fleet made of one ship model and no claim stake with production in this read.'), base + ' read.'));
         // [column, short heading, what it is (the button's hover text)]
         var heads = [['name', 'Model or tier', 'Ship model or claim stake tier'], ['usd', 'Price', 'Origination price in USDC'], ['usdBid', 'Earns $/day', 'Output of a day at best bids, in dollars'], ['usdCost', 'Costs $/day', 'What it burns in a day, bought at best asks, in dollars'],
-            ['usdNetBid', 'Net $/day', 'Earns minus costs, at best bids'], ['payBid', 'Payback days, bids', 'Days of net output to equal the origination price, output sold at best bids'], ['payAsk', 'Payback days, asks', 'Days of net output to equal the origination price, output valued at best asks']];
+            ['usdNetBid', 'Net $/day', 'Earns minus costs, at best bids'], ['roiBid', 'Net/day &divide; price', 'Net dollars a day as a share of the origination price, at best bids: the return in a day'], ['payBid', 'Payback days, bids', 'Days of net output to equal the origination price, output sold at best bids'], ['payAsk', 'Payback days, asks', 'Days of net output to equal the origination price, output valued at best asks']];
         var th = heads.map(function (h) {
             var on = profitSort.k === h[0];
             return '<th scope="col"' + (on ? ' aria-sort="' + (profitSort.d === 1 ? 'ascending' : 'descending') + '"' : '') + '><button type="button" class="c4an-sortb" data-an-psort="' + h[0] + '" title="' + h[2] + '. Press to order the rows by it">' + h[1] + (on ? '<i aria-hidden="true">' + (profitSort.d === 1 ? ' &#9650;' : ' &#9660;') + '</i>' : '') + '</button></th>';
@@ -1057,7 +1063,7 @@
             var what = r.kind === 'model' ? 'ship' : 'stake';
             var tip = (r.kind === 'model' ? r.name : r.label) + ': earns ' + fnum(r.bid) + ' ATLAS a day at best bids, ' + fnum(r.ask) + ' at best asks' + (r.cost !== null ? '; burns ' + fnum(r.cost) + ' ATLAS a day' : '; costs not read') + ', per ' + what + ' (median of ' + plural(r.n, r.kind === 'model' ? 'fleet' : 'stake') + ')' +
                 (r.cover == null ? '' : '; ' + pctTxt(r.cover * 100) + ' of its output has a market price');
-            return '<tr title="' + E(tip) + '"><th scope="row"><i class="c4an-sw ' + (r.kind === 'model' ? 'f-s1' : 'f-s2') + '"></i>' + E(r.label) + ' <em class="c4an-n">n=' + r.n + '</em></th><td>' + (r.usd ? money(r.usd) : '-') + '</td><td>' + money(r.usdBid) + '</td><td>' + money(r.usdCost) + '</td><td>' + money(r.usdNetBid) + '</td><td>' + paybackText(r.payBid) + '</td><td>' + paybackText(r.payAsk) + '</td></tr>';
+            return '<tr title="' + E(tip) + '"><th scope="row"><i class="c4an-sw ' + (r.kind === 'model' ? 'f-s1' : 'f-s2') + '"></i>' + E(r.label) + ' <em class="c4an-n">n=' + r.n + '</em></th><td>' + (r.usd ? money(r.usd) : '-') + '</td><td>' + money(r.usdBid) + '</td><td>' + money(r.usdCost) + '</td><td>' + money(r.usdNetBid) + '</td><td>' + roiText(r.roiBid) + '</td><td>' + paybackText(r.payBid) + '</td><td>' + paybackText(r.payAsk) + '</td></tr>';
         }).join('');
         var noUsd = P.rows.filter(function (r) { return !r.usd; }).length, noCostRows = P.rows.filter(function (r) { return r.cost === null; }).length;
         var cap = 'One ship of the model, or one stake of the tier. Earns = what it produces in a day at the best bid on the Galactic Marketplace (sell now): units a second x price in ATLAS x 86,400, the median over the mining fleets made only of that model (per ship) or over the stakes of the tier with production. ' +
@@ -1065,6 +1071,7 @@
             'A ship\'s fuel for travelling and hauling is NOT in the costs (a snapshot does not show trips), nor are crew, rent, repairs or a stake\'s buildings. ' +
             (noCostRows ? plural(noCostRows, 'row') + ' ' + (noCostRows === 1 ? 'has' : 'have') + ' no cost figure in this copy of the data (refresh to read it), so no net and no payback. ' : '') +
             (P.unpricedCost.length ? 'Burned with no market price, counted as free: ' + P.unpricedCost.map(E).join(', ') + '. ' : '') +
+            'Net/day \u00f7 price = net dollars a day at best bids / origination price, as a percentage: what a day returns on the price paid (negative when it burns more than it earns). ' +
             'Payback = origination price / net dollars a day, with the output sold at best bids or valued at best asks; "never" = the net is zero or less. ' +
             plural(P.pricedRes, 'resource') + ' had a price, from ' + utcText(P.pricesAt) + '; output with no market price earns nothing here (hover a row for its priced share). ' +
             (P.rate !== null ? 'ATLAS at $' + String(Number(P.rate.toPrecision(3))) + ' (CoinGecko, ' + utcText(P.rateAt) + '). ' : 'The ATLAS price in dollars was not read, so the dollar and payback columns are empty. ') +
