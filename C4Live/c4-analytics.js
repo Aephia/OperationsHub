@@ -1359,7 +1359,8 @@
                 like + tail + extNote + ' ' + base + ' read.');
         }
         cards.push(card('Ship models against stake tiers', rc, null, R.rows.length && isDay() ? sortToggle() : ''));
-        cards.push(profitCard(ctx, c.profit || { state: 'unread', rows: [] }, base));
+        // the table takes the whole row: eight columns do not fit one cell of the grid
+        cards.push(profitCard(ctx, c.profit || { state: 'unread', rows: [] }, base).replace('<figure class="c4an-card"', '<figure class="c4an-card c4an-full"'));
         // per resource
         var PR = isPct('compare-res');
         cards.push(card('Units per hour by resource', noOut ? chart('', note(why), base + ' read.') :
@@ -1372,10 +1373,11 @@
             if (c.crew.fleets.perCrew != null) pc.push({ label: 'mining fleets', v: c.crew.fleets.perCrew, cls: 'f-s1', tip: plural(c.crew.fleets.n, 'fleet') + ', ' + plural(c.crew.fleets.crew, 'crew member') });
             if (c.crew.stakes.perCrew != null) pc.push({ label: 'claim stakes', v: c.crew.stakes.perCrew, cls: 'f-s2', tip: plural(c.crew.stakes.n, 'stake') + ', ' + plural(c.crew.stakes.crew, 'crew member') });
         }
-        cards.push(card('Output per crew member', noOut ? chart('', note(why), base + ' read.') : (pc.length ?
+        // pushed last, below the other cards of the section
+        var crewCard = card('Output per crew member', noOut ? chart('', note(why), base + ' read.') : (pc.length ?
             chart('', barList(ctx, pc, { label: 'Units per hour per crew member' }),
                 'Units per hour divided by crew, over every fleet (' + plural(c.crew.fleets.n, 'fleet') + ') and stake (' + plural(c.crew.stakes.n, 'stake') + ') that reports crew; ' + base + ' read.' + like) :
-            chart('', note('No fleet or stake reports crew.'), base + ' read.'))));
+            chart('', note('No fleet or stake reports crew.'), base + ' read.')));
         // faction share
         cards.push(card('Share of raw output by faction', noOut ? chart('', note(why), base + ' read.') : (c.factions.length ?
             chart('', legShip + stack100(ctx, c.factions.map(function (f) { return { label: FAC_NAME[f.fa], a: f.ships, b: f.stakes, tip: FAC_NAME[f.fa] + ': ships ' + fnum(f.ships) + ', stakes ' + fnum(f.stakes) + ' units per hour' }; }), { label: 'Share of raw output from ships and stakes by faction' }),
@@ -1387,6 +1389,7 @@
             { label: 'ships only', v: mx.shipsOnly, cls: 'f-s1' }, { label: 'stakes only', v: mx.stakesOnly, cls: 'f-s2' },
             { label: 'both', v: mx.both, cls: 'f-s3' }, { label: 'neither', v: mx.neither, cls: 'f-npc' }], { fmt: function (v) { return String(v); }, label: 'Owners by ships and stakes' },
             'Players that run mining ships, claim stakes, both or neither; ' + plural(mx.total, 'player') + ' read.', mx.total, plural(mx.total, 'player')) : chart('', note('No players in this read.'), '0 players read.'), mx.total ? 'compare-mix' : null));
+        cards.push(crewCard);
         return section('compare', 'Ships against claim stakes', intro, cards, [[kfmt(m.n), 'mining fleets'], [kfmt(s.n), 'claim stakes']]);
     }
 
