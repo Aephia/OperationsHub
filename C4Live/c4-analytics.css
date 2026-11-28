@@ -27,6 +27,10 @@
 .c4an-x3 .c4an-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .c4an-x4 .c4an-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .c4an-x5 .c4an-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+/* a card that takes the whole row (the profitability table: eight columns do not fit a half or a third of the page);
+   dense, so the card after it fills the cell a full row leaves open instead of leaving a hole */
+.c4an-grid { grid-auto-flow: row dense; }
+.c4an-grid > .c4an-card.c4an-full { grid-column: 1 / -1; }
 .c4an-card { margin: 0; padding: 12px 14px; min-width: 0; background: var(--an-card); border: 1px solid var(--an-line); border-radius: 10px; }
 .c4an-ct { margin: 0 0 8px; font-size: 0.98rem; font-weight: 700; letter-spacing: 0.04em; color: #fff; }
 .c4an-chart { margin: 0 0 12px; min-width: 0; }

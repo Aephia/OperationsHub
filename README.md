@@ -816,6 +816,23 @@ in seconds; every other value is printed as the chain gives it, with no unit add
 keyboard part), `C4Live/c4-fleet-view.css`. Check: `node Test/c4-fleet-view-check.js` (model and HTML with mutants,
 the real local read against the collector's own owner roll-up, the page wiring).
 
+**Inventory** (added 2026-11-27): the owner drawer has an **Inventory** button under the stats ("My inventory" on a
+profile that is yours). It opens everything that owner holds in the latest read, full screen, in four sections.
+**Hangar**: one card per hull with its picture, how many, its size class and every configuration with its count.
+**Cargo**: one slot per item with its icon and amount, summed over fleet holds, the fuel and ammunition tanks of every
+fleet, and what is stored on claim stakes (a dot marks an item with stock on a stake; the tooltip gives the split);
+chips filter by category (raw materials, processed, components, advanced, items). **Crew**: crew on fleets and on
+claim stakes, and how many of the fleet crew are rented. **Claim stakes**: the buildings of all stakes by kind, then a
+card per stake (tier, system, state, crew, power, fuel, storage used, each building with its count, what it produces
+and stores) with a button that opens the stake view. Every number is a sum of rows of the read; nothing is estimated.
+An item's category is not in the read: it comes from the hub catalog (`Data/resources-data.js`), fetched the first
+time an inventory is opened; until it is in, the items show in one group with no category. Hull names come from the
+ship art manifest; without it each configuration is its own card. Pictures: `Images/ships/`, `Images/icons/` (through
+`Utils/ResourceIcons.js`) and `Images/stake/`. Escape closes the view. Files: `C4Live/c4-inventory.js` (model + HTML,
+pure and escaped; the open / close / keyboard part), `C4Live/c4-inventory.css`. Check:
+`node Test/c4-inventory-check.js` (a fixture counted by hand, the real local read recounted for every owner, escaping,
+the page wiring, mutants).
+
 **Territory on the map** (changed 2026-11-23): the territory layer is a soft glow spread by every faction-owned
 starbase (`territoryField` in `C4Live/scene-src/model.js`). A region in which no faction holds a starbase is neutral
 ground: its starbases push the glow back, so the border runs midway between the nearest owned and neutral starbase

@@ -25,6 +25,7 @@
     'use strict';
     const M = window.C4Model;
     const FV = window.C4FleetView || null;   // fleet view (c4-fleet-view.js); the page works without it
+    const INV = window.C4Inventory || null;   // inventory (c4-inventory.js); the page works without it
     const DATA = '../Data/c4-live/';
     // A local copy reads the collector's folder. The public site has no such folder: each visitor's browser reads z.ink
     // itself (c4-collect.js) and keeps the result on their PC (c4-store.js). ?chain=1 forces that mode on localhost.
@@ -272,6 +273,7 @@
         if (S.drawer) reopenDrawer();
         reopenStake();
         if (FV) FV.refresh(fvCtx());
+        if (INV) INV.refresh(invCtx());
     }
     const evKey = e => e.t + ':' + e.k + ':' + (e.f || e.sys);
 
@@ -1287,10 +1289,34 @@
         if (p0) flyToFleet.h = setTimeout(() => { const p1 = now(); if (p1 && !FV.isOpen() && !S.stake) focusXY(p1.x, p1.y, z); }, RM.matches ? 50 : 1750);
     }
     function openFleetView(p, fleet) { if (FV && S.latest) FV.open($('#c4FleetView'), fvCtx(), p, fleet); }
+    // inventory: everything one owner holds, full screen (c4-inventory.js draws it). The category of an item is not in
+    // the read: it comes from the hub catalog (Data/resources-data.js, about 1 MB), fetched on the first open only.
+    // Until it is in, and if it never loads, the items show in one group and no category is claimed.
+    let CAT = null, catP = null;
+    function loadCatalog() {
+        if (catP) return;
+        catP = new Promise(res => { const s = document.createElement('script'); s.src = '../Data/resources-data.js'; s.onload = () => res(true); s.onerror = () => res(false); document.head.appendChild(s); })
+            .then(ok => {
+                let list = null;
+                try { list = ok && typeof resourcesData !== 'undefined' && resourcesData && Array.isArray(resourcesData.resources) ? resourcesData.resources : null; } catch (e) { list = null; }
+                if (!list) { catP = null; return; }   // not loaded: the next open tries again
+                const m = new Map(); for (const r of list) if (r && typeof r.name === 'string' && typeof r.category === 'string') m.set(r.name, r.category);
+                CAT = m;
+                if (INV) INV.refresh(invCtx());
+            });
+    }
+    const invIcon = (name, cat) => {
+        const RI = window.ResourceIcons; if (!RI || !cat) return '';
+        return cat === 'item' ? '../Images/icons/crate_component.webp' : RI.url(name, cat, '../Images/icons/');
+    };
+    const invCtx = () => ({ latest: S.latest, ownerName: p => ownerPlain(p), isMine: p => !!p && S.mine.has(p), reducedMotion: RM.matches, artBase: '../Images/ships/', stakeArtBase: '../Images/stake/',
+        catOf: CAT ? n => CAT.get(n) || null : null, iconOf: invIcon, openFleets: FV ? p => openFleetView(p) : null, openStake: a => openStake(a) });
+    function openInventory(p) { if (INV && S.latest && INV.open($('#c4Inventory'), invCtx(), p)) loadCatalog(); }
+    const invBtn = p => INV ? `<button type="button" class="c4-act c4-inv-btn" data-inv="${esc(p)}" title="Ships and their configurations, cargo, crew, claim stakes and buildings, full screen"><span>${S.mine.has(p) ? 'My inventory' : 'Inventory'}</span><em>ships / cargo / crew / claim stakes</em></button>` : '';
     function openOwner(p) {
         // the drawer always shows the whole owner, whatever the faction filter
         const o = S.all.owners.find(x => x.p === p);
-        if (!o) { const r0 = (S.ident && S.ident.get(p)) || null; openDrawer('owner', p, `<div class="kind">Owner</div><h2><span class="c4-dname">${ownerLabel(p)}</span></h2>${identRows(p, r0, false)}${meRow(p)}${dacRow(p)}<p class="c4-verdict">This profile owns no fleet in the latest snapshot.</p>${r0 ? wealthSection(r0) : ''}`); return; }
+        if (!o) { const r0 = (S.ident && S.ident.get(p)) || null; openDrawer('owner', p, `<div class="kind">Owner</div><h2><span class="c4-dname">${ownerLabel(p)}</span></h2>${identRows(p, r0, false)}${meRow(p)}${dacRow(p)}<p class="c4-verdict">This profile owns no fleet in the latest snapshot.</p>${(S.latest.stakes || []).some(k => k.o === p) ? invBtn(p) : ''}${r0 ? wealthSection(r0) : ''}`); return; }
         const t0 = S.latest.generatedAt;
         const minerRank = S.all.mining.owners.findIndex(x => x.p === p) + 1;
         o.minerCount = S.all.mining.miningOwners;
@@ -1314,6 +1340,7 @@
             ${identRows(p, rec, o.npc)}${o.npc ? '' : meRow(p)}${o.npc ? '' : dacRow(p)}
             <p class="c4-verdict">${verdict}</p>
             <div class="c4-dstats c4-anim-in">${stat('Fleets', o.fleets)}${stat('Ships', M.fmt(o.ships, 0))}${stat('Mining u/s', o.ups ? M.fmt(o.ups) : '0')}${stat('ATLAS', o.atlas != null ? M.fmt(o.atlas, 0) : '-')}${stat('Council rank', o.rank != null ? o.rank : '-')}${stat('Claim stakes', stakes)}</div>
+            ${o.npc ? '' : invBtn(p)}
             ${o.npc ? '' : wealthSection(rec)}${o.npc ? '' : M.governanceOwnerHtml(M.governanceForOwner(S.latest, p))}
             <div class="c4-dsec"><span>Fleets</span><span class="c4-acts">${FV ? `<button class="c4-act" data-fleet-view="${esc(p)}" title="Every fleet of this owner with its ships and stats">Fleet view</button>` : ''}<button class="c4-act" data-focus-owner="${esc(p)}"${S.scene ? '' : ' disabled title="3D map not loaded"'}>Fly to fleets</button></span></div><div class="c4-anim-in">${fleets}</div>
             ${stakeList}
@@ -1801,7 +1828,9 @@
     function wire() {
         document.addEventListener('click', e => {
             const t = e.target;
+            if (INV && INV.onClick(e)) return;
             if (FV && FV.onClick(e)) return;
+            const ivb = t.closest('[data-inv]'); if (ivb) { openInventory(ivb.dataset.inv); return; }
             const fvb = t.closest('[data-fleet-view]'); if (fvb) { openFleetView(fvb.dataset.fleetView); return; }
             const cp = t.closest('[data-copy]');
             if (cp) {
@@ -1875,6 +1904,7 @@
         });
         $('#c4Find').addEventListener('keydown', e => { if (e.key === 'Enter') find(e.target.value); });
         document.addEventListener('keydown', e => {
+            if (INV && INV.onKey(e)) return;   // the inventory is modal while open: Escape closes it, Tab stays inside
             if (FV && FV.onKey(e)) return;   // the fleet view is modal while open: Escape steps back, Tab stays inside
             if (e.key === 'Escape' && S.stake) { closeStake(); return; }
             if (S.stake) { if (e.key === 'Tab') svTrap(e); return; }   // modal: Tab stays inside the view, the page's single-key shortcuts (D) are off
