@@ -791,7 +791,8 @@
                         const m = LO.mine(st, row.d, 'warp', f.richness || 1);
                         if (m) { const cyc = n * 3600 / m.cycle; row.trip = m; row.perHour = st.cargo_capacity * cyc; row.fuel = m.fuel * cyc; row.food = m.food * cyc; row.ammo = m.ammo * cyc; if (!m.trip.tankOk) row.warn.push('one round trip burns more fuel than the tank holds'); }
                     } else if (ship && body && f.raw) { row.perHour = ship.rate * n * (f.richness || 1) * 3600; row.food = ship.food * n * 3600; }
-                    if (f.raw) put(f.raw, 'made', row.perHour, row.label);
+                    const shares = this.fleetShares(f); row.raws = shares.map(s => s.name); if (row.raws.length > 1) row.raw = row.raws.join(', ');   // shown on the map and the ledger
+                    shares.forEach(s => put(s.name, 'made', row.perHour * s.share, row.label));
                 } else {
                     const src = stakeById.get(f.from), dest = G && f.dest && G.byKey.get(f.dest);
                     row.stake = src || null; row.dest = dest || null;
@@ -856,7 +857,7 @@
                 const ship = this.shipByName.get(f.ship); if (!ship || !f.raw || (f.task && f.task !== 'mine')) return;
                 const given = o.fleetPerSec ? o.fleetPerSec(f) : null;
                 const perSec = given != null ? given : ship.rate * (f.count || 1) * (f.richness || 1);
-                sources.push({ id: f.id, kind: 'fleet', label: `${f.count || 1} × ${ship.name.replace(/^Armstrong /, '')}`, ship, count: f.count || 1, perSec, supply: new Map([[f.raw, perSec * 3600]]) });
+                sources.push({ id: f.id, kind: 'fleet', label: `${f.count || 1} × ${ship.name.replace(/^Armstrong /, '')}`, ship, count: f.count || 1, perSec, supply: new Map(this.fleetShares(f).map(s => [s.name, perSec * 3600 * s.share])) });
             });
             const x = this.expand(items, stop);
             const rows = Array.from(x.leaves.entries()).map(([name, need]) => {
@@ -876,6 +877,22 @@
             this.se.bodiesOf(id).forEach(p => { out.push({ key: p.key, name: p.name, system: p.system, catName: p.catName, belt: p.cat === 3, richness: p.deposits.get(id).richness, rank: rank ? rank(p) : 0, planet: p }); });
             return out.sort((a, b) => a.rank - b.rank || b.richness - a.richness || a.name.localeCompare(b.name));
         }
+
+        // A mining fleet mines up to eight raws of one body at once (owner, 2026-11-27) and its rate is shared equally:
+        // each raw comes at rate x its richness / n. The C4 Live read of that day agrees on all 656 fleet-raw pairs.
+        // So the fleet's whole output is rate x the MEAN richness (fleetRichness: what the fleet's `richness` holds),
+        // and a raw's share of that output is its richness over the sum (fleetShares).
+        //   f: { raw (the first raw), more: [other raw names], body } -> [{ name, richness, share }]
+        fleetRaws(f) {
+            const names = []; [f && f.raw].concat(f && Array.isArray(f.more) ? f.more : []).forEach(n => { if (typeof n === 'string' && n && !names.includes(n) && names.length < Empire.MAX_RAWS) names.push(n); });
+            const body = f && this.se.planetByKey.get(f.body);
+            // a body that does not carry the first raw (saved bytes, or a deposit the data dropped): the fleet is read as
+            // one raw at its saved richness, as before this rule - shares from deposits against a saved total would not add up
+            if (body && names.length > 1) { if (!body.deposits.has(slug(names[0]))) names.length = 1; else for (let i = names.length - 1; i > 0; i--) if (!body.deposits.has(slug(names[i]))) names.splice(i, 1); }
+            return names.map(name => { const d = body && body.deposits.get(slug(name)); return { name, richness: d ? d.richness : (name === f.raw && f.richness > 0 && names.length === 1 ? f.richness : 1) }; });
+        }
+        fleetShares(f) { const r = this.fleetRaws(f), sum = r.reduce((a, x) => a + x.richness, 0); return r.map(x => Object.assign(x, { share: sum > 0 ? x.richness / sum : 1 / r.length })); }
+        fleetRichness(f) { const r = this.fleetRaws(f); return r.length ? r.reduce((a, x) => a + x.richness, 0) / r.length : 1; }
 
         // Suggestions for a bill (2026-11-27): what the player already holds and already produces in the game is
         // taken off first; for what is still missing and has no source in the plan, where to place a claim stake
@@ -904,8 +921,25 @@
                 return line;
             });
             const lacking = lines.filter(l => l.status === 'lacking');
-            // where ships can mine it: the best placed, then the richest body (belts included)
-            lacking.forEach(l => { if (l.raw) l.ships = this.bodiesFor(l.name, rank)[0] || null; });
+            // where ships can mine it: one fleet mines up to eight raws of a body at once, so the missing raws are
+            // grouped by body, fewest fleets first - the body carrying the most of them (the eight richest when it
+            // carries more), then the better placed, then the richer. l.ships = the body of the line's group.
+            const fleets = [], open = new Map(lacking.filter(l => l.raw).map(l => [slug(l.name), l]));
+            const bodies = new Map(); open.forEach((l, id) => this.se.bodiesOf(id).forEach(p => { if (!bodies.has(p.key)) bodies.set(p.key, p); }));
+            while (open.size) {
+                let best = null;
+                bodies.forEach(p => {
+                    const raws = []; open.forEach((l, id) => { const d = p.deposits.get(id); if (d) raws.push({ name: l.name, id, richness: d.richness }); });
+                    if (!raws.length) return;
+                    raws.sort((a, b) => b.richness - a.richness || a.name.localeCompare(b.name)); raws.length = Math.min(raws.length, Empire.MAX_RAWS);
+                    const v = { planet: p, raws, rank: rank(p), rich: raws.reduce((a, x) => a + x.richness, 0) };
+                    if (!best || v.raws.length > best.raws.length || (v.raws.length === best.raws.length && (v.rank !== best.rank ? v.rank < best.rank : v.rich !== best.rich ? v.rich > best.rich : v.planet.name.localeCompare(best.planet.name) < 0))) best = v;
+                });
+                if (!best) break;
+                const body = { key: best.planet.key, name: best.planet.name, system: best.planet.system, belt: best.planet.cat === 3, planet: best.planet };
+                best.raws.forEach(x => { const l = open.get(x.id); l.ships = Object.assign({ richness: x.richness }, body); open.delete(x.id); });
+                fleets.push({ body, raws: best.raws.map(x => ({ name: x.name, richness: x.richness })) });
+            }
             // stakes
             const want = new Map(lacking.filter(l => l.raw && l.res.stakeMinable).map(l => [slug(l.name), l]));
             const picks = [];
@@ -930,13 +964,14 @@
                 }
             }
             const count = s => lines.filter(l => l.status === s).length;
-            return { lines, picks, ships: lacking.filter(l => l.ships), stuck: lacking.filter(l => !l.stake && !l.ships),
+            return { lines, picks, fleets, ships: lacking.filter(l => l.ships), stuck: lacking.filter(l => !l.stake && !l.ships),
                 counts: { held: count('held'), producing: count('producing'), planned: count('planned'), lacking: lacking.length } };
         }
     }
 
     const R4 = ['Fuel', 'Food', 'Ammunition', 'Repair Kit'];          // the four basics (Hydrogen, Biomass, Copper Ore, Iron Ore)
     Empire.R4 = R4;
+    Empire.MAX_RAWS = 8;                                              // raws one mining fleet mines at once
 
     // ------------------------------------------------------------------------------------------------- galaxy
     // The map's systems (planet-data mapData): coordinates as exported (the page flips Y so north is up), territory

@@ -658,3 +658,8 @@ main { overflow-x: clip; }                                   /* a hover tooltip 
 .cd-sug .cd-sug-fold li small { font-size: 0.74rem; color: var(--text-muted); }
 .cd-sug .cd-sug-foot { margin: 0.7rem 0 0; font-size: 0.72rem; line-height: 1.4; color: var(--text-muted); }
 @media (max-width: 720px) { .cd-sug .cd-sug-row { grid-template-columns: minmax(0, 1fr); } }
+.cd-sug .cd-sug-row i.cd-sug-only { margin-left: 0.3rem; padding: 0 0.3rem; border: 1px solid var(--warn); border-radius: 4px; font-style: normal; font-size: 0.62rem; letter-spacing: 0.04em; color: var(--warn); }
+/* a mining fleet's other raws (2026-11-27): the stake card's chip row, inside a fleet card */
+.cd-fleet .cd-procs.cd-also { margin: 0.1rem 0; }
+.cd-fleet .cd-procs.cd-also .chip:disabled { opacity: 0.4; cursor: default; }
+.cd-fleet .cd-fleet-out small + small { display: block; }

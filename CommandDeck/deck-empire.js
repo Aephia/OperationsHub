@@ -24,6 +24,7 @@
     const CAT_COLOR = ['#3fae79', '#e2512b', '#b7a58a', '#9a9a9a', '#d99a4e', '#7fd0ff', '#6b70b8', '#2f8cff'];
     const FAC_LABEL = { oni: 'ONI', mud: 'MUD', ustur: 'USTUR' };
     const ZONE_RANK = { own: 0, medium: 1, enemy: 2, high: 3 };
+    const MAX_MORE = 7;   // a mining fleet mines up to eight raws at once: its first raw and seven more
     const trunc = (s, n) => (s.length > n ? s.slice(0, n - 1) + '…' : s);
     let seq = 0; const uid = p => p + Date.now().toString(36) + (seq++).toString(36);
     // schedule axis steps in seconds: clock-friendly up to half a year, then 1-2-5 x 10^k years with no upper bound
@@ -57,8 +58,9 @@
             });
             // a fleet's job (2026-10-26): mine (raw at body, dest = drop-off system or ''), haul / supply (stake `from` <-> dest)
             const G = ctx.galaxy, sysOr = v => (typeof v === 'string' && G && G.byKey.has(v) ? v : '');
-            this.fleets = arr(saved.fleets).filter(f => obj(f) && this.empire.shipByName.has(f.ship)).map(f => ({ id: idOr(f.id, 'f'), task: ['haul', 'supply'].includes(f.task) ? f.task : 'mine', ship: f.ship, count: Math.max(1, Math.min(999, Math.floor(+f.count) || 1)), raw: str(f.raw), richness: +f.richness > 0 ? +f.richness : 1, body: str(f.body), dest: sysOr(f.dest), from: str(f.from) }))
+            this.fleets = arr(saved.fleets).filter(f => obj(f) && this.empire.shipByName.has(f.ship)).map(f => ({ id: idOr(f.id, 'f'), task: ['haul', 'supply'].includes(f.task) ? f.task : 'mine', ship: f.ship, count: Math.max(1, Math.min(999, Math.floor(+f.count) || 1)), raw: str(f.raw), more: arr(f.more).filter(x => typeof x === 'string' && x).slice(0, MAX_MORE), richness: +f.richness > 0 ? +f.richness : 1, body: str(f.body), dest: sysOr(f.dest), from: str(f.from) }))
                 .filter(f => f.task === 'mine' || this.stakes.some(s => s.id === f.from));
+            this.fleets.forEach(f => { if (f.task === 'mine') this.fixFleet(f); });
             this.add = { q: '' };
             // which input steps are open: a per-viewer convenience, all open the first time
             const op = Store.read(OPEN_KEY, {}) || {};
@@ -123,7 +125,10 @@
             // stakes to place: the planet row of step 2 (one Place button per tier), with what the pick extracts
             const stakes = S.picks.map(k => `<div class="cd-sug-pick"><p class="cd-sug-why">A tier-${k.tier} ${k.kind === 'cultivation' ? 'cultivation ' : ''}stake here extracts ${k.covers.map(x => `<b>${esc(x.name)}</b> ×${num(x.richness)}`).join(', ')}${k.gated ? ` <span class="warn">· the starbase of this system is too low for a tier-${k.tier} kit</span>` : ''}</p>${this.planetRow(k.planet)}</div>`).join('');
             // ships: every lacking raw a ship can mine; a raw a suggested stake covers is listed as the other way to get it
-            const ships = S.ships.map(l => { const b = l.ships; return `<div class="cd-sug-row"><span><b>${esc(l.name)}</b> <small>missing ${num(l.short)}${l.have ? ` (you hold ${num(l.have)} of ${num(l.need)})` : ''}${l.stake ? ' · or the stake above' : l.res && l.res.stakeMinable ? '' : ' · no stake can extract it'}</small></span><span class="cd-sug-at">${esc(b.name)} ×${num(b.richness)} <small>${esc(b.system)}${b.belt ? ' · belt' : ''}${this.zoneWord(b.planet)}</small></span><button type="button" class="sb-btn" data-sug-mine="${esc(l.name)}" data-sug-body="${esc(b.key)}" title="Add a mining fleet for ${esc(l.name)} at ${esc(b.name)} (step 3)">+ Mining fleet</button></div>`; }).join('');
+            // one row per fleet: a fleet mines up to eight raws of one body at once, its rate shared equally
+            const byName = new Map(S.lines.map(l => [l.name, l]));
+            const ships = S.fleets.map((g, i) => { const b = g.body, n = g.raws.length, only = g.raws.filter(x => { const l = byName.get(x.name); return !(l && l.stake); }).length;
+                return `<div class="cd-sug-row"><span>${g.raws.map(x => { const l = byName.get(x.name); return `<b>${esc(x.name)}</b> ×${num(x.richness)}${l && !l.stake ? '<i class="cd-sug-only" title="No suggested stake covers it: ships are the way">ships only</i>' : ''}`; }).join(', ')} <small>${n > 1 ? `· one fleet mines all ${n} at once, each at 1/${n} of its rate` : '· one fleet'}${only ? '' : ' · or the stakes above'}</small></span><span class="cd-sug-at">${esc(b.name)} <small>${esc(b.system)}${b.belt ? ' · belt' : ''}${this.zoneWord(b.planet)}</small></span><button type="button" class="sb-btn" data-sug-fleet="${i}" title="Add one mining fleet at ${esc(b.name)} for ${esc(g.raws.map(x => x.name).join(', '))} (step 3)">+ Mining fleet</button></div>`; }).join('');
             const stuck = S.stuck.length ? `<p class="cd-sug-p warn">No stake and no body in the data for: ${S.stuck.map(l => esc(l.name)).join(', ')}.</p>` : '';
             // what needs nothing new
             const row = (l, text) => `<li><b>${esc(l.name)}</b> <small>${text}</small></li>`;
@@ -135,7 +140,7 @@
             const fold = (title, list) => (list ? `<details class="cd-sug-fold"><summary>${title}</summary><ul>${list}</ul></details>` : '');
             return box(n.lacking ? 'need' : 'on', head + done +
                 sec('Place a claim stake', 'fewest stakes for the raws still missing; your own zone first', stakes) +
-                sec('Mine with ships', 'the best placed, then the richest body for each missing raw', ships) + stuck +
+                sec('Mine with ships', 'fewest fleets: a fleet mines up to eight raws of one body at once', ships) + stuck +
                 fold(`${plural(n.held, 'line')} already in your inventory`, held) + fold(`${plural(n.producing, 'line')} you already produce in the game`, prod) + fold(`${plural(n.planned, 'line')} sourced by this plan`, plan) +
                 '<p class="cd-sug-foot">Counted: cargo in your fleets\' holds and on your claim stakes, and what your stakes and mining fleets make, as the latest C4 Live read states them. A starbase\'s stores are not in the read. Only the bill\'s own lines are netted: a crafted good you hold is not taken off its ingredients here (the Recipe Explorer\'s planner does that). A suggestion says the deposit and the extractor kit exist; it is not a yield forecast.</p>');
         }
@@ -176,6 +181,7 @@
                         if (task === 'mine') { const raw = f.raw || this.defaultRaw(), b = this.bodies(raw)[0]; Object.assign(f, this.miningDefaults(raw, f.body || (b ? b.key : ''))); }
                         else { if (!this.stakes.some(s => s.id === f.from)) f.from = this.stakes[0].id; f.dest = this.haulDest(task, f.from); }
                     }
+                    if (f.task === 'mine') this.fixFleet(f);
                     this.save(); this.render();
                 }
             });
@@ -188,7 +194,14 @@
                 if ((el = q('[data-stake-auto]'))) { const s = this.stakes.find(x => x.id === el.dataset.stakeAuto); if (s) { delete s.note; this.refill(s); snd('select'); this.save(); this.render(); } return; }
                 if ((el = q('[data-alloc]'))) { const [id, raw, d] = el.dataset.alloc.split('|'); this.bump(id, raw, +d); return; }
                 if ((el = q('[data-proc]'))) { const [id, pid] = el.dataset.proc.split('|'); this.toggleProc(id, pid); return; }
-                if ((el = q('[data-sug-mine]'))) { this.addMiningFleet(el.dataset.sugMine, el.dataset.sugBody); return; }
+                if ((el = q('[data-sug-fleet]'))) { const g = this.sug && this.sug.fleets[+el.dataset.sugFleet]; if (g) this.addMiningFleet(g.raws[0].name, g.body.key, g.raws.slice(1).map(x => x.name)); return; }
+                if ((el = q('[data-fleet-more]'))) {
+                    const f = this.fleets.find(x => x.id === el.dataset.fleetMore), n = el.dataset.raw; if (!f || f.task !== 'mine') return;
+                    const on = (f.more || []).includes(n);
+                    if (!on && (f.more || []).length >= MAX_MORE) { snd('error'); return; }
+                    f.more = on ? f.more.filter(x => x !== n) : (f.more || []).concat(n);
+                    this.fixFleet(f); snd(on ? 'deselect' : 'select'); this.save(); this.render(); return;
+                }
                 if ((el = q('[data-fleet-add]'))) { this.addFleet(); return; }
                 if ((el = q('[data-run-add]'))) { const task = el.dataset.runAdd, s = this.stakes.find(k => !this.fleets.some(f => f.task === task && f.from === k.id)) || this.stakes[0]; if (s) this.addHaulFleet(task, s.id); return; }
                 if ((el = q('[data-stake-add]'))) { const [key, t] = el.dataset.stakeAdd.split('|'); this.addStake(key, +t); return; }
@@ -257,10 +270,20 @@
             const near = p && this.ctx.galaxy ? this.ctx.galaxy.nearestStarbase(p.sysKey) : null;
             return { ship: ship.name, raw: raw || '', body: p ? p.key : '', richness: d ? d.richness : 1, dest: near ? near.sys.key : '' };
         }
-        addMiningFleet(raw, bodyKey) {
+        // more (optional): the other raws of that body the fleet mines at once
+        addMiningFleet(raw, bodyKey, more) {
             if (!this.se.planetByKey.has(bodyKey)) return;
-            this.fleets.push(Object.assign({ id: uid('f'), task: 'mine', count: 1, from: '' }, this.miningDefaults(raw, bodyKey)));
+            const f = Object.assign({ id: uid('f'), task: 'mine', count: 1, from: '' }, this.miningDefaults(raw, bodyKey), { more: Array.isArray(more) ? more.slice() : [] });
+            this.fixFleet(f); this.fleets.push(f);
             snd('success'); this.save(); this.render();
+        }
+        // a mining fleet after any change: the extra raws must be other raws of its body (at most seven), and its
+        // richness is the mean over everything it mines - the rate is shared equally (Empire.fleetRaws)
+        fixFleet(f) {
+            const p = this.se.planetByKey.get(f.body), slug = window.CommandDeck.slug;
+            const has = !!p && !!f.raw && p.deposits.has(slug(f.raw));   // a body without the first raw mines nothing else either
+            f.more = has ? (Array.isArray(f.more) ? f.more : []).filter((n, i, a) => typeof n === 'string' && n !== f.raw && a.indexOf(n) === i && p.deposits.has(slug(n))).slice(0, MAX_MORE) : [];
+            if (has) f.richness = this.empire.fleetRichness(f);
         }
         // haul: to the faction's CSS (the market); supply: from the stake's nearest starbase
         haulDest(task, stakeId) {
@@ -482,11 +505,17 @@
                     const out = o && o.dest && o.trip
                         ? `<b>${num(o.perHour)}</b> / h delivered<small>cycle ${dur(o.trip.cycle)} (${(100 * o.trip.miningShare).toFixed(0)} % mining) · ${num(o.fuel)} fuel and ${num(o.food)} food / h</small>`
                         : `<b>${num(ship.rate * f.count * f.richness)}</b> / s at the body<small>${ship.crew * f.count} crew · hold full in ${dur(ship.cargo / (ship.rate * f.richness))} · no trip counted</small>`;
+                    // the other raws of the body: the fleet mines up to eight at once and shares its rate equally over them
+                    const inBill = new Set(raws), more = f.more || [], nRaws = 1 + more.length;
+                    const others = body ? Array.from(body.deposits.values()).filter(d => d.name !== f.raw).sort((a, b) => (inBill.has(b.name) - inBill.has(a.name)) || b.richness - a.richness || a.name.localeCompare(b.name)) : [];
+                    const also = others.length ? `<div class="cd-procs cd-also"><span>Also mines</span>${others.map(d => { const on = more.includes(d.name); return `<button type="button" class="chip${on ? ' on' : ''}" data-fleet-more="${f.id}" data-raw="${esc(d.name)}"${!on && more.length >= MAX_MORE ? ' disabled' : ''} title="${esc(d.name)}, richness ×${num(d.richness)}${inBill.has(d.name) ? ' - in the bill' : ''}. A fleet mines up to eight raws at once; each then comes at 1/n of the fleet's rate.">${inBill.has(d.name) ? '◆ ' : ''}${esc(d.name)} <small>×${num(d.richness)}</small></button>`; }).join('')}</div>` : '';
+                    const split = nRaws > 1 ? `<small>${nRaws} raws at once, each at 1/${nRaws} of the rate: ${this.empire.fleetShares(f).map(x => `${esc(x.name)} ${(100 * x.share).toFixed(0)} %`).join(', ')}</small>` : '';
                     return `<div class="cd-fleet task-mine">${head}
                         <div class="cd-fleet-row">${sel(f, 'ship', 'Hull', this.empire.miners.map(m => `<option value="${esc(m.name)}"${m.name === f.ship ? ' selected' : ''}>${esc(m.name)} - ${num(m.rate)} /s</option>`).join(''))}</div>
                         <div class="cd-fleet-row">${sel(f, 'raw', 'Raw mined', `<optgroup label="In the bill">${opts.map(n => `<option${n === f.raw ? ' selected' : ''}>${esc(n)}</option>`).join('')}</optgroup><optgroup label="Every raw">${allRaws.filter(n => !opts.includes(n)).map(n => `<option>${esc(n)}</option>`).join('')}</optgroup>`)}${sel(f, 'body', 'Body mined', bodies.concat(body && !bodies.some(b => b.key === body.key) ? this.bodies(f.raw).filter(b => b.key === body.key) : []).map(b => `<option value="${esc(b.key)}"${b.key === f.body ? ' selected' : ''}>${esc(b.name)} ×${num(b.richness)} · ${esc(b.system)}${b.belt ? ' · belt' : ''}${this.zoneWord(b.planet)}</option>`).join('') || '<option>no body carries it</option>')}</div>
+                        ${also}
                         <div class="cd-fleet-row">${sel(f, 'dest', 'Drop-off', destOpts(f, body && body.sysKey, 'No drop-off - rate at the body, no trip', true))}</div>
-                        <div class="cd-fleet-out">${out}${o && o.warn.length ? `<small class="warn">${o.warn.map(esc).join('; ')}</small>` : ''}</div>
+                        <div class="cd-fleet-out">${out}${split}${o && o.warn.length ? `<small class="warn">${o.warn.map(esc).join('; ')}</small>` : ''}</div>
                     </div>`;
                 }
                 const stake = this.stakes.find(s => s.id === f.from), sp = stake && this.se.planetByKey.get(stake.key), sr = o && o.stake;
@@ -501,11 +530,11 @@
             }).join('');
             const noStake = this.stakes.length ? '' : ' disabled title="Place a claim stake first (step 2)"';
             return `<div class="cd-fleet-add"><span class="sb-muted">Each fleet has one job</span>
-                    <button type="button" class="sb-btn" data-fleet-add title="Mine one raw at one body and drop it off at a starbase">+ Mining fleet</button>
+                    <button type="button" class="sb-btn" data-fleet-add title="Mine up to eight raws of one body at once and drop them off at a starbase">+ Mining fleet</button>
                     <button type="button" class="sb-btn" data-run-add="haul"${noStake} title="Carry a stake's whole output to a starbase (default: your CSS, the market)">+ Haul run</button>
                     <button type="button" class="sb-btn" data-run-add="supply"${noStake} title="Bring a stake the R4 - Fuel, Food, Ammunition, Repair Kits - it and the fleets based on it burn">+ R4 supply</button></div>
                 ${rows ? `<div class="cd-cards">${rows}</div>` : '<p class="rx-note">No fleet yet. A mining fleet is the only source for raws no stake can extract; a haul run and an R4 supply serve a stake from step 2.</p>'}
-                ${this.fleets.length ? '<p class="rx-note">Mining = hull rate × count × the body\'s richness; with a drop-off, the hold is flown there and back each cycle. The game also divides by a hardness the export does not list.</p>' : ''}`;
+                ${this.fleets.length ? '<p class="rx-note">Mining = hull rate × count × the body\'s richness. A fleet mines up to eight raws of its body at once (Also mines) and shares its rate equally: each raw comes at 1/n of the rate times its own richness. With a drop-off, the hold is flown there and back each cycle. The game also divides by a hardness the export does not list.</p>' : ''}`;
         }
 
         // ---- hab schedule (2026-10-08): one lane per job, crafts in dependency order, the critical path in gold

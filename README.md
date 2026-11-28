@@ -123,9 +123,17 @@ produced** (your real claim stakes or mining fleets make it: the rate, and the t
 this plan** (a stake or fleet already placed in the tab), or **without a source**. For the last group it suggests
 claim stakes, lowest tier first: the stakeable planet whose stake of one kind (standard or cultivation) extracts the
 most missing raws; ties go to a system whose starbase allows the tier, then your own zone, then the richer deposits;
-at most six. Each suggestion is the planet row of step 2 with its Place buttons. It also lists, for every missing raw
-a ship can mine, the best placed then richest body with a **+ Mining fleet** button (the only way for a raw no stake
-can extract). Only the bill's own lines are netted: a crafted good you hold is not taken off its ingredients here (the
+at most six. Each suggestion is the planet row of step 2 with its Place buttons. It also groups the missing raws a
+ship can mine into the fewest mining fleets: a fleet mines up to eight raws of one body at once, so each row is one
+body (the one carrying the most missing raws, then the better placed, then the richer) with every raw the fleet would
+mine there and a **+ Mining fleet** button that adds that one fleet (the only way for a raw no stake can extract).
+
+**A mining fleet mines up to eight raws at once** (owner rule, 2026-11-27; the C4 Live read of that day agrees on every
+mining fleet). The rate is shared equally: each raw comes at hull rate × count × its own richness ÷ the number of raws
+mined. In step 3 a mining fleet card has **Also mines**: the other raws of its body, up to seven more. The fleet's
+whole output is its rate × the mean richness, and each raw's share is its richness over the sum
+(`Empire.fleetRaws` / `fleetShares` / `fleetRichness`); coverage and the ledger book each raw its share. A saved fleet
+with one raw works as before. Only the bill's own lines are netted: a crafted good you hold is not taken off its ingredients here (the
 planner below does that). A suggestion says the deposit and the extractor kit exist; it is not a yield forecast.
 Check: `node Test/deck-suggest-check.js`.
 
