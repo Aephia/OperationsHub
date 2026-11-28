@@ -623,3 +623,38 @@ main { overflow-x: clip; }                                   /* a hover tooltip 
 .cd-research + .cd-fold { margin-top: 1rem; }
 .cd-fold .cd-legend { margin-bottom: 0.5rem; }
 .cd-verdict.rs .cd-steps { max-height: 440px; }
+
+/* Empire, step 1: suggestions from the player's own C4 inventory (2026-11-27). Every rule is scoped to .cd-sug with
+   two classes or more, so it outranks the step's generic rules (.cd-stage-body > * + *, .rx-note) whatever the order. */
+.cd-stage-body .cd-sug { margin-top: 0.9rem; padding: 0.7rem 0.9rem 0.8rem; border: 1px solid var(--line); border-left: 3px solid var(--line-strong); border-radius: 10px; background: rgba(255, 255, 255, 0.02); }
+.cd-stage-body .cd-sug.on { border-left-color: var(--ok); }
+.cd-stage-body .cd-sug.need { border-left-color: var(--warn); }
+.cd-sug > h4 { margin: 0 0 0.35rem; font-family: 'Orbitron', sans-serif; font-size: 0.62rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--cyan); }
+.cd-sug .cd-sug-p { margin: 0.2rem 0; font-size: 0.84rem; color: var(--text-secondary); }
+.cd-sug .cd-sug-p b { color: #fff; }
+.cd-sug .cd-sug-p a { color: var(--cyan); }
+.cd-sug .cd-sug-p.ok { color: var(--ok); }
+.cd-sug .cd-sug-p.warn, .cd-sug .cd-sug-why .warn { color: var(--warn); }
+.cd-sug .cd-sug-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0.45rem 0 0.2rem; }
+.cd-sug .cd-sug-chip { padding: 0.18rem 0.55rem; border-radius: 999px; border: 1px solid var(--line); font-size: 0.76rem; color: var(--text-secondary); }
+.cd-sug .cd-sug-chip b { font-family: 'Orbitron', sans-serif; font-size: 0.72rem; color: #fff; }
+.cd-sug .cd-sug-chip.ok { border-color: rgba(126, 232, 164, 0.45); } .cd-sug .cd-sug-chip.ok b { color: var(--ok); }
+.cd-sug .cd-sug-chip.plan { border-color: rgba(79, 216, 255, 0.45); } .cd-sug .cd-sug-chip.plan b { color: var(--cyan); }
+.cd-sug .cd-sug-chip.need { border-color: var(--warn); } .cd-sug .cd-sug-chip.need b { color: var(--warn); }
+.cd-sug .cd-sug-sec { margin-top: 0.75rem; }
+.cd-sug .cd-sug-sec > h5 { margin: 0 0 0.35rem; font-family: 'Orbitron', sans-serif; font-size: 0.6rem; letter-spacing: 0.14em; text-transform: uppercase; color: #fff; }
+.cd-sug .cd-sug-sec > h5 small { margin-left: 0.4rem; font-family: inherit; letter-spacing: 0.04em; text-transform: none; font-size: 0.7rem; color: var(--text-muted); }
+.cd-sug .cd-sug-pick + .cd-sug-pick { margin-top: 0.5rem; }
+.cd-sug .cd-sug-why { margin: 0 0 0.2rem; font-size: 0.8rem; color: var(--text-secondary); }
+.cd-sug .cd-sug-why b { color: #fff; font-weight: 600; }
+.cd-sug .cd-sug-row { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto; align-items: center; gap: 0.3rem 0.7rem; padding: 0.35rem 0.55rem; border: 1px solid var(--line); border-radius: 9px; font-size: 0.82rem; color: var(--text-secondary); }
+.cd-sug .cd-sug-row + .cd-sug-row { margin-top: 0.3rem; }
+.cd-sug .cd-sug-row b { color: #fff; font-weight: 600; }
+.cd-sug .cd-sug-row small { font-size: 0.72rem; color: var(--text-muted); }
+.cd-sug .cd-sug-fold { margin-top: 0.5rem; font-size: 0.8rem; color: var(--text-secondary); }
+.cd-sug .cd-sug-fold summary { cursor: pointer; color: var(--text-secondary); }
+.cd-sug .cd-sug-fold ul { margin: 0.3rem 0 0; padding-left: 1.1rem; display: grid; gap: 0.12rem; }
+.cd-sug .cd-sug-fold li b { color: #fff; font-weight: 600; }
+.cd-sug .cd-sug-fold li small { font-size: 0.74rem; color: var(--text-muted); }
+.cd-sug .cd-sug-foot { margin: 0.7rem 0 0; font-size: 0.72rem; line-height: 1.4; color: var(--text-muted); }
+@media (max-width: 720px) { .cd-sug .cd-sug-row { grid-template-columns: minmax(0, 1fr); } }

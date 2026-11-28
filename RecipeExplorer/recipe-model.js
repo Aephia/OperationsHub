@@ -359,6 +359,17 @@
         // families and the other filters AND; an empty set = no filter. -> [{ item: the heading's recipe (finder row),
         // rows: the item's rows that pass, in way order (wayRecipes), total: the item's row count }], items with no row
         // passing left out, in finderRows order (the planner sorts).
+        // how many times one recipe can be crafted from a stock (Map name -> units): the smallest whole number of
+        // crafts any DIRECT ingredient allows. 0 for a recipe with no ingredients (nothing to craft from) and with no
+        // stock. It tests the ingredients only: not the starbase level, the research or the crafting station.
+        craftsFrom(r, stock) {
+            if (!stock || !r || !r.ingredients || !r.ingredients.length) return 0;
+            const need = new Map(); r.ingredients.forEach(i => { if (i.quantity > 0) need.set(i.name, (need.get(i.name) || 0) + i.quantity); });
+            if (!need.size) return 0;
+            let n = Infinity; need.forEach((q, name) => { n = Math.min(n, Math.floor((stock.get(name) || 0) / q)); });
+            return isFinite(n) && n > 0 ? n : 0;
+        }
+        // filters.craft (optional): a stock Map - only the recipe rows craftsFrom() can craft at least once
         findRecipeRows(filters) {
             const f = filters || {}, q = String(f.q || '').toLowerCase(), mode = f.mode === 'ingredient' ? 'ingredient' : 'name';
             const has = (s, v) => !s || !s.size || s.has(String(v));
@@ -367,7 +378,7 @@
             this.finderRows().forEach(x => {
                 const ways = this.wayRecipes(x.r), plain = x.r.baseName.toLowerCase();
                 const rows = ways.filter(r => has(f.types, r.outputType) && has(f.tiers, r.outputTier) && has(f.star, r.starbase)
-                    && any(f.kinds, r.kinds) && any(f.facs, r.kinds)
+                    && any(f.kinds, r.kinds) && any(f.facs, r.kinds) && (!f.craft || this.craftsFrom(r, f.craft) > 0)
                     && (!q || (mode === 'name' ? r.outputName.toLowerCase().includes(q) || plain.includes(q) || r.outputId.includes(q) : (r.ingredients || []).some(i => i.name.toLowerCase().includes(q)))));
                 if (rows.length) out.push({ item: x.r, rows, total: ways.length });
             });

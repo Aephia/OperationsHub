@@ -876,6 +876,63 @@
             this.se.bodiesOf(id).forEach(p => { out.push({ key: p.key, name: p.name, system: p.system, catName: p.catName, belt: p.cat === 3, richness: p.deposits.get(id).richness, rank: rank ? rank(p) : 0, planet: p }); });
             return out.sort((a, b) => a.rank - b.rank || b.richness - a.richness || a.name.localeCompare(b.name));
         }
+
+        // Suggestions for a bill (2026-11-27): what the player already holds and already produces in the game is
+        // taken off first; for what is still missing and has no source in the plan, where to place a claim stake
+        // and where to send a mining fleet.
+        //   rows: coverage().rows ({ name, res, need, perHour })
+        //   o.stock: Map name -> units held (the C4 Live read: fleet holds + claim stake storage)
+        //   o.made:  Map name -> { perHour, from: [labels] } (what the player's real stakes and mining fleets make)
+        //   o.rank(planet): lower = better placed (the page passes the zone seen by the player's faction)
+        //   o.gate(planet, tier): true when the system's starbase is too low for a kit of that tier
+        // A line is 'held' (stock covers the need), 'producing' (the player already makes it: hours = the missing
+        // part at that rate), 'planned' (the plan's own stakes or fleets supply it) or 'lacking'.
+        // Stakes are picked greedily, lowest tier first: the planet whose stake of one kind (standard or
+        // cultivation - they cannot share a stake) extracts the most lacking raws; ties go to a system whose
+        // starbase allows the tier, then the better zone, then the richer deposits. Nothing here is a price or a
+        // yield forecast: a pick says only that the extractor kit exists and the deposit is there.
+        suggest(rows, o) {
+            o = o || {};
+            const stock = o.stock || new Map(), made = o.made || new Map(), rank = o.rank || (() => 0), gate = o.gate || (() => false), max = o.maxStakes || 6;
+            const lines = (rows || []).map(r => {
+                const have = Math.max(0, Math.floor(stock.get(r.name) || 0)), short = Math.max(0, r.need - have), m = made.get(r.name);
+                const raw = !!r.res && r.res.category === 'raw';
+                const line = { name: r.name, res: r.res, need: r.need, have, short, raw, perHour: 0, from: [], hours: null, stake: null, ships: null, status: 'lacking' };
+                if (short <= 0) line.status = 'held';
+                else if (m && m.perHour > 0) { line.status = 'producing'; line.perHour = m.perHour; line.from = m.from || []; line.hours = short / m.perHour; }
+                else if (r.perHour > 0) { line.status = 'planned'; line.perHour = r.perHour; line.hours = short / r.perHour; }
+                return line;
+            });
+            const lacking = lines.filter(l => l.status === 'lacking');
+            // where ships can mine it: the best placed, then the richest body (belts included)
+            lacking.forEach(l => { if (l.raw) l.ships = this.bodiesFor(l.name, rank)[0] || null; });
+            // stakes
+            const want = new Map(lacking.filter(l => l.raw && l.res.stakeMinable).map(l => [slug(l.name), l]));
+            const picks = [];
+            for (let tier = 1; tier <= 5 && want.size && picks.length < max; tier++) {
+                const cands = [];
+                this.se.planets.forEach(p => {
+                    if (!p.stakeable) return;
+                    const ext = this.se.extractable(p, tier).filter(x => want.has(x.raw)); if (!ext.length) return;
+                    ['standard', 'cultivation'].forEach(kind => { const k = ext.filter(x => x.kind === kind); if (k.length) cands.push({ planet: p, tier, kind, ext: k, rank: rank(p), gated: !!gate(p, tier) }); });
+                });
+                while (want.size && picks.length < max) {
+                    let best = null;
+                    cands.forEach(c => {
+                        const covers = c.ext.filter(x => want.has(x.raw)); if (!covers.length) return;
+                        const v = { planet: c.planet, tier: c.tier, kind: c.kind, covers, rank: c.rank, gated: c.gated, rich: covers.reduce((a, x) => a + x.richness, 0) };
+                        if (!best || v.covers.length > best.covers.length || (v.covers.length === best.covers.length && (v.gated !== best.gated ? !v.gated : v.rank !== best.rank ? v.rank < best.rank : v.rich !== best.rich ? v.rich > best.rich : v.planet.name.localeCompare(best.planet.name) < 0))) best = v;
+                    });
+                    if (!best) break;
+                    best.covers = best.covers.map(x => ({ raw: x.raw, name: x.name, richness: x.richness })).sort((a, b) => b.richness - a.richness || a.name.localeCompare(b.name));
+                    best.covers.forEach(x => { want.get(x.raw).stake = best; want.delete(x.raw); });
+                    picks.push(best);
+                }
+            }
+            const count = s => lines.filter(l => l.status === s).length;
+            return { lines, picks, ships: lacking.filter(l => l.ships), stuck: lacking.filter(l => !l.stake && !l.ships),
+                counts: { held: count('held'), producing: count('producing'), planned: count('planned'), lacking: lacking.length } };
+        }
     }
 
     const R4 = ['Fuel', 'Food', 'Ammunition', 'Repair Kit'];          // the four basics (Hydrogen, Biomass, Copper Ore, Iron Ore)

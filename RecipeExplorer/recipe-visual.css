@@ -123,6 +123,8 @@
 .rp-list .rp-row-main b { white-space: normal; overflow-wrap: anywhere; line-height: 1.2; }   /* the row's `span { display: block }` must not reach the name */
 .rp-row.rp-sub .rp-add { width: 30px; height: 30px; }
 .rp-row-main span em.rp-kind { float: right; margin-left: 0.5rem; font-style: normal; font-family: 'Rajdhani', sans-serif; font-weight: 700; letter-spacing: 0.03em; color: #ffd36b; }
+/* "can craft xN" beside a recipe row: the same weight as .rp-kind above, so the row's generic span rule cannot grey it */
+.rp-row-main span em.rp-can { float: right; margin-left: 0.5rem; font-style: normal; font-family: 'Rajdhani', sans-serif; font-weight: 700; letter-spacing: 0.03em; color: #3fd08a; }
 .rp-sidebar h4 small.rp-chip-hint { display: block; margin-top: 0.1rem; font-family: 'Rajdhani', sans-serif; font-size: 0.68rem; font-weight: 500; letter-spacing: 0.02em; text-transform: none; color: var(--text-muted); }
 .rp-way-h small.rp-way-makes { color: #ffd36b; }
 .rp-way-list { display: flex; flex-direction: column; gap: 0.35rem; }

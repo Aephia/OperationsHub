@@ -99,13 +99,35 @@ call to the public crew feed. Only values that are valid addresses are ever stor
 | Landing page | The form, a Forget button, and three cards saying what each module does with it. With C4 Live data in reach it names your C4 player and counts your fleets and claim stakes. |
 | Crew Explorer | Its two fields arrive filled from the profile; a roster that loads writes its addresses back to the profile. **SAGE crew on Solana only, for now** (said above the form): C4 crew on z.ink is not read. |
 | C4 Live | Your fleets are drawn in their own colour (`--me`, `#ff5cf0`) as larger ringed dots and ringed hulls, your claim stakes in the same colour, your name carries a **You** tag in every list, and a **You** box in the map controls opens your player. The fleet view (owner page and single fleet) and the Analytics tab (governance player tables, producer bars, drill-down cards) carry the same mark. Every claim stake's view has **Open in the Stake Builder**. |
-| Recipe Explorer | The planner counts what you hold in C4 against the plan (below). |
+| Recipe Explorer | The planner counts what you hold in C4 against the plan (below). The finder has a **Craftable now** chip and marks each recipe row your cargo can craft ("can craft ×N"). |
+| Command Deck | The Empire tab's step 1 gives **suggestions from your inventory**: what you already hold or produce, then where to place a claim stake or send a mining fleet for the rest (below). |
 | ClaimStake Explorer | The Stake Builder lists **My claim stakes** (your C4 stakes: planet, system, tier, buildings). A click puts one on the pad as it stands on chain; from there it is a plan like any other. |
 
 **Who is "you" in C4.** The C4 game runs on another chain (z.ink), so its player profile address is not the SAGE one.
 A player in the C4 Live read is yours when its wallet equals the profile's wallet, when its address equals the
 profile's player profile, or when you marked it: open the player on C4 Live and press **This is me** (stored as `c4`
 in the profile; **Not me** removes it). A wallet or address match cannot be unmarked there: change the profile.
+
+**Craftable now** (Recipe Explorer finder, added 2026-11-27). Under "Your inventory" the **Craftable now** chip keeps
+only the recipe rows you can craft at least once from the cargo in your C4 fleets' holds and on your claim stakes: every
+direct ingredient held in the amount one craft needs (`RecipeModel.craftsFrom`, the `craft` filter of
+`findRecipeRows`). With or without the chip, a row you can craft carries "can craft ×N" (N = the crafts the scarcest
+ingredient allows). Only ingredients are tested: not the starbase level, the research or the crafting station; a
+starbase's stores are not in the C4 Live read. Without a profile, a C4 read or any cargo, the block says which is
+missing and the chip is not drawn. Check: `node Test/recipe-craftable-check.js`.
+
+**Suggestions from your inventory** (Command Deck, Empire tab, step 1, added 2026-11-27). With a profile set and a
+recipe in the plan, each line of the plan's bill is read against your C4 Live read (`Empire.suggest` in
+`CommandDeck/deck-model.js`): **in your inventory** (your fleet holds and stake storage cover the need), **already
+produced** (your real claim stakes or mining fleets make it: the rate, and the time for the missing part), **sourced by
+this plan** (a stake or fleet already placed in the tab), or **without a source**. For the last group it suggests
+claim stakes, lowest tier first: the stakeable planet whose stake of one kind (standard or cultivation) extracts the
+most missing raws; ties go to a system whose starbase allows the tier, then your own zone, then the richer deposits;
+at most six. Each suggestion is the planet row of step 2 with its Place buttons. It also lists, for every missing raw
+a ship can mine, the best placed then richest body with a **+ Mining fleet** button (the only way for a raw no stake
+can extract). Only the bill's own lines are netted: a crafted good you hold is not taken off its ingredients here (the
+planner below does that). A suggestion says the deposit and the extractor kit exist; it is not a yield forecast.
+Check: `node Test/deck-suggest-check.js`.
 
 **Planning against what you hold** (Recipe Explorer, Planner tab, "My C4 resources"). With the box ticked, the plan is
 counted against the cargo holds of your C4 fleets and the inventory of your C4 claim stakes:

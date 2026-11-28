@@ -68,6 +68,76 @@
             this.map = G && window.DeckEmpireMap ? new window.DeckEmpireMap(this) : null;
             Store.on(() => { if (this.visible()) this.render(); else this.stale = true; });
             this.stale = true;
+            // what you hold in C4 (2026-11-27): the shared profile (Utils/HubProfile.js) picks your fleets and claim
+            // stakes out of the C4 Live read; step 1 then suggests where to place a stake or mine for what is missing
+            this.c4 = { ready: false, latest: null, mine: null, why: '', profile: null };
+            this.initC4();
+        }
+        initC4() {
+            const H = window.HubProfile; if (!H) return;
+            const apply = () => { this.c4.profile = H.get(); this.c4.mine = this.c4.latest ? H.assets(this.c4.latest, this.c4.profile) : null; if (this.visible()) this.render(); else this.stale = true; };
+            // the C4 read is large (about 2 MB): it is fetched once, and only when a profile is set
+            const load = () => {
+                if (this.c4.asked || !H.isSet(H.get())) return false;
+                this.c4.asked = true; this.c4.ready = false;
+                H.loadC4('../').then(r => { this.c4.latest = r.latest; this.c4.why = r.why || ''; }, () => { this.c4.why = 'The C4 Live data could not be read.'; }).then(() => { this.c4.ready = true; apply(); });
+                return true;
+            };
+            H.onChange(() => { load(); apply(); });
+            if (!load()) this.c4.ready = true;   // no profile: nothing to wait for, the panel asks for one
+        }
+        // what the player's real fleets and claim stakes hold and make, from the C4 Live read:
+        // stock: Map name -> units; made: Map name -> { perHour, from: [labels] }
+        c4Supply() {
+            const m = this.c4.mine, stock = new Map(), made = new Map();
+            if (!m) return { stock, made };
+            m.stock.forEach(s => stock.set(s.name, s.units));
+            const add = (name, perSec, label) => {
+                if (typeof name !== 'string' || !name || !(perSec > 0) || !isFinite(perSec)) return;
+                const r = made.get(name) || { perHour: 0, from: [] }; r.perHour += perSec * 3600; if (!r.from.includes(label)) r.from.push(label); made.set(name, r);
+            };
+            m.stakes.forEach(s => (Array.isArray(s.out) ? s.out : []).forEach(x => add(x && x.r, x && x.ps, `your claim stake in ${typeof s.sysName === 'string' && s.sysName ? s.sysName : 'an unnamed system'}`)));
+            m.fleets.forEach(f => (f.mine && Array.isArray(f.mine.out) ? f.mine.out : []).forEach(x => add(x && x.r, x && x.ups, `your fleet ${typeof f.n === 'string' && f.n ? f.n : 'without a name'}`)));
+            return { stock, made };
+        }
+        // the suggestions under the plan: says what is missing (a profile, the C4 read, a match) or, for every bill
+        // line, whether you hold it, already make it, or where to place a stake / send a mining fleet for it
+        suggestHTML(items, cov) {
+            const H = window.HubProfile; if (!H || !items.length) return '';
+            const c = this.c4, prof = c.profile || H.get(), m = c.mine;
+            const home = '<a href="../index.html#profile">the Operations Hub front page</a>', live = '<a href="../C4Live/index.html">C4 Live</a>';
+            const box = (state, body) => `<div class="cd-sug ${state}"><h4>Suggestions from your inventory</h4>${body}</div>`;
+            if (!c.ready) return box('off', '<p class="cd-sug-p">Looking for what you hold in C4...</p>');
+            if (!H.isSet(prof)) return box('off', `<p class="cd-sug-p">Set your wallet or profile on ${home} and this step will count what you already hold in C4, then suggest where to place a claim stake or mine with ships for the rest.</p>`);
+            if (!c.latest) return box('off', `<p class="cd-sug-p">${esc(c.why)} Open ${live}.</p>`);
+            if (!m || !m.owners.length) return box('off', `<p class="cd-sug-p">No C4 player in the latest read matches your profile. Open ${live}, click your name and press <b>This is me</b>.</p>`);
+            const G = this.ctx.galaxy, sup = this.c4Supply();
+            const S = this.sug = this.empire.suggest(cov.rows, { stock: sup.stock, made: sup.made,
+                rank: p => ZONE_RANK[this.zoneOf(p)] + (String(p.terr).toLowerCase().startsWith(Store.s.faction.slice(0, 3)) ? 0 : 0.5),
+                gate: (p, t) => { const sys = G && G.byKey.get(p.sysKey); return !!sys && t > sys.sb; } });
+            const who = m.owners.map(o => esc(o.name || (o.p.slice(0, 4) + '...' + o.p.slice(-4)))).join(', ');
+            const n = S.counts, total = S.lines.length;
+            const chip = (v, cls, text) => (v ? `<span class="cd-sug-chip ${cls}"><b>${num(v)}</b> ${text}</span>` : '');
+            const head = `<p class="cd-sug-p"><b>${who}</b> · ${plural(m.fleets.length, 'fleet')}, ${plural(m.stakes.length, 'claim stake')} · ${plural(total, 'bill line')}</p>
+                <div class="cd-sug-chips">${chip(n.held, 'ok', 'already in your inventory')}${chip(n.producing, 'ok', 'you already produce')}${chip(n.planned, 'plan', 'sourced by this plan')}${chip(n.lacking, 'need', 'still without a source')}</div>`;
+            // stakes to place: the planet row of step 2 (one Place button per tier), with what the pick extracts
+            const stakes = S.picks.map(k => `<div class="cd-sug-pick"><p class="cd-sug-why">A tier-${k.tier} ${k.kind === 'cultivation' ? 'cultivation ' : ''}stake here extracts ${k.covers.map(x => `<b>${esc(x.name)}</b> ×${num(x.richness)}`).join(', ')}${k.gated ? ` <span class="warn">· the starbase of this system is too low for a tier-${k.tier} kit</span>` : ''}</p>${this.planetRow(k.planet)}</div>`).join('');
+            // ships: every lacking raw a ship can mine; a raw a suggested stake covers is listed as the other way to get it
+            const ships = S.ships.map(l => { const b = l.ships; return `<div class="cd-sug-row"><span><b>${esc(l.name)}</b> <small>missing ${num(l.short)}${l.have ? ` (you hold ${num(l.have)} of ${num(l.need)})` : ''}${l.stake ? ' · or the stake above' : l.res && l.res.stakeMinable ? '' : ' · no stake can extract it'}</small></span><span class="cd-sug-at">${esc(b.name)} ×${num(b.richness)} <small>${esc(b.system)}${b.belt ? ' · belt' : ''}${this.zoneWord(b.planet)}</small></span><button type="button" class="sb-btn" data-sug-mine="${esc(l.name)}" data-sug-body="${esc(b.key)}" title="Add a mining fleet for ${esc(l.name)} at ${esc(b.name)} (step 3)">+ Mining fleet</button></div>`; }).join('');
+            const stuck = S.stuck.length ? `<p class="cd-sug-p warn">No stake and no body in the data for: ${S.stuck.map(l => esc(l.name)).join(', ')}.</p>` : '';
+            // what needs nothing new
+            const row = (l, text) => `<li><b>${esc(l.name)}</b> <small>${text}</small></li>`;
+            const held = S.lines.filter(l => l.status === 'held').map(l => row(l, `you hold ${num(l.have)}, the plan needs ${num(l.need)}`)).join('');
+            const prod = S.lines.filter(l => l.status === 'producing').map(l => row(l, `missing ${num(l.short)}${l.have ? ` (you hold ${num(l.have)})` : ''} · ${num(l.perHour)} / h from ${esc(l.from.slice(0, 2).join(' and '))}${l.from.length > 2 ? ` and ${l.from.length - 2} more` : ''} · ${esc(dur(l.hours * 3600))} at that rate`)).join('');
+            const plan = S.lines.filter(l => l.status === 'planned').map(l => row(l, `missing ${num(l.short)}${l.have ? ` (you hold ${num(l.have)})` : ''} · ${num(l.perHour)} / h from the stakes and fleets of this plan · ${esc(dur(l.hours * 3600))}`)).join('');
+            const done = !n.lacking ? `<p class="cd-sug-p ok">Every line of the bill is in your inventory, already produced, or sourced by this plan. Nothing to place.</p>` : '';
+            const sec = (title, sub, body) => (body ? `<div class="cd-sug-sec"><h5>${title}${sub ? ` <small>${sub}</small>` : ''}</h5>${body}</div>` : '');
+            const fold = (title, list) => (list ? `<details class="cd-sug-fold"><summary>${title}</summary><ul>${list}</ul></details>` : '');
+            return box(n.lacking ? 'need' : 'on', head + done +
+                sec('Place a claim stake', 'fewest stakes for the raws still missing; your own zone first', stakes) +
+                sec('Mine with ships', 'the best placed, then the richest body for each missing raw', ships) + stuck +
+                fold(`${plural(n.held, 'line')} already in your inventory`, held) + fold(`${plural(n.producing, 'line')} you already produce in the game`, prod) + fold(`${plural(n.planned, 'line')} sourced by this plan`, plan) +
+                '<p class="cd-sug-foot">Counted: cargo in your fleets\' holds and on your claim stakes, and what your stakes and mining fleets make, as the latest C4 Live read states them. A starbase\'s stores are not in the read. Only the bill\'s own lines are netted: a crafted good you hold is not taken off its ingredients here (the Recipe Explorer\'s planner does that). A suggestion says the deposit and the extractor kit exist; it is not a yield forecast.</p>');
         }
         visible() { return this.root.closest('.tab-content').classList.contains('active'); }
         show() { this.render(); }                                   // the plan may have changed in another tab or module
@@ -118,6 +188,7 @@
                 if ((el = q('[data-stake-auto]'))) { const s = this.stakes.find(x => x.id === el.dataset.stakeAuto); if (s) { delete s.note; this.refill(s); snd('select'); this.save(); this.render(); } return; }
                 if ((el = q('[data-alloc]'))) { const [id, raw, d] = el.dataset.alloc.split('|'); this.bump(id, raw, +d); return; }
                 if ((el = q('[data-proc]'))) { const [id, pid] = el.dataset.proc.split('|'); this.toggleProc(id, pid); return; }
+                if ((el = q('[data-sug-mine]'))) { this.addMiningFleet(el.dataset.sugMine, el.dataset.sugBody); return; }
                 if ((el = q('[data-fleet-add]'))) { this.addFleet(); return; }
                 if ((el = q('[data-run-add]'))) { const task = el.dataset.runAdd, s = this.stakes.find(k => !this.fleets.some(f => f.task === task && f.from === k.id)) || this.stakes[0]; if (s) this.addHaulFleet(task, s.id); return; }
                 if ((el = q('[data-stake-add]'))) { const [key, t] = el.dataset.stakeAdd.split('|'); this.addStake(key, +t); return; }
@@ -238,7 +309,7 @@
             this.root.innerHTML = `
                 ${settingsStrip({ faction: true })}
                 <div class="cd-build">
-                    ${this.stepHTML('plan', 1, 'What to make', items.length ? `${names} · ${cov.covered} of ${cov.rows.length} bill lines have a source` : 'pick the recipes you want to craft', this.goalHTML(items), items.length > 0)}
+                    ${this.stepHTML('plan', 1, 'What to make', items.length ? `${names} · ${cov.covered} of ${cov.rows.length} bill lines have a source` : 'pick the recipes you want to craft', this.goalHTML(items) + this.suggestHTML(items, cov), items.length > 0)}
                     ${this.stepHTML('stakes', 2, 'Claim stakes', this.stakes.length ? `${plural(this.stakes.length, 'stake')} · ${plural(ext, 'extractor')} · ${num(made)} units / h` : 'search a planet and place a stake', this.stakesHTML(srcById), this.stakes.length > 0)}
                     ${this.stepHTML('fleets', 3, 'Fleets', this.fleets.length ? `${[[byTask('mine'), 'mining'], [byTask('haul'), 'haul'], [byTask('supply'), 'supply']].filter(([n]) => n).map(([n, l]) => `${n} ${l}`).join(' · ')}${fuel && fuel.burned ? ` · ${num(fuel.burned)} fuel / h burned in all` : ''}` : 'form fleets and give each a job', this.fleetsHTML(cov), this.fleets.length > 0)}
                 </div>
