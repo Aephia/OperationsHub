@@ -24,7 +24,7 @@
     class RecipePlanner {
         constructor(model, research) {
             this.m = model; this.rm = model.rm; this.research = research || null;   // CommandDeck ResearchModel, or null without research-data.js
-            this.filters = { q: '', mode: 'name', types: new Set(), tiers: new Set(), star: new Set(), kinds: new Set(), facs: new Set(), sort: 'name' };
+            this.filters = { q: '', mode: 'name', types: new Set(), tiers: new Set(), star: new Set(), kinds: new Set(), facs: new Set(), sort: 'name', craft: false };
             this.shown = PAGE;
             this.items = this.load();
             this.faction = this.loadFaction();   // null = None: every step uses its recipe as named (the plan from before the ways work)
@@ -39,9 +39,34 @@
         loadUseC4() { try { return localStorage.getItem(UKEY) !== '0'; } catch (e) { return true; } }
         initC4() {
             const H = window.HubProfile; if (!H) return;
-            const apply = () => { this.c4.profile = H.get(); this.c4.mine = this.c4.latest ? H.assets(this.c4.latest, this.c4.profile) : null; this.renderPlan(); };
+            const apply = () => { this.c4.profile = H.get(); this.c4.mine = this.c4.latest ? H.assets(this.c4.latest, this.c4.profile) : null; this.renderPlan(); this.redrawCraft(); };
             H.onChange(apply);
+            this.renderCraftBox();   // "looking for what you hold" until the read is in
             H.loadC4('../').then(r => { this.c4.latest = r.latest; this.c4.why = r.why || ''; }, () => { this.c4.why = 'The C4 Live data could not be read.'; }).then(() => { this.c4.ready = true; apply(); });
+        }
+        // everything you hold in C4, whole units per name, whatever the plan's own switch says: the finder's
+        // "Craftable now" filter and the "can craft" marks read it. null when nothing of yours is known.
+        invStock() {
+            const m = this.c4 && this.c4.mine; if (!m) return null;
+            const st = new Map(m.stock.map(s => [s.name, Math.floor(s.units)]).filter(x => x[1] > 0));
+            return st.size ? st : null;
+        }
+        // after a profile or data change: the chip, then the list. The list is filtered anew (back to its first page)
+        // only when the filter is on or was just switched off; otherwise only its "can craft" marks are redrawn, so a
+        // visitor who paged down stays where they were
+        redrawCraft() {
+            const was = this.filters.craft; this.renderCraftBox();
+            if (was || this.filters.craft) this.applyFinder(); else this.renderList();
+        }
+        // the finder's "Your inventory" block: the Craftable now chip with its count, or one line saying what is missing
+        renderCraftBox() {
+            const el = document.getElementById('rpCraftBox'), H = window.HubProfile; if (!el || !H) return;
+            const c = this.c4, st = this.invStock();
+            if (!st && this.filters.craft) this.filters.craft = false;   // the stock went away: the filter cannot stay on
+            const hint = !c.ready ? 'looking for what you hold in C4...' : !H.isSet(c.profile || H.get()) ? 'set your profile on the hub front page to see what you can craft now' : !c.latest ? 'open C4 Live once to read what you hold'
+                : !c.mine || !c.mine.owners.length ? 'no C4 player in the latest read matches your profile' : !st ? 'your fleets and claim stakes hold no cargo right now' : 'one craft from the cargo in your fleets and on your claim stakes';
+            const n = st ? this.m.findRecipeRows({ craft: st }).reduce((a, g) => a + g.rows.length, 0) : 0;
+            el.innerHTML = `<h4>Your inventory <small class="rp-chip-hint">${esc(hint)}</small></h4>${st ? `<div class="chips" data-group="craft"><button type="button" class="chip${this.filters.craft ? ' on' : ''}" data-v="now" title="Recipes whose every direct ingredient you hold in the amount one craft needs. Starbase level, research and crafting station are not checked; a starbase's stores are not in the read.">Craftable now <small>${num(n)}</small></button></div>` : ''}`;
         }
         // what the plan may draw on: whole units per name; null when the switch is off or nothing of yours is known
         c4Stock() {
@@ -142,6 +167,7 @@
                 <div class="rx-side-head"><h3>Find a recipe</h3><span class="sb-count" id="rpCount"></span></div>
                 <input type="text" id="searchInput" class="sb-input" placeholder="Output name, e.g. Copper Wire, Mining Rig" autocomplete="off">
                 <div class="chips" data-group="mode"><button type="button" class="chip on" data-v="name">By output</button><button type="button" class="chip" data-v="ingredient">By ingredient</button></div>
+                <div id="rpCraftBox"></div>
                 ${kindChips.length > 1 ? `<h4>Recipe kind <small class="rp-chip-hint">shows recipes of any kind ticked</small></h4>
                 <div class="chips" data-group="kinds">${kindChips.map(k => kchip('kinds', k)).join('')}</div>` : ''}
                 ${facChips.length ? `<h4>Faction <small class="rp-chip-hint">any faction ticked; with a kind ticked, both must match</small></h4>
@@ -162,7 +188,8 @@
             const f = this.filters;
             // addendum 3 G1: every recipe row under the heading of its item (model findRecipeRows); each filter and both
             // searches test the recipe row itself, a heading shows when any of its rows shows
-            this.found = this.m.findRecipeRows(f);
+            const stockNow = f.craft ? this.invStock() : null;
+            this.found = this.m.findRecipeRows(Object.assign({}, f, { craft: stockNow }));
             const cmp = { name: (a, b) => a.baseName.localeCompare(b.baseName) || a.outputTier - b.outputTier || a.outputName.localeCompare(b.outputName), tier: (a, b) => a.outputTier - b.outputTier || a.baseName.localeCompare(b.baseName), time: (a, b) => (b.constructionTime || 0) - (a.constructionTime || 0), depth: (a, b) => b.depth - a.depth, ingredients: (a, b) => b.ingredientCount - a.ingredientCount }[f.sort];
             const tie = (a, b) => a.outputName.localeCompare(b.outputName) || a.outputId.localeCompare(b.outputId);
             // rows of an item: by name its standard row first, then higher tier first (as the owner's sketch); else by the
@@ -185,7 +212,9 @@
             // (the item unpinned); a recipe row's + / ✓ is the entry that has THAT recipe picked (pinned)
             const inPlan = new Set(this.items.map(i => i.id)), plain = new Set(this.items.filter(i => !i.way && !i.rec).map(i => i.id)), picked = new Set(this.items.filter(i => i.way).map(i => i.way));
             const addBtn = (attr, id, on, what) => `<button type="button" class="rp-add" ${attr}="${esc(id)}" title="${on ? 'In the plan: click to remove' : what}">${on ? '✓' : '+'}</button>`;
-            const meta = r => `${esc(r.typeLabel)} · ${r.ingredientCount ? r.ingredientCount + ' ingr.' : 'no inputs'} · ${fmtTime(r.constructionTime)}`;
+            // "can craft xN": how many crafts your C4 cargo allows, on every row it allows at least one
+            const inv = this.invStock(), can = r => { const k = inv ? this.m.craftsFrom(r, inv) : 0; return k ? `<em class="rp-can" title="Your C4 cargo holds every direct ingredient for ${num(k)} craft${k === 1 ? '' : 's'}">can craft ×${num(k)}</em>` : ''; };
+            const meta = r => `${esc(r.typeLabel)} · ${r.ingredientCount ? r.ingredientCount + ' ingr.' : 'no inputs'} · ${fmtTime(r.constructionTime)}${can(r)}`;
             // one item with one recipe: a plain row (no heading weight); it is the item itself (+ adds it unpinned)
             const single = (g, r) => `
                 <div class="rp-row${inPlan.has(g.item.outputId) ? ' in' : ''}" data-id="${esc(r.outputId)}">
@@ -219,11 +248,12 @@
                 const chip = e.target.closest('.chip');
                 if (chip) {
                     const g = chip.closest('[data-group]').dataset.group, v = chip.dataset.v;
-                    if (g === 'mode') { this.filters.mode = v; side.querySelectorAll('[data-group="mode"] .chip').forEach(x => x.classList.toggle('on', x.dataset.v === v)); }
+                    if (g === 'craft') { this.filters.craft = !this.filters.craft; chip.classList.toggle('on', this.filters.craft); }
+                    else if (g === 'mode') { this.filters.mode = v; side.querySelectorAll('[data-group="mode"] .chip').forEach(x => x.classList.toggle('on', x.dataset.v === v)); }
                     else { const set = this.filters[g]; set.has(v) ? set.delete(v) : set.add(v); chip.classList.toggle('on', set.has(v)); }
                     this.snd('select'); this.applyFinder(); return;
                 }
-                if (e.target.id === 'rpClear') { ['types', 'tiers', 'star', 'kinds', 'facs'].forEach(g => this.filters[g].clear()); this.filters.q = ''; document.getElementById('searchInput').value = ''; side.querySelectorAll('.chip.on').forEach(x => { if (x.closest('[data-group]').dataset.group !== 'mode') x.classList.remove('on'); }); this.snd('deselect'); this.applyFinder(); return; }
+                if (e.target.id === 'rpClear') { ['types', 'tiers', 'star', 'kinds', 'facs'].forEach(g => this.filters[g].clear()); this.filters.craft = false; this.filters.q = ''; document.getElementById('searchInput').value = ''; side.querySelectorAll('.chip.on').forEach(x => { if (x.closest('[data-group]').dataset.group !== 'mode') x.classList.remove('on'); }); this.snd('deselect'); this.applyFinder(); return; }
                 const pick = e.target.closest('[data-pick]'); if (pick) { this.toggleWay(pick.dataset.pick); return; }
                 const add = e.target.closest('[data-add]'); if (add) { this.toggleItem(add.dataset.add); return; }
                 const more = e.target.closest('[data-more]'); if (more) { this.shown = Math.max(this.shown, this.listedRows || 0) + PAGE; this.snd('click'); this.renderList(); return; }
